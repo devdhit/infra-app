@@ -1,0 +1,155 @@
+import { db } from '@/lib/db'
+import { NextRequest } from 'next/server'
+import { getCurrentUser } from '@/lib/auth'
+
+// GET /api/tenants/[id] - Get a specific tenant
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    const resolvedParams = await params;
+    // Non-admin users can only access their own tenant
+    if (user.role !== 'admin' && user.tenantId !== resolvedParams.id) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    const tenant = await db.tenant.findUnique({
+      where: { id: resolvedParams.id },
+      include: {
+        _count: {
+          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true }
+        }
+      }
+    })
+
+    if (!tenant) {
+      return new Response(JSON.stringify({ error: 'Tenant not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    return new Response(JSON.stringify(tenant), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  } catch (error) {
+    console.error('Error fetching tenant:', error)
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+}
+
+// PUT /api/tenants/[id] - Update a tenant (admin only)
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user || user.role !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    const body = await request.json()
+    const resolvedParams = await params;
+    
+    const tenant = await db.tenant.update({
+      where: { id: resolvedParams.id },
+      data: {
+        name: body.name,
+        description: body.description
+      }
+    })
+
+    return new Response(JSON.stringify(tenant), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return new Response(JSON.stringify({ error: 'Tenant not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    
+    console.error('Error updating tenant:', error)
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+}
+
+// DELETE /api/tenants/[id] - Delete a tenant (admin only)
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user || user.role !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    const resolvedParams = await params;
+    // Check if tenant has any associated data
+    const tenant = await db.tenant.findUnique({
+      where: { id: resolvedParams.id },
+      include: {
+        _count: {
+          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true }
+        }
+      }
+    })
+
+    if (!tenant) {
+      return new Response(JSON.stringify({ error: 'Tenant not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Prevent deletion if tenant has associated data
+    if (tenant._count.users > 0 || tenant._count.pcs > 0 || tenant._count.laptops > 0 || 
+        tenant._count.printers > 0 || tenant._count.licenses > 0) {
+      return new Response(JSON.stringify({ error: 'Cannot delete tenant with associated data' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    await db.tenant.delete({
+      where: { id: resolvedParams.id }
+    })
+
+    return new Response(null, {
+      status: 204
+    })
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return new Response(JSON.stringify({ error: 'Tenant not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    
+    console.error('Error deleting tenant:', error)
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+}

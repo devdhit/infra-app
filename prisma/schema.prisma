@@ -1,0 +1,205 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tenant model for multi-tenancy
+model Tenant {
+  id            String     @id @default(uuid())
+  name          String
+  description   String?
+  users         User[]
+  pcs           PC[]
+  laptops       Laptop[]
+  printers      Printer[]
+  licenses      License[]
+  warehouseITs  WarehouseIT[]
+  customFields  CustomField[]
+  histories     History[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+// User model with role-based access control
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  name          String
+  role          String   @default("user") // admin, user, manager
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  pcs           PC[]
+  laptops       Laptop[]
+  histories     History[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// PC asset model
+model PC {
+  id                String     @id @default(uuid())
+  dept              String
+  cpuBarcode        String     @unique
+  cpuSapBarcode     String?
+  monitorBarcode    String?
+  monitorSapBarcode String?
+  upsBarcode        String?
+  upsSapBarcode     String?
+  pcName            String
+  userId            String?
+  user              User?      @relation(fields: [userId], references: [id])
+  status            String     @default("active") // active, inactive, maintenance, retired
+  note              String?
+  tenantId          String
+  tenant            Tenant     @relation(fields: [tenantId], references: [id])
+  customFields      Json?      // For storing custom field values
+  histories         History[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+// Laptop asset model
+model Laptop {
+  id            String     @id @default(uuid())
+  dept          String
+  barcode       String     @unique
+  sapBarcode    String?
+  dateBuy       DateTime?
+  userId        String?
+  user          User?      @relation(fields: [userId], references: [id])
+  email         String?
+  model         String?
+  status        String     @default("active") // active, inactive, maintenance, retired
+  tenantId      String
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
+  customFields  Json?      // For storing custom field values
+  histories     History[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+// Printer asset model
+model Printer {
+  id            String     @id @default(uuid())
+  dept          String
+  location      String?
+  ip            String?
+  model         String?
+  color         Boolean    @default(false)
+  barcode       String     @unique
+  sapCode       String?
+  date          DateTime?
+  note          String?
+  tenantId      String
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
+  customFields  Json?      // For storing custom field values
+  histories     History[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([tenantId])
+}
+
+// License model
+model License {
+  id            String     @id @default(uuid())
+  deviceName    String?
+  userName      String?
+  dept          String?
+  productType   String?
+  productKey    String?
+  model         String?
+  pc            String?
+  mac           String?
+  ip            String?
+  date          DateTime?
+  updateStatus  String?    @default("active") // active, expired, pending
+  tenantId      String
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
+  customFields  Json?      // For storing custom field values
+  histories     History[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([tenantId])
+}
+
+// Warehouse IT model
+model WarehouseIT {
+  id                String     @id @default(uuid())
+  cpuBarcode        String?
+  cpuSapBarcode     String?
+  monitorBarcode    String?
+  monitorSapBarcode String?
+  upsBarcode        String?
+  upsSapBarcode     String?
+  status            String     @default("available") // available, reserved, used, maintenance
+  note              String?
+  tenantId          String
+  tenant            Tenant     @relation(fields: [tenantId], references: [id])
+  customFields      Json?      // For storing custom field values
+  histories         History[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([tenantId])
+}
+
+// Custom fields model for tenant-specific fields
+model CustomField {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // text, number, date, boolean, etc.
+  modelType String   // PC, Laptop, Printer, License, WarehouseIT
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  required  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([modelType])
+}
+
+// History/Logs tracking model
+model History {
+  id          String     @id @default(uuid())
+  action      String     // create, update, delete
+  modelType   String     // PC, Laptop, Printer, License, WarehouseIT
+  recordId    String
+  changes     Json       // Store the changes made
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id])
+  tenantId    String
+  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  pc          PC?        @relation(fields: [recordId], references: [id], map: "history_pc_fkey")
+  laptop      Laptop?    @relation(fields: [recordId], references: [id], map: "history_laptop_fkey")
+  printer     Printer?   @relation(fields: [recordId], references: [id], map: "history_printer_fkey")
+  license     License?   @relation(fields: [recordId], references: [id], map: "history_license_fkey")
+  warehouseIT WarehouseIT? @relation(fields: [recordId], references: [id], map: "history_warehouse_fkey")
+  createdAt   DateTime   @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([modelType, recordId])
+}
