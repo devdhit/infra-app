@@ -26,7 +26,7 @@ interface PCAsset {
 
 // Create handler for PC assets
 const pcHandler = new AssetApiHandler<PCAsset>(db, {
-  modelName: 'pC',
+  modelName: 'PC',
   requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
   uniqueField: 'cpuBarcode',
   searchFields: ['cpuBarcode', 'pcName', 'dept', 'note'],
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     return await pcHandler.getAll(user, queryParams)
   } catch (error) {
     console.error('Error in PC GET route:', error)
-    return errorResponse('Internal server error')
+    return errorResponse('Failed to fetch PC assets. Please try again later.')
   }
 }
 
@@ -67,8 +67,36 @@ export async function POST(request: NextRequest) {
 
     const body = await parseRequestBody<PCAsset>(request)
     return await pcHandler.create(user, body)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in PC POST route:', error)
-    return errorResponse('Internal server error')
+    
+    // Handle JSON parsing errors
+    if (error.message && error.message.includes('Invalid JSON')) {
+      return errorResponse('Invalid request body. Please ensure the request is valid JSON.', 400)
+    }
+    
+    return errorResponse('Failed to create PC asset. Please try again later.')
+  }
+}
+
+// DELETE /api/assets/pc - Bulk delete PC assets
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return unauthorizedResponse()
+    }
+
+    const body = await parseRequestBody<{ ids: string[] }>(request)
+    return await pcHandler.bulkDelete(user, body.ids)
+  } catch (error: any) {
+    console.error('Error in PC bulk DELETE route:', error)
+    
+    // Handle JSON parsing errors
+    if (error.message && error.message.includes('Invalid JSON')) {
+      return errorResponse('Invalid request body. Please ensure the request is valid JSON.', 400)
+    }
+    
+    return errorResponse('Failed to delete PC assets. Please try again later.')
   }
 }

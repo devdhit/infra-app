@@ -10,7 +10,19 @@ import { generateToken, verifyPassword } from '@/lib/auth'
 // POST /api/auth/login - User login
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    // Check if content type is JSON
+    const contentType = request.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      return badRequestResponse('Content-Type must be application/json')
+    }
+
+    let body
+    try {
+      body = await request.json()
+    } catch (jsonError) {
+      return badRequestResponse('Invalid JSON in request body')
+    }
+
     const { email, password } = body
 
     // Validate input

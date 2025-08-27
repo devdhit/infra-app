@@ -1,13 +1,14 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
-import { Language, supportedLanguages, defaultLanguage, getTranslations, t } from '@/lib/i18n'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { Language, supportedLanguages, defaultLanguage, getTranslations, translate as translateFunction, hasTranslation } from '@/lib/i18n'
 import { usePathname, useRouter } from 'next/navigation'
 
 type I18nContextType = {
   language: Language
   setLanguage: (lang: Language) => void
-  t: (key: string, ...params: (string | number)[]) => string
+  t: (key: string, fallback?: string, ...params: (string | number)[]) => string
+  hasTranslation: (key: string) => boolean
   loading: boolean
 }
 
@@ -41,20 +42,30 @@ export function I18nProvider({
     loadLanguage()
   }, [language])
 
-  const setLanguage = (lang: Language) => {
+  const setLanguage = useCallback((lang: Language) => {
     // Set the language state
     setLanguageState(lang)
     
     // Set cookie for persistence
     document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000; SameSite=Lax`
-  }
-  
-  const translate = (key: string, ...params: (string | number)[]): string => {
-    return t(key, translations, ...params)
-  }
+  }, [])
+
+  const translate = useCallback((key: string, fallback?: string, ...params: (string | number)[]): string => {
+    return translateFunction(key, translations, fallback || key, ...params)
+  }, [translations])
+
+  const checkTranslation = useCallback((key: string): boolean => {
+    return hasTranslation(key, translations)
+  }, [translations])
   
   return (
-    <I18nContext.Provider value={{ language, setLanguage, t: translate, loading }}>
+    <I18nContext.Provider value={{ 
+      language, 
+      setLanguage, 
+      t: translate, 
+      hasTranslation: checkTranslation,
+      loading 
+    }}>
       {children}
     </I18nContext.Provider>
   )

@@ -8,31 +8,27 @@ import {
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
-// Define the PC asset type (matching the model in route.ts)
+// Define the PC asset type based on the Prisma schema
 interface PCAsset {
-  assetTag: string
-  model: string
-  serialNumber: string
-  manufacturer?: string
-  processor?: string
-  ram?: string
-  storage?: string
-  operatingSystem?: string
+  dept: string
+  cpuBarcode: string
+  cpuSapBarcode?: string
+  monitorBarcode?: string
+  monitorSapBarcode?: string
+  upsBarcode?: string
+  upsSapBarcode?: string
+  pcName: string
+  userId?: string
   status: string
-  assignedTo?: string
-  department?: string
-  location?: string
-  purchaseDate?: Date
-  warrantyExpiry?: Date
-  notes?: string
+  note?: string
 }
 
 // Create handler for PC assets
 const pcHandler = new AssetApiHandler<PCAsset>(db, {
-  modelName: 'pC',
-  requiredFields: ['assetTag', 'model', 'serialNumber', 'status'],
-  uniqueField: 'assetTag',
-  searchFields: ['assetTag', 'model', 'serialNumber', 'assignedTo', 'department', 'notes'],
+  modelName: 'PC',
+  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
+  uniqueField: 'cpuBarcode',
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note'],
   include: {
     user: {
       select: {

@@ -47,11 +47,83 @@ export function t(key: string, translations: Record<string, any>, ...params: (st
   if (typeof translation === 'string') {
     // Replace placeholders {0}, {1}, etc. with provided parameters
     params.forEach((param, index) => {
-      translation = translation.replace(new RegExp(`\\{${index}\\}`, 'g'), String(param))
+      // Escape special regex characters in param
+      const escapedParam = String(param).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      translation = translation.replace(new RegExp(`\\{${index}\\}`, 'g'), escapedParam)
     })
     return translation
   }
   
   // Return the key if translation is not a string
   return key
+}
+
+// Enhanced translation function with fallback and error handling
+export function translate(
+  key: string, 
+  translations: Record<string, any>, 
+  fallback: string = key,
+  ...params: (string | number)[]
+): string {
+  try {
+    // Navigate through the translation object using the key path
+    const keyParts = key.split('.')
+    let translation: any = translations
+    
+    for (const part of keyParts) {
+      if (translation && typeof translation === 'object' && part in translation) {
+        translation = translation[part]
+      } else {
+        // Return fallback if translation not found
+        return processParams(fallback, params)
+      }
+    }
+    
+    // If we found a translation string, process parameters
+    if (typeof translation === 'string') {
+      return processParams(translation, params)
+    }
+    
+    // Return fallback if translation is not a string
+    return processParams(fallback, params)
+  } catch (error) {
+    console.error(`Error translating key "${key}":`, error)
+    return processParams(fallback, params)
+  }
+}
+
+// Helper function to process parameters in translation strings
+function processParams(template: string, params: (string | number)[]): string {
+  if (!params || params.length === 0) {
+    return template
+  }
+  
+  let result = template
+  params.forEach((param, index) => {
+    // Escape special regex characters in param
+    const escapedParam = String(param).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    result = result.replace(new RegExp(`\\{${index}\\}`, 'g'), escapedParam)
+  })
+  
+  return result
+}
+
+// Function to check if a translation key exists
+export function hasTranslation(key: string, translations: Record<string, any>): boolean {
+  try {
+    const keyParts = key.split('.')
+    let translation: any = translations
+    
+    for (const part of keyParts) {
+      if (translation && typeof translation === 'object' && part in translation) {
+        translation = translation[part]
+      } else {
+        return false
+      }
+    }
+    
+    return typeof translation === 'string'
+  } catch (error) {
+    return false
+  }
 }

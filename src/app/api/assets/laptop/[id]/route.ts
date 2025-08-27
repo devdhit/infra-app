@@ -4,7 +4,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
   parseRequestBody,
-  errorResponse
+  errorResponse,
+  badRequestResponse
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
@@ -14,7 +15,7 @@ interface LaptopAsset {
   barcode: string
   sapBarcode?: string
   dateBuy?: string
-  user?: string
+  userId?: string
   email?: string
   model?: string
   status: string
@@ -22,7 +23,9 @@ interface LaptopAsset {
 
 // Create handler for Laptop assets
 const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
-  modelName: 'laptop',
+  modelName: 'Laptop',
+  requiredFields: ['dept', 'barcode', 'status'],
+  uniqueField: 'barcode',
   searchFields: ['barcode', 'dept', 'model'],
   include: {
     user: {
@@ -31,12 +34,6 @@ const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
         name: true,
         email: true
       }
-    },
-    histories: {
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 10
     }
   }
 })
@@ -65,7 +62,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
-    const body = await parseRequestBody<Partial<LaptopAsset>>(request)
+    let body: Partial<LaptopAsset>
+    try {
+      body = await parseRequestBody<Partial<LaptopAsset>>(request)
+    } catch (parseError: any) {
+      return badRequestResponse(parseError.message)
+    }
+    
     const resolvedParams = await params;
     return await laptopHandler.update(user, resolvedParams.id, body)
   } catch (error) {

@@ -15,7 +15,7 @@ interface LaptopAsset {
   barcode: string
   sapBarcode?: string
   dateBuy?: string
-  user?: string
+  userId?: string
   email?: string
   model?: string
   status: string
@@ -23,8 +23,8 @@ interface LaptopAsset {
 
 // Create handler for Laptop assets
 const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
-  modelName: 'laptop',
-  requiredFields: ['barcode', 'dept'],
+  modelName: 'Laptop',
+  requiredFields: ['dept', 'barcode', 'status'],
   uniqueField: 'barcode',
   searchFields: ['barcode', 'dept', 'model'],
   include: {
@@ -66,22 +66,6 @@ export async function POST(request: NextRequest) {
     return await laptopHandler.create(user, body)
   } catch (error) {
     console.error('Error in Laptop POST route:', error)
-    return errorResponse('Internal server error')
-  }
-}
-
-// DELETE /api/assets/laptop - Bulk delete Laptop assets
-export async function DELETE(request: NextRequest) {
-  try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return unauthorizedResponse()
-    }
-
-    const body = await parseRequestBody<{ ids: string[] }>(request)
-    return await laptopHandler.bulkDelete(user, body.ids)
-  } catch (error) {
-    console.error('Error in Laptop bulk DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

@@ -36,7 +36,9 @@
       "showing": "顯示 {0} 到 {1} 共 {2} 項"
     },
     "distribution": "分佈",
-    "status": "狀態"
+    "status": "狀態",
+    "yes": "是",
+    "no": "否"
   },
   "dashboard": {
     "title": "儀表板",
@@ -107,7 +109,12 @@
     },
     "view": {
       "title": "{0}詳細資料",
-      "description": "查看此資產的完整詳細資料。"
+      "description": "查看此資產的完整詳細資料。",
+      "assetInfo": "資產資訊",
+      "systemInfo": "系統資訊",
+      "createdAt": "建立時間",
+      "updatedAt": "更新時間",
+      "tenantId": "租戶ID"
     },
     "form": {
       "create": {
@@ -136,7 +143,7 @@
     },
     "laptop": {
       "title": "筆電",
-      "assetTag": "資產標籤",
+      "assetTag": "條碼",
       "sapBarcode": "SAP條碼",
       "purchaseDate": "購買日期",
       "assignedTo": "分配給",
@@ -190,6 +197,9 @@
   },
   "forms": {
     "required": "此欄位為必填",
-    "invalidEmail": "請輸入有效的電子郵件"
+    "invalidEmail": "請輸入有效的電子郵件",
+    "validationError": "請檢查表單中的錯誤",
+    "singleFieldError": "表單中有一個錯誤。請檢查標記為紅色的欄位。",
+    "multipleFieldError": "表單中有{0}個錯誤。請檢查標記為紅色的欄位。"
   }
 }

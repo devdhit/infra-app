@@ -24,11 +24,17 @@ export interface AssetColumn {
 export interface AssetFormField {
   name: string;
   label: string;
-  type: "text" | "number" | "email" | "date" | "textarea" | "select";
+  type: "text" | "number" | "email" | "date" | "textarea" | "select" | "url";
   placeholder?: string;
   description?: string;
   required?: boolean;
   options?: { label: string; value: string }[];
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
+  patternMessage?: string;
 }
 
 export interface AssetType {

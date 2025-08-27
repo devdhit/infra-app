@@ -36,7 +36,9 @@
       "showing": "Showing {0} to {1} of {2} items"
     },
     "distribution": "Distribution",
-    "status": "Status"
+    "status": "Status",
+    "yes": "Yes",
+    "no": "No"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -107,7 +109,12 @@
     },
     "view": {
       "title": "{0} Details",
-      "description": "View the complete details of this asset."
+      "description": "View the complete details of this asset.",
+      "assetInfo": "Asset Information",
+      "systemInfo": "System Information",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "tenantId": "Tenant ID"
     },
     "form": {
       "create": {
@@ -136,7 +143,7 @@
     },
     "laptop": {
       "title": "Laptop",
-      "assetTag": "Asset Tag",
+      "assetTag": "Barcode",
       "sapBarcode": "SAP Barcode",
       "purchaseDate": "Purchase Date",
       "assignedTo": "Assigned To",
@@ -190,6 +197,9 @@
   },
   "forms": {
     "required": "This field is required",
-    "invalidEmail": "Please enter a valid email"
+    "invalidEmail": "Please enter a valid email",
+    "validationError": "Please check the form for errors",
+    "singleFieldError": "There is an error in the form. Please check the field marked in red.",
+    "multipleFieldError": "There are {0} errors in the form. Please check the fields marked in red."
   }
 }

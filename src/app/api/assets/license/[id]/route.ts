@@ -4,7 +4,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
   parseRequestBody,
-  errorResponse
+  errorResponse,
+  badRequestResponse
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
@@ -20,21 +21,14 @@ interface LicenseAsset {
   mac?: string
   ip?: string
   date?: string
-  updateStatus: string
+  updateStatus?: string
 }
 
 // Create handler for License assets
 const licenseHandler = new AssetApiHandler<LicenseAsset>(db, {
-  modelName: 'license',
-  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip'],
-  include: {
-    histories: {
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 10
-    }
-  }
+  modelName: 'License',
+  requiredFields: ['productKey'],
+  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip']
 })
 
 // GET /api/assets/license/[id] - Get a specific License asset
@@ -61,7 +55,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
-    const body = await parseRequestBody<Partial<LicenseAsset>>(request)
+    let body: Partial<LicenseAsset>
+    try {
+      body = await parseRequestBody<Partial<LicenseAsset>>(request)
+    } catch (parseError: any) {
+      return badRequestResponse(parseError.message)
+    }
+    
     const resolvedParams = await params;
     return await licenseHandler.update(user, resolvedParams.id, body)
   } catch (error) {
