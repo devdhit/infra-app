@@ -1,0 +1,264 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { useUpdateAsset, useUpdateAssetCustomFields } from "@/hooks/useApi"
+import { toast } from "sonner"
+import { Asset, AssetFormField } from "@/types/assets"
+import { useTranslation } from "@/hooks/use-translation"
+import { Badge } from "@/components/ui/badge"
+import { Info } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+
+interface InlineEditCellProps {
+  asset: Asset
+  assetType: string
+  field: AssetFormField
+  value: any
+  onUpdate: (newValue: any) => void
+}
+
+export function InlineEditCell({ asset, assetType, field, value, onUpdate }: InlineEditCellProps) {
+  const { t } = useTranslation()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value || '')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  
+  // Determine if this is a custom field
+  // Custom fields are those that are not standard asset properties and are defined in the customFields object
+  const isCustomField = asset.customFields && field.name in asset.customFields;
+  
+  // Always call both hooks to comply with React's rules of hooks
+  const updateCustomFieldsMutation = useUpdateAssetCustomFields(assetType, asset.id)
+  const updateAssetMutation = useUpdateAsset(assetType, asset.id)
+  
+  // Use the appropriate mutation based on whether this is a custom field
+  const updateMutation = isCustomField ? updateCustomFieldsMutation : updateAssetMutation
+  
+  // Focus the input when editing starts
+  useEffect(() => {
+    if (isEditing) {
+      // Use setTimeout to ensure the input is rendered before focusing
+      setTimeout(() => {
+        if (field.type === 'textarea' && textareaRef.current) {
+          textareaRef.current.focus()
+        } else if (inputRef.current) {
+          inputRef.current.focus()
+        }
+      }, 0)
+    }
+  }, [isEditing, field.type])
+  
+  const handleEdit = () => {
+    setEditValue(value || '')
+    setIsEditing(true)
+  }
+  
+  const handleCancel = () => {
+    setEditValue(value || '')
+    setIsEditing(false)
+  }
+  
+  const handleSave = async () => {
+    try {
+      // Process the value based on field type
+      let processedValue = editValue
+      
+      if (field.type === 'number') {
+        processedValue = editValue === '' ? null : Number(editValue)
+      } else if (field.type === 'date' && editValue) {
+        // Convert to ISO string for API
+        const dateValue = new Date(editValue)
+        if (dateValue.toString() !== 'Invalid Date') {
+          processedValue = dateValue.toISOString()
+        } else {
+          processedValue = null
+        }
+      } else if (field.type === 'boolean') {
+        processedValue = editValue === true || editValue === 'true'
+      } else if (editValue === '') {
+        processedValue = null
+      }
+      
+      // Update the asset
+      let updateData
+      if (isCustomField) {
+        // For custom fields, update the customFields object
+        const currentCustomFields = asset.customFields || {}
+        updateData = {
+          customFields: {
+            ...currentCustomFields,
+            [field.name]: processedValue
+          }
+        }
+      } else {
+        // For standard fields
+        updateData = { [field.name]: processedValue }
+      }
+      
+      await updateMutation.mutateAsync(updateData)
+      
+      // Update the parent component
+      onUpdate(processedValue)
+      
+      // Exit edit mode
+      setIsEditing(false)
+      
+      toast.success(t('assets.update.success', `{0} updated successfully`, field.label))
+    } catch (error: any) {
+      console.error("Inline edit error:", error)
+      let message = t('assets.update.error', `Failed to update {0}`, field.label)
+      
+      if (error.message) {
+        message = error.message
+      }
+      
+      toast.error(message)
+    }
+  }
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && field.type !== 'textarea') {
+      handleSave()
+    } else if (e.key === 'Escape') {
+      handleCancel()
+    }
+  }
+  
+  if (isEditing) {
+    return (
+      <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">{field.label}</h3>
+              {isCustomField && (
+                <Badge variant="secondary" className="text-xs">
+                  Custom Field
+                </Badge>
+              )}
+            </div>
+            
+            <div className="mb-4">
+              {field.type === 'textarea' ? (
+                <Textarea
+                  ref={textareaRef}
+                  value={editValue || ''}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="min-h-[120px] w-full"
+                  placeholder={field.placeholder}
+                />
+              ) : field.type === 'select' ? (
+                <Select 
+                  value={editValue || ''} 
+                  onValueChange={setEditValue}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={field.placeholder} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options?.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : field.type === 'boolean' ? (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editValue)}
+                    onChange={(e) => setEditValue(e.target.checked)}
+                    className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {field.placeholder || "Check to enable"}
+                  </span>
+                </div>
+              ) : (
+                <Input
+                  ref={inputRef}
+                  type={field.type}
+                  value={editValue || ''}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full h-12 text-lg"
+                  placeholder={field.placeholder}
+                />
+              )}
+            </div>
+            
+            {field.description && (
+              <div className="flex items-start mb-4">
+                <Info className="h-4 w-4 text-muted-foreground mt-0.5 mr-2 flex-shrink-0" />
+                <p className="text-sm text-muted-foreground">{field.description}</p>
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleCancel}
+                disabled={updateMutation.isPending}
+              >
+                {t('common.cancel', "Cancel")}
+              </Button>
+              <Button 
+                onClick={handleSave}
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? (
+                  <div className="flex items-center">
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                    {t('common.saving', "Saving...")}
+                  </div>
+                ) : (
+                  t('common.save', "Save")
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
+  return (
+    <div 
+      className="cursor-pointer hover:bg-muted p-2 rounded min-h-[40px] flex items-center group"
+      onClick={handleEdit}
+    >
+      <div className="flex-1">
+        {field.render ? field.render(value) : 
+         field.type === 'boolean' ? (value ? 'Yes' : 'No') : 
+         String(value || '')}
+      </div>
+      {isCustomField && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                Custom
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Custom Field</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
+  )
+}

@@ -197,7 +197,7 @@ export function Navigation() {
               onClick={handleLogout}
             >
               <LogOut className="h-5 w-5 mr-3" />
-              {t('auth.logout')}
+              {t('auth.logout_a')}
             </Button>
           </div>
         </div>

@@ -164,7 +164,7 @@ export function useBulkDeleteAssets<T>(assetType: string) {
   const queryClient = useQueryClient()
   
   return useApiMutation<T, { ids: string[] }>(
-    `/assets/${assetType}`,
+    `/assets/${assetType}/bulk-delete`,
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
@@ -493,4 +493,122 @@ export function useCurrentUser() {
       toast.error(message)
     }
   })
+}
+
+// Custom Fields hooks
+export interface CustomField {
+  id: string
+  name: string
+  type: string
+  modelType: string
+  required: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export function useCustomFields(modelType?: string) {
+  const queryString = modelType ? `?modelType=${modelType}` : ''
+  return useApiQuery<CustomField[]>(['custom-fields', modelType || 'all'], `/custom-fields${queryString}`)
+}
+
+export function useCreateCustomField() {
+  const queryClient = useQueryClient()
+  
+  return useApiMutation<CustomField, Partial<CustomField>>(
+    '/custom-fields',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
+      },
+      onError: (error: ApiError) => {
+        console.error('Error creating custom field:', error)
+        let message = 'Failed to create custom field'
+        
+        if (error instanceof ValidationError) {
+          message = 'Validation failed. Please check the form for errors.'
+        } else if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
+      }
+    }
+  )
+}
+
+export function useUpdateCustomField(id: string) {
+  const queryClient = useQueryClient()
+  
+  return useApiUpdate<CustomField, Partial<CustomField>>(
+    `/custom-fields/${id}`,
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error updating custom field with id ${id}:`, error)
+        let message = 'Failed to update custom field'
+        
+        if (error instanceof ValidationError) {
+          message = 'Validation failed. Please check the form for errors.'
+        } else if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
+      }
+    }
+  )
+}
+
+export function useDeleteCustomField(id: string) {
+  const queryClient = useQueryClient()
+  
+  return useApiDelete<void>(
+    `/custom-fields/${id}`,
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error deleting custom field with id ${id}:`, error)
+        let message = 'Failed to delete custom field'
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
+      }
+    }
+  )
+}
+
+// Asset Custom Fields hooks
+export function useAssetCustomFields(assetType: string, id: string) {
+  return useApiQuery<any>(['asset-custom-fields', assetType, id], `/assets/custom-fields/${id}?assetType=${assetType}`)
+}
+
+export function useUpdateAssetCustomFields(assetType: string, id: string) {
+  const queryClient = useQueryClient()
+  
+  return useApiUpdate<any, any>(
+    `/assets/custom-fields/${id}?assetType=${assetType}`,
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
+        queryClient.invalidateQueries({ queryKey: ['asset-custom-fields', assetType, id] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error updating asset custom fields for ${assetType} with id ${id}:`, error)
+        let message = 'Failed to update asset custom fields'
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
+      }
+    }
+  )
 }

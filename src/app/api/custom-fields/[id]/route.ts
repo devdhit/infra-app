@@ -70,6 +70,53 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
 
+    // Validate field name format if provided
+    if (body.name) {
+      const fieldNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+      if (!fieldNameRegex.test(body.name)) {
+        return new Response(JSON.stringify({ 
+          error: 'Field name must start with a letter or underscore and contain only letters, numbers, and underscores' 
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
+    // Validate field type if provided
+    if (body.type) {
+      const validTypes = ['text', 'number', 'date', 'boolean', 'select', 'textarea']
+      if (!validTypes.includes(body.type)) {
+        return new Response(JSON.stringify({ 
+          error: `Invalid field type. Must be one of: ${validTypes.join(', ')}` 
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
+    // Check if updating the name would create a duplicate
+    if (body.name && body.name !== existingCustomField.name) {
+      const duplicateField = await db.customField.findFirst({
+        where: {
+          name: body.name,
+          modelType: existingCustomField.modelType,
+          tenantId: user.tenantId,
+          NOT: { id: resolvedParams.id }
+        }
+      })
+
+      if (duplicateField) {
+        return new Response(JSON.stringify({ 
+          error: `A custom field with name "${body.name}" already exists for ${existingCustomField.modelType}` 
+        }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
     const customField = await db.customField.update({
       where: { 
         id: resolvedParams.id,
@@ -78,6 +125,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data: {
         name: body.name,
         type: body.type,
+        description: body.description !== undefined ? body.description : existingCustomField.description,
         required: body.required
       }
     })

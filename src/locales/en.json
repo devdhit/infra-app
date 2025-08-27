@@ -53,7 +53,7 @@
     "latestChanges": "Latest changes in your asset inventory"
   },
   "auth": {
-    "login": "Login",
+    "login_a": "Login",
     "login": {
       "title": "IT Asset Management System",
       "description": "Sign in to your account",
@@ -61,7 +61,7 @@
       "error": "Invalid email or password",
       "signingIn": "Signing in..."
     },
-    "logout": "Logout",
+    "logout_a": "Logout",
     "logout": {
       "success": "Logged out successfully",
       "error": "Failed to logout"

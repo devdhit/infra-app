@@ -24,7 +24,7 @@ export interface AssetColumn {
 export interface AssetFormField {
   name: string;
   label: string;
-  type: "text" | "number" | "email" | "date" | "textarea" | "select" | "url";
+  type: "text" | "number" | "email" | "date" | "textarea" | "select" | "url" | "boolean";
   placeholder?: string;
   description?: string;
   required?: boolean;
@@ -35,6 +35,7 @@ export interface AssetFormField {
   max?: number;
   pattern?: string;
   patternMessage?: string;
+  render?: (value: any) => React.ReactNode;
 }
 
 export interface AssetType {

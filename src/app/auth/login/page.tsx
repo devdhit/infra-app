@@ -93,7 +93,7 @@ export default function LoginPage() {
               className="w-full" 
               disabled={isLoading}
             >
-              {isLoading ? (t('auth.login.signingIn') || "Signing in...") : t('auth.login')}
+              {isLoading ? (t('auth.login.signingIn') || "Signing in...") : t('auth.login_a')}
             </Button>
           </form>
         </CardContent>

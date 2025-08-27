@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/select";
 import { 
   useCreateAsset, 
-  useUpdateAsset 
+  useUpdateAsset,
+  useCustomFields
 } from "@/hooks/useApi";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -39,9 +40,11 @@ import { useTranslation } from "@/hooks/use-translation";
 import { Asset, AssetFormField } from "@/types/assets";
 import { useEffect } from "react";
 import { ApiError, ValidationError } from "@/lib/api";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Settings } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AssetFormSkeleton } from "./asset-form-skeleton";
+import { useRouter } from "next/navigation";
+import { Separator } from "@/components/ui/separator";
 
 interface AssetFormProps {
   assetType: string;
@@ -53,15 +56,20 @@ interface AssetFormProps {
   onSuccess: () => void;
 }
 
-// Generate Zod schema based on form fields
-const generateSchema = (fields: AssetFormField[]) => {
+// Generate Zod schema based on all form fields
+const generateSchema = (allFields: AssetFormField[]) => {
   const schemaFields: Record<string, any> = {};
   
-  fields.forEach(field => {
+  // Add all fields
+  allFields.forEach(field => {
     // Create base schema based on field type
     let fieldSchema: z.ZodTypeAny;
     
     switch (field.type) {
+      case "boolean":
+        fieldSchema = z.boolean().nullable();
+        break;
+        
       case "email":
         fieldSchema = z.string().email("Please enter a valid email address").or(z.literal("")).nullable();
         break;
@@ -181,9 +189,29 @@ export function AssetFormDialog({
 }: AssetFormProps) {
   const { t } = useTranslation();
   const isEditing = !!initialData;
+  const router = useRouter();
   
-  // Generate schema dynamically based on fields
-  const Schema = generateSchema(fields);
+  // Fetch custom fields for this asset type
+  const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(assetType);
+  const customFields: AssetFormField[] = customFieldsData?.map((cf: any) => ({
+    name: cf.name,
+    label: cf.name,
+    type: cf.type as any,
+    required: cf.required
+  })) || [];
+  
+  // Refetch custom fields when the dialog opens or when assetType changes
+  useEffect(() => {
+    if (isOpen) {
+      refetchCustomFields();
+    }
+  }, [isOpen, assetType, refetchCustomFields]);
+  
+  // Combine standard fields with custom fields
+  const allFields = [...fields, ...customFields];
+  
+  // Generate schema dynamically based on all fields
+  const Schema = generateSchema(allFields);
   
   const form = useForm<z.infer<typeof Schema>>({
     resolver: zodResolver(Schema),
@@ -312,7 +340,7 @@ export function AssetFormDialog({
   
   // Show skeleton while loading initial data for editing
   if (isEditing && !initialData && isOpen) {
-    return <AssetFormSkeleton title={title} fieldCount={fields.length} />;
+    return <AssetFormSkeleton title={title} fieldCount={allFields.length} />;
   }
   
   return (
@@ -349,7 +377,7 @@ export function AssetFormDialog({
             )}
             
             <div className="grid grid-cols-1 gap-4">
-              {fields.map((field) => (
+              {allFields.map((field) => (
                 <FormField
                   key={field.name}
                   control={form.control}
@@ -416,6 +444,19 @@ export function AssetFormDialog({
                             }}
                             disabled={isSubmitting}
                           />
+                        ) : field.type === "boolean" ? (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={formField.value as boolean || false}
+                              onChange={(e) => formField.onChange(e.target.checked)}
+                              disabled={isSubmitting}
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {field.placeholder || "Check to enable"}
+                            </span>
+                          </div>
                         ) : (
                           <Input
                             type={field.type}

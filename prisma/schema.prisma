@@ -150,15 +150,16 @@ model WarehouseIT {
 }
 
 model CustomField {
-  id        String   @id @default(uuid())
-  name      String
-  type      String
-  modelType String
-  tenantId  String
-  required  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  id          String   @id @default(uuid())
+  name        String
+  type        String
+  modelType   String
+  description String?
+  tenantId    String
+  required    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([modelType])
