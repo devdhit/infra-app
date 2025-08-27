@@ -14,21 +14,6 @@ export const config = {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Check if the pathname already has a locale
-  const pathnameHasLocale = supportedLanguages.some(
-    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
-  )
-  
-  // If the pathname already has a locale, strip it and continue
-  if (pathnameHasLocale) {
-    const newPath = pathname.replace(/^\/(en|zh-tw)/, '') || '/'
-    const response = NextResponse.rewrite(new URL(newPath, request.url))
-    // Add the locale to the response headers
-    const locale = pathname.split('/')[1]
-    response.headers.set('x-locale', locale)
-    return response
-  }
-  
   // Get the preferred language from the Accept-Language header
   const acceptLanguage = request.headers.get('accept-language')
   let preferredLanguage = defaultLanguage
@@ -48,8 +33,8 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // Rewrite to the preferred language
-  const response = NextResponse.rewrite(new URL(pathname, request.url))
+  // Rewrite to the preferred language without changing the URL
+  const response = NextResponse.next()
   response.headers.set('x-locale', preferredLanguage)
   return response
 }

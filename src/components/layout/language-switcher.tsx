@@ -10,34 +10,23 @@ import {
 import { Languages } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { supportedLanguages } from "@/lib/i18n";
+import { useI18n } from "@/contexts/i18n-context";
 
 export function LanguageSwitcher() {
   const pathname = usePathname();
   const router = useRouter();
+  const { language, setLanguage } = useI18n();
   
   const switchLanguage = (lang: string) => {
-    // Get the current path without the locale prefix
-    let pathWithoutLocale = pathname;
-    supportedLanguages.forEach((locale) => {
-      if (pathname.startsWith(`/${locale}/`)) {
-        pathWithoutLocale = pathname.slice(locale.length + 1);
-      } else if (pathname === `/${locale}`) {
-        pathWithoutLocale = "/";
-      }
-    });
+    // Set the language in the context (this will update the UI)
+    setLanguage(lang as any);
     
-    // Redirect to the new language path
-    const newPath = `/${lang}${pathWithoutLocale}`;
-    router.push(newPath);
+    // Set cookie for persistence
+    document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000; SameSite=Lax`
+    
+    // Force a page refresh to reload translations
+    router.refresh();
   };
-  
-  // Get current language
-  let currentLang = "en";
-  supportedLanguages.forEach((locale) => {
-    if (pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`) {
-      currentLang = locale;
-    }
-  });
   
   const getLanguageName = (lang: string) => {
     switch (lang) {
@@ -60,7 +49,7 @@ export function LanguageSwitcher() {
           <DropdownMenuItem
             key={lang}
             onClick={() => switchLanguage(lang)}
-            className={currentLang === lang ? "bg-muted" : ""}
+            className={language === lang ? "bg-muted" : ""}
           >
             {getLanguageName(lang)}
           </DropdownMenuItem>
