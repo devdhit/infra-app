@@ -47,7 +47,18 @@ export function verifyToken(token: string): UserJwtPayload | null {
  */
 export async function getCurrentUser(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value
+    // First check for token in Authorization header (Bearer token)
+    const authHeader = request.headers.get('authorization')
+    let token: string | undefined
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7) // Remove 'Bearer ' prefix
+    } 
+    // Fallback to checking cookies
+    else {
+      token = request.cookies.get('auth-token')?.value
+    }
+    
     if (!token) return null
 
     const payload = verifyToken(token)

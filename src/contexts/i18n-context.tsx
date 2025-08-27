@@ -1,12 +1,13 @@
 'use client'
 
-import { createContext, useContext } from 'react'
-import { Language, supportedLanguages, defaultLanguage, getTranslations } from '@/lib/i18n'
+import { createContext, useContext, useState, useEffect } from 'react'
+import { Language, supportedLanguages, defaultLanguage, getTranslations, t } from '@/lib/i18n'
 
 type I18nContextType = {
   language: Language
   setLanguage: (lang: Language) => void
   t: (key: string, ...params: (string | number)[]) => string
+  loading: boolean
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined)
@@ -18,31 +19,40 @@ export function I18nProvider({
   children: React.ReactNode
   initialLanguage?: Language
 }) {
-  // In a client component, we can't use server functions like getCurrentLanguage
-  // So we'll use a simple state-based approach
-  const language = initialLanguage || defaultLanguage
-  
+  const [language, setLanguageState] = useState<Language>(initialLanguage || defaultLanguage)
+  const [translations, setTranslations] = useState<Record<string, any>>({})
+  const [loading, setLoading] = useState(true)
+
+  // Load translations when language changes
+  useEffect(() => {
+    async function loadLanguage() {
+      setLoading(true)
+      try {
+        const loadedTranslations = await getTranslations(language)
+        setTranslations(loadedTranslations)
+      } catch (error) {
+        console.error('Failed to load translations:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadLanguage()
+  }, [language])
+
   const setLanguage = (lang: Language) => {
     // This would typically involve setting a cookie and reloading the page
     // or using a more sophisticated state management solution
     document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000; SameSite=Lax`
-    window.location.reload()
+    setLanguageState(lang)
   }
   
-  const t = (key: string, ...params: (string | number)[]): string => {
-    const translations = getTranslations(language)
-    let translation = translations[key] || key
-    
-    // Replace placeholders {0}, {1}, etc. with provided parameters
-    params.forEach((param, index) => {
-      translation = translation.replace(new RegExp(`\\{${index}\\}`, 'g'), String(param))
-    })
-    
-    return translation
+  const translate = (key: string, ...params: (string | number)[]): string => {
+    return t(key, translations, ...params)
   }
   
   return (
-    <I18nContext.Provider value={{ language, setLanguage, t }}>
+    <I18nContext.Provider value={{ language, setLanguage, t: translate, loading }}>
       {children}
     </I18nContext.Provider>
   )

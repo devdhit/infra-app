@@ -1,0 +1,195 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "assets": "Assets",
+    "pc": "PC",
+    "laptop": "Laptop",
+    "printer": "Printer",
+    "license": "License",
+    "warehouse": "Warehouse",
+    "settings": "Settings",
+    "users": "Users",
+    "tenants": "Tenants"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "create": "Create",
+    "update": "Update",
+    "view": "View",
+    "search": "Search",
+    "search": {
+      "placeholder": "Search assets..."
+    },
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "actions": "Actions",
+    "list": "List",
+    "close": "Close",
+    "confirm": "Confirm",
+    "pagination": {
+      "showing": "Showing {0} to {1} of {2} items"
+    },
+    "distribution": "Distribution",
+    "status": "Status"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to IT Asset Management System",
+    "totalAssets": "Total Assets",
+    "activeAssets": "Active Assets",
+    "maintenanceAssets": "Maintenance Assets",
+    "retiredAssets": "Retired Assets",
+    "assetDistribution": "Breakdown of assets by type",
+    "assetStatus": "Status distribution of PCs and Laptops",
+    "recentActivities": "Recent Activities",
+    "latestChanges": "Latest changes in your asset inventory"
+  },
+  "auth": {
+    "login": "Login",
+    "login": {
+      "title": "IT Asset Management System",
+      "description": "Sign in to your account",
+      "success": "Logged in successfully",
+      "error": "Invalid email or password",
+      "signingIn": "Signing in..."
+    },
+    "logout": "Logout",
+    "logout": {
+      "success": "Logged out successfully",
+      "error": "Failed to logout"
+    },
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?"
+  },
+  "assets": {
+    "list": {
+      "description": "Manage your {0} assets",
+      "empty": "No assets found"
+    },
+    "create": {
+      "success": "{0} created successfully"
+    },
+    "update": {
+      "success": "{0} updated successfully"
+    },
+    "delete": {
+      "success": "{0} deleted successfully",
+      "error": "Failed to delete {0}: {1}",
+      "title": "Delete {0}",
+      "description": "Are you sure you want to delete this {0}? This action cannot be undone."
+    },
+    "bulkDelete": {
+      "success": "{0} assets deleted successfully",
+      "error": "Failed to delete assets: {0}",
+      "noSelection": "Please select assets to delete",
+      "title": "Bulk Delete",
+      "description": "Are you sure you want to delete {0} {1} assets? This action cannot be undone."
+    },
+    "status": {
+      "all": "All Statuses",
+      "active": "Active",
+      "inactive": "Inactive",
+      "maintenance": "Maintenance",
+      "retired": "Retired",
+      "available": "Available",
+      "reserved": "Reserved",
+      "used": "Used",
+      "expired": "Expired",
+      "pending": "Pending"
+    },
+    "view": {
+      "title": "{0} Details",
+      "description": "View the complete details of this asset."
+    },
+    "form": {
+      "create": {
+        "title": "Create {0}",
+        "description": "Add a new {0} to your inventory."
+      },
+      "edit": {
+        "title": "Edit {0}",
+        "description": "Edit the details for this {0}."
+      },
+      "error": "Failed to {0} {1}: {2}"
+    },
+    "pc": {
+      "title": "PC",
+      "cpuBarcode": "CPU Barcode",
+      "pcName": "PC Name",
+      "dept": "Department",
+      "status": "Status",
+      "user": "User",
+      "cpuSapBarcode": "CPU SAP Barcode",
+      "monitorBarcode": "Monitor Barcode",
+      "monitorSapBarcode": "Monitor SAP Barcode",
+      "upsBarcode": "UPS Barcode",
+      "upsSapBarcode": "UPS SAP Barcode",
+      "note": "Note"
+    },
+    "laptop": {
+      "title": "Laptop",
+      "assetTag": "Asset Tag",
+      "sapBarcode": "SAP Barcode",
+      "purchaseDate": "Purchase Date",
+      "assignedTo": "Assigned To",
+      "department": "Department",
+      "location": "Location",
+      "model": "Model",
+      "status": "Status",
+      "notes": "Notes"
+    },
+    "printer": {
+      "title": "Printer",
+      "department": "Department",
+      "location": "Location",
+      "ip": "IP Address",
+      "model": "Model",
+      "color": "Color",
+      "colorValue": "Color",
+      "bw": "Black & White",
+      "barcode": "Barcode",
+      "sapCode": "SAP Code",
+      "date": "Date",
+      "note": "Note"
+    },
+    "license": {
+      "title": "License",
+      "dept": "Department",
+      "deviceName": "Device Name",
+      "userName": "User Name",
+      "productType": "Product Type",
+      "productKey": "Product Key",
+      "model": "Model",
+      "pc": "PC",
+      "mac": "MAC Address",
+      "ip": "IP Address",
+      "date": "Date",
+      "updateStatus": "Update Status",
+      "note": "Note"
+    },
+    "warehouse": {
+      "title": "Warehouse",
+      "dept": "Department",
+      "cpuBarcode": "CPU Barcode",
+      "cpuSapBarcode": "CPU SAP Barcode",
+      "monitorBarcode": "Monitor Barcode",
+      "monitorSapBarcode": "Monitor SAP Barcode",
+      "upsBarcode": "UPS Barcode",
+      "upsSapBarcode": "UPS SAP Barcode",
+      "status": "Status",
+      "note": "Note"
+    }
+  },
+  "forms": {
+    "required": "This field is required",
+    "invalidEmail": "Please enter a valid email"
+  }
+}

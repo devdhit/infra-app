@@ -9,7 +9,7 @@ import {
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
-// Define the PC asset type
+// Define the PC asset type based on the Prisma schema
 interface PCAsset {
   dept: string
   cpuBarcode: string
@@ -19,7 +19,7 @@ interface PCAsset {
   upsBarcode?: string
   upsSapBarcode?: string
   pcName: string
-  user?: string
+  userId?: string
   status: string
   note?: string
 }
@@ -27,9 +27,9 @@ interface PCAsset {
 // Create handler for PC assets
 const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'pC',
-  requiredFields: ['cpuBarcode', 'pcName', 'dept'],
+  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
   uniqueField: 'cpuBarcode',
-  searchFields: ['pcName', 'dept', 'cpuBarcode', 'note'],
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note'],
   include: {
     user: {
       select: {

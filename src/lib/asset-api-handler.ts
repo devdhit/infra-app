@@ -250,4 +250,58 @@ export class AssetApiHandler<T> {
       return errorResponse('Internal server error')
     }
   }
+
+  // Bulk delete assets
+  async bulkDelete(user: { id: string; tenantId: string }, ids: string[]) {
+    try {
+      // Validate input
+      if (!ids || ids.length === 0) {
+        return badRequestResponse('No asset IDs provided')
+      }
+
+      // Check if all assets exist and belong to user's tenant
+      const existingAssets = await (this.db as any)[this.operations.modelName].findMany({
+        where: { 
+          id: { in: ids },
+          tenantId: user.tenantId 
+        }
+      })
+
+      // Check if all requested assets were found
+      const foundIds = existingAssets.map((asset: any) => asset.id)
+      const missingIds = ids.filter(id => !foundIds.includes(id))
+      
+      if (missingIds.length > 0) {
+        return notFoundResponse(`Some ${this.operations.modelName} assets not found: ${missingIds.join(', ')}`)
+      }
+
+      // Create history records for each asset
+      const historyRecords = existingAssets.map((asset: any) => ({
+        action: 'delete',
+        modelType: this.operations.modelName,
+        recordId: asset.id,
+        changes: asset,
+        userId: user.id,
+        tenantId: user.tenantId
+      }))
+
+      // Create all history records
+      await this.db.history.createMany({
+        data: historyRecords
+      })
+
+      // Delete all assets
+      await (this.db as any)[this.operations.modelName].deleteMany({
+        where: { 
+          id: { in: ids },
+          tenantId: user.tenantId 
+        }
+      })
+
+      return successResponse<null>(null, 204)
+    } catch (error: any) {
+      console.error(`Error bulk deleting ${this.operations.modelName} assets:`, error)
+      return errorResponse('Internal server error')
+    }
+  }
 }

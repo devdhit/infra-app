@@ -70,3 +70,19 @@ export async function POST(request: NextRequest) {
     return errorResponse('Internal server error')
   }
 }
+
+// DELETE /api/assets/license - Bulk delete License assets
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return unauthorizedResponse()
+    }
+
+    const body = await parseRequestBody<{ ids: string[] }>(request)
+    return await licenseHandler.bulkDelete(user, body.ids)
+  } catch (error) {
+    console.error('Error in License bulk DELETE route:', error)
+    return errorResponse('Internal server error')
+  }
+}

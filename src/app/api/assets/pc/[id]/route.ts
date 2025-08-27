@@ -8,27 +8,31 @@ import {
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
-// Define the PC asset type
+// Define the PC asset type (matching the model in route.ts)
 interface PCAsset {
-  dept: string
-  cpuBarcode: string
-  cpuSapBarcode?: string
-  monitorBarcode?: string
-  monitorSapBarcode?: string
-  upsBarcode?: string
-  upsSapBarcode?: string
-  pcName: string
-  user?: string
+  assetTag: string
+  model: string
+  serialNumber: string
+  manufacturer?: string
+  processor?: string
+  ram?: string
+  storage?: string
+  operatingSystem?: string
   status: string
-  note?: string
+  assignedTo?: string
+  department?: string
+  location?: string
+  purchaseDate?: Date
+  warrantyExpiry?: Date
+  notes?: string
 }
 
 // Create handler for PC assets
 const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'pC',
-  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
-  uniqueField: 'cpuBarcode',
-  searchFields: ['cpuBarcode', 'pcName', 'user'],
+  requiredFields: ['assetTag', 'model', 'serialNumber', 'status'],
+  uniqueField: 'assetTag',
+  searchFields: ['assetTag', 'model', 'serialNumber', 'assignedTo', 'department', 'notes'],
   include: {
     user: {
       select: {
