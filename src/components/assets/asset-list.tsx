@@ -38,6 +38,7 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  Settings
 } from "lucide-react";
 import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -52,6 +53,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { AssetListSkeleton } from "./asset-list-skeleton";
+import { InlineEditCell } from "./inline-edit-cell";
+import { useCustomFields } from "@/hooks/useApi";
 
 interface AssetListProps {
   assetType: string;
@@ -77,6 +80,37 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
+  const [editingCell, setEditingCell] = useState<{ assetId: string; fieldKey: string } | null>(null);
+  
+  // Fetch custom fields for this asset type
+  const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(assetType);
+  
+  // Combine standard columns with custom field columns
+  const allColumns = useMemo(() => {
+    const customFieldColumns: AssetColumn[] = (customFieldsData || []).map(field => ({
+      key: field.name,
+      label: field.name
+    }));
+    
+    return [...columns, ...customFieldColumns];
+  }, [columns, customFieldsData]);
+  
+  // Combine standard form fields with custom fields
+  const allFormFields = useMemo(() => {
+    const customFormFields: AssetFormField[] = (customFieldsData || []).map(field => ({
+      name: field.name,
+      label: field.name,
+      type: field.type as any,
+      required: field.required
+    }));
+    
+    return [...formFields, ...customFormFields];
+  }, [formFields, customFieldsData]);
+  
+  // Refetch custom fields when the component mounts or when assetType changes
+  useEffect(() => {
+    refetchCustomFields();
+  }, [assetType, refetchCustomFields]);
   
   // Dialog states
   const [viewAsset, setViewAsset] = useState<Asset | null>(null);
@@ -272,7 +306,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   
   // Show skeleton while loading initial data
   if (isLoading && (!data || assets.length === 0)) {
-    return <AssetListSkeleton title={title} columns={columns} />;
+    return <AssetListSkeleton title={title} columns={allColumns} />;
   }
   
   // Pagination component
@@ -420,7 +454,23 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <CardTitle>{t(`assets.${assetType}.title`, title)} {t('common.list', "List")}</CardTitle>
+            <div>
+              <CardTitle>{t(`assets.${assetType}.title`, title)} {t('common.list', "List")}</CardTitle>
+              <CardDescription className="flex items-center gap-2">
+                <span>
+                  {t('assets.list.description', `Manage your {0} assets`, t(`assets.${assetType}.title`, title).toLowerCase())}
+                </span>
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  className="p-0 h-auto text-xs"
+                  onClick={() => router.push('/settings/custom-fields')}
+                >
+                  <Settings className="h-3 w-3 mr-1" />
+                  {t('assets.list.customFields', "Manage custom fields")}
+                </Button>
+              </CardDescription>
+            </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full">
               <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -484,7 +534,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                           className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                         />
                       </TableHead>
-                      {columns.map((column) => (
+                      {allColumns.map((column) => (
                         <TableHead key={column.key}>
                           {t(column.label, column.label)}
                         </TableHead>
@@ -495,7 +545,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                   <TableBody>
                     {assets.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={columns.length + 2} className="h-24 text-center">
+                        <TableCell colSpan={allColumns.length + 2} className="h-24 text-center">
                           {search || statusFilter 
                             ? t('common.noResults', "No results found")
                             : t('assets.list.empty', "No assets found")}
@@ -512,11 +562,52 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                             />
                           </TableCell>
-                          {columns.map((column) => (
-                            <TableCell key={column.key} className="py-2">
-                              {column.render ? column.render(asset[column.key]) : String(asset[column.key] || '')}
-                            </TableCell>
-                          ))}
+                          {allColumns.map((column) => {
+                            // Find the corresponding form field for this column
+                            const field = allFormFields.find(f => f.name === column.key);
+                            
+                            // Determine the value for the cell
+                            // For custom fields, get the value from the customFields object
+                            const isCustomField = field && !(column.key in asset) && (asset.customFields && column.key in asset.customFields);
+                            const cellValue = isCustomField ? (asset.customFields as any)[column.key] : asset[column.key];
+                            
+                            return (
+                              <TableCell key={column.key} className="py-2">
+                                {field ? (
+                                  <InlineEditCell
+                                    asset={asset}
+                                    assetType={assetType}
+                                    field={field}
+                                    value={cellValue}
+                                    onUpdate={(newValue) => {
+                                      // Update the asset in the local state
+                                      const updatedAssets = assets.map(a => 
+                                        a.id === asset.id 
+                                          ? { 
+                                              ...a, 
+                                              ...(isCustomField 
+                                                ? { customFields: { ...(a.customFields || {}), [column.key]: newValue } } 
+                                                : { [column.key]: newValue }
+                                              )
+                                            } 
+                                          : a
+                                      );
+                                      // We would need to update the query cache here
+                                      queryClient.setQueryData(
+                                        ['assets', assetType, JSON.stringify({ page: currentPage, limit: 10, search, status: statusFilter })], 
+                                        (oldData: any) => ({
+                                          ...oldData,
+                                          data: updatedAssets
+                                        })
+                                      );
+                                    }}
+                                  />
+                                ) : (
+                                  column.render ? column.render(asset[column.key]) : String(asset[column.key] || '')
+                                )}
+                              </TableCell>
+                            );
+                          })}
                           <TableCell className="text-right py-2">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -558,7 +649,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       <AssetDetailDialog
         asset={viewAsset}
         title={title}
-        columns={columns}
+        columns={allColumns}
         isOpen={isViewDialogOpen}
         onClose={() => setIsViewDialogOpen(false)}
         onEdit={handleEditFromView}
@@ -568,7 +659,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       <AssetFormDialog
         assetType={assetType}
         title={title}
-        fields={formFields}
+        fields={allFormFields}
         initialData={editingAsset}
         isOpen={isFormDialogOpen}
         onClose={() => setIsFormDialogOpen(false)}

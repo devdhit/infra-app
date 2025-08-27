@@ -96,7 +96,7 @@ export class AssetApiHandler<T> {
   }
 
   // Create a new asset
-  async create(user: { id: string; tenantId: string }, body: T) {
+  async create(user: { id: string; tenantId: string }, body: T & { customFields?: Record<string, any> }) {
     try {
       // Validate required fields
       const validationErrors: Record<string, string> = {}
@@ -105,6 +105,71 @@ export class AssetApiHandler<T> {
         for (const field of this.operations.requiredFields) {
           if (body[field] === undefined || body[field] === null || body[field] === "") {
             validationErrors[String(field)] = `${String(field)} is required`
+          }
+        }
+      }
+
+      // Validate custom fields if they exist
+      if (body.customFields) {
+        // Get custom fields for this asset type and tenant
+        const customFields = await this.db.customField.findMany({
+          where: {
+            tenantId: user.tenantId,
+            modelType: this.operations.modelName
+          }
+        });
+
+        // Validate each custom field
+        for (const customField of customFields) {
+          const fieldValue = body.customFields[customField.name];
+          
+          // Check required fields
+          if (customField.required && (fieldValue === undefined || fieldValue === null || fieldValue === "")) {
+            validationErrors[`customFields.${customField.name}`] = `${customField.name} is required`;
+          }
+          
+          // Type validation for non-empty values
+          if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
+            switch (customField.type) {
+              case 'number':
+                const numValue = Number(fieldValue);
+                if (isNaN(numValue)) {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid number`;
+                }
+                break;
+              case 'date':
+                // Handle both date strings and Date objects
+                const dateValue = new Date(fieldValue as string);
+                if (isNaN(dateValue.getTime())) {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid date`;
+                }
+                break;
+              case 'boolean':
+                // Accept boolean values, 'true' and 'false' strings
+                if (typeof fieldValue !== 'boolean' && fieldValue !== 'true' && fieldValue !== 'false') {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a boolean value (true/false)`;
+                }
+                break;
+              case 'text':
+              case 'textarea':
+                // For text fields, just ensure it's a string
+                if (typeof fieldValue !== 'string') {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a text value`;
+                }
+                break;
+              case 'select':
+                // For select fields, ensure it's a string
+                if (typeof fieldValue !== 'string') {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid selection`;
+                }
+                break;
+              default:
+                // For any other field type, ensure it's a string
+                if (typeof fieldValue !== 'string') {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid text value`;
+                }
+                break;
+            }
           }
         }
       }
@@ -173,7 +238,7 @@ export class AssetApiHandler<T> {
   }
 
   // Update an existing asset
-  async update(user: { id: string; tenantId: string }, id: string, body: Partial<T>) {
+  async update(user: { id: string; tenantId: string }, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
     try {
       // Check if asset exists and belongs to user's tenant
       const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
@@ -199,6 +264,71 @@ export class AssetApiHandler<T> {
           // If field is not being updated, ensure it exists in the existing asset
           if (!(field in body) && (existingAsset[field as keyof typeof existingAsset] === undefined || existingAsset[field as keyof typeof existingAsset] === null || existingAsset[field as keyof typeof existingAsset] === "")) {
             validationErrors[String(field)] = `${String(field)} is required`
+          }
+        }
+      }
+
+      // Validate custom fields if they exist
+      if (body.customFields) {
+        // Get custom fields for this asset type and tenant
+        const customFields = await this.db.customField.findMany({
+          where: {
+            tenantId: user.tenantId,
+            modelType: this.operations.modelName
+          }
+        });
+
+        // Validate each custom field
+        for (const customField of customFields) {
+          const fieldValue = body.customFields[customField.name];
+          
+          // Check required fields
+          if (customField.required && (fieldValue === undefined || fieldValue === null || fieldValue === "")) {
+            validationErrors[`customFields.${customField.name}`] = `${customField.name} is required`;
+          }
+          
+          // Type validation for non-empty values
+          if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
+            switch (customField.type) {
+              case 'number':
+                const numValue = Number(fieldValue);
+                if (isNaN(numValue)) {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid number`;
+                }
+                break;
+              case 'date':
+                // Handle both date strings and Date objects
+                const dateValue = new Date(fieldValue as string);
+                if (isNaN(dateValue.getTime())) {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid date`;
+                }
+                break;
+              case 'boolean':
+                // Accept boolean values, 'true' and 'false' strings
+                if (typeof fieldValue !== 'boolean' && fieldValue !== 'true' && fieldValue !== 'false') {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a boolean value (true/false)`;
+                }
+                break;
+              case 'text':
+              case 'textarea':
+                // For text fields, just ensure it's a string
+                if (typeof fieldValue !== 'string') {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a text value`;
+                }
+                break;
+              case 'select':
+                // For select fields, ensure it's a string
+                if (typeof fieldValue !== 'string') {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid selection`;
+                }
+                break;
+              default:
+                // For any other field type, ensure it's a string
+                if (typeof fieldValue !== 'string') {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid text value`;
+                }
+                break;
+            }
           }
         }
       }

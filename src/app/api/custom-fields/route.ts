@@ -65,11 +65,63 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Validate field name format (alphanumeric and underscores only)
+    const fieldNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+    if (!fieldNameRegex.test(body.name)) {
+      return new Response(JSON.stringify({ 
+        error: 'Field name must start with a letter or underscore and contain only letters, numbers, and underscores' 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Validate field type
+    const validTypes = ['text', 'number', 'date', 'boolean', 'select', 'textarea']
+    if (!validTypes.includes(body.type)) {
+      return new Response(JSON.stringify({ 
+        error: `Invalid field type. Must be one of: ${validTypes.join(', ')}` 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Validate model type
+    const validModelTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT']
+    if (!validModelTypes.includes(body.modelType)) {
+      return new Response(JSON.stringify({ 
+        error: `Invalid model type. Must be one of: ${validModelTypes.join(', ')}` 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Check if a custom field with the same name already exists for this model type
+    const existingField = await db.customField.findFirst({
+      where: {
+        name: body.name,
+        modelType: body.modelType,
+        tenantId: user.tenantId
+      }
+    })
+
+    if (existingField) {
+      return new Response(JSON.stringify({ 
+        error: `A custom field with name "${body.name}" already exists for ${body.modelType}` 
+      }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     const customField = await db.customField.create({
       data: {
         name: body.name,
         type: body.type,
         modelType: body.modelType,
+        description: body.description || null,
         required: body.required || false,
         tenantId: user.tenantId
       }
