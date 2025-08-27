@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, ApiError, ValidationError } from '@/lib/api'
+import { toast } from 'sonner'
 
 // Generic API hook
 export function useApiQuery<T>(key: string[], url: string, options = {}) {
@@ -17,7 +18,7 @@ export function useApiQuery<T>(key: string[], url: string, options = {}) {
 export function useApiMutation<T, V>(url: string, options = {}) {
   const queryClient = useQueryClient()
   
-  return useMutation<T, Error, V>({
+  return useMutation<T, ApiError, V>({
     mutationFn: async (data: V) => {
       const response = await api.post<T, V>(url, data)
       return response
@@ -30,7 +31,7 @@ export function useApiMutation<T, V>(url: string, options = {}) {
 export function useApiUpdate<T, V>(url: string, options = {}) {
   const queryClient = useQueryClient()
   
-  return useMutation<T, Error, V>({
+  return useMutation<T, ApiError, V>({
     mutationFn: async (data: V) => {
       const response = await api.put<T, V>(url, data)
       return response
@@ -43,10 +44,22 @@ export function useApiUpdate<T, V>(url: string, options = {}) {
 export function useApiDelete<T>(url: string, options = {}) {
   const queryClient = useQueryClient()
   
-  return useMutation<T, Error, string>({ // Changed void to string for ID parameter
-    mutationFn: async (id: string) => { // Accept ID parameter
-      const deleteUrl = id ? `${url}/${id}` : url // Append ID to URL if provided
-      const response = await api.delete<T>(deleteUrl)
+  return useMutation<T, ApiError, void>({
+    mutationFn: async () => {
+      const response = await api.delete<T>(url)
+      return response
+    },
+    ...options
+  })
+}
+
+// Generic mutation hook for DELETE requests with ID parameter
+export function useApiDeleteWithId<T>(url: string, options = {}) {
+  const queryClient = useQueryClient()
+  
+  return useMutation<T, ApiError, string>({
+    mutationFn: async (id: string) => {
+      const response = await api.delete<T>(`${url}/${id}`)
       return response
     },
     ...options
@@ -76,6 +89,20 @@ export function useCreateAsset<T, V>(assetType: string) {
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error creating ${assetType}:`, error)
+        let message = `Failed to create ${assetType}`
+        
+        if (error instanceof ValidationError) {
+          message = 'Validation failed. Please check the form for errors.'
+        } else if (error.status === 409) {
+          message = 'An asset with this identifier already exists.'
+        } else if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -90,6 +117,20 @@ export function useUpdateAsset<T, V>(assetType: string, id: string) {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
         queryClient.invalidateQueries({ queryKey: ['assets', assetType, id] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error updating ${assetType} with id ${id}:`, error)
+        let message = `Failed to update ${assetType}`
+        
+        if (error instanceof ValidationError) {
+          message = 'Validation failed. Please check the form for errors.'
+        } else if (error.status === 409) {
+          message = 'An asset with this identifier already exists.'
+        } else if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -98,11 +139,21 @@ export function useUpdateAsset<T, V>(assetType: string, id: string) {
 export function useDeleteAsset<T>(assetType: string) {
   const queryClient = useQueryClient()
   
-  return useApiDelete<T>(
-    `/assets/${assetType}`, // This will be used as the base URL
+  return useApiDeleteWithId<T>(
+    `/assets/${assetType}`,
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error deleting ${assetType}:`, error)
+        let message = `Failed to delete ${assetType}`
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -113,10 +164,20 @@ export function useBulkDeleteAssets<T>(assetType: string) {
   const queryClient = useQueryClient()
   
   return useApiMutation<T, { ids: string[] }>(
-    `/assets/${assetType}/bulk-delete`,
+    `/assets/${assetType}`,
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error bulk deleting ${assetType}:`, error)
+        let message = `Failed to delete ${assetType} assets`
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -150,6 +211,18 @@ export function useLogin() {
       }
       // Invalidate all queries to refresh the app state
       queryClient.invalidateQueries()
+    },
+    onError: (error: ApiError) => {
+      console.error('Login error:', error)
+      let message = 'Login failed'
+      
+      if (error.status === 401) {
+        message = 'Invalid email or password'
+      } else if (error.message) {
+        message = error.message
+      }
+      
+      toast.error(message)
     }
   })
 }
@@ -164,6 +237,16 @@ export function useLogout() {
       // Invalidate all queries to clear cached data
       queryClient.clear()
       // Redirect to login (this should be handled in the component)
+    },
+    onError: (error: ApiError) => {
+      console.error('Logout error:', error)
+      let message = 'Logout failed'
+      
+      if (error.message) {
+        message = error.message
+      }
+      
+      toast.error(message)
     }
   })
 }
@@ -195,6 +278,20 @@ export function useCreateUser() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['users'] })
+      },
+      onError: (error: ApiError) => {
+        console.error('Error creating user:', error)
+        let message = 'Failed to create user'
+        
+        if (error instanceof ValidationError) {
+          message = 'Validation failed. Please check the form for errors.'
+        } else if (error.status === 409) {
+          message = 'A user with this email already exists.'
+        } else if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -209,6 +306,20 @@ export function useUpdateUser(id: string) {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['users'] })
         queryClient.invalidateQueries({ queryKey: ['users', id] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error updating user with id ${id}:`, error)
+        let message = 'Failed to update user'
+        
+        if (error instanceof ValidationError) {
+          message = 'Validation failed. Please check the form for errors.'
+        } else if (error.status === 409) {
+          message = 'A user with this email already exists.'
+        } else if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -222,6 +333,16 @@ export function useDeleteUser(id: string) {
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['users'] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error deleting user with id ${id}:`, error)
+        let message = 'Failed to delete user'
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -252,6 +373,20 @@ export function useCreateTenant() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['tenants'] })
+      },
+      onError: (error: ApiError) => {
+        console.error('Error creating tenant:', error)
+        let message = 'Failed to create tenant'
+        
+        if (error instanceof ValidationError) {
+          message = 'Validation failed. Please check the form for errors.'
+        } else if (error.status === 409) {
+          message = 'A tenant with this name already exists.'
+        } else if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -266,6 +401,20 @@ export function useUpdateTenant(id: string) {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['tenants'] })
         queryClient.invalidateQueries({ queryKey: ['tenants', id] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error updating tenant with id ${id}:`, error)
+        let message = 'Failed to update tenant'
+        
+        if (error instanceof ValidationError) {
+          message = 'Validation failed. Please check the form for errors.'
+        } else if (error.status === 409) {
+          message = 'A tenant with this name already exists.'
+        } else if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -279,6 +428,16 @@ export function useDeleteTenant(id: string) {
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['tenants'] })
+      },
+      onError: (error: ApiError) => {
+        console.error(`Error deleting tenant with id ${id}:`, error)
+        let message = 'Failed to delete tenant'
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
       }
     }
   )
@@ -323,5 +482,15 @@ export function useCurrentUser() {
     retry: false, // Don't retry on failure to avoid infinite loops
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!hasToken, // Only run the query if we have a token
+    onError: (error: ApiError) => {
+      console.error('Error fetching current user:', error)
+      let message = 'Failed to fetch user information'
+      
+      if (error.message) {
+        message = error.message
+      }
+      
+      toast.error(message)
+    }
   })
 }

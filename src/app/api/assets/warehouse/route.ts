@@ -5,7 +5,8 @@ import {
   unauthorizedResponse, 
   getQueryParams,
   parseRequestBody,
-  errorResponse
+  errorResponse,
+  badRequestResponse
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
@@ -23,16 +24,10 @@ interface WarehouseITAsset {
 
 // Create handler for WarehouseIT assets
 const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
-  modelName: 'warehouseIT',
-  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'note'],
-  include: {
-    histories: {
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 10
-    }
-  }
+  modelName: 'WarehouseIT',
+  requiredFields: ['status'],
+  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'note']
+  // Removed include for histories since we removed the relation
 })
 
 // GET /api/assets/warehouse - Get all WarehouseIT assets for the user's tenant
@@ -63,22 +58,6 @@ export async function POST(request: NextRequest) {
     return await warehouseHandler.create(user, body)
   } catch (error) {
     console.error('Error in WarehouseIT POST route:', error)
-    return errorResponse('Internal server error')
-  }
-}
-
-// DELETE /api/assets/warehouse - Bulk delete WarehouseIT assets
-export async function DELETE(request: NextRequest) {
-  try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return unauthorizedResponse()
-    }
-
-    const body = await parseRequestBody<{ ids: string[] }>(request)
-    return await warehouseHandler.bulkDelete(user, body.ids)
-  } catch (error) {
-    console.error('Error in WarehouseIT bulk DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

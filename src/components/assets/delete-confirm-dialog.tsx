@@ -1,16 +1,10 @@
 'use client'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
-import { Trash } from "lucide-react";
+import { Trash, AlertCircle } from "lucide-react";
+import { AssetDialog } from "./asset-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface DeleteConfirmDialogProps {
   title: string;
@@ -19,6 +13,7 @@ interface DeleteConfirmDialogProps {
   isDeleting: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  error?: string;
 }
 
 export function DeleteConfirmDialog({
@@ -28,40 +23,53 @@ export function DeleteConfirmDialog({
   isDeleting,
   onClose,
   onConfirm,
+  error
 }: DeleteConfirmDialogProps) {
   const { t } = useTranslation();
 
+  const footer = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onClose}
+        disabled={isDeleting}
+      >
+        {t('common.cancel', "Cancel")}
+      </Button>
+      <Button
+        type="button"
+        variant="destructive"
+        onClick={onConfirm}
+        disabled={isDeleting}
+      >
+        {isDeleting ? t('common.deleting', "Deleting...") : t('common.delete', "Delete")}
+      </Button>
+    </>
+  );
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
-            <Trash className="h-5 w-5" />
-            {title}
-          </DialogTitle>
-          <DialogDescription>
-            {description}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="gap-2 sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isDeleting}
-          >
-            {t('common.cancel')}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={onConfirm}
-            disabled={isDeleting}
-          >
-            {isDeleting ? t('common.deleting') || "Deleting..." : t('common.delete') || "Delete"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <AssetDialog
+      title={title}
+      description={description}
+      isOpen={isOpen}
+      onClose={onClose}
+      footer={footer}
+      size="sm"
+    >
+      <div className="flex justify-center items-center w-12 h-12 rounded-full bg-destructive/10 mx-auto">
+        <Trash className="h-6 w-6 text-destructive" />
+      </div>
+      
+      {error && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{t('common.error', "Error")}</AlertTitle>
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
+    </AssetDialog>
   );
 }

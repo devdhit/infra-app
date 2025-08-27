@@ -20,6 +20,7 @@ import { useState } from "react";
 import { useLogout } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { LanguageSwitcher } from "./language-switcher";
 import { useTranslation } from "@/hooks/use-translation";
 
 const navigationItems = [
@@ -74,13 +75,16 @@ export function Navigation() {
           <Menu className="h-6 w-6" />
         </Button>
         <h1 className="text-xl font-bold">ITAMS</h1>
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-6 w-6" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-6 w-6" />
+          </Button>
+        </div>
       </div>
 
       {/* Sidebar */}
@@ -186,6 +190,7 @@ export function Navigation() {
             </nav>
           </div>
           <div className="flex-shrink-0 p-4 border-t flex items-center justify-between">
+            <LanguageSwitcher />
             <Button 
               variant="ghost" 
               className="justify-start"

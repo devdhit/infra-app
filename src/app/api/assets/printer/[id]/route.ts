@@ -4,7 +4,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
   parseRequestBody,
-  errorResponse
+  errorResponse,
+  badRequestResponse
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
@@ -23,15 +24,11 @@ interface PrinterAsset {
 
 // Create handler for Printer assets
 const printerHandler = new AssetApiHandler<PrinterAsset>(db, {
-  modelName: 'printer',
-  include: {
-    histories: {
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 10
-    }
-  }
+  modelName: 'Printer',
+  requiredFields: ['dept', 'barcode', 'color'],
+  uniqueField: 'barcode',
+  searchFields: ['barcode', 'dept', 'model', 'ip', 'note'],
+  include: {}
 })
 
 // GET /api/assets/printer/[id] - Get a specific Printer asset
@@ -58,7 +55,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
-    const body = await parseRequestBody<Partial<PrinterAsset>>(request)
+    let body: Partial<PrinterAsset>
+    try {
+      body = await parseRequestBody<Partial<PrinterAsset>>(request)
+    } catch (parseError: any) {
+      return badRequestResponse(parseError.message)
+    }
+    
     const resolvedParams = await params;
     return await printerHandler.update(user, resolvedParams.id, body)
   } catch (error) {

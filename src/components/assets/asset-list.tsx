@@ -36,17 +36,22 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { AssetFormDialog } from "./asset-form";
 import { AssetDetailDialog } from "./asset-detail-dialog";
 import { DeleteConfirmDialog } from "./delete-confirm-dialog";
+import { BulkDeleteDialog } from "./bulk-delete-dialog";
 import { useTranslation } from "@/hooks/use-translation";
 import { Asset, AssetResponse, AssetColumn, AssetFormField } from "@/types/assets";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ApiError } from "@/lib/api";
+import { AssetListSkeleton } from "./asset-list-skeleton";
 
 interface AssetListProps {
   assetType: string;
@@ -71,6 +76,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
   
   // Dialog states
   const [viewAsset, setViewAsset] = useState<Asset | null>(null);
@@ -96,13 +102,18 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   }, [currentPage, search, statusFilter, router]);
   
   // Query assets with current parameters
-  const { data, isLoading, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
+  const { data, isLoading, isError, error, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
     page: currentPage,
     limit: 10,
     search,
     status: statusFilter
   });
   
+  // Memoize assets to prevent unnecessary re-renders
+  const assets = useMemo(() => data?.data || [], [data?.data]);
+  const pagination = useMemo(() => data?.pagination || { page: 1, limit: 10, total: 0, pages: 1 }, [data?.pagination]);
+  
+  // Remove the placeholder ID parameter
   const deleteMutation = useDeleteAsset<Asset>(assetType);
   const bulkDeleteMutation = useBulkDeleteAssets<Asset>(assetType);
   
@@ -114,100 +125,142 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     }
   }, [isSearching]);
   
-  const handleSearchChange = (value: string) => {
+  // Handle API errors
+  useEffect(() => {
+    if (isError && error) {
+      const apiError = error as ApiError;
+      let message = t('assets.list.error', 'Failed to load assets');
+      
+      if (apiError.message) {
+        message = apiError.message;
+      }
+      
+      toast.error(message);
+    }
+  }, [isError, error, t]);
+  
+  const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
     setIsSearching(true);
-  };
+  }, []);
   
-  const handleStatusFilterChange = (status: string) => {
+  const handleStatusFilterChange = useCallback((status: string) => {
     setStatusFilter(status);
     setIsSearching(true);
-  };
+  }, []);
   
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     setDeleteAssetId(id);
     setIsDeleteDialogOpen(true);
-  };
+  }, []);
   
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deleteAssetId) return;
     
     try {
+      // Call the delete mutation with the specific asset ID
       await deleteMutation.mutateAsync(deleteAssetId);
-      toast.success(t('assets.delete.success', title) || `${title} deleted successfully`);
+      toast.success(t('assets.delete.success', `{0} deleted successfully`, title));
       setIsDeleteDialogOpen(false);
       setDeleteAssetId(null);
       refetch();
     } catch (error: any) {
-      toast.error(t('assets.delete.error', title, error.message) || 
-        `Failed to delete ${title}: ${error.message}`);
+      console.error("Delete error:", error);
+      const apiError = error as ApiError;
+      let message = t('assets.delete.error', `Failed to delete {0}`, title);
+      
+      if (apiError.message) {
+        message = apiError.message;
+      }
+      
+      toast.error(message);
     }
-  };
+  }, [deleteAssetId, deleteMutation, refetch, t, title]);
   
-  const handleBulkDelete = () => {
+  const handleBulkDelete = useCallback(() => {
     if (selectedAssets.length === 0) {
-      toast.error(t('assets.bulkDelete.noSelection') || 'Please select assets to delete');
+      toast.error(t('assets.bulkDelete.noSelection', 'Please select assets to delete'));
       return;
     }
     
     setIsBulkDeleteDialogOpen(true);
-  };
+  }, [selectedAssets.length, t]);
   
-  const confirmBulkDelete = async () => {
+  const confirmBulkDelete = useCallback(async () => {
     try {
       await bulkDeleteMutation.mutateAsync({ ids: selectedAssets });
-      toast.success(t('assets.bulkDelete.success', selectedAssets.length.toString()) || 
-        `${selectedAssets.length} ${title} assets deleted successfully`);
+      toast.success(t('assets.bulkDelete.success', `{0} {1} assets deleted successfully`, selectedAssets.length.toString(), title));
       setSelectedAssets([]);
       setIsBulkDeleteDialogOpen(false);
       refetch();
     } catch (error: any) {
-      toast.error(t('assets.bulkDelete.error', error.message) || 
-        `Failed to delete ${title} assets: ${error.message}`);
+      console.error("Bulk delete error:", error);
+      const apiError = error as ApiError;
+      let message = t('assets.bulkDelete.error', `Failed to delete {0} assets`, title);
+      
+      if (apiError.message) {
+        message = apiError.message;
+      }
+      
+      toast.error(message);
     }
-  };
+  }, [bulkDeleteMutation, refetch, selectedAssets, t, title]);
   
-  const handleView = (asset: Asset) => {
+  const handleView = useCallback((asset: Asset) => {
     setViewAsset(asset);
     setIsViewDialogOpen(true);
-  };
+  }, []);
   
-  const handleEdit = (asset: Asset) => {
+  const handleEdit = useCallback((asset: Asset) => {
     setEditingAsset(asset);
     setIsFormDialogOpen(true);
     // Close the view dialog if it's open
     setIsViewDialogOpen(false);
-  };
+  }, []);
   
-  const handleCreate = () => {
+  const handleCreate = useCallback(() => {
     setEditingAsset(undefined);
     setIsFormDialogOpen(true);
-  };
+  }, []);
   
-  const handleSelectAsset = (id: string) => {
+  // Wrapper function for onEdit to match the expected signature
+  const handleEditFromView = useCallback(() => {
+    if (viewAsset) {
+      handleEdit(viewAsset);
+    }
+  }, [viewAsset, handleEdit]);
+
+  const handleSelectAsset = useCallback((id: string) => {
     setSelectedAssets(prev => 
       prev.includes(id) 
         ? prev.filter(assetId => assetId !== id) 
         : [...prev, id]
     );
-  };
+  }, []);
   
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedAssets.length === assets.length) {
       setSelectedAssets([]);
     } else {
       setSelectedAssets(assets.map((asset: Asset) => asset.id));
     }
-  };
+  }, [assets, selectedAssets.length]);
   
-  const handleFormSuccess = () => {
+  const handleFormSuccess = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
     refetch();
-  };
+  }, [assetType, queryClient, refetch]);
   
-  const assets = data?.data || [];
-  const pagination = data?.pagination || { page: 1, limit: 10, total: 0, pages: 1 };
-  
+  // Effect to handle select all/deselect all when assets change
+  useEffect(() => {
+    if (selectedAssets.length > 0 && selectedAssets.length === assets.length) {
+      // All assets are selected
+      setIsSelectAllChecked(true);
+    } else {
+      setIsSelectAllChecked(false);
+    }
+  }, [assets, selectedAssets.length]);
+
   // Show loading state while translations are loading
   if (loading) {
     return (
@@ -217,34 +270,149 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     );
   }
   
+  // Show skeleton while loading initial data
+  if (isLoading && (!data || assets.length === 0)) {
+    return <AssetListSkeleton title={title} columns={columns} />;
+  }
+  
+  // Pagination component
+  const renderPagination = () => {
+    if (pagination.pages <= 1) return null;
+    
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxVisiblePages = 5;
+      
+      if (pagination.pages <= maxVisiblePages) {
+        // Show all pages
+        for (let i = 1; i <= pagination.pages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Show first page, current page, and last page with ellipses
+        if (currentPage <= 3) {
+          // Show first 5 pages
+          for (let i = 1; i <= Math.min(5, pagination.pages); i++) {
+            pages.push(i);
+          }
+          if (pagination.pages > 5) {
+            pages.push('ellipsis');
+            pages.push(pagination.pages);
+          }
+        } else if (currentPage >= pagination.pages - 2) {
+          // Show last 5 pages
+          pages.push(1);
+          pages.push('ellipsis');
+          for (let i = pagination.pages - 4; i <= pagination.pages; i++) {
+            pages.push(i);
+          }
+        } else {
+          // Show current page with 2 pages on each side
+          pages.push(1);
+          pages.push('ellipsis');
+          for (let i = currentPage - 2; i <= currentPage + 2; i++) {
+            pages.push(i);
+          }
+          pages.push('ellipsis');
+          pages.push(pagination.pages);
+        }
+      }
+      
+      return pages;
+    };
+    
+    const pageNumbers = getPageNumbers();
+    
+    return (
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="text-sm text-muted-foreground">
+          {t('common.pagination.showing', 
+            `Showing {0} to {1} of {2} items`,
+            ((pagination.page - 1) * pagination.limit) + 1,
+            Math.min(pagination.page * pagination.limit, pagination.total),
+            pagination.total
+          )}
+        </div>
+        <div className="flex gap-1 items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1 || isLoading}
+            aria-label={t('common.pagination.previous', "Previous page")}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          {pageNumbers.map((page, index) => (
+            page === 'ellipsis' ? (
+              <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">...</span>
+            ) : (
+              <Button
+                key={page}
+                variant={page === currentPage ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(page as number)}
+                disabled={isLoading}
+                className={page === currentPage ? "bg-primary text-primary-foreground" : ""}
+              >
+                {page}
+              </Button>
+            )
+          ))}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(pagination.pages, prev + 1))}
+            disabled={currentPage === pagination.pages || isLoading}
+            aria-label={t('common.pagination.next', "Next page")}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">{t(`assets.${assetType}.title`) || title}</h1>
+          <h1 className="text-3xl font-bold">{t(`assets.${assetType}.title`, title)}</h1>
           <p className="text-muted-foreground">
-            {t('assets.list.description', t(`assets.${assetType}.title`).toLowerCase() || title.toLowerCase()) || 
-              `Manage your ${title.toLowerCase()} assets`}
+            {t('assets.list.description', `Manage your {0} assets`, t(`assets.${assetType}.title`, title).toLowerCase())}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => {}}>
-            <Download className="h-4 w-4 mr-2" />
-            {t('common.export')}
-          </Button>
-          <Button variant="outline" onClick={() => {}}>
-            <Upload className="h-4 w-4 mr-2" />
-            {t('common.import')}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="hidden sm:flex">
+              <Download className="h-4 w-4 mr-2" />
+              {t('common.export', "Export")}
+            </Button>
+            <Button variant="outline" size="sm" className="hidden sm:flex">
+              <Upload className="h-4 w-4 mr-2" />
+              {t('common.import', "Import")}
+            </Button>
+            <Button variant="outline" size="icon" className="sm:hidden">
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="sm:hidden">
+              <Upload className="h-4 w-4" />
+            </Button>
+          </div>
           {selectedAssets.length > 0 && (
-            <Button variant="destructive" onClick={handleBulkDelete}>
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
               <Trash className="h-4 w-4 mr-2" />
-              {t('common.delete')} ({selectedAssets.length})
+              <span className="hidden sm:inline">{t('common.delete', "Delete")}</span> 
+              <span className="sm:hidden">{selectedAssets.length}</span>
+              <span className="hidden sm:inline"> ({selectedAssets.length})</span>
             </Button>
           )}
-          <Button onClick={handleCreate}>
+          <Button size="sm" onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
-            {t('common.create')} {t(`assets.${assetType}.title`) || title}
+            <span className="hidden sm:inline">{t('common.create', "Create")} {t(`assets.${assetType}.title`, title)}</span>
+            <span className="sm:hidden">{t('common.create', "Create")}</span>
           </Button>
         </div>
       </div>
@@ -252,201 +420,154 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <CardTitle>{t(`assets.${assetType}.title`) || title} {t('common.list')}</CardTitle>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative">
+            <CardTitle>{t(`assets.${assetType}.title`, title)} {t('common.list', "List")}</CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
+              <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={t('common.search.placeholder') || "Search assets..."}
-                  className="pl-8 md:w-[300px]"
+                  placeholder={t('common.search.placeholder', "Search assets...")}
                   value={search}
                   onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-8 w-full sm:w-64"
                 />
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    {statusFilter ? t(`assets.status.${statusFilter}`) || statusFilter : t('assets.status.all')} <ChevronDown className="ml-2 h-4 w-4" />
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    {statusFilter 
+                      ? t(`assets.status.${statusFilter}`, statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1))
+                      : t('common.filter', "Filter")}
+                    <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onSelect={() => handleStatusFilterChange("")}>
-                    {t('assets.status.all')}
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleStatusFilterChange("")}>
+                    {t('common.all', "All")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleStatusFilterChange("active")}>
-                    {t('assets.status.active')}
+                  <DropdownMenuItem onClick={() => handleStatusFilterChange("active")}>
+                    {t('assets.status.active', "Active")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleStatusFilterChange("inactive")}>
-                    {t('assets.status.inactive')}
+                  <DropdownMenuItem onClick={() => handleStatusFilterChange("inactive")}>
+                    {t('assets.status.inactive', "Inactive")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleStatusFilterChange("maintenance")}>
-                    {t('assets.status.maintenance')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleStatusFilterChange("retired")}>
-                    {t('assets.status.retired')}
+                  <DropdownMenuItem onClick={() => handleStatusFilterChange("maintenance")}>
+                    {t('assets.status.maintenance', "Maintenance")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
-          <CardDescription>
-            {t('assets.list.description', t(`assets.${assetType}.title`).toLowerCase() || title.toLowerCase()) || 
-              `A list of all ${title.toLowerCase()} assets in your inventory`}
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center h-52">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          {isError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+              <h3 className="text-lg font-medium mb-2">{t('common.error', "Error")}</h3>
+              <p className="text-muted-foreground mb-4">
+                {t('assets.list.error', "Failed to load assets. Please try again later.")}
+              </p>
+              <Button onClick={() => refetch()}>
+                {t('common.retry', "Retry")}
+              </Button>
             </div>
           ) : (
             <>
-              <div className="relative overflow-x-auto rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">
                         <input
                           type="checkbox"
-                          checked={selectedAssets.length === assets.length && assets.length > 0}
+                          checked={isSelectAllChecked}
                           onChange={handleSelectAll}
                           className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                         />
                       </TableHead>
                       {columns.map((column) => (
-                        <TableHead key={column.key}>{t(`assets.${assetType}.${column.key}`) || column.label}</TableHead>
+                        <TableHead key={column.key}>
+                          {t(column.label, column.label)}
+                        </TableHead>
                       ))}
-                      <TableHead className="text-right">{t('common.actions')}</TableHead>
+                      <TableHead className="text-right">{t('common.actions', "Actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {assets.map((asset: Asset) => (
-                      <TableRow 
-                        key={asset.id} 
-                        className={selectedAssets.includes(asset.id) ? "bg-muted" : ""}
-                      >
-                        <TableCell>
-                          <input
-                            type="checkbox"
-                            checked={selectedAssets.includes(asset.id)}
-                            onChange={() => handleSelectAsset(asset.id)}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                          />
-                        </TableCell>
-                        {columns.map((column) => (
-                          <TableCell key={`${asset.id}-${column.key}`}>
-                            {column.render ? column.render(asset[column.key]) : asset[column.key] || '-'}
-                          </TableCell>
-                        ))}
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">{t('common.actions')}</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleView(asset)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                {t('common.view')}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEdit(asset)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                {t('common.edit')}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDelete(asset.id)}>
-                                <Trash className="mr-2 h-4 w-4" />
-                                {t('common.delete')}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                    {assets.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={columns.length + 2} className="h-24 text-center">
+                          {search || statusFilter 
+                            ? t('common.noResults', "No results found")
+                            : t('assets.list.empty', "No assets found")}
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      assets.map((asset) => (
+                        <TableRow key={asset.id} className={selectedAssets.includes(asset.id) ? "bg-muted" : ""}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedAssets.includes(asset.id)}
+                              onChange={() => handleSelectAsset(asset.id)}
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                          </TableCell>
+                          {columns.map((column) => (
+                            <TableCell key={column.key} className="py-2">
+                              {column.render ? column.render(asset[column.key]) : String(asset[column.key] || '')}
+                            </TableCell>
+                          ))}
+                          <TableCell className="text-right py-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">{t('common.openMenu', "Open menu")}</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleView(asset)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  {t('common.view', "View")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(asset)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  {t('common.edit', "Edit")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDelete(asset.id)}>
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  {t('common.delete', "Delete")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
-                
-                {assets.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">
-                      {t('assets.list.empty') || 'No assets found'}
-                    </p>
-                  </div>
-                )}
               </div>
+              
+              {renderPagination()}
             </>
           )}
         </CardContent>
-        
-        {pagination.pages > 1 && (
-          <CardFooter className="flex justify-between">
-            <div className="text-sm text-muted-foreground">
-              {t('common.pagination.showing', 
-                ((pagination.page - 1) * pagination.limit) + 1,
-                Math.min(pagination.page * pagination.limit, pagination.total),
-                pagination.total
-              ) || 
-                `Showing ${((pagination.page - 1) * pagination.limit) + 1} to ${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total} items`}
-            </div>
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1 || isLoading}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
-                let pageNumber = i + 1;
-                if (pagination.pages > 5) {
-                  if (currentPage > 3) {
-                    pageNumber = currentPage - 3 + i;
-                  }
-                  if (pageNumber > pagination.pages) {
-                    pageNumber = pagination.pages - (5 - (i + 1));
-                  }
-                }
-                return (
-                  <Button
-                    key={pageNumber}
-                    variant={pageNumber === currentPage ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNumber)}
-                    disabled={isLoading}
-                  >
-                    {pageNumber}
-                  </Button>
-                );
-              })}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(pagination.pages, prev + 1))}
-                disabled={currentPage === pagination.pages || isLoading}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardFooter>
-        )}
       </Card>
       
-      {/* Asset Details Dialog */}
+      {/* View Dialog */}
       <AssetDetailDialog
         asset={viewAsset}
-        title={t(`assets.${assetType}.title`) || title}
+        title={title}
         columns={columns}
         isOpen={isViewDialogOpen}
         onClose={() => setIsViewDialogOpen(false)}
-        onEdit={() => handleEdit(viewAsset!)}
+        onEdit={handleEditFromView}
       />
       
-      {/* Asset Form Dialog */}
+      {/* Form Dialog */}
       <AssetFormDialog
         assetType={assetType}
-        title={t(`assets.${assetType}.title`) || title}
+        title={title}
         fields={formFields}
         initialData={editingAsset}
         isOpen={isFormDialogOpen}
@@ -456,29 +577,27 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
-        title={t('assets.delete.title', t(`assets.${assetType}.title`) || title) || 
-          `Delete ${title}`}
-        description={t('assets.delete.description', t(`assets.${assetType}.title`).toLowerCase() || title.toLowerCase()) || 
-          `Are you sure you want to delete this ${title.toLowerCase()}? This action cannot be undone.`}
+        title={t('assets.delete.confirmTitle', `Delete {0}`, title)}
+        description={t('assets.delete.confirmDescription', `Are you sure you want to delete this {0}? This action cannot be undone.`, title.toLowerCase())}
         isOpen={isDeleteDialogOpen}
         isDeleting={deleteMutation.isPending}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={confirmDelete}
+        error={deleteMutation.error ? (deleteMutation.error as ApiError).message : undefined}
       />
       
       {/* Bulk Delete Confirmation Dialog */}
-      <DeleteConfirmDialog
-        title={t('assets.bulkDelete.title') || "Bulk Delete"}
-        description={t('assets.bulkDelete.description', 
-          selectedAssets.length, 
-          t(`assets.${assetType}.title`).toLowerCase() || title.toLowerCase()
-        ) || 
-          `Are you sure you want to delete ${selectedAssets.length} ${title.toLowerCase()} assets? This action cannot be undone.`}
+      <BulkDeleteDialog
+        title={title}
+        assetType={assetType}
+        count={selectedAssets.length}
         isOpen={isBulkDeleteDialogOpen}
         isDeleting={bulkDeleteMutation.isPending}
         onClose={() => setIsBulkDeleteDialogOpen(false)}
         onConfirm={confirmBulkDelete}
+        error={bulkDeleteMutation.error ? (bulkDeleteMutation.error as ApiError).message : undefined}
       />
+
     </div>
   );
 }

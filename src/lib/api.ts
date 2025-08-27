@@ -12,6 +12,20 @@ export class ApiError extends Error {
   }
 }
 
+export class ValidationError extends ApiError {
+  public validationErrors: Record<string, string>
+  
+  constructor(
+    message: string,
+    validationErrors: Record<string, string>,
+    data?: unknown
+  ) {
+    super(400, message, data)
+    this.name = 'ValidationError'
+    this.validationErrors = validationErrors
+  }
+}
+
 // Create an axios instance with default configuration
 const apiClient: AxiosInstance = axios.create({
   baseURL: '/api',
@@ -56,14 +70,27 @@ apiClient.interceptors.response.use(
       }
     }
     
-    // Create a custom error with more details
-    const apiError = new ApiError(
-      axios.isAxiosError(error) ? error.response?.status || 500 : 500,
-      axios.isAxiosError(error) ? 
-        error.response?.data?.error || error.response?.data?.message || error.message || 'An unexpected error occurred' :
-        'An unexpected error occurred',
-      axios.isAxiosError(error) ? error.response?.data : undefined
-    )
+    // Create appropriate error based on response
+    let apiError: ApiError
+    
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 500
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'An unexpected error occurred'
+      const errorData = error.response?.data
+      
+      // Check if it's a validation error
+      if (status === 400 && errorData?.details?.type === 'validation') {
+        apiError = new ValidationError(
+          errorMessage,
+          errorData.details.validationErrors,
+          errorData
+        )
+      } else {
+        apiError = new ApiError(status, errorMessage, errorData)
+      }
+    } else {
+      apiError = new ApiError(500, 'An unexpected error occurred', undefined)
+    }
     
     return Promise.reject(apiError)
   }

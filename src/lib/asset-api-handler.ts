@@ -3,7 +3,9 @@ import {
   successResponse, 
   errorResponse, 
   notFoundResponse, 
-  badRequestResponse 
+  badRequestResponse,
+  conflictResponse,
+  validationErrorResponse
 } from './api-utils'
 
 // Define the structure for asset operations
@@ -67,7 +69,7 @@ export class AssetApiHandler<T> {
       })
     } catch (error) {
       console.error(`Error fetching ${this.operations.modelName} assets:`, error)
-      return errorResponse('Internal server error')
+      return errorResponse('Failed to fetch assets. Please try again later.')
     }
   }
 
@@ -89,7 +91,7 @@ export class AssetApiHandler<T> {
       return successResponse(asset)
     } catch (error) {
       console.error(`Error fetching ${this.operations.modelName} asset:`, error)
-      return errorResponse('Internal server error')
+      return errorResponse('Failed to fetch asset details. Please try again later.')
     }
   }
 
@@ -97,12 +99,19 @@ export class AssetApiHandler<T> {
   async create(user: { id: string; tenantId: string }, body: T) {
     try {
       // Validate required fields
+      const validationErrors: Record<string, string> = {}
+      
       if (this.operations.requiredFields) {
         for (const field of this.operations.requiredFields) {
-          if (!body[field]) {
-            return badRequestResponse(`${String(field)} is required`)
+          if (body[field] === undefined || body[field] === null || body[field] === "") {
+            validationErrors[String(field)] = `${String(field)} is required`
           }
         }
+      }
+
+      // Return validation errors if any
+      if (Object.keys(validationErrors).length > 0) {
+        return validationErrorResponse(validationErrors)
       }
 
       // Check if asset with unique field already exists
@@ -112,34 +121,54 @@ export class AssetApiHandler<T> {
         })
 
         if (existingAsset) {
-          return badRequestResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`)
+          return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`)
         }
       }
 
-      // Create history record
-      const historyData = {
-        action: 'create',
-        modelType: this.operations.modelName,
-        changes: body as any,
-        userId: user.id,
-        tenantId: user.tenantId
-      }
+      // Filter out undefined values to prevent setting fields to undefined
+      const createData = Object.keys(body || {}).reduce((acc, key) => {
+        if (body[key as keyof T] !== undefined) {
+          (acc as any)[key] = body[key as keyof T];
+        }
+        return acc;
+      }, {} as Partial<T>);
 
       const asset = await (this.db as any)[this.operations.modelName].create({
         data: {
-          ...body as any,
-          tenantId: user.tenantId,
-          histories: {
-            create: historyData
-          }
+          ...createData as any,
+          tenantId: user.tenantId
         },
         include: this.operations.include
       })
 
+      // Create history record after asset creation
+      try {
+        await this.db.history.create({
+          data: {
+            action: 'create',
+            modelType: this.operations.modelName,
+            recordId: asset.id,
+            changes: body as any,
+            userId: user.id,
+            tenantId: user.tenantId
+          }
+        })
+      } catch (historyError) {
+        console.error(`Failed to create history record for ${this.operations.modelName}:`, historyError)
+        // Continue with the operation even if history creation fails
+      }
+
       return successResponse(asset, 201)
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error creating ${this.operations.modelName} asset:`, error)
-      return errorResponse('Internal server error')
+      
+      // Handle Prisma-specific errors
+      if (error.code === 'P2002') {
+        // Unique constraint violation
+        return conflictResponse('An asset with this identifier already exists.')
+      }
+      
+      return errorResponse('Failed to create asset. Please try again later.')
     }
   }
 
@@ -158,10 +187,48 @@ export class AssetApiHandler<T> {
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
 
+      // Validate required fields if they're being updated
+      const validationErrors: Record<string, string> = {}
+      
+      if (this.operations.requiredFields) {
+        for (const field of this.operations.requiredFields) {
+          // Only validate if the field is being updated
+          if (field in body && (body[field] === undefined || body[field] === null || body[field] === "")) {
+            validationErrors[String(field)] = `${String(field)} is required`
+          }
+          // If field is not being updated, ensure it exists in the existing asset
+          if (!(field in body) && (existingAsset[field as keyof typeof existingAsset] === undefined || existingAsset[field as keyof typeof existingAsset] === null || existingAsset[field as keyof typeof existingAsset] === "")) {
+            validationErrors[String(field)] = `${String(field)} is required`
+          }
+        }
+      }
+
+      // Return validation errors if any
+      if (Object.keys(validationErrors).length > 0) {
+        return validationErrorResponse(validationErrors)
+      }
+
+      // Check if unique field is being updated and already exists for another asset
+      if (this.operations.uniqueField && body[this.operations.uniqueField] && 
+          body[this.operations.uniqueField] !== existingAsset[this.operations.uniqueField as keyof typeof existingAsset]) {
+        const existingAssetWithUniqueField = await (this.db as any)[this.operations.modelName].findUnique({
+          where: { 
+            [this.operations.uniqueField]: body[this.operations.uniqueField],
+            NOT: { id: id }
+          }
+        })
+
+        if (existingAssetWithUniqueField) {
+          return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`)
+        }
+      }
+
       // Create history record for changes
       const changes: Record<string, { from: any; to: any }> = {}
       Object.keys(body).forEach(key => {
-        if (body[key as keyof T] !== existingAsset[key as keyof typeof existingAsset]) {
+        // Skip undefined values to avoid setting fields to undefined
+        if (body[key as keyof T] !== undefined && 
+            body[key as keyof T] !== existingAsset[key as keyof typeof existingAsset]) {
           changes[key] = {
             from: existingAsset[key as keyof typeof existingAsset],
             to: body[key as keyof T]
@@ -170,26 +237,37 @@ export class AssetApiHandler<T> {
       })
 
       if (Object.keys(changes).length > 0) {
-        const historyData = {
-          action: 'update',
-          modelType: this.operations.modelName,
-          recordId: id,
-          changes,
-          userId: user.id,
-          tenantId: user.tenantId
+        try {
+          await this.db.history.create({
+            data: {
+              action: 'update',
+              modelType: this.operations.modelName,
+              recordId: id,
+              changes,
+              userId: user.id,
+              tenantId: user.tenantId
+            }
+          })
+        } catch (historyError) {
+          console.error(`Failed to create history record for ${this.operations.modelName}:`, historyError)
+          // Continue with the operation even if history creation fails
         }
-
-        await this.db.history.create({
-          data: historyData
-        })
       }
+
+      // Filter out undefined values to prevent setting fields to undefined
+      const updateData = Object.keys(body || {}).reduce((acc, key) => {
+        if (body[key as keyof T] !== undefined) {
+          (acc as any)[key] = body[key as keyof T];
+        }
+        return acc;
+      }, {} as Partial<T>);
 
       const asset = await (this.db as any)[this.operations.modelName].update({
         where: { 
           id,
           tenantId: user.tenantId 
         },
-        data: body as any,
+        data: updateData as any,
         include: this.operations.include
       })
 
@@ -200,7 +278,14 @@ export class AssetApiHandler<T> {
       }
       
       console.error(`Error updating ${this.operations.modelName} asset:`, error)
-      return errorResponse('Internal server error')
+      
+      // Handle Prisma-specific errors
+      if (error.code === 'P2002') {
+        // Unique constraint violation
+        return conflictResponse('An asset with this identifier already exists.')
+      }
+      
+      return errorResponse('Failed to update asset. Please try again later.')
     }
   }
 
@@ -220,18 +305,21 @@ export class AssetApiHandler<T> {
       }
 
       // Create history record
-      const historyData = {
-        action: 'delete',
-        modelType: this.operations.modelName,
-        recordId: id,
-        changes: existingAsset,
-        userId: user.id,
-        tenantId: user.tenantId
+      try {
+        await this.db.history.create({
+          data: {
+            action: 'delete',
+            modelType: this.operations.modelName,
+            recordId: id,
+            changes: existingAsset,
+            userId: user.id,
+            tenantId: user.tenantId
+          }
+        })
+      } catch (historyError) {
+        console.error(`Failed to create history record for ${this.operations.modelName}:`, historyError)
+        // Continue with the operation even if history creation fails
       }
-
-      await this.db.history.create({
-        data: historyData
-      })
 
       await (this.db as any)[this.operations.modelName].delete({
         where: { 
@@ -247,7 +335,7 @@ export class AssetApiHandler<T> {
       }
       
       console.error(`Error deleting ${this.operations.modelName} asset:`, error)
-      return errorResponse('Internal server error')
+      return errorResponse('Failed to delete asset. Please try again later.')
     }
   }
 
@@ -276,32 +364,45 @@ export class AssetApiHandler<T> {
       }
 
       // Create history records for each asset
-      const historyRecords = existingAssets.map((asset: any) => ({
-        action: 'delete',
-        modelType: this.operations.modelName,
-        recordId: asset.id,
-        changes: asset,
-        userId: user.id,
-        tenantId: user.tenantId
-      }))
-
-      // Create all history records
-      await this.db.history.createMany({
-        data: historyRecords
-      })
+      for (const asset of existingAssets) {
+        try {
+          await this.db.history.create({
+            data: {
+              action: 'delete',
+              modelType: this.operations.modelName,
+              recordId: asset.id,
+              changes: asset,
+              userId: user.id,
+              tenantId: user.tenantId
+            }
+          })
+        } catch (historyError) {
+          console.error(`Failed to create history record for asset ${asset.id}:`, historyError)
+          // Continue with deletion even if history creation fails
+        }
+      }
 
       // Delete all assets
-      await (this.db as any)[this.operations.modelName].deleteMany({
+      const deleteResult = await (this.db as any)[this.operations.modelName].deleteMany({
         where: { 
           id: { in: ids },
           tenantId: user.tenantId 
         }
       })
 
+      // Log the number of deleted assets
+      console.log(`Deleted ${deleteResult.count} ${this.operations.modelName} assets`)
+
       return successResponse<null>(null, 204)
     } catch (error: any) {
       console.error(`Error bulk deleting ${this.operations.modelName} assets:`, error)
-      return errorResponse('Internal server error')
+      
+      // Handle Prisma-specific errors
+      if (error.code === 'P2025') {
+        return notFoundResponse(`${this.operations.modelName} assets not found`)
+      }
+      
+      return errorResponse('Failed to delete assets. Please try again later.')
     }
   }
 }

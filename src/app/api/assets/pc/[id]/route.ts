@@ -4,35 +4,32 @@ import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
   parseRequestBody,
-  errorResponse
+  errorResponse,
+  badRequestResponse
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
 // Define the PC asset type (matching the model in route.ts)
 interface PCAsset {
-  assetTag: string
-  model: string
-  serialNumber: string
-  manufacturer?: string
-  processor?: string
-  ram?: string
-  storage?: string
-  operatingSystem?: string
+  dept: string
+  cpuBarcode: string
+  cpuSapBarcode?: string
+  monitorBarcode?: string
+  monitorSapBarcode?: string
+  upsBarcode?: string
+  upsSapBarcode?: string
+  pcName: string
+  userId?: string
   status: string
-  assignedTo?: string
-  department?: string
-  location?: string
-  purchaseDate?: Date
-  warrantyExpiry?: Date
-  notes?: string
+  note?: string
 }
 
 // Create handler for PC assets
 const pcHandler = new AssetApiHandler<PCAsset>(db, {
-  modelName: 'pC',
-  requiredFields: ['assetTag', 'model', 'serialNumber', 'status'],
-  uniqueField: 'assetTag',
-  searchFields: ['assetTag', 'model', 'serialNumber', 'assignedTo', 'department', 'notes'],
+  modelName: 'PC',
+  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
+  uniqueField: 'cpuBarcode',
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note'],
   include: {
     user: {
       select: {
@@ -40,12 +37,6 @@ const pcHandler = new AssetApiHandler<PCAsset>(db, {
         name: true,
         email: true
       }
-    },
-    histories: {
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 10
     }
   }
 })
@@ -62,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return await pcHandler.getById(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in PC GET by ID route:', error)
-    return errorResponse('Internal server error')
+    return errorResponse('Failed to fetch PC asset details. Please try again later.')
   }
 }
 
@@ -74,12 +65,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
-    const body = await parseRequestBody<Partial<PCAsset>>(request)
+    let body: Partial<PCAsset>
+    try {
+      body = await parseRequestBody<Partial<PCAsset>>(request)
+    } catch (parseError: any) {
+      return badRequestResponse(parseError.message)
+    }
+    
     const resolvedParams = await params;
     return await pcHandler.update(user, resolvedParams.id, body)
   } catch (error) {
     console.error('Error in PC PUT route:', error)
-    return errorResponse('Internal server error')
+    return errorResponse('Failed to update PC asset. Please try again later.')
   }
 }
 
@@ -95,6 +92,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return await pcHandler.delete(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in PC DELETE route:', error)
-    return errorResponse('Internal server error')
+    return errorResponse('Failed to delete PC asset. Please try again later.')
   }
 }

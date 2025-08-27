@@ -4,7 +4,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
   parseRequestBody,
-  errorResponse
+  errorResponse,
+  badRequestResponse
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 
@@ -22,16 +23,9 @@ interface WarehouseITAsset {
 
 // Create handler for WarehouseIT assets
 const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
-  modelName: 'warehouseIT',
-  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'note'],
-  include: {
-    histories: {
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 10
-    }
-  }
+  modelName: 'WarehouseIT',
+  requiredFields: ['status'],
+  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'note']
 })
 
 // GET /api/assets/warehouse/[id] - Get a specific WarehouseIT asset
@@ -58,7 +52,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
-    const body = await parseRequestBody<Partial<WarehouseITAsset>>(request)
+    let body: Partial<WarehouseITAsset>
+    try {
+      body = await parseRequestBody<Partial<WarehouseITAsset>>(request)
+    } catch (parseError: any) {
+      return badRequestResponse(parseError.message)
+    }
+    
     const resolvedParams = await params;
     return await warehouseHandler.update(user, resolvedParams.id, body)
   } catch (error) {
