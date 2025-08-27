@@ -8,7 +8,11 @@ export function successResponse<T>(data: T, status = 200) {
   })
 }
 
-export function errorResponse(message: string, status = 500) {
+export function errorResponse(message: string, status = 500, options?: { quiet?: boolean }) {
+  if (!options?.quiet) {
+    console.error(`API Error [${status}]: ${message}`);
+  }
+  
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: { 'Content-Type': 'application/json' }

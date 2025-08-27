@@ -1,0 +1,195 @@
+{
+  "nav": {
+    "dashboard": "儀表板",
+    "assets": "資產",
+    "pc": "電腦",
+    "laptop": "筆電",
+    "printer": "印表機",
+    "license": "授權",
+    "warehouse": "倉儲",
+    "settings": "設定",
+    "users": "使用者",
+    "tenants": "租戶"
+  },
+  "common": {
+    "save": "儲存",
+    "saving": "儲存中...",
+    "cancel": "取消",
+    "edit": "編輯",
+    "delete": "刪除",
+    "deleting": "刪除中...",
+    "create": "新增",
+    "update": "更新",
+    "view": "檢視",
+    "search": "搜尋",
+    "search": {
+      "placeholder": "搜尋資產..."
+    },
+    "filter": "篩選",
+    "export": "匯出",
+    "import": "匯入",
+    "actions": "操作",
+    "list": "列表",
+    "close": "關閉",
+    "confirm": "確認",
+    "pagination": {
+      "showing": "顯示 {0} 到 {1} 共 {2} 項"
+    },
+    "distribution": "分佈",
+    "status": "狀態"
+  },
+  "dashboard": {
+    "title": "儀表板",
+    "welcome": "歡迎使用 IT 資產管理系統",
+    "totalAssets": "總資產數",
+    "activeAssets": "使用中資產",
+    "maintenanceAssets": "維護中資產",
+    "retiredAssets": "已報廢資產",
+    "assetDistribution": "資產類型分佈",
+    "assetStatus": "電腦和筆電狀態分佈",
+    "recentActivities": "最近活動",
+    "latestChanges": "資產庫存的最新變化"
+  },
+  "auth": {
+    "login": "登入",
+    "login": {
+      "title": "IT 資產管理系統",
+      "description": "請登入您的帳戶",
+      "success": "登入成功",
+      "error": "電子郵件或密碼錯誤",
+      "signingIn": "登入中..."
+    },
+    "logout": "登出",
+    "logout": {
+      "success": "成功登出",
+      "error": "登出失敗"
+    },
+    "email": "電子郵件",
+    "password": "密碼",
+    "rememberMe": "記住我",
+    "forgotPassword": "忘記密碼？"
+  },
+  "assets": {
+    "list": {
+      "description": "管理您的{0}資產",
+      "empty": "未找到資產"
+    },
+    "create": {
+      "success": "{0}新增成功"
+    },
+    "update": {
+      "success": "{0}更新成功"
+    },
+    "delete": {
+      "success": "{0}刪除成功",
+      "error": "{0}刪除失敗: {1}",
+      "title": "刪除{0}",
+      "description": "您確定要刪除此{0}嗎？此操作無法復原。"
+    },
+    "bulkDelete": {
+      "success": "{0}資產刪除成功",
+      "error": "刪除資產失敗: {0}",
+      "noSelection": "請選擇要刪除的資產",
+      "title": "批量刪除",
+      "description": "您確定要刪除{0}個{1}資產嗎？此操作無法復原。"
+    },
+    "status": {
+      "all": "所有狀態",
+      "active": "使用中",
+      "inactive": "未使用",
+      "maintenance": "維護中",
+      "retired": "已報廢",
+      "available": "可用",
+      "reserved": "已預訂",
+      "used": "已使用",
+      "expired": "已過期",
+      "pending": "待處理"
+    },
+    "view": {
+      "title": "{0}詳細資料",
+      "description": "查看此資產的完整詳細資料。"
+    },
+    "form": {
+      "create": {
+        "title": "新增{0}",
+        "description": "新增一個{0}到您的庫存。"
+      },
+      "edit": {
+        "title": "編輯{0}",
+        "description": "編輯此{0}的詳細資料。"
+      },
+      "error": "{0}{1}失敗: {2}"
+    },
+    "pc": {
+      "title": "電腦",
+      "cpuBarcode": "CPU條碼",
+      "pcName": "電腦名稱",
+      "dept": "部門",
+      "status": "狀態",
+      "user": "使用者",
+      "cpuSapBarcode": "CPU SAP條碼",
+      "monitorBarcode": "顯示器條碼",
+      "monitorSapBarcode": "顯示器SAP條碼",
+      "upsBarcode": "UPS條碼",
+      "upsSapBarcode": "UPS SAP條碼",
+      "note": "備註"
+    },
+    "laptop": {
+      "title": "筆電",
+      "assetTag": "資產標籤",
+      "sapBarcode": "SAP條碼",
+      "purchaseDate": "購買日期",
+      "assignedTo": "分配給",
+      "department": "部門",
+      "location": "位置",
+      "model": "型號",
+      "status": "狀態",
+      "notes": "備註"
+    },
+    "printer": {
+      "title": "印表機",
+      "department": "部門",
+      "location": "位置",
+      "ip": "IP位址",
+      "model": "型號",
+      "color": "顏色",
+      "colorValue": "彩色",
+      "bw": "黑白",
+      "barcode": "條碼",
+      "sapCode": "SAP代碼",
+      "date": "日期",
+      "note": "備註"
+    },
+    "license": {
+      "title": "授權",
+      "dept": "部門",
+      "deviceName": "設備名稱",
+      "userName": "使用者名稱",
+      "productType": "產品類型",
+      "productKey": "產品金鑰",
+      "model": "型號",
+      "pc": "電腦",
+      "mac": "MAC位址",
+      "ip": "IP位址",
+      "date": "日期",
+      "updateStatus": "更新狀態",
+      "note": "備註"
+    },
+    "warehouse": {
+      "title": "倉儲",
+      "dept": "部門",
+      "cpuBarcode": "CPU條碼",
+      "cpuSapBarcode": "CPU SAP條碼",
+      "monitorBarcode": "顯示器條碼",
+      "monitorSapBarcode": "顯示器SAP條碼",
+      "upsBarcode": "UPS條碼",
+      "upsSapBarcode": "UPS SAP條碼",
+      "status": "狀態",
+      "note": "備註"
+    }
+  },
+  "forms": {
+    "required": "此欄位為必填",
+    "invalidEmail": "請輸入有效的電子郵件"
+  }
+}

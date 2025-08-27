@@ -1,17 +1,19 @@
 import { useI18n } from '@/contexts/i18n-context'
-import { getTranslations, Language } from '@/lib/i18n'
+import { Language } from '@/lib/i18n'
 
 export function useTranslation() {
-  const { t, language, setLanguage } = useI18n()
+  const { t, language, setLanguage, loading } = useI18n()
   
   return {
     t: t,
     language,
     setLanguage,
+    loading,
     // Add a function to check if a key exists
     exists: (key: string): boolean => {
-      const translations = getTranslations(language as Language)
-      return translations[key] !== undefined && translations[key] !== key
+      // Since translations are now loaded asynchronously, we can't check synchronously
+      // This would need to be handled differently in components that need this functionality
+      return false
     }
   }
 }

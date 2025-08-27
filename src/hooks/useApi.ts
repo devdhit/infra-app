@@ -108,6 +108,20 @@ export function useDeleteAsset<T>(assetType: string) {
   )
 }
 
+// Bulk delete assets hook
+export function useBulkDeleteAssets<T>(assetType: string) {
+  const queryClient = useQueryClient()
+  
+  return useApiMutation<T, { ids: string[] }>(
+    `/assets/${assetType}/bulk-delete`,
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
+      }
+    }
+  )
+}
+
 // Auth hooks
 export interface LoginData {
   email: string
@@ -297,4 +311,17 @@ export interface DashboardData {
 
 export function useDashboard() {
   return useApiQuery<DashboardData>(['dashboard'], '/dashboard')
+}
+
+// Current user hook
+export function useCurrentUser() {
+  // Only make the API call if there's a token in localStorage or API client
+  const hasToken = typeof window !== 'undefined' && 
+    (localStorage.getItem('auth-token') || api.getToken());
+  
+  return useApiQuery<User>(['currentUser'], '/auth/me', {
+    retry: false, // Don't retry on failure to avoid infinite loops
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    enabled: !!hasToken, // Only run the query if we have a token
+  })
 }

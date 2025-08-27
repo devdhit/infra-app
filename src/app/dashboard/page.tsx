@@ -13,8 +13,11 @@ import {
   Building
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { data: dashboardData, isLoading } = useDashboard();
 
   if (isLoading) {
@@ -57,16 +60,22 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to your IT Asset Management System</p>
+      {/* Header with title and language switcher */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
+          <p className="text-muted-foreground">{t('dashboard.welcome')}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.totalAssets')}</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -75,7 +84,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Users</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.activeAssets')}</CardTitle>
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -84,7 +93,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tenants</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.maintenanceAssets')}</CardTitle>
             <Building className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -93,7 +102,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Assets</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.retiredAssets')}</CardTitle>
             <Monitor className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -108,8 +117,8 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Asset Distribution</CardTitle>
-            <CardDescription>Breakdown of assets by type</CardDescription>
+            <CardTitle>{t('assets.pc.title')} {t('common.distribution')}</CardTitle>
+            <CardDescription>{t('dashboard.assetDistribution')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -117,7 +126,7 @@ export default function DashboardPage() {
                 <div key={asset.name} className="flex items-center">
                   <div className="flex items-center w-32">
                     <asset.icon className="h-4 w-4 mr-2" />
-                    <span className="text-sm font-medium">{asset.name}</span>
+                    <span className="text-sm font-medium">{t(`nav.${asset.name.toLowerCase()}`) || asset.name}</span>
                   </div>
                   <div className="flex-1 ml-4">
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -140,8 +149,8 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Asset Status</CardTitle>
-            <CardDescription>Status distribution of PCs and Laptops</CardDescription>
+            <CardTitle>{t('assets.pc.title')} {t('assets.laptop.title')} {t('common.status')}</CardTitle>
+            <CardDescription>{t('dashboard.assetStatus')}</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -158,8 +167,8 @@ export default function DashboardPage() {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="pc" fill="#3b82f6" name="PC" />
-                <Bar dataKey="laptop" fill="#10b981" name="Laptop" />
+                <Bar dataKey="pc" fill="#3b82f6" name={t('nav.pc')} />
+                <Bar dataKey="laptop" fill="#10b981" name={t('nav.laptop')} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -169,8 +178,8 @@ export default function DashboardPage() {
       {/* Recent Activities */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activities</CardTitle>
-          <CardDescription>Latest changes in your asset inventory</CardDescription>
+          <CardTitle>{t('dashboard.recentActivities')}</CardTitle>
+          <CardDescription>{t('dashboard.latestChanges')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

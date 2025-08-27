@@ -26,7 +26,7 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Add auth token if available
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('auth-token')
       if (token) {
         config.headers = {
           ...config.headers,
@@ -51,7 +51,7 @@ apiClient.interceptors.response.use(
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       // Clear token and redirect to login if unauthorized
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('token')
+        localStorage.removeItem('auth-token')
         window.location.href = '/auth/login'
       }
     }
@@ -112,12 +112,12 @@ export const api = {
     if (token) {
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
       if (typeof window !== 'undefined') {
-        localStorage.setItem('token', token)
+        localStorage.setItem('auth-token', token)
       }
     } else {
       delete apiClient.defaults.headers.common['Authorization']
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('token')
+        localStorage.removeItem('auth-token')
       }
     }
   },
@@ -125,7 +125,7 @@ export const api = {
   // Helper function to get token
   getToken: (): string | null => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('token')
+      return localStorage.getItem('auth-token')
     }
     return null
   }
