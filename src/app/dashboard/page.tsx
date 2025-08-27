@@ -13,7 +13,6 @@ import {
   Building
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { useTranslation } from "@/hooks/use-translation";
 
 export default function DashboardPage() {
@@ -60,15 +59,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header with title and language switcher */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
-          <p className="text-muted-foreground">{t('dashboard.welcome')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <LanguageSwitcher />
-        </div>
+      {/* Page title and description (without header) */}
+      <div>
+        <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
+        <p className="text-muted-foreground">{t('dashboard.welcome')}</p>
       </div>
 
       {/* Stats Cards */}

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from 'react'
 import { Language, supportedLanguages, defaultLanguage, getTranslations, t } from '@/lib/i18n'
+import { usePathname, useRouter } from 'next/navigation'
 
 type I18nContextType = {
   language: Language
@@ -41,10 +42,11 @@ export function I18nProvider({
   }, [language])
 
   const setLanguage = (lang: Language) => {
-    // This would typically involve setting a cookie and reloading the page
-    // or using a more sophisticated state management solution
-    document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000; SameSite=Lax`
+    // Set the language state
     setLanguageState(lang)
+    
+    // Set cookie for persistence
+    document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000; SameSite=Lax`
   }
   
   const translate = (key: string, ...params: (string | number)[]): string => {
