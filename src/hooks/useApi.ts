@@ -164,7 +164,7 @@ export function useBulkDeleteAssets<T>(assetType: string) {
   const queryClient = useQueryClient()
   
   return useApiMutation<T, { ids: string[] }>(
-    `/assets/${assetType}`,
+    `/assets/${assetType}/bulk-delete`,
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
