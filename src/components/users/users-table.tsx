@@ -1,30 +1,18 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Button } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { DataTable } from "@/components/ui/data-table"
+import { ColumnDef } from '@tanstack/react-table'
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  MoreHorizontal,
-  Plus,
-  Edit,
-  Trash,
-  Search,
-} from "lucide-react"
+import { Search, MoreHorizontal, Edit, Trash, Plus } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { User, Tenant } from "@/hooks/useApi"
 import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"
@@ -39,9 +27,110 @@ interface UsersTableProps {
   deletingUserId: string | null;
 }
 
+// Define columns for the DataTable
+const useUserColumns = (t: (key: string, fallback?: string) => string, onEdit: (user: User) => void, onDelete: (id: string) => void, isDeleting: boolean, deletingUserId: string | null, tenants: Tenant[]): ColumnDef<User>[] => {
+  return useMemo(() => [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <div className="w-12">
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: 'name',
+      header: t('users.table.name', 'Name'),
+    },
+    {
+      accessorKey: 'email',
+      header: t('users.table.email', 'Email'),
+    },
+    {
+      accessorKey: 'role',
+      header: t('users.table.role', 'Role'),
+      cell: ({ row }) => {
+        const role = row.original.role;
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            role === 'admin' 
+              ? 'bg-purple-100 text-purple-800' 
+              : 'bg-blue-100 text-blue-800'
+          }`}>
+            {role}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: 'tenant',
+      header: t('users.table.tenant', 'Tenant'),
+      cell: ({ row }) => {
+        const user = row.original;
+        return tenants.find((t: Tenant) => t.id === user.tenantId)?.name || '-';
+      },
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">{t('common.actions', 'Actions')}</div>,
+      cell: ({ row }) => {
+        const user = row.original;
+        
+        return (
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">{t('common.openMenu', 'Open menu')}</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit(user)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  {t('common.edit', 'Edit')}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => onDelete(user.id)}
+                  disabled={isDeleting && deletingUserId === user.id}
+                >
+                  {isDeleting && deletingUserId === user.id ? (
+                    <div className="flex items-center">
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                      {t('common.deleting', 'Deleting...')}
+                    </div>
+                  ) : (
+                    <>
+                      <Trash className="mr-2 h-4 w-4" />
+                      {t('common.delete', 'Delete')}
+                    </>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ], [t, onEdit, onDelete, isDeleting, deletingUserId, tenants]);
+};
+
 export function UsersTable({ 
   users, 
-  tenants, 
+  tenants,
   onEdit, 
   onDelete,
   isDeleting,
@@ -51,6 +140,7 @@ export function UsersTable({
   const [search, setSearch] = useState('')
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
+  const columns = useUserColumns(t, onEdit, onDelete, isDeleting, deletingUserId, tenants)
 
   // Filter users based on search term
   const filteredUsers = useMemo(() => {
@@ -63,40 +153,28 @@ export function UsersTable({
     )
   }, [users, search])
 
-  // Handle select all users
-  const handleSelectAll = () => {
-    if (selectedUsers.length === filteredUsers.length) {
-      setSelectedUsers([])
-    } else {
-      setSelectedUsers(filteredUsers.map(user => user.id))
-    }
-  }
-
-  // Handle select individual user
-  const handleSelectUser = (userId: string) => {
-    if (selectedUsers.includes(userId)) {
-      setSelectedUsers(selectedUsers.filter(id => id !== userId))
-    } else {
-      setSelectedUsers([...selectedUsers, userId])
-    }
-  }
-
   // Handle bulk delete
-  const handleBulkDelete = () => {
+  const handleBulkDelete = useCallback(() => {
     if (selectedUsers.length === 0) {
       // Show error message
       return
     }
     setIsBulkDeleteDialogOpen(true)
-  }
+  }, [selectedUsers.length])
 
   // Confirm bulk delete
-  const confirmBulkDelete = () => {
+  const confirmBulkDelete = useCallback(() => {
     // This will be handled by the parent component
     onDelete(selectedUsers.join(',')) // Pass selected IDs as a comma-separated string
     setIsBulkDeleteDialogOpen(false)
     setSelectedUsers([])
-  }
+  }, [onDelete, selectedUsers])
+
+  // Handle row selection
+  const handleRowSelection = useCallback((rows: Record<string, boolean>) => {
+    const selectedIds = Object.keys(rows).filter(id => rows[id])
+    setSelectedUsers(selectedIds)
+  }, [])
 
   return (
     <div className="space-y-4">
@@ -124,95 +202,16 @@ export function UsersTable({
         </div>
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
-                  onCheckedChange={handleSelectAll}
-                  className="cursor-pointer"
-                />
-              </TableHead>
-              <TableHead>{t('users.table.name') || 'Name'}</TableHead>
-              <TableHead>{t('users.table.email') || 'Email'}</TableHead>
-              <TableHead>{t('users.table.role') || 'Role'}</TableHead>
-              <TableHead>{t('users.table.tenant') || 'Tenant'}</TableHead>
-              <TableHead className="text-right">{t('common.actions') || 'Actions'}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  {search 
-                    ? t('common.noResults') || 'No results found' 
-                    : t('users.list.empty') || 'No users found'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredUsers.map((user: User) => (
-                <TableRow key={user.id} className={selectedUsers.includes(user.id) ? 'bg-muted' : ''}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedUsers.includes(user.id)}
-                      onCheckedChange={() => handleSelectUser(user.id)}
-                      className="cursor-pointer"
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {tenants.find((t: Tenant) => t.id === user.tenantId)?.name || '-'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">{t('common.openMenu') || 'Open menu'}</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(user)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          {t('common.edit') || 'Edit'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => onDelete(user.id)}
-                          disabled={isDeleting && deletingUserId === user.id}
-                        >
-                          {isDeleting && deletingUserId === user.id ? (
-                            <div className="flex items-center">
-                              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                              {t('common.deleting') || 'Deleting...'}
-                            </div>
-                          ) : (
-                            <>
-                              <Trash className="mr-2 h-4 w-4" />
-                              {t('common.delete') || 'Delete'}
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={filteredUsers}
+        searchable={false} // We're handling search outside the DataTable
+        filterable={false} // We're handling filtering outside the DataTable
+        sortable={true}
+        pagination={true}
+        pageSize={10}
+        onRowSelectionChange={handleRowSelection}
+      />
 
       <BulkDeleteDialog
         title={t('users.title', 'Users')}

@@ -1,30 +1,18 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Button } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { DataTable } from "@/components/ui/data-table"
+import { ColumnDef } from '@tanstack/react-table'
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  MoreHorizontal,
-  Plus,
-  Edit,
-  Trash,
-  Search,
-} from "lucide-react"
+import { Search, MoreHorizontal, Edit, Trash, Plus } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { Tenant } from "@/hooks/useApi"
 import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
@@ -38,6 +26,124 @@ interface TenantsTableProps {
   deletingTenantId: string | null;
 }
 
+// Define columns for the DataTable
+const useTenantColumns = (t: (key: string, fallback?: string) => string, onEdit: (tenant: Tenant) => void, onDelete: (id: string) => void, isDeleting: boolean, deletingTenantId: string | null): ColumnDef<Tenant>[] => {
+  return useMemo(() => [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <div className="w-12">
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: 'name',
+      header: t('tenants.table.name', 'Name'),
+    },
+    {
+      accessorKey: 'description',
+      header: t('tenants.table.description', 'Description'),
+      cell: ({ row }) => row.original.description || '-',
+    },
+    {
+      accessorKey: '_count',
+      header: t('tenants.table.assets', 'Assets'),
+      cell: ({ row }) => {
+        const count = row.original._count;
+        if (!count) return '0';
+        
+        return (
+          <div className="flex flex-wrap gap-1">
+            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+              PC: {count.pcs}
+            </span>
+            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+              Laptop: {count.laptops}
+            </span>
+            <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+              Printer: {count.printers}
+            </span>
+            <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+              License: {count.licenses}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'users',
+      header: t('tenants.table.users', 'Users'),
+      cell: ({ row }) => {
+        const count = row.original._count;
+        return count ? count.users : '0';
+      },
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">{t('common.actions', 'Actions')}</div>,
+      cell: ({ row }) => {
+        const tenant = row.original;
+        
+        return (
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">{t('common.openMenu', 'Open menu')}</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit(tenant)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  {t('common.edit', 'Edit')}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => onDelete(tenant.id)}
+                  disabled={
+                    (tenant._count && (tenant._count.users > 0 || 
+                      tenant._count.pcs > 0 || 
+                      tenant._count.laptops > 0 || 
+                      tenant._count.printers > 0 || 
+                      tenant._count.licenses > 0)) ||
+                    (isDeleting && deletingTenantId === tenant.id)
+                  }
+                >
+                  {isDeleting && deletingTenantId === tenant.id ? (
+                    <div className="flex items-center">
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                      {t('common.deleting', 'Deleting...')}
+                    </div>
+                  ) : (
+                    <>
+                      <Trash className="mr-2 h-4 w-4" />
+                      {t('common.delete', 'Delete')}
+                    </>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ], [t, onEdit, onDelete, isDeleting, deletingTenantId]);
+};
+
 export function TenantsTable({ 
   tenants, 
   onEdit, 
@@ -49,6 +155,7 @@ export function TenantsTable({
   const [search, setSearch] = useState('')
   const [selectedTenants, setSelectedTenants] = useState<string[]>([])
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
+  const columns = useTenantColumns(t, onEdit, onDelete, isDeleting, deletingTenantId)
 
   // Filter tenants based on search term
   const filteredTenants = useMemo(() => {
@@ -60,40 +167,28 @@ export function TenantsTable({
     )
   }, [tenants, search])
 
-  // Handle select all tenants
-  const handleSelectAll = () => {
-    if (selectedTenants.length === filteredTenants.length) {
-      setSelectedTenants([])
-    } else {
-      setSelectedTenants(filteredTenants.map(tenant => tenant.id))
-    }
-  }
-
-  // Handle select individual tenant
-  const handleSelectTenant = (tenantId: string) => {
-    if (selectedTenants.includes(tenantId)) {
-      setSelectedTenants(selectedTenants.filter(id => id !== tenantId))
-    } else {
-      setSelectedTenants([...selectedTenants, tenantId])
-    }
-  }
-
   // Handle bulk delete
-  const handleBulkDelete = () => {
+  const handleBulkDelete = useCallback(() => {
     if (selectedTenants.length === 0) {
       // Show error message
       return
     }
     setIsBulkDeleteDialogOpen(true)
-  }
+  }, [selectedTenants.length])
 
   // Confirm bulk delete
-  const confirmBulkDelete = () => {
+  const confirmBulkDelete = useCallback(() => {
     // This will be handled by the parent component
     onDelete(selectedTenants.join(',')) // Pass selected IDs as a comma-separated string
     setIsBulkDeleteDialogOpen(false)
     setSelectedTenants([])
-  }
+  }, [onDelete, selectedTenants])
+
+  // Handle row selection
+  const handleRowSelection = useCallback((rows: Record<string, boolean>) => {
+    const selectedIds = Object.keys(rows).filter(id => rows[id])
+    setSelectedTenants(selectedIds)
+  }, [])
 
   return (
     <div className="space-y-4">
@@ -121,111 +216,16 @@ export function TenantsTable({
         </div>
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedTenants.length === filteredTenants.length && filteredTenants.length > 0}
-                  onCheckedChange={handleSelectAll}
-                  className="cursor-pointer"
-                />
-              </TableHead>
-              <TableHead>{t('tenants.table.name') || 'Name'}</TableHead>
-              <TableHead>{t('tenants.table.description') || 'Description'}</TableHead>
-              <TableHead>{t('tenants.table.assets') || 'Assets'}</TableHead>
-              <TableHead>{t('tenants.table.users') || 'Users'}</TableHead>
-              <TableHead className="text-right">{t('common.actions') || 'Actions'}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTenants.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  {search 
-                    ? t('common.noResults') || 'No results found' 
-                    : t('tenants.list.empty') || 'No tenants found'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredTenants.map((tenant) => (
-                <TableRow key={tenant.id} className={selectedTenants.includes(tenant.id) ? 'bg-muted' : ''}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedTenants.includes(tenant.id)}
-                      onCheckedChange={() => handleSelectTenant(tenant.id)}
-                      className="cursor-pointer"
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{tenant.name}</TableCell>
-                  <TableCell>{tenant.description || '-'}</TableCell>
-                  <TableCell>
-                    {tenant._count ? (
-                      <div className="flex flex-wrap gap-1">
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                          PC: {tenant._count.pcs}
-                        </span>
-                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                          Laptop: {tenant._count.laptops}
-                        </span>
-                        <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                          Printer: {tenant._count.printers}
-                        </span>
-                        <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
-                          License: {tenant._count.licenses}
-                        </span>
-                      </div>
-                    ) : '0'}
-                  </TableCell>
-                  <TableCell>
-                    {tenant._count ? tenant._count.users : '0'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">{t('common.openMenu') || 'Open menu'}</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(tenant)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          {t('common.edit') || 'Edit'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => onDelete(tenant.id)}
-                          disabled={
-                            (tenant._count && (tenant._count.users > 0 || 
-                              tenant._count.pcs > 0 || 
-                              tenant._count.laptops > 0 || 
-                              tenant._count.printers > 0 || 
-                              tenant._count.licenses > 0)) ||
-                            (isDeleting && deletingTenantId === tenant.id)
-                          }
-                        >
-                          {isDeleting && deletingTenantId === tenant.id ? (
-                            <div className="flex items-center">
-                              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                              {t('common.deleting') || 'Deleting...'}
-                            </div>
-                          ) : (
-                            <>
-                              <Trash className="mr-2 h-4 w-4" />
-                              {t('common.delete') || 'Delete'}
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={filteredTenants}
+        searchable={false} // We're handling search outside the DataTable
+        filterable={false} // We're handling filtering outside the DataTable
+        sortable={true}
+        pagination={true}
+        pageSize={10}
+        onRowSelectionChange={handleRowSelection}
+      />
 
       <BulkDeleteDialog
         title={t('tenants.title', 'Tenants')}
