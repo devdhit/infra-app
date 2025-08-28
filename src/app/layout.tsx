@@ -6,6 +6,7 @@ import { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/contexts/i18n-context";
 import { getCurrentLanguage } from '@/lib/i18n-server';
+import { ProtectedLayout } from "@/components/layout/protected-layout";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,7 +28,9 @@ export default async function RootLayout({
       <body className={inter.className}>
         <I18nProvider initialLanguage={language}>
           <ReactQueryProvider>
-            {children}
+            <ProtectedLayout>
+              {children}
+            </ProtectedLayout>
             <Toaster />
           </ReactQueryProvider>
         </I18nProvider>

@@ -11,6 +11,7 @@ A comprehensive IT asset management solution built with modern web technologies.
 - [Installation](#installation)
 - [Database Schema](#database-schema)
 - [API Documentation](#api-documentation)
+- [Role-Based Access Control](#role-based-access-control)
 - [Deployment](#deployment)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
@@ -198,96 +199,108 @@ All API endpoints are RESTful and follow standard conventions:
 
 ### Users
 - `GET /api/users` - List users
-- `POST /api/users` - Create a new user
-- `GET /api/users/:id` - Get a specific user
-- `PUT /api/users/:id` - Update a user
-- `DELETE /api/users/:id` - Delete a user
 
-### Assets
-Each asset type (pc, laptop, printer, license, warehouse) has the following endpoints:
-- `GET /api/assets/:type` - List assets
-- `POST /api/assets/:type` - Create a new asset
-- `GET /api/assets/:type/:id` - Get a specific asset
-- `PUT /api/assets/:type/:id` - Update an asset
-- `DELETE /api/assets/:type/:id` - Delete an asset
+## Role-Based Access Control
 
-### Excel Operations
-- `GET /api/assets/excel/export?assetType=:type` - Export assets to Excel
-- `POST /api/assets/excel/import` - Import assets from Excel
+The system implements role-based access control (RBAC) to restrict access to certain features based on the user's role. There are two roles in the system:
 
-### Dashboard
-- `GET /api/dashboard` - Get dashboard statistics
+### Roles
+
+1. **Admin** - Has full access to all features:
+   - View, create, edit, delete, and bulk delete users
+   - View, create, edit, delete, and bulk delete tenants
+   - View, create, edit, delete, and bulk delete assets
+   - View and edit settings
+
+2. **User** - Has limited access to features:
+   - View users (only their own profile)
+   - View tenants
+   - View, create, edit, and delete assets (but not bulk delete)
+   - View settings
+
+### Implementation
+
+The RBAC system is implemented through:
+
+- **Permissions Library** (`src/lib/permissions.ts`): Core permission checking functions
+- **Navigation Filtering** (`src/components/layout/navigation.tsx`): Filters sidebar menu items based on user role
+- **Permission Hook** (`src/hooks/use-permissions.ts`): Provides easy access to permission checks in components
+- **Component-Level Access Control**: Pages and components conditionally render actions based on permissions
+
+For detailed implementation information, see `docs/role-based-access-control.md`.
 
 ## Deployment
 
 ### Production Build
+
+To create a production build:
+
 ```bash
 npm run build
+```
+
+### Running in Production
+
+```bash
 npm start
 ```
 
 ### Docker Deployment (Optional)
-Create a `Dockerfile`:
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY . .
-RUN npm install
-RUN npx prisma generate
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
+
+A Dockerfile is included for containerized deployment:
+
+```bash
+docker build -t itams .
+docker run -p 3000:3000 itams
 ```
 
-### Vercel Deployment (Recommended)
-1. Push your code to a Git repository
-2. Connect the repository to Vercel
-3. Set environment variables in Vercel dashboard
-4. Deploy!
+### Environment Variables for Production
+
+Ensure the following environment variables are set in production:
+
+```env
+DATABASE_URL="your-production-database-url"
+JWT_SECRET="your-production-secret"
+NODE_ENV="production"
+```
 
 ## Roadmap
 
-### Phase 1: Core Implementation (Completed)
-- ✅ Multi-tenant architecture
-- ✅ User authentication and authorization
-- ✅ Asset management modules
-- ✅ Excel import/export functionality
-- ✅ Dashboard and statistics
-- ✅ Audit trail and history tracking
-- ✅ Internationalization support
+### Phase 1: Core Features (Completed)
+- [x] Multi-tenant architecture
+- [x] User authentication and authorization
+- [x] Asset management for PCs, laptops, printers, licenses
+- [x] Excel import/export functionality
+- [x] Custom fields system
+- [x] Dashboard and statistics
+- [x] History/audit logs
 
 ### Phase 2: Advanced Features (In Progress)
-- ✅ Custom fields system
-- ⏳ Advanced reporting and analytics
-- ⏳ Notification system
-- ⏳ API documentation with Swagger
-- ⏳ Performance optimization
-- ⏳ Security enhancements
+- [x] Role-based access control
+- [ ] Advanced reporting and analytics
+- [ ] API documentation with Swagger
+- [ ] Mobile-responsive design enhancements
+- [ ] Performance optimization
 
 ### Phase 3: Enterprise Features (Planned)
-- 🔲 Role-based dashboard customization
-- 🔲 Asset lifecycle management
-- 🔲 Integration with external systems
-- 🔲 Mobile application
-- 🔲 Advanced search and filtering
-- 🔲 Data backup and recovery
+- [ ] SSO integration
+- [ ] Advanced workflow automation
+- [ ] Notification system
+- [ ] Integration with third-party tools
+- [ ] Multi-language support expansion
 
 ## Contributing
 
-We welcome contributions to the IT Asset Management System! Here's how you can help:
+Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a pull request
 
 Please ensure your code follows the existing style and includes appropriate tests.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-**IT Asset Management System** - Streamline your IT asset management processes with this comprehensive solution.

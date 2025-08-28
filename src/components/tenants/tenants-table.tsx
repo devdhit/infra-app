@@ -20,14 +20,14 @@ import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
 // Define the interface directly in this file to avoid import issues
 interface TenantsTableProps {
   tenants: Tenant[];
-  onEdit: (tenant: Tenant | null) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (tenant: Tenant | null) => void;
+  onDelete?: (id: string) => void;
   isDeleting: boolean;
   deletingTenantId: string | null;
 }
 
 // Define columns for the DataTable
-const useTenantColumns = (t: (key: string, fallback?: string) => string, onEdit: (tenant: Tenant) => void, onDelete: (id: string) => void, isDeleting: boolean, deletingTenantId: string | null): ColumnDef<Tenant>[] => {
+const useTenantColumns = (t: (key: string, fallback?: string) => string, onEdit: ((tenant: Tenant) => void) | undefined, onDelete: ((id: string) => void) | undefined, isDeleting: boolean, deletingTenantId: string | null): ColumnDef<Tenant>[] => {
   return useMemo(() => [
     {
       id: 'select',
@@ -98,6 +98,11 @@ const useTenantColumns = (t: (key: string, fallback?: string) => string, onEdit:
       cell: ({ row }) => {
         const tenant = row.original;
         
+        // If no action handlers are provided, don't show actions
+        if (!onEdit && !onDelete) {
+          return null;
+        }
+        
         return (
           <div className="text-right">
             <DropdownMenu>
@@ -108,33 +113,37 @@ const useTenantColumns = (t: (key: string, fallback?: string) => string, onEdit:
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(tenant)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  {t('common.edit', 'Edit')}
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onDelete(tenant.id)}
-                  disabled={
-                    (tenant._count && (tenant._count.users > 0 || 
-                      tenant._count.pcs > 0 || 
-                      tenant._count.laptops > 0 || 
-                      tenant._count.printers > 0 || 
-                      tenant._count.licenses > 0)) ||
-                    (isDeleting && deletingTenantId === tenant.id)
-                  }
-                >
-                  {isDeleting && deletingTenantId === tenant.id ? (
-                    <div className="flex items-center">
-                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                      {t('common.deleting', 'Deleting...')}
-                    </div>
-                  ) : (
-                    <>
-                      <Trash className="mr-2 h-4 w-4" />
-                      {t('common.delete', 'Delete')}
-                    </>
-                  )}
-                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(tenant)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    {t('common.edit', 'Edit')}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem 
+                    onClick={() => onDelete(tenant.id)}
+                    disabled={
+                      (tenant._count && (tenant._count.users > 0 || 
+                        tenant._count.pcs > 0 || 
+                        tenant._count.laptops > 0 || 
+                        tenant._count.printers > 0 || 
+                        tenant._count.licenses > 0)) ||
+                      (isDeleting && deletingTenantId === tenant.id)
+                    }
+                  >
+                    {isDeleting && deletingTenantId === tenant.id ? (
+                      <div className="flex items-center">
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                        {t('common.deleting', 'Deleting...')}
+                      </div>
+                    ) : (
+                      <>
+                        <Trash className="mr-2 h-4 w-4" />
+                        {t('common.delete', 'Delete')}
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -169,15 +178,16 @@ export function TenantsTable({
 
   // Handle bulk delete
   const handleBulkDelete = useCallback(() => {
-    if (selectedTenants.length === 0) {
-      // Show error message
+    if (selectedTenants.length === 0 || !onDelete) {
+      // Show error message or do nothing
       return
     }
     setIsBulkDeleteDialogOpen(true)
-  }, [selectedTenants.length])
+  }, [selectedTenants.length, onDelete])
 
   // Confirm bulk delete
   const confirmBulkDelete = useCallback(() => {
+    if (!onDelete) return;
     // This will be handled by the parent component
     onDelete(selectedTenants.join(',')) // Pass selected IDs as a comma-separated string
     setIsBulkDeleteDialogOpen(false)
@@ -203,16 +213,18 @@ export function TenantsTable({
           />
         </div>
         <div className="flex gap-2">
-          {selectedTenants.length > 0 && (
+          {selectedTenants.length > 0 && onDelete && (
             <Button variant="destructive" onClick={handleBulkDelete}>
               <Trash className="h-4 w-4 mr-2" />
               {t('common.delete', 'Delete')} ({selectedTenants.length})
             </Button>
           )}
-          <Button onClick={() => onEdit(null)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t('tenants.create.button') || 'Add Tenant'}
-          </Button>
+          {onEdit && (
+            <Button onClick={() => onEdit(null)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('tenants.create.button') || 'Add Tenant'}
+            </Button>
+          )}
         </div>
       </div>
 

@@ -38,7 +38,8 @@
     "distribution": "Distribution",
     "status": "Status",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "unauthorized": "You do not have permission to view this page"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -203,49 +204,111 @@
     "multipleFieldError": "There are {0} errors in the form. Please check the fields marked in red."
   },
   "users": {
+    "title": "Users",
+    "description": "Manage system users",
     "list": {
-      "description": "Manage your users",
+      "title": "User List",
+      "description": "A list of all users in the system",
       "empty": "No users found"
     },
+    "search": {
+      "placeholder": "Search users..."
+    },
     "create": {
-      "success": "User created successfully"
+      "button": "Add User",
+      "success": "User created successfully",
+      "unauthorized": "You do not have permission to create users"
     },
     "update": {
-      "success": "User updated successfully"
+      "success": "User updated successfully",
+      "error": "Failed to update user",
+      "unauthorized": "You do not have permission to update users"
     },
     "delete": {
       "success": "User deleted successfully",
       "error": "Failed to delete user: {1}",
       "title": "Delete User",
-      "description": "Are you sure you want to delete this user? This action cannot be undone."
+      "description": "Are you sure you want to delete this user? This action cannot be undone.",
+      "unauthorized": "You do not have permission to delete users"
+    },
+    "edit": {
+      "title": "Edit User",
+      "description": "Edit user details",
+      "unauthorized": "You do not have permission to edit users"
+    },
+    "form": {
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "Leave blank to keep current password",
+      "role": "Role",
+      "userRole": "User",
+      "adminRole": "Admin",
+      "tenant": "Tenant",
+      "selectTenant": "Select a tenant",
+      "nameRequired": "Name is required",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Email is invalid",
+      "passwordRequired": "Password is required",
+      "passwordMinLength": "Password must be at least 6 characters"
     },
     "bulkDelete": {
       "confirm": "Are you sure you want to delete {0} users?",
       "success": "{0} users deleted successfully",
-      "error": "Failed to delete users"
+      "error": "Failed to delete users",
+      "unauthorized": "You do not have permission to bulk delete users"
     }
   },
   "tenants": {
+    "title": "Tenants",
+    "description": "Manage tenant organizations",
     "list": {
-      "description": "Manage your tenants",
+      "title": "Tenant List",
+      "description": "A list of all tenant organizations",
       "empty": "No tenants found"
     },
+    "search": {
+      "placeholder": "Search tenants..."
+    },
     "create": {
-      "success": "Tenant created successfully"
+      "button": "Add Tenant",
+      "success": "Tenant created successfully",
+      "unauthorized": "You do not have permission to create tenants"
     },
     "update": {
-      "success": "Tenant updated successfully"
+      "success": "Tenant updated successfully",
+      "error": "Failed to update tenant",
+      "unauthorized": "You do not have permission to update tenants"
     },
     "delete": {
       "success": "Tenant deleted successfully",
       "error": "Failed to delete tenant: {1}",
       "title": "Delete Tenant",
-      "description": "Are you sure you want to delete this tenant? This action cannot be undone."
+      "description": "Are you sure you want to delete this tenant? This action cannot be undone.",
+      "unauthorized": "You do not have permission to delete tenants"
+    },
+    "edit": {
+      "title": "Edit Tenant",
+      "description": "Edit tenant details",
+      "unauthorized": "You do not have permission to edit tenants"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "nameRequired": "Name is required"
+    },
+    "table": {
+      "name": "Name",
+      "description": "Description",
+      "assets": "Assets",
+      "users": "Users"
     },
     "bulkDelete": {
       "confirm": "Are you sure you want to delete {0} tenants?",
       "success": "{0} tenants deleted successfully",
-      "error": "Failed to delete tenants"
+      "error": "Failed to delete tenants",
+      "unauthorized": "You do not have permission to bulk delete tenants"
     }
   },
   "bulkDelete": {

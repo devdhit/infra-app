@@ -23,31 +23,73 @@ import { toast } from "sonner";
 import { LanguageSwitcher } from "./language-switcher";
 import { useTranslation } from "@/hooks/use-translation";
 
-const navigationItems = [
-  { nameKey: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
+// Define user roles
+type UserRole = 'admin' | 'user';
+
+// Define navigation item structure
+interface NavigationItem {
+  nameKey: string;
+  href: string;
+  icon: React.ComponentType<any>;
+  roles?: UserRole[]; // Roles that can access this item
+  children?: NavigationItem[];
+}
+
+const navigationItems: NavigationItem[] = [
+  { 
+    nameKey: "nav.dashboard", 
+    href: "/dashboard", 
+    icon: LayoutDashboard,
+    roles: ['admin', 'user']
+  },
   { 
     nameKey: "nav.assets", 
     href: "/assets", 
     icon: Monitor,
+    roles: ['admin', 'user'],
     children: [
-      { nameKey: "nav.pc", href: "/assets/pc", icon: Monitor },
-      { nameKey: "nav.laptop", href: "/assets/laptop", icon: Laptop },
-      { nameKey: "nav.printer", href: "/assets/printer", icon: Printer },
-      { nameKey: "nav.license", href: "/assets/license", icon: Key },
-      { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse },
+      { nameKey: "nav.pc", href: "/assets/pc", icon: Monitor, roles: ['admin', 'user'] },
+      { nameKey: "nav.laptop", href: "/assets/laptop", icon: Laptop, roles: ['admin', 'user'] },
+      { nameKey: "nav.printer", href: "/assets/printer", icon: Printer, roles: ['admin', 'user'] },
+      { nameKey: "nav.license", href: "/assets/license", icon: Key, roles: ['admin', 'user'] },
+      { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse, roles: ['admin', 'user'] },
     ]
   },
-  { nameKey: "nav.users", href: "/users", icon: Users },
-  { nameKey: "nav.tenants", href: "/tenants", icon: Building },
-  { nameKey: "nav.settings", href: "/settings", icon: Settings },
+  { 
+    nameKey: "nav.users", 
+    href: "/users", 
+    icon: Users,
+    roles: ['admin'] // Only admins can access users
+  },
+  { 
+    nameKey: "nav.tenants", 
+    href: "/tenants", 
+    icon: Building,
+    roles: ['admin'] // Only admins can access tenants
+  },
+  { 
+    nameKey: "nav.settings", 
+    href: "/settings", 
+    icon: Settings,
+    roles: ['admin', 'user'] // Both roles can access settings
+  },
 ];
 
-export function Navigation() {
+interface NavigationProps {
+  userRole?: UserRole;
+}
+
+export function Navigation({ userRole = 'user' }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const logoutMutation = useLogout();
   const { t } = useTranslation();
+
+  // Filter navigation items based on user role
+  const filteredNavigationItems = navigationItems.filter(item => 
+    !item.roles || item.roles.includes(userRole)
+  );
 
   const handleLogout = async () => {
     try {
@@ -107,7 +149,7 @@ export function Navigation() {
             </Button>
           </div>
           <nav className="space-y-2">
-            {navigationItems.map((item) => (
+            {filteredNavigationItems.map((item) => (
               <div key={item.nameKey}>
                 <Link
                   href={item.href}
@@ -123,21 +165,23 @@ export function Navigation() {
                 </Link>
                 {item.children && isActive(item.href) && (
                   <div className="ml-8 mt-2 space-y-1">
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.nameKey}
-                        href={child.href}
-                        className={`flex items-center px-4 py-2 rounded-md text-sm ${
-                          isActive(child.href)
-                            ? "bg-blue-100 text-blue-700"
-                            : "text-gray-700 hover:bg-gray-100"
-                        }`}
-                        onClick={() => setSidebarOpen(false)}
-                      >
-                        <child.icon className="h-4 w-4 mr-3" />
-                        {t(child.nameKey)}
-                      </Link>
-                    ))}
+                    {item.children
+                      .filter(child => !child.roles || child.roles.includes(userRole))
+                      .map((child) => (
+                        <Link
+                          key={child.nameKey}
+                          href={child.href}
+                          className={`flex items-center px-4 py-2 rounded-md text-sm ${
+                            isActive(child.href)
+                              ? "bg-blue-100 text-blue-700"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          <child.icon className="h-4 w-4 mr-3" />
+                          {t(child.nameKey)}
+                        </Link>
+                      ))}
                   </div>
                 )}
               </div>
@@ -154,7 +198,7 @@ export function Navigation() {
           </div>
           <div className="mt-5 flex-grow flex flex-col">
             <nav className="flex-1 px-2 space-y-1">
-              {navigationItems.map((item) => (
+              {filteredNavigationItems.map((item) => (
                 <div key={item.nameKey}>
                   <Link
                     href={item.href}
@@ -169,20 +213,22 @@ export function Navigation() {
                   </Link>
                   {item.children && isActive(item.href) && (
                     <div className="ml-8 mt-2 space-y-1">
-                      {item.children.map((child) => (
-                        <Link
-                          key={child.nameKey}
-                          href={child.href}
-                          className={`flex items-center px-4 py-2 rounded-md text-sm ${
-                            isActive(child.href)
-                              ? "bg-blue-100 text-blue-700"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          <child.icon className="h-4 w-4 mr-3" />
-                          {t(child.nameKey)}
-                        </Link>
-                      ))}
+                      {item.children
+                        .filter(child => !child.roles || child.roles.includes(userRole))
+                        .map((child) => (
+                          <Link
+                            key={child.nameKey}
+                            href={child.href}
+                            className={`flex items-center px-4 py-2 rounded-md text-sm ${
+                              isActive(child.href)
+                                ? "bg-blue-100 text-blue-700"
+                                : "text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            <child.icon className="h-4 w-4 mr-3" />
+                            {t(child.nameKey)}
+                          </Link>
+                        ))}
                     </div>
                   )}
                 </div>

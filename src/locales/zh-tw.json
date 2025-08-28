@@ -38,7 +38,8 @@
     "distribution": "分佈",
     "status": "狀態",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "unauthorized": "您沒有權限查看此頁面"
   },
   "dashboard": {
     "title": "儀表板",
@@ -201,5 +202,118 @@
     "validationError": "請檢查表單中的錯誤",
     "singleFieldError": "表單中有一個錯誤。請檢查標記為紅色的欄位。",
     "multipleFieldError": "表單中有{0}個錯誤。請檢查標記為紅色的欄位。"
+  },
+  "users": {
+    "title": "使用者",
+    "description": "管理系統使用者",
+    "list": {
+      "title": "使用者列表",
+      "description": "系統中所有使用者的列表",
+      "empty": "未找到使用者"
+    },
+    "search": {
+      "placeholder": "搜尋使用者..."
+    },
+    "create": {
+      "button": "新增使用者",
+      "success": "使用者新增成功",
+      "unauthorized": "您沒有權限新增使用者"
+    },
+    "update": {
+      "success": "使用者更新成功",
+      "error": "使用者更新失敗",
+      "unauthorized": "您沒有權限更新使用者"
+    },
+    "delete": {
+      "success": "使用者刪除成功",
+      "error": "使用者刪除失敗: {1}",
+      "title": "刪除使用者",
+      "description": "您確定要刪除此使用者嗎？此操作無法復原。",
+      "unauthorized": "您沒有權限刪除使用者"
+    },
+    "edit": {
+      "title": "編輯使用者",
+      "description": "編輯使用者詳細資料",
+      "unauthorized": "您沒有權限編輯使用者"
+    },
+    "form": {
+      "name": "姓名",
+      "email": "電子郵件",
+      "password": "密碼",
+      "newPassword": "新密碼",
+      "newPasswordPlaceholder": "留空以保持目前密碼",
+      "role": "角色",
+      "userRole": "使用者",
+      "adminRole": "管理員",
+      "tenant": "租戶",
+      "selectTenant": "選擇租戶",
+      "nameRequired": "姓名為必填",
+      "emailRequired": "電子郵件為必填",
+      "emailInvalid": "電子郵件格式無效",
+      "passwordRequired": "密碼為必填",
+      "passwordMinLength": "密碼至少需要6個字元"
+    },
+    "bulkDelete": {
+      "confirm": "您確定要刪除{0}個使用者嗎？",
+      "success": "{0}個使用者刪除成功",
+      "error": "使用者刪除失敗",
+      "unauthorized": "您沒有權限批量刪除使用者"
+    }
+  },
+  "tenants": {
+    "title": "租戶",
+    "description": "管理租戶組織",
+    "list": {
+      "title": "租戶列表",
+      "description": "所有租戶組織的列表",
+      "empty": "未找到租戶"
+    },
+    "search": {
+      "placeholder": "搜尋租戶..."
+    },
+    "create": {
+      "button": "新增租戶",
+      "success": "租戶新增成功",
+      "unauthorized": "您沒有權限新增租戶"
+    },
+    "update": {
+      "success": "租戶更新成功",
+      "error": "租戶更新失敗",
+      "unauthorized": "您沒有權限更新租戶"
+    },
+    "delete": {
+      "success": "租戶刪除成功",
+      "error": "租戶刪除失敗: {1}",
+      "title": "刪除租戶",
+      "description": "您確定要刪除此租戶嗎？此操作無法復原。",
+      "unauthorized": "您沒有權限刪除租戶"
+    },
+    "edit": {
+      "title": "編輯租戶",
+      "description": "編輯租戶詳細資料",
+      "unauthorized": "您沒有權限編輯租戶"
+    },
+    "form": {
+      "name": "名稱",
+      "description": "描述",
+      "nameRequired": "名稱為必填"
+    },
+    "table": {
+      "name": "名稱",
+      "description": "描述",
+      "assets": "資產",
+      "users": "使用者"
+    },
+    "bulkDelete": {
+      "confirm": "您確定要刪除{0}個租戶嗎？",
+      "success": "{0}個租戶刪除成功",
+      "error": "租戶刪除失敗",
+      "unauthorized": "您沒有權限批量刪除租戶"
+    }
+  },
+  "bulkDelete": {
+    "confirmation": "您確定要刪除{0}個{1}嗎？此操作無法復原。",
+    "warning": "重要",
+    "warningDescription": "此操作將永久刪除{0}個{1}且無法復原。請確認您要繼續進行。"
   }
 }

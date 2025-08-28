@@ -1,7 +1,5 @@
 'use client'
 
-import { Navigation } from "@/components/layout/navigation";
-import { Header } from "@/components/layout/header";
 import { ReactNode, useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useApi";
 import { useRouter, usePathname } from "next/navigation";
@@ -76,13 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // For protected routes when authenticated, show with Navigation and Header
+  // For protected routes when authenticated, render children directly
+  // The ProtectedLayout component will handle Navigation and Header
   if (isAuthenticated && isProtectedRoute) {
     return (
       <div className="flex h-screen">
-        <Navigation />
-        <div className="flex flex-col flex-1 md:ml-64">
-          <Header />
+        <div className="flex flex-col flex-1">
           <main className="flex-1 p-6 overflow-auto">
             {children}
           </main>
@@ -91,6 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // For all other cases (login page, etc.), just render children without Navigation
+  // For all other cases (login page, etc.), just render children
   return <>{children}</>;
 }
