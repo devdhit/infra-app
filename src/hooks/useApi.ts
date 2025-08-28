@@ -167,8 +167,11 @@ export function useBulkDeleteAssets<T>(assetType: string) {
   return useApiMutation<T, { ids: string[] }>(
     `/assets/${assetType}/bulk-delete`,
     {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
+      onSuccess: async () => {
+        // First invalidate all asset queries for this asset type
+        await queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+        // Refetch to ensure UI updates
+        await queryClient.refetchQueries({ queryKey: ['assets', assetType] });
       },
       onError: (error: ApiError) => {
         console.error(`Error bulk deleting ${assetType}:`, error)

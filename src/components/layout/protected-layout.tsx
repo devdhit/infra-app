@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useCurrentUser } from '@/hooks/useApi'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Navigation } from './navigation'
 import { Header } from './header'
 import { useTranslation } from '@/hooks/use-translation'
@@ -13,17 +13,14 @@ interface ProtectedLayoutProps {
 }
 
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
-  const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()
   const { data: user, isLoading, isError } = useCurrentUser()
 
-  useEffect(() => {
-    // If we're not on the login page and there's an auth error, redirect to login
-    if (isError && !pathname.startsWith('/auth/')) {
-      router.push('/auth/login')
-    }
-  }, [isError, router, pathname])
+  // For auth routes, don't show the navigation layout
+  if (pathname.startsWith('/auth/')) {
+    return <>{children}</>
+  }
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -34,15 +31,9 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     )
   }
 
-  // If not authenticated and not already on login page, redirect to login
-  if ((!user || isError) && !pathname.startsWith('/auth/')) {
-    router.push('/auth/login')
+  // If not authenticated, show nothing (AuthProvider will handle redirect)
+  if (!user || isError) {
     return null
-  }
-
-  // For auth routes, don't show the navigation layout
-  if (pathname.startsWith('/auth/')) {
-    return <>{children}</>
   }
 
   // If authenticated, show the protected layout

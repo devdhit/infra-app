@@ -54,19 +54,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Only redirect after initial auth check is complete
     if (!isCheckingAuth && !userLoading) {
       // Redirect to login if not authenticated and trying to access protected routes
-      if (isProtectedRoute && !isAuthenticated) {
-        router.push('/auth/login');
+      // Also redirect to login if accessing root path and not authenticated
+      if ((!isAuthenticated && isProtectedRoute) || 
+          (!isAuthenticated && pathname === '/')) {
+        router.replace('/auth/login');
+        return;
       }
       
-      // Redirect to dashboard if authenticated and on auth route
-      if (isAuthRoute && isAuthenticated) {
-        router.push('/dashboard');
+      // Redirect to dashboard if authenticated and on auth route (except logout)
+      if (isAuthRoute && isAuthenticated && pathname !== '/auth/logout') {
+        router.replace('/dashboard');
+        return;
+      }
+      
+      // Redirect to dashboard if authenticated and on root path
+      if (isAuthenticated && pathname === '/') {
+        router.replace('/dashboard');
+        return;
       }
     }
-  }, [isAuthenticated, isCheckingAuth, isProtectedRoute, isAuthRoute, router, userLoading]);
+  }, [isAuthenticated, isCheckingAuth, isProtectedRoute, isAuthRoute, router, userLoading, pathname]);
 
   // If we're still checking auth, show loading spinner
-  if (isCheckingAuth) {
+  if (isCheckingAuth || userLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -77,15 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // For protected routes when authenticated, render children directly
   // The ProtectedLayout component will handle Navigation and Header
   if (isAuthenticated && isProtectedRoute) {
-    return (
-      <div className="flex h-screen">
-        <div className="flex flex-col flex-1">
-          <main className="flex-1 p-6 overflow-auto">
-            {children}
-          </main>
-        </div>
-      </div>
-    );
+    return <>{children}</>;
   }
 
   // For all other cases (login page, etc.), just render children

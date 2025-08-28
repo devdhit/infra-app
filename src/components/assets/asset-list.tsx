@@ -59,6 +59,10 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 
+// Import the new separate Excel dialogs
+import { ExcelImportDialog } from "./excel-import-dialog";
+import { ExcelExportDialog } from "./excel-export-dialog";
+
 // Define the props interface for AssetList component
 interface AssetListProps {
   assetType: string;
@@ -230,6 +234,10 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   const [isSearching, setIsSearching] = useState(false);
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
   const [editingCell, setEditingCell] = useState<{ assetId: string; fieldKey: string } | null>(null);
+  
+  // Import/Export dialog states (separate states for import and export)
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   
   // Column visibility state
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
@@ -439,7 +447,15 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       toast.success(t('assets.bulkDelete.success', `{0} {1} assets deleted successfully`, selectedAssets.length.toString(), title));
       setSelectedAssets([]);
       setIsBulkDeleteDialogOpen(false);
-      refetch();
+      
+      // More robust cache invalidation
+      await queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+      
+      // Reset to first page after deletion
+      setCurrentPage(1);
+      
+      // Refetch the data to ensure UI updates
+      await refetch();
     } catch (error: any) {
       console.error("Bulk delete error:", error);
       const apiError = error as ApiError;
@@ -451,7 +467,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       
       toast.error(message);
     }
-  }, [bulkDeleteMutation, refetch, selectedAssets, t, title]);
+  }, [bulkDeleteMutation, refetch, selectedAssets, t, title, assetType, queryClient]);
   
   const handleView = useCallback((asset: Asset) => {
     setViewAsset(asset);
@@ -509,6 +525,13 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     refetch();
   }, [assetType, queryClient, refetch, refetchCustomFields, editingAsset]);
   
+  // New function to handle import success
+  const handleImportSuccess = useCallback(() => {
+    // Refetch all data after successful import
+    queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+    refetch();
+  }, [assetType, queryClient, refetch]);
+  
   // Effect to handle select all/deselect all when assets change
   useEffect(() => {
     if (selectedAssets.length > 0 && selectedAssets.length === assets.length) {
@@ -518,6 +541,24 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       setIsSelectAllChecked(false);
     }
   }, [assets, selectedAssets.length]);
+
+  // Effect to clear selection when data changes significantly (e.g., after delete operations)
+  // But not after import operations
+  useEffect(() => {
+    // Only clear selection if we're not in the middle of a delete operation
+    // and if the data change is significant (not just adding new items)
+    if (!isBulkDeleteDialogOpen && !isDeleteDialogOpen && selectedAssets.length > 0) {
+      // Check if any of the selected assets still exist in the new data
+      const currentAssetIds = new Set(assets.map(asset => asset.id));
+      const hasValidSelections = selectedAssets.some(id => currentAssetIds.has(id));
+      
+      // Only clear selection if none of the selected assets exist in the new data
+      // This prevents clearing selection after import but still clears after delete
+      if (!hasValidSelections) {
+        setSelectedAssets([]);
+      }
+    }
+  }, [assets, isBulkDeleteDialogOpen, isDeleteDialogOpen, selectedAssets]);
 
   // Get columns for DataTable
   const dataTableColumns = useMemo(() => 
@@ -558,6 +599,15 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     const selectedIds = Object.keys(selectedRows).filter(key => selectedRows[key]);
     setSelectedAssets(selectedIds);
   }, []);
+  
+  // Effect to update select all checkbox state
+  useEffect(() => {
+    if (assets.length > 0 && selectedAssets.length === assets.length) {
+      setIsSelectAllChecked(true);
+    } else {
+      setIsSelectAllChecked(false);
+    }
+  }, [assets, selectedAssets.length]);
 
   // Pagination component
   const renderPagination = () => {
@@ -670,18 +720,38 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="hidden sm:flex">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="hidden sm:flex"
+              onClick={() => setIsExportDialogOpen(true)}
+            >
               <Download className="h-4 w-4 mr-2" />
               {t('common.export', "Export")}
             </Button>
-            <Button variant="outline" size="sm" className="hidden sm:flex">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="hidden sm:flex"
+              onClick={() => setIsImportDialogOpen(true)}
+            >
               <Upload className="h-4 w-4 mr-2" />
               {t('common.import', "Import")}
             </Button>
-            <Button variant="outline" size="icon" className="sm:hidden">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="sm:hidden"
+              onClick={() => setIsExportDialogOpen(true)}
+            >
               <Download className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" className="sm:hidden">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="sm:hidden"
+              onClick={() => setIsImportDialogOpen(true)}
+            >
               <Upload className="h-4 w-4" />
             </Button>
           </div>
@@ -816,15 +886,17 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
             searchable={false}
             filterable={false}
             sortable={true}
-            pagination={true}
+            pagination={false}
             pageSize={10}
             onRowSelectionChange={handleRowSelectionChange}
             loading={isLoading && (!data || assets.length === 0)}
             error={isError ? (error as ApiError).message : null}
             onRefresh={refetch}
             disableBuiltInFeatures={true}
+            // Pass the getRowId function to use asset IDs as row identifiers
+            getRowId={(row: Asset) => row.id}
           />
-          
+
           {renderPagination()}
         </CardContent>
       </Card>
@@ -873,7 +945,23 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
         onConfirm={confirmBulkDelete}
         error={bulkDeleteMutation.error ? (bulkDeleteMutation.error as ApiError).message : undefined}
       />
-
+      
+      {/* Import Dialog */}
+      <ExcelImportDialog
+        assetType={assetType}
+        title={title}
+        isOpen={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onImportSuccess={handleImportSuccess}
+      />
+      
+      {/* Export Dialog */}
+      <ExcelExportDialog
+        assetType={assetType}
+        title={title}
+        isOpen={isExportDialogOpen}
+        onClose={() => setIsExportDialogOpen(false)}
+      />
     </div>
   );
 }

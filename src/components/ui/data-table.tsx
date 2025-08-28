@@ -64,6 +64,8 @@ interface DataTableProps<TData, TValue> {
   onRefresh?: () => void
   // New prop to disable built-in features when columns are processed externally
   disableBuiltInFeatures?: boolean
+  // New prop to specify row ID accessor
+  getRowId?: (row: TData) => string
 }
 
 export function DataTable<TData, TValue>({
@@ -80,13 +82,28 @@ export function DataTable<TData, TValue>({
   error = null,
   onRefresh,
   disableBuiltInFeatures = false,
+  getRowId,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [searchValue, setSearchValue] = React.useState('')
-  const [globalFilter, setGlobalFilter] = React.useState('')
+
+  // Clear row selection when data changes (e.g., after bulk delete)
+  React.useEffect(() => {
+    // Only clear selection if there are no selected rows or if the data has changed significantly
+    if (Object.keys(rowSelection).length > 0) {
+      // Check if any of the selected row IDs still exist in the new data
+      const newDataIds = new Set(data.map((item, index) => getRowId ? getRowId(item) : index.toString()));
+      const hasValidSelections = Object.keys(rowSelection).some(id => newDataIds.has(id));
+      
+      // Only clear selection if none of the selected rows exist in the new data
+      if (!hasValidSelections) {
+        setRowSelection({});
+      }
+    }
+  }, [data, getRowId, rowSelection]);
 
   // Notify parent component of row selection changes
   React.useEffect(() => {
@@ -106,13 +123,11 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
-      globalFilter,
     },
     initialState: {
       pagination: {
@@ -121,14 +136,9 @@ export function DataTable<TData, TValue>({
       },
     },
     enableGlobalFilter: searchable,
+    // Use custom row ID function if provided
+    getRowId: getRowId ? (row: TData) => getRowId(row) : undefined,
   })
-
-  // Apply search filter
-  React.useEffect(() => {
-    if (searchable && !disableBuiltInFeatures) {
-      setGlobalFilter(searchValue)
-    }
-  }, [searchValue, searchable, disableBuiltInFeatures])
 
   // Reset pagination when data changes
   React.useEffect(() => {
@@ -150,7 +160,6 @@ export function DataTable<TData, TValue>({
   const handleClearFilters = () => {
     setColumnFilters([])
     setSearchValue('')
-    setGlobalFilter('')
   }
 
   // Remove duplicate columns based on id
@@ -200,107 +209,6 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      {/* Toolbar - only show if built-in features are enabled */}
-      {!disableBuiltInFeatures && (
-        <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
-          <div className="flex flex-col sm:flex-row gap-2 flex-1">
-            {searchable && (
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  value={searchValue}
-                  onChange={(event) => setSearchValue(event.target.value)}
-                  className="pl-8 w-full"
-                />
-              </div>
-            )}
-            
-            {filterable && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <span>Filter</span>
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleClearFilters}>
-                    Clear Filters
-                  </DropdownMenuItem>
-                  {/* Add filter options based on columns */}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-          
-          <div className="flex gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Eye className="h-4 w-4 mr-2" />
-                  Columns
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium leading-none">Columns</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Select which columns to display
-                    </p>
-                  </div>
-                  <Separator />
-                  <div className="grid gap-2 max-h-60 overflow-y-auto">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Select All</span>
-                      <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => toggleAllColumns(true)}
-                          className="h-8 px-2"
-                        >
-                          Show
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => toggleAllColumns(false)}
-                          className="h-8 px-2"
-                        >
-                          Hide
-                        </Button>
-                      </div>
-                    </div>
-                    {getUniqueColumns().map((column: Column<TData, unknown>) => {
-                      return (
-                        <div key={column.id} className="flex items-center justify-between">
-                          <span className="text-sm capitalize">
-                            {column.id.replace(/([A-Z])/g, ' $1').trim()}
-                          </span>
-                          <Checkbox
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                          />
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-            
-            {table.getFilteredSelectedRowModel().rows.length > 0 && (
-              <Button variant="destructive">
-                Delete ({table.getFilteredSelectedRowModel().rows.length})
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Table Container with Enhanced Horizontal Scrolling */}
       <div className="rounded-md border overflow-x-auto">
         <div className="inline-block min-w-full align-middle">
@@ -380,7 +288,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Pagination - only show if built-in features are enabled */}
-      {!disableBuiltInFeatures && pagination && (
+      {pagination && (
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
             {table.getFilteredSelectedRowModel().rows.length} of{' '}
