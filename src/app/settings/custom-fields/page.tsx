@@ -133,6 +133,48 @@ export default function CustomFieldsPage() {
     setIsFormOpen(true);
   };
   
+  const onSubmit = async (values: any) => {
+    try {
+      if (editingField) {
+        await updateMutation.mutateAsync(values);
+        toast.success('Custom field updated successfully');
+        // Invalidate asset queries to refresh asset lists with updated custom fields
+        // Map modelType to assetType for query invalidation
+        const assetTypeMap: Record<string, string> = {
+          PC: "pc",
+          Laptop: "laptop",
+          Printer: "printer",
+          License: "license",
+          WarehouseIT: "warehouse"
+        };
+        
+        const assetType = assetTypeMap[values.modelType] || values.modelType.toLowerCase();
+        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+        queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
+      } else {
+        await createMutation.mutateAsync(values);
+        toast.success('Custom field created successfully');
+        // Invalidate asset queries to refresh asset lists with new custom fields
+        // Map modelType to assetType for query invalidation
+        const assetTypeMap: Record<string, string> = {
+          PC: "pc",
+          Laptop: "laptop",
+          Printer: "printer",
+          License: "license",
+          WarehouseIT: "warehouse"
+        };
+        
+        const assetType = assetTypeMap[values.modelType] || values.modelType.toLowerCase();
+        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+        queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
+      }
+      setIsFormOpen(false);
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save custom field');
+    }
+  };
+  
   const handleDelete = async (id: string) => {
     try {
       // Get the field to know which model type to invalidate
@@ -144,33 +186,21 @@ export default function CustomFieldsPage() {
       
       // Invalidate asset queries to refresh asset lists after custom field deletion
       if (fieldToDelete) {
-        queryClient.invalidateQueries({ queryKey: ['assets', fieldToDelete.modelType] });
+        // Map modelType to assetType for query invalidation
+        const assetTypeMap: Record<string, string> = {
+          PC: "pc",
+          Laptop: "laptop",
+          Printer: "printer",
+          License: "license",
+          WarehouseIT: "warehouse"
+        };
+        
+        const assetType = assetTypeMap[fieldToDelete.modelType] || fieldToDelete.modelType.toLowerCase();
+        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
         queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete custom field');
-    }
-  };
-  
-  const onSubmit = async (values: any) => {
-    try {
-      if (editingField) {
-        await updateMutation.mutateAsync(values);
-        toast.success('Custom field updated successfully');
-        // Invalidate asset queries to refresh asset lists with updated custom fields
-        queryClient.invalidateQueries({ queryKey: ['assets', values.modelType] });
-        queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
-      } else {
-        await createMutation.mutateAsync(values);
-        toast.success('Custom field created successfully');
-        // Invalidate asset queries to refresh asset lists with new custom fields
-        queryClient.invalidateQueries({ queryKey: ['assets', values.modelType] });
-        queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
-      }
-      setIsFormOpen(false);
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save custom field');
     }
   };
   

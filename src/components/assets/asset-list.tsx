@@ -38,10 +38,12 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
-  Settings
+  Settings,
+  EyeOff,
+  Eye as EyeIcon
 } from "lucide-react";
 import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { AssetFormDialog } from "./asset-form";
 import { AssetDetailDialog } from "./asset-detail-dialog";
@@ -55,7 +57,16 @@ import { ApiError } from "@/lib/api";
 import { AssetListSkeleton } from "./asset-list-skeleton";
 import { InlineEditCell } from "./inline-edit-cell";
 import { useCustomFields } from "@/hooks/useApi";
+import { getModelType, isCustomField, getFieldValue } from "@/lib/custom-fields";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 
+// Define the props interface for AssetList component
 interface AssetListProps {
   assetType: string;
   title: string;
@@ -68,6 +79,10 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const tableRef = useRef<HTMLDivElement>(null);
+  
+  // Map assetType to modelType for custom fields
+  const modelType = getModelType(assetType);
   
   // Parse URL parameters for persistence across refreshes
   const initialPage = parseInt(searchParams.get("page") || "1");
@@ -82,29 +97,93 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
   const [editingCell, setEditingCell] = useState<{ assetId: string; fieldKey: string } | null>(null);
   
+  // Column visibility state
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  
   // Fetch custom fields for this asset type
-  const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(assetType);
+  const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(modelType);
   
-  // Combine standard columns with custom field columns
+  // Combine standard columns with custom field columns, removing duplicates
   const allColumns = useMemo(() => {
-    const customFieldColumns: AssetColumn[] = (customFieldsData || []).map(field => ({
-      key: field.name,
-      label: field.name
-    }));
+    // Create a Set of standard column keys for quick lookup
+    const standardColumnKeys = new Set(columns.map(c => c.key));
     
-    return [...columns, ...customFieldColumns];
+    // Filter out custom fields that have the same name as standard columns
+    const uniqueCustomFieldColumns: AssetColumn[] = (customFieldsData || [])
+      .filter(field => !standardColumnKeys.has(field.name))
+      .map(field => ({
+        key: field.name,
+        label: field.name
+      }));
+    
+    return [...columns, ...uniqueCustomFieldColumns];
   }, [columns, customFieldsData]);
-  
-  // Combine standard form fields with custom fields
-  const allFormFields = useMemo(() => {
-    const customFormFields: AssetFormField[] = (customFieldsData || []).map(field => ({
-      name: field.name,
-      label: field.name,
-      type: field.type as any,
-      required: field.required
+
+  // Initialize column visibility state
+  useEffect(() => {
+    const initialVisibility: Record<string, boolean> = {};
+    allColumns.forEach(column => {
+      initialVisibility[column.key] = true;
+    });
+    setColumnVisibility(initialVisibility);
+  }, [allColumns]);
+
+  // Toggle column visibility
+  const toggleColumnVisibility = (columnKey: string) => {
+    setColumnVisibility(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
     }));
+  };
+
+  // Toggle all columns visibility
+  const toggleAllColumns = (visible: boolean) => {
+    const newVisibility: Record<string, boolean> = {};
+    allColumns.forEach(column => {
+      newVisibility[column.key] = visible;
+    });
+    setColumnVisibility(newVisibility);
+  };
+
+  // Get visible columns
+  const visibleColumns = useMemo(() => {
+    return allColumns.filter(column => columnVisibility[column.key]);
+  }, [allColumns, columnVisibility]);
+
+  // Create a version of allColumns with unique keys for the detail dialog
+  const detailDialogColumns = useMemo(() => {
+    return allColumns.map((column, index) => {
+      // Determine if this is a custom field
+      const isCustom = isCustomField(column.key, {}, customFieldsData);
+      
+      // Create a unique key for this column
+      const uniqueKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
+      
+      return {
+        ...column,
+        key: uniqueKey,
+        originalKey: column.key, // Store the original key for reference
+        isCustomField: isCustom // Store whether this is a custom field
+      };
+    });
+  }, [allColumns, customFieldsData]);
+  
+  // Combine standard form fields with custom fields, removing duplicates
+  const allFormFields = useMemo(() => {
+    // Create a Set of standard field names for quick lookup
+    const standardFieldNames = new Set(formFields.map(f => f.name));
     
-    return [...formFields, ...customFormFields];
+    // Filter out custom fields that have the same name as standard fields
+    const uniqueCustomFormFields: AssetFormField[] = (customFieldsData || [])
+      .filter(field => !standardFieldNames.has(field.name))
+      .map(field => ({
+        name: field.name,
+        label: field.name,
+        type: field.type as any,
+        required: field.required
+      }));
+    
+    return [...formFields, ...uniqueCustomFormFields];
   }, [formFields, customFieldsData]);
   
   // Refetch custom fields when the component mounts or when assetType changes
@@ -281,9 +360,20 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   }, [assets, selectedAssets.length]);
   
   const handleFormSuccess = useCallback(() => {
+    // Invalidate the query to refetch all data
     queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+    
+    // Also invalidate asset detail queries if we were editing
+    if (editingAsset) {
+      queryClient.invalidateQueries({ queryKey: ['assets', assetType, editingAsset.id] });
+    }
+    
+    // Refetch custom fields in case they've been updated
+    refetchCustomFields();
+    
+    // Finally refetch the list
     refetch();
-  }, [assetType, queryClient, refetch]);
+  }, [assetType, queryClient, refetch, refetchCustomFields, editingAsset]);
   
   // Effect to handle select all/deselect all when assets change
   useEffect(() => {
@@ -505,6 +595,57 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              
+              {/* Column visibility control */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <EyeIcon className="h-4 w-4 mr-2" />
+                    {t('common.columns', "Columns")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">{t('common.columns', "Columns")}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {t('assets.list.columnVisibility', "Select which columns to display")}
+                      </p>
+                    </div>
+                    <Separator />
+                    <div className="grid gap-2 max-h-60 overflow-y-auto">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{t('common.selectAll', "Select All")}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => toggleAllColumns(true)}
+                          className="h-8 px-2"
+                        >
+                          {t('common.show', "Show")}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => toggleAllColumns(false)}
+                          className="h-8 px-2"
+                        >
+                          {t('common.hide', "Hide")}
+                        </Button>
+                      </div>
+                      {allColumns.map((column) => (
+                        <div key={column.key} className="flex items-center justify-between">
+                          <span className="text-sm">{t(column.label, column.label)}</span>
+                          <Checkbox
+                            checked={columnVisibility[column.key]}
+                            onCheckedChange={() => toggleColumnVisibility(column.key)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardHeader>
@@ -522,30 +663,35 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
             </div>
           ) : (
             <>
-              <div className="rounded-md border overflow-hidden">
-                <Table>
+              <div className="rounded-md border overflow-x-auto" ref={tableRef}>
+                <Table className="min-w-full">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={isSelectAllChecked}
-                          onChange={handleSelectAll}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
-                      {allColumns.map((column) => (
-                        <TableHead key={column.key}>
-                          {t(column.label, column.label)}
-                        </TableHead>
-                      ))}
-                      <TableHead className="text-right">{t('common.actions', "Actions")}</TableHead>
+                      {visibleColumns.map((column, index) => {
+                        // Determine if this is a custom field
+                        const isCustom = isCustomField(column.key, {}, customFieldsData);
+                        // Create a unique key for the header
+                        const uniqueHeaderKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
+                        
+                        return (
+                          <TableHead key={uniqueHeaderKey} className="whitespace-nowrap">
+                            {t(column.label, column.label)}
+                          </TableHead>
+                        );
+                      })}
+                      <TableHead className="text-right whitespace-nowrap">{t('common.actions', "Actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {assets.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={allColumns.length + 2} className="h-24 text-center">
+                        <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
                           {search || statusFilter 
                             ? t('common.noResults', "No results found")
                             : t('assets.list.empty', "No assets found")}
@@ -555,44 +701,46 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                       assets.map((asset) => (
                         <TableRow key={asset.id} className={selectedAssets.includes(asset.id) ? "bg-muted" : ""}>
                           <TableCell>
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={selectedAssets.includes(asset.id)}
-                              onChange={() => handleSelectAsset(asset.id)}
-                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              onCheckedChange={() => handleSelectAsset(asset.id)}
                             />
                           </TableCell>
-                          {allColumns.map((column) => {
+                          {visibleColumns.map((column, index) => {
                             // Find the corresponding form field for this column
                             const field = allFormFields.find(f => f.name === column.key);
                             
-                            // Determine the value for the cell
-                            // For custom fields, get the value from the customFields object
-                            const isCustomField = field && !(column.key in asset) && (asset.customFields && column.key in asset.customFields);
-                            const cellValue = isCustomField ? (asset.customFields as any)[column.key] : asset[column.key];
+                            // Determine if this is a custom field
+                            const isCustom = isCustomField(column.key, asset, customFieldsData);
+                            // Safely access the cell value
+                            const cellValue = getFieldValue(column.key, asset, isCustom);
+                            
+                            // Create a unique key to avoid duplicates
+                            const uniqueKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
                             
                             return (
-                              <TableCell key={column.key} className="py-2">
+                              <TableCell key={uniqueKey} className="py-2 whitespace-nowrap">
                                 {field ? (
                                   <InlineEditCell
                                     asset={asset}
                                     assetType={assetType}
                                     field={field}
                                     value={cellValue}
+                                    isCustomField={isCustom}
                                     onUpdate={(newValue) => {
                                       // Update the asset in the local state
                                       const updatedAssets = assets.map(a => 
                                         a.id === asset.id 
                                           ? { 
                                               ...a, 
-                                              ...(isCustomField 
+                                              ...(isCustom 
                                                 ? { customFields: { ...(a.customFields || {}), [column.key]: newValue } } 
                                                 : { [column.key]: newValue }
                                               )
                                             } 
                                           : a
                                       );
-                                      // We would need to update the query cache here
+                                      // Update the query cache to reflect the changes
                                       queryClient.setQueryData(
                                         ['assets', assetType, JSON.stringify({ page: currentPage, limit: 10, search, status: statusFilter })], 
                                         (oldData: any) => ({
@@ -600,6 +748,9 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                                           data: updatedAssets
                                         })
                                       );
+                                      
+                                      // Also invalidate the query to ensure data consistency
+                                      queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
                                     }}
                                   />
                                 ) : (
@@ -608,7 +759,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                               </TableCell>
                             );
                           })}
-                          <TableCell className="text-right py-2">
+                          <TableCell className="text-right py-2 whitespace-nowrap">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -649,10 +800,11 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       <AssetDetailDialog
         asset={viewAsset}
         title={title}
-        columns={allColumns}
+        columns={detailDialogColumns}
         isOpen={isViewDialogOpen}
         onClose={() => setIsViewDialogOpen(false)}
         onEdit={handleEditFromView}
+        assetType={assetType}
       />
       
       {/* Form Dialog */}

@@ -19,6 +19,8 @@ export interface AssetColumn {
   key: string;
   label: string;
   render?: (value: any) => React.ReactNode;
+  originalKey?: string; // For unique key handling
+  isCustomField?: boolean; // To identify custom fields
 }
 
 export interface AssetFormField {
@@ -36,6 +38,7 @@ export interface AssetFormField {
   pattern?: string;
   patternMessage?: string;
   render?: (value: any) => React.ReactNode;
+  isCustomField?: boolean; // Add this property
 }
 
 export interface AssetType {
