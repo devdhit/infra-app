@@ -69,6 +69,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const resolvedParams = await params;
     
+    // Validate input
+    if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      return new Response(JSON.stringify({ error: 'Invalid email format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     // Check if user exists
     const existingUser = await db.user.findUnique({
       where: { id: resolvedParams.id }
@@ -95,13 +103,31 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       email: body.email
     }
 
-    if (currentUser.role === 'admin') {
-      if (body.role) updateData.role = body.role
-      if (body.tenantId) updateData.tenantId = body.tenantId
+    // Validate role if provided
+    if (body.role) {
+      if (!['admin', 'user'].includes(body.role)) {
+        return new Response(JSON.stringify({ error: 'Invalid role' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      if (currentUser.role === 'admin') {
+        updateData.role = body.role
+      }
+    }
+
+    if (currentUser.role === 'admin' && body.tenantId !== undefined) {
+      updateData.tenantId = body.tenantId
     }
 
     // Hash password if provided
     if (body.password) {
+      if (body.password.length < 6) {
+        return new Response(JSON.stringify({ error: 'Password must be at least 6 characters long' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
       updateData.password = await hashPassword(body.password)
     }
 

@@ -201,5 +201,56 @@
     "validationError": "Please check the form for errors",
     "singleFieldError": "There is an error in the form. Please check the field marked in red.",
     "multipleFieldError": "There are {0} errors in the form. Please check the fields marked in red."
+  },
+  "users": {
+    "list": {
+      "description": "Manage your users",
+      "empty": "No users found"
+    },
+    "create": {
+      "success": "User created successfully"
+    },
+    "update": {
+      "success": "User updated successfully"
+    },
+    "delete": {
+      "success": "User deleted successfully",
+      "error": "Failed to delete user: {1}",
+      "title": "Delete User",
+      "description": "Are you sure you want to delete this user? This action cannot be undone."
+    },
+    "bulkDelete": {
+      "confirm": "Are you sure you want to delete {0} users?",
+      "success": "{0} users deleted successfully",
+      "error": "Failed to delete users"
+    }
+  },
+  "tenants": {
+    "list": {
+      "description": "Manage your tenants",
+      "empty": "No tenants found"
+    },
+    "create": {
+      "success": "Tenant created successfully"
+    },
+    "update": {
+      "success": "Tenant updated successfully"
+    },
+    "delete": {
+      "success": "Tenant deleted successfully",
+      "error": "Failed to delete tenant: {1}",
+      "title": "Delete Tenant",
+      "description": "Are you sure you want to delete this tenant? This action cannot be undone."
+    },
+    "bulkDelete": {
+      "confirm": "Are you sure you want to delete {0} tenants?",
+      "success": "{0} tenants deleted successfully",
+      "error": "Failed to delete tenants"
+    }
+  },
+  "bulkDelete": {
+    "confirmation": "Are you sure you want to delete {0} {1}? This action cannot be undone.",
+    "warning": "Important",
+    "warningDescription": "This action will permanently delete {0} {1} and cannot be undone. Please ensure you want to proceed."
   }
 }

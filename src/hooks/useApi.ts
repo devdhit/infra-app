@@ -263,6 +263,11 @@ export interface User {
   updatedAt: string
 }
 
+// Interface for user creation/update (includes password)
+export interface UserCreateUpdate extends User {
+  password?: string
+}
+
 export function useUsers() {
   return useApiQuery<User[]>(['users'], '/users')
 }
@@ -274,7 +279,7 @@ export function useUser(id: string) {
 export function useCreateUser() {
   const queryClient = useQueryClient()
   
-  return useApiMutation<User, Partial<User>>(
+  return useApiMutation<User, Partial<UserCreateUpdate>>(
     '/users',
     {
       onSuccess: () => {
@@ -301,7 +306,7 @@ export function useCreateUser() {
 export function useUpdateUser(id: string) {
   const queryClient = useQueryClient()
   
-  return useApiUpdate<User, Partial<User>>(
+  return useApiUpdate<User, Partial<UserCreateUpdate>>(
     `/users/${id}`,
     {
       onSuccess: () => {
@@ -329,8 +334,8 @@ export function useUpdateUser(id: string) {
 export function useDeleteUser(id: string) {
   const queryClient = useQueryClient()
   
-  return useApiDelete<void>(
-    `/users/${id}`,
+  return useApiDeleteWithId<void>(
+    `/users`,
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['users'] })
@@ -349,6 +354,30 @@ export function useDeleteUser(id: string) {
   )
 }
 
+// Bulk delete users hook
+export function useBulkDeleteUsers() {
+  const queryClient = useQueryClient()
+  
+  return useApiMutation<void, { ids: string[] }>(
+    '/users/bulk-delete',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['users'] })
+      },
+      onError: (error: ApiError) => {
+        console.error('Error bulk deleting users:', error)
+        let message = 'Failed to delete users'
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
+      }
+    }
+  )
+}
+
 // Tenant hooks
 export interface Tenant {
   id: string
@@ -356,6 +385,13 @@ export interface Tenant {
   description?: string
   createdAt: string
   updatedAt: string
+  _count?: {
+    users: number
+    pcs: number
+    laptops: number
+    printers: number
+    licenses: number
+  }
 }
 
 export function useTenants() {
@@ -424,8 +460,8 @@ export function useUpdateTenant(id: string) {
 export function useDeleteTenant(id: string) {
   const queryClient = useQueryClient()
   
-  return useApiDelete<void>(
-    `/tenants/${id}`,
+  return useApiDeleteWithId<void>(
+    `/tenants`,
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['tenants'] })
@@ -433,6 +469,30 @@ export function useDeleteTenant(id: string) {
       onError: (error: ApiError) => {
         console.error(`Error deleting tenant with id ${id}:`, error)
         let message = 'Failed to delete tenant'
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
+      }
+    }
+  )
+}
+
+// Bulk delete tenants hook
+export function useBulkDeleteTenants() {
+  const queryClient = useQueryClient()
+  
+  return useApiMutation<void, { ids: string[] }>(
+    '/tenants/bulk-delete',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['tenants'] })
+      },
+      onError: (error: ApiError) => {
+        console.error('Error bulk deleting tenants:', error)
+        let message = 'Failed to delete tenants'
         
         if (error.message) {
           message = error.message

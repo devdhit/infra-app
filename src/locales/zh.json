@@ -1,0 +1,21 @@
+{
+  "users": {
+    "bulkDelete": {
+      "confirm": "您确定要删除 {0} 个用户吗？",
+      "success": "成功删除 {0} 个用户",
+      "error": "删除用户失败"
+    }
+  },
+  "tenants": {
+    "bulkDelete": {
+      "confirm": "您确定要删除 {0} 个租户吗？",
+      "success": "成功删除 {0} 个租户",
+      "error": "删除租户失败"
+    }
+  },
+  "bulkDelete": {
+    "confirmation": "您确定要删除 {0} 个{1}吗？此操作无法撤销。",
+    "warning": "重要",
+    "warningDescription": "此操作将永久删除 {0} 个{1}且无法撤销。请确保您要继续。"
+  }
+}

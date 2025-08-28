@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Validate required fields
-    if (!body.name) {
+    if (!body.name || body.name.trim().length === 0) {
       return new Response(JSON.stringify({ error: 'Name is required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     const tenant = await db.tenant.create({
       data: {
-        name: body.name,
+        name: body.name.trim(),
         description: body.description || ''
       }
     })
@@ -66,7 +66,14 @@ export async function POST(request: NextRequest) {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
     })
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
+      return new Response(JSON.stringify({ error: 'A tenant with this name already exists' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    
     console.error('Error creating tenant:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,

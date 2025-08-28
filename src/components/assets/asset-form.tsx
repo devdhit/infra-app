@@ -197,13 +197,17 @@ export function AssetFormDialog({
   
   // Fetch custom fields for this asset type
   const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(modelType);
-  const customFields: AssetFormField[] = customFieldsData?.map((cf: any) => ({
-    name: cf.name,
-    label: cf.name,
-    type: cf.type as any,
-    required: cf.required,
-    isCustomField: true // Mark as custom field
-  })) || [];
+  
+  // Memoize customFields to prevent unnecessary re-renders
+  const customFields = useMemo<AssetFormField[]>(() => {
+    return customFieldsData?.map((cf: any) => ({
+      name: cf.name,
+      label: cf.name,
+      type: cf.type as any,
+      required: cf.required,
+      isCustomField: true // Mark as custom field
+    })) || [];
+  }, [customFieldsData]);
   
   // Refetch custom fields when the dialog opens or when assetType changes
   useEffect(() => {

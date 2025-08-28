@@ -63,6 +63,30 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      return new Response(JSON.stringify({ error: 'Invalid email format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Validate password length
+    if (body.password.length < 6) {
+      return new Response(JSON.stringify({ error: 'Password must be at least 6 characters long' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Validate role if provided
+    if (body.role && !['admin', 'user'].includes(body.role)) {
+      return new Response(JSON.stringify({ error: 'Invalid role' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     // Check if user already exists
     const existingUser = await db.user.findUnique({
       where: { email: body.email }
