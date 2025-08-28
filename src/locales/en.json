@@ -215,6 +215,8 @@
       "placeholder": "Search users..."
     },
     "create": {
+      "title" : "Add User",
+      "description": "Add a new user to the system",
       "button": "Add User",
       "success": "User created successfully",
       "unauthorized": "You do not have permission to create users"

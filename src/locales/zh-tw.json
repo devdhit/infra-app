@@ -215,6 +215,8 @@
       "placeholder": "搜尋使用者..."
     },
     "create": {
+      "users": "使用者",
+      "description": "新增使用者",
       "button": "新增使用者",
       "success": "使用者新增成功",
       "unauthorized": "您沒有權限新增使用者"
