@@ -385,8 +385,20 @@ export class AssetApiHandler<T> {
       }
 
       // Filter out undefined values to prevent setting fields to undefined
+      // Also filter out invalid fields that don't exist in the model
+      const validFields = {
+        'PC': ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userId', 'status', 'note', 'customFields'],
+        'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'userId', 'email', 'model', 'status', 'customFields'],
+        'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
+        'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
+        'WarehouseIT': ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 'customFields']
+      }
+
+      const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
+
       const updateData = Object.keys(body || {}).reduce((acc, key) => {
-        if (body[key as keyof T] !== undefined) {
+        // Only include valid fields for this model and non-undefined values
+        if (modelValidFields.includes(key) && body[key as keyof T] !== undefined) {
           (acc as any)[key] = body[key as keyof T];
         }
         return acc;

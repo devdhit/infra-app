@@ -38,13 +38,14 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 import { Asset, AssetFormField } from "@/types/assets";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { ApiError, ValidationError } from "@/lib/api";
-import { AlertCircle, Settings } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AssetFormSkeleton } from "./asset-form-skeleton";
 import { useRouter } from "next/navigation";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { getModelType } from "@/lib/custom-fields";
 
 interface AssetFormProps {
   assetType: string;
@@ -191,13 +192,17 @@ export function AssetFormDialog({
   const isEditing = !!initialData;
   const router = useRouter();
   
+  // Map assetType to modelType for custom fields
+  const modelType = getModelType(assetType);
+  
   // Fetch custom fields for this asset type
-  const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(assetType);
+  const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(modelType);
   const customFields: AssetFormField[] = customFieldsData?.map((cf: any) => ({
     name: cf.name,
     label: cf.name,
     type: cf.type as any,
-    required: cf.required
+    required: cf.required,
+    isCustomField: true // Mark as custom field
   })) || [];
   
   // Refetch custom fields when the dialog opens or when assetType changes
@@ -207,11 +212,20 @@ export function AssetFormDialog({
     }
   }, [isOpen, assetType, refetchCustomFields]);
   
-  // Combine standard fields with custom fields
-  const allFields = [...fields, ...customFields];
+  // Combine standard fields with custom fields, removing duplicates
+  const allFields = useMemo(() => {
+    // Create a Set of standard field names for quick lookup
+    const standardFieldNames = new Set(fields.map(f => f.name));
+    
+    // Filter out custom fields that have the same name as standard fields
+    const uniqueCustomFields = customFields.filter(cf => !standardFieldNames.has(cf.name));
+    
+    // Combine standard fields with unique custom fields
+    return [...fields, ...uniqueCustomFields];
+  }, [fields, customFields]);
   
   // Generate schema dynamically based on all fields
-  const Schema = generateSchema(allFields);
+  const Schema = useMemo(() => generateSchema(allFields), [allFields]);
   
   const form = useForm<z.infer<typeof Schema>>({
     resolver: zodResolver(Schema),
@@ -245,6 +259,28 @@ export function AssetFormDialog({
           return acc;
         }, {} as Record<string, any>);
         
+        // Handle custom fields separately
+        if (initialData.customFields) {
+          // Add custom fields to the form data
+          Object.entries(initialData.customFields).forEach(([key, value]) => {
+            // Format date values if needed
+            if (typeof value === 'string' && value && key.toLowerCase().includes('date')) {
+              try {
+                const dateValue = new Date(value);
+                if (!isNaN(dateValue.getTime())) {
+                  formattedData[key] = dateValue.toISOString().split('T')[0];
+                } else {
+                  formattedData[key] = value;
+                }
+              } catch (e) {
+                formattedData[key] = value;
+              }
+            } else {
+              formattedData[key] = value === null ? undefined : value;
+            }
+          });
+        }
+        
         form.reset(formattedData);
       } else {
         // If creating, reset to empty form
@@ -259,36 +295,64 @@ export function AssetFormDialog({
   const onSubmit = async (values: z.infer<typeof Schema>) => {
     try {
       // Process values before sending to API
-      const processedValues = Object.entries(values).reduce((acc, [key, value]) => {
+      const processedValues: Record<string, any> = { customFields: {} };
+      
+      // Get the standard field names from the initial fields prop
+      const standardFieldNames = fields.map(f => f.name);
+      
+      // Process each field, separating standard fields from custom fields
+      Object.entries(values).forEach(([key, value]) => {
+        // Skip ID field
+        if (key === 'id') return;
+        
+        // Determine if this is a standard field or custom field
+        const isStandardField = standardFieldNames.includes(key);
+        
+        // Process the value
+        let processedValue = value;
+        
         // Handle date fields
         if (key.toLowerCase().includes('date') && value) {
           try {
             const dateValue = new Date(value as string);
             if (dateValue.toString() !== 'Invalid Date') {
               // Convert to ISO string for API
-              acc[key] = dateValue.toISOString();
+              processedValue = dateValue.toISOString();
             } else {
               // If invalid date, set to null
-              acc[key] = null;
+              processedValue = null;
             }
           } catch (e) {
             // If any error occurs, set to null
-            acc[key] = null;
+            processedValue = null;
           }
         } else {
-          // Exclude ID from the processed values as it should not be in the request body for updates
-          if (key !== 'id') {
-            // Convert empty strings to null for optional fields
-            acc[key] = value === "" || value === undefined ? null : value;
-          }
+          // Convert empty strings to null for optional fields
+          processedValue = value === "" || value === undefined ? null : value;
         }
-        return acc;
-      }, {} as Record<string, any>);
+        
+        // Store the value in the appropriate place
+        if (isStandardField) {
+          processedValues[key] = processedValue;
+        } else {
+          // For custom fields, add to the customFields object
+          processedValues.customFields[key] = processedValue;
+        }
+      });
+      
+      // If there are no custom fields, delete the empty customFields object
+      if (Object.keys(processedValues.customFields).length === 0) {
+        delete processedValues.customFields;
+      } else if (initialData?.customFields) {
+        // If editing, merge with existing custom fields to preserve ones that weren't in the form
+        processedValues.customFields = {
+          ...initialData.customFields,
+          ...processedValues.customFields
+        };
+      }
       
       if (isEditing) {
-        // For updates, don't include the ID in the request body
-        const { id, ...updateValues } = processedValues;
-        await updateMutation.mutateAsync(updateValues);
+        await updateMutation.mutateAsync(processedValues);
         toast.success(t('assets.update.success', `{0} updated successfully`, title));
       } else {
         await createMutation.mutateAsync(processedValues as z.infer<typeof Schema>);
@@ -384,7 +448,16 @@ export function AssetFormDialog({
                   name={field.name}
                   render={({ field: formField }) => (
                     <FormItem>
-                      <FormLabel>{field.label} {field.required && <span className="text-red-500">*</span>}</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>
+                          {field.label} {field.required && <span className="text-red-500">*</span>}
+                        </FormLabel>
+                        {field.isCustomField && (
+                          <Badge variant="secondary" className="h-5 text-xs">
+                            {t('assets.form.customField', "Custom Field")}
+                          </Badge>
+                        )}
+                      </div>
                       <FormControl>
                         {field.type === "textarea" ? (
                           <Textarea 

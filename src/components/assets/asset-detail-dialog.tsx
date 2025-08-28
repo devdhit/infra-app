@@ -7,14 +7,18 @@ import { formatDate } from "@/lib/utils";
 import { AssetDialog } from "./asset-dialog";
 import { Calendar, Hash, Tag, User, Building, MapPin, Info } from "lucide-react";
 import { AssetDetailSkeleton } from "./asset-detail-skeleton";
+import { useAsset } from "@/hooks/useApi";
+import { useEffect } from "react";
+import { isCustomField, getFieldValue } from "@/lib/custom-fields";
 
 interface AssetDetailProps {
   asset: Asset | null;
   title: string;
-  columns: AssetColumn[];
+  columns: (AssetColumn & { originalKey?: string; isCustomField?: boolean })[];
   isOpen: boolean;
   onClose: () => void;
   onEdit: () => void;
+  assetType?: string;
 }
 
 export function AssetDetailDialog({
@@ -24,25 +28,52 @@ export function AssetDetailDialog({
   isOpen,
   onClose,
   onEdit,
+  assetType
 }: AssetDetailProps) {
   const { t } = useTranslation();
+  
+  // If assetType and asset id are provided, we can refetch the asset when the dialog opens
+  // This ensures we always have the latest data, including custom fields
+  const { data: refreshedAsset, refetch } = useAsset<Asset>(
+    assetType || '',
+    asset?.id || ''
+  );
+  
+  // Refetch when the dialog opens and asset changes
+  useEffect(() => {
+    if (isOpen && asset?.id && assetType) {
+      refetch();
+    }
+  }, [isOpen, asset?.id, assetType, refetch]);
+  
+  // Use the refreshed asset data if available, otherwise fall back to the original asset
+  const displayAsset = refreshedAsset || asset;
 
   // Show skeleton while loading
-  if (!asset && isOpen) {
+  if (!displayAsset && isOpen) {
     return <AssetDetailSkeleton title={title} fieldCount={columns.length} />;
   }
 
-  if (!asset) return null;
+  if (!displayAsset) return null;
 
   // Helper function to format displayed values
   const formatValue = (key: string, value: any): React.ReactNode => {
+    // Handle undefined or null values
+    if (value === undefined || value === null) {
+      return '-';
+    }
+    
     // Handle date fields
     if (key.toLowerCase().includes('date') && value) {
-      return formatDate(value);
+      try {
+        return formatDate(value);
+      } catch (e) {
+        return value;
+      }
     }
     
     // Handle status fields
-    if (key === 'status' && value) {
+    if (key === 'status' && typeof value === 'string') {
       const statusClass = {
         active: "bg-green-100 text-green-800",
         inactive: "bg-gray-100 text-gray-800",
@@ -56,7 +87,7 @@ export function AssetDetailDialog({
       };
       
       return (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass[value as keyof typeof statusClass] || ""}`}>
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass[value.toLowerCase() as keyof typeof statusClass] || ""}`}>
           {t(`assets.status.${value}`, value)}
         </span>
       );
@@ -69,7 +100,10 @@ export function AssetDetailDialog({
     
     // Handle objects (like nested data)
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return JSON.stringify(value, null, 2);
+      if ('name' in value) {
+        return value.name;
+      }
+      return JSON.stringify(value);
     }
     
     // Handle arrays
@@ -78,32 +112,45 @@ export function AssetDetailDialog({
     }
     
     // Default handling
-    return value || '-';
+    return String(value);
   };
 
   // Helper function to get icon for a field
   const getFieldIcon = (key: string) => {
-    const iconMap: Record<string, React.ReactNode> = {
-      date: <Calendar className="h-4 w-4" />,
-      barcode: <Hash className="h-4 w-4" />,
-      sap: <Tag className="h-4 w-4" />,
-      user: <User className="h-4 w-4" />,
-      dept: <Building className="h-4 w-4" />,
-      location: <MapPin className="h-4 w-4" />,
-      note: <Info className="h-4 w-4" />,
-      default: <Info className="h-4 w-4" />
-    };
-
-    // Find matching icon based on key
-    for (const [pattern, icon] of Object.entries(iconMap)) {
-      if (pattern !== 'default' && key.toLowerCase().includes(pattern)) {
-        return icon;
-      }
+    const keyLower = key.toLowerCase();
+    
+    if (keyLower.includes('date') || keyLower.includes('created') || keyLower.includes('updated')) {
+      return <Calendar className="h-4 w-4" />;
     }
     
-    return iconMap.default;
+    if (keyLower.includes('barcode') || keyLower.includes('code') || keyLower.includes('id')) {
+      return <Hash className="h-4 w-4" />;
+    }
+    
+    if (keyLower.includes('sap')) {
+      return <Tag className="h-4 w-4" />;
+    }
+    
+    if (keyLower.includes('user') || keyLower.includes('name')) {
+      return <User className="h-4 w-4" />;
+    }
+    
+    if (keyLower.includes('dept')) {
+      return <Building className="h-4 w-4" />;
+    }
+    
+    if (keyLower.includes('location')) {
+      return <MapPin className="h-4 w-4" />;
+    }
+    
+    if (keyLower.includes('note')) {
+      return <Info className="h-4 w-4" />;
+    }
+    
+    // Default icon
+    return <Info className="h-4 w-4" />;
   };
-
+  
   const footer = (
     <>
       <Button variant="outline" onClick={onClose}>
@@ -132,23 +179,39 @@ export function AssetDetailDialog({
           </div>
           <div className="p-4">
             <div className="grid gap-4">
-              {columns.map((column) => (
-                <div key={column.key} className="flex items-start gap-3 py-2">
-                  <div className="mt-0.5 text-muted-foreground">
-                    {getFieldIcon(column.key)}
-                  </div>
-                  <div className="grid gap-1 flex-1">
-                    <div className="text-sm font-medium leading-none text-muted-foreground">
-                      {t(`assets.${column.key}`, column.label)}
+              {columns.map((column, index) => {
+                // Extract the original key and custom field status
+                const originalKey = column.originalKey || column.key;
+                // Use the utility function to determine if this is a custom field
+                const isCustom = isCustomField(originalKey, displayAsset, undefined) || column.isCustomField === true;
+                
+                // Get the value using the utility function
+                const value = getFieldValue(originalKey, displayAsset, isCustom);
+                
+                // Use the unique key for React
+                const uniqueKey = column.key;
+                
+                return (
+                  <div key={uniqueKey} className="flex items-start gap-3 py-2">
+                    <div className="mt-0.5 text-muted-foreground">
+                      {getFieldIcon(originalKey)}
                     </div>
-                    <div className="text-sm">
-                      {column.render 
-                        ? column.render(asset[column.key]) 
-                        : formatValue(column.key, asset[column.key])}
+                    <div className="grid gap-1 flex-1">
+                      <div className="text-sm font-medium leading-none text-muted-foreground">
+                        {t(`assets.${originalKey}`, column.label)}
+                        {isCustom && (
+                          <span className="ml-2 text-xs bg-gray-100 text-gray-700 px-1 py-0.5 rounded">Custom</span>
+                        )}
+                      </div>
+                      <div className="text-sm">
+                        {column.render 
+                          ? column.render(value) 
+                          : formatValue(originalKey, value)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -167,7 +230,7 @@ export function AssetDetailDialog({
                     ID
                   </div>
                   <div className="text-sm font-mono text-xs break-all">
-                    {asset.id}
+                    {displayAsset.id}
                   </div>
                 </div>
               </div>
@@ -178,7 +241,7 @@ export function AssetDetailDialog({
                     {t('assets.view.createdAt', 'Created At')}
                   </div>
                   <div className="text-sm">
-                    {asset.createdAt ? formatDate(asset.createdAt) : '-'}
+                    {displayAsset.createdAt ? formatDate(displayAsset.createdAt) : '-'}
                   </div>
                 </div>
               </div>
@@ -189,11 +252,11 @@ export function AssetDetailDialog({
                     {t('assets.view.updatedAt', 'Updated At')}
                   </div>
                   <div className="text-sm">
-                    {asset.updatedAt ? formatDate(asset.updatedAt) : '-'}
+                    {displayAsset.updatedAt ? formatDate(displayAsset.updatedAt) : '-'}
                   </div>
                 </div>
               </div>
-              {asset.tenantId && (
+              {displayAsset.tenantId && (
                 <div className="flex items-center gap-3 py-2">
                   <Building className="h-4 w-4 text-muted-foreground" />
                   <div className="grid gap-1">
@@ -201,7 +264,7 @@ export function AssetDetailDialog({
                       {t('assets.view.tenantId', 'Tenant ID')}
                     </div>
                     <div className="text-sm font-mono text-xs break-all">
-                      {asset.tenantId}
+                      {displayAsset.tenantId}
                     </div>
                   </div>
                 </div>

@@ -18,6 +18,7 @@ import { useTranslation } from "@/hooks/use-translation"
 import { Badge } from "@/components/ui/badge"
 import { Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { getModelType, isCustomField, createUpdateData } from "@/lib/custom-fields"
 
 interface InlineEditCellProps {
   asset: Asset
@@ -25,25 +26,28 @@ interface InlineEditCellProps {
   field: AssetFormField
   value: any
   onUpdate: (newValue: any) => void
+  isCustomField?: boolean // Add this prop to explicitly indicate if it's a custom field
 }
 
-export function InlineEditCell({ asset, assetType, field, value, onUpdate }: InlineEditCellProps) {
+export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField }: InlineEditCellProps) {
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value || '')
   const inputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
+  // Map assetType to modelType for custom fields
+  const modelType = getModelType(assetType);
+
   // Determine if this is a custom field
-  // Custom fields are those that are not standard asset properties and are defined in the customFields object
-  const isCustomField = asset.customFields && field.name in asset.customFields;
-  
+  const isCustom = isCustomField(field.name, asset, undefined) || propIsCustomField === true;
+
   // Always call both hooks to comply with React's rules of hooks
-  const updateCustomFieldsMutation = useUpdateAssetCustomFields(assetType, asset.id)
+  const updateCustomFieldsMutation = useUpdateAssetCustomFields(modelType, asset.id)
   const updateAssetMutation = useUpdateAsset(assetType, asset.id)
-  
+
   // Use the appropriate mutation based on whether this is a custom field
-  const updateMutation = isCustomField ? updateCustomFieldsMutation : updateAssetMutation
+  const updateMutation = isCustom ? updateCustomFieldsMutation : updateAssetMutation
   
   // Focus the input when editing starts
   useEffect(() => {
@@ -90,21 +94,8 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate }: Inl
         processedValue = null
       }
       
-      // Update the asset
-      let updateData
-      if (isCustomField) {
-        // For custom fields, update the customFields object
-        const currentCustomFields = asset.customFields || {}
-        updateData = {
-          customFields: {
-            ...currentCustomFields,
-            [field.name]: processedValue
-          }
-        }
-      } else {
-        // For standard fields
-        updateData = { [field.name]: processedValue }
-      }
+      // Create update data using utility function
+      const updateData = createUpdateData(field.name, processedValue, isCustom, asset);
       
       await updateMutation.mutateAsync(updateData)
       
@@ -114,10 +105,10 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate }: Inl
       // Exit edit mode
       setIsEditing(false)
       
-      toast.success(t('assets.update.success', `{0} updated successfully`, field.label))
+      toast.success(t('assets.update.success', '{0} updated successfully', field.label))
     } catch (error: any) {
       console.error("Inline edit error:", error)
-      let message = t('assets.update.error', `Failed to update {0}`, field.label)
+      let message = t('assets.update.error', 'Failed to update {0}', field.label)
       
       if (error.message) {
         message = error.message
@@ -142,7 +133,7 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate }: Inl
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{field.label}</h3>
-              {isCustomField && (
+              {isCustom && (
                 <Badge variant="secondary" className="text-xs">
                   Custom Field
                 </Badge>
@@ -206,7 +197,7 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate }: Inl
                 <p className="text-sm text-muted-foreground">{field.description}</p>
               </div>
             )}
-            
+
             <div className="flex justify-end gap-2">
               <Button 
                 variant="outline" 
@@ -245,7 +236,7 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate }: Inl
          field.type === 'boolean' ? (value ? 'Yes' : 'No') : 
          String(value || '')}
       </div>
-      {isCustomField && (
+      {isCustom && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>

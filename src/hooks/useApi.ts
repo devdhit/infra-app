@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, ValidationError } from '@/lib/api'
 import { toast } from 'sonner'
+import { getModelType } from '@/lib/custom-fields'
 
 // Generic API hook
 export function useApiQuery<T>(key: string[], url: string, options = {}) {
@@ -507,8 +508,10 @@ export interface CustomField {
 }
 
 export function useCustomFields(modelType?: string) {
-  const queryString = modelType ? `?modelType=${modelType}` : ''
-  return useApiQuery<CustomField[]>(['custom-fields', modelType || 'all'], `/custom-fields${queryString}`)
+  // Use the utility function to ensure consistent model type mapping
+  const mappedModelType = modelType ? getModelType(modelType) : undefined;
+  const queryString = mappedModelType ? `?modelType=${mappedModelType}` : ''
+  return useApiQuery<CustomField[]>(['custom-fields', mappedModelType || 'all'], `/custom-fields${queryString}`)
 }
 
 export function useCreateCustomField() {
@@ -596,7 +599,13 @@ export function useUpdateAssetCustomFields(assetType: string, id: string) {
     `/assets/custom-fields/${id}?assetType=${assetType}`,
     {
       onSuccess: () => {
+        // Invalidate asset list queries
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
+        
+        // Invalidate the specific asset query to ensure view/edit dialogs refresh
+        queryClient.invalidateQueries({ queryKey: ['assets', assetType, id] })
+        
+        // Invalidate custom fields queries
         queryClient.invalidateQueries({ queryKey: ['asset-custom-fields', assetType, id] })
       },
       onError: (error: ApiError) => {

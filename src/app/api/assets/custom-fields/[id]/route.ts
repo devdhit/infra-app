@@ -54,7 +54,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return notFoundResponse(`${assetType} asset not found`)
     }
 
-    // Prepare the update data
+    // Prepare the update data - only include valid fields for the model
     const updateData: any = {}
     
     // Handle customFields specifically
@@ -62,9 +62,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       updateData.customFields = body.customFields
     }
     
-    // Handle other fields
+    // Only include fields that are valid for this model type
+    // This prevents Prisma errors when invalid fields are sent
+    const validFields = {
+      'PC': ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userId', 'status', 'note', 'customFields'],
+      'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'userId', 'email', 'model', 'status', 'customFields'],
+      'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
+      'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
+      'WarehouseIT': ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 'customFields']
+    }
+    
+    const modelValidFields = validFields[assetType as keyof typeof validFields] || []
+    
+    // Handle other fields - only include valid fields for this model
     Object.keys(body).forEach(key => {
-      if (key !== 'id' && key !== 'customFields') {
+      if (key !== 'id' && key !== 'customFields' && modelValidFields.includes(key)) {
         updateData[key] = body[key]
       }
     })
