@@ -32,8 +32,15 @@ export default function LoginPage() {
       await loginMutation.mutateAsync({ email, password });
       router.push('/dashboard');
       toast.success(t('auth.login.success') || 'Logged in successfully');
-    } catch (error) {
-      toast.error(t('auth.login.error') || 'Invalid email or password');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      let message = t('auth.login.error') || 'Invalid email or password';
+      
+      if (error?.message) {
+        message = error.message;
+      }
+      
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

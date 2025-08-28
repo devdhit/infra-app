@@ -21,14 +21,14 @@ import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"
 interface UsersTableProps {
   users: User[];
   tenants: Tenant[];
-  onEdit: (user: User | null) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (user: User | null) => void;
+  onDelete?: (id: string) => void;
   isDeleting: boolean;
   deletingUserId: string | null;
 }
 
 // Define columns for the DataTable
-const useUserColumns = (t: (key: string, fallback?: string) => string, onEdit: (user: User) => void, onDelete: (id: string) => void, isDeleting: boolean, deletingUserId: string | null, tenants: Tenant[]): ColumnDef<User>[] => {
+const useUserColumns = (t: (key: string, fallback?: string) => string, onEdit: ((user: User) => void) | undefined, onDelete: ((id: string) => void) | undefined, isDeleting: boolean, deletingUserId: string | null, tenants: Tenant[]): ColumnDef<User>[] => {
   return useMemo(() => [
     {
       id: 'select',
@@ -89,6 +89,11 @@ const useUserColumns = (t: (key: string, fallback?: string) => string, onEdit: (
       cell: ({ row }) => {
         const user = row.original;
         
+        // If no action handlers are provided, don't show actions
+        if (!onEdit && !onDelete) {
+          return null;
+        }
+        
         return (
           <div className="text-right">
             <DropdownMenu>
@@ -99,26 +104,30 @@ const useUserColumns = (t: (key: string, fallback?: string) => string, onEdit: (
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(user)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  {t('common.edit', 'Edit')}
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onDelete(user.id)}
-                  disabled={isDeleting && deletingUserId === user.id}
-                >
-                  {isDeleting && deletingUserId === user.id ? (
-                    <div className="flex items-center">
-                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                      {t('common.deleting', 'Deleting...')}
-                    </div>
-                  ) : (
-                    <>
-                      <Trash className="mr-2 h-4 w-4" />
-                      {t('common.delete', 'Delete')}
-                    </>
-                  )}
-                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(user)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    {t('common.edit', 'Edit')}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem 
+                    onClick={() => onDelete(user.id)}
+                    disabled={isDeleting && deletingUserId === user.id}
+                  >
+                    {isDeleting && deletingUserId === user.id ? (
+                      <div className="flex items-center">
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                        {t('common.deleting', 'Deleting...')}
+                      </div>
+                    ) : (
+                      <>
+                        <Trash className="mr-2 h-4 w-4" />
+                        {t('common.delete', 'Delete')}
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -155,15 +164,16 @@ export function UsersTable({
 
   // Handle bulk delete
   const handleBulkDelete = useCallback(() => {
-    if (selectedUsers.length === 0) {
-      // Show error message
+    if (selectedUsers.length === 0 || !onDelete) {
+      // Show error message or do nothing
       return
     }
     setIsBulkDeleteDialogOpen(true)
-  }, [selectedUsers.length])
+  }, [selectedUsers.length, onDelete])
 
   // Confirm bulk delete
   const confirmBulkDelete = useCallback(() => {
+    if (!onDelete) return;
     // This will be handled by the parent component
     onDelete(selectedUsers.join(',')) // Pass selected IDs as a comma-separated string
     setIsBulkDeleteDialogOpen(false)
@@ -189,16 +199,18 @@ export function UsersTable({
           />
         </div>
         <div className="flex gap-2">
-          {selectedUsers.length > 0 && (
+          {selectedUsers.length > 0 && onDelete && (
             <Button variant="destructive" onClick={handleBulkDelete}>
               <Trash className="h-4 w-4 mr-2" />
               {t('common.delete', 'Delete')} ({selectedUsers.length})
             </Button>
           )}
-          <Button onClick={() => onEdit(null)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t('users.create.button') || 'Add User'}
-          </Button>
+          {onEdit && (
+            <Button onClick={() => onEdit(null)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('users.create.button') || 'Add User'}
+            </Button>
+          )}
         </div>
       </div>
 

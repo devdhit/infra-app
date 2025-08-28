@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card"
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useTenants, useBulkDeleteUsers } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
+import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { UsersTable } from "@/components/users/users-table"
 import { UserForm } from "@/components/users/user-form"
@@ -21,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 export default function UsersPage() {
   const { t } = useTranslation()
+  const { checkPermission } = usePermissions()
   const queryClient = useQueryClient()
   const { data: users = [], isLoading, isError, error, refetch } = useUsers()
   const { data: tenants = [] } = useTenants()
@@ -33,7 +35,33 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null)
 
+  // Check permissions
+  const canViewUsers = checkPermission('users', 'view')
+  const canCreateUsers = checkPermission('users', 'create')
+  const canEditUsers = checkPermission('users', 'edit')
+  const canDeleteUsers = checkPermission('users', 'delete')
+  const canBulkDeleteUsers = checkPermission('users', 'bulkDelete')
+
+  // If user doesn't have view permission, show unauthorized message
+  if (!canViewUsers) {
+    return (
+      <div className="flex items-center justify-center h-52">
+        <div className="text-center">
+          <p className="text-red-500">{t('common.unauthorized') || 'You do not have permission to view this page'}</p>
+        </div>
+      </div>
+    )
+  }
+
   const handleEdit = (user: User | null) => {
+    if (user && !canEditUsers) {
+      toast.error(t('users.edit.unauthorized') || 'You do not have permission to edit users')
+      return
+    }
+    if (!user && !canCreateUsers) {
+      toast.error(t('users.create.unauthorized') || 'You do not have permission to create users')
+      return
+    }
     setEditingUser(user)
     setIsDialogOpen(true)
   }
@@ -41,6 +69,10 @@ export default function UsersPage() {
   const handleDelete = async (id: string) => {
     // Check if it's a bulk delete (comma-separated IDs)
     if (id.includes(',')) {
+      if (!canBulkDeleteUsers) {
+        toast.error(t('users.bulkDelete.unauthorized') || 'You do not have permission to bulk delete users')
+        return
+      }
       // Handle bulk delete
       const ids = id.split(',')
       if (window.confirm(t('users.bulkDelete.confirm', 'Are you sure you want to delete {0} users?', ids.length.toString()) || 
@@ -55,6 +87,10 @@ export default function UsersPage() {
         }
       }
     } else {
+      if (!canDeleteUsers) {
+        toast.error(t('users.delete.unauthorized') || 'You do not have permission to delete users')
+        return
+      }
       // Handle single delete
       setDeleteUserId(id)
       if (window.confirm(t('users.delete.confirm') || 'Are you sure you want to delete this user?')) {
@@ -72,6 +108,10 @@ export default function UsersPage() {
   const handleSubmit = async (data: UserFormValues) => {
     try {
       if (editingUser) {
+        if (!canEditUsers) {
+          toast.error(t('users.update.unauthorized') || 'You do not have permission to update users')
+          return
+        }
         // Update existing user
         try {
           // Use the API client directly to make the PUT request with proper authentication
@@ -94,6 +134,10 @@ export default function UsersPage() {
           toast.error(error.message || t('users.update.error') || 'Failed to update user')
         }
       } else {
+        if (!canCreateUsers) {
+          toast.error(t('users.create.unauthorized') || 'You do not have permission to create users')
+          return
+        }
         // Create new user
         try {
           await createUserMutation.mutateAsync({
@@ -161,28 +205,35 @@ export default function UsersPage() {
                 {t('users.list.description') || 'A list of all users in the system'}
               </CardDescription>
             </div>
+            {canCreateUsers && (
+              <Button onClick={() => handleEdit(null)}>
+                {t('users.create.button') || 'Add User'}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           <UsersTable 
             users={users}
             tenants={tenants}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={canEditUsers ? handleEdit : undefined}
+            onDelete={canDeleteUsers || canBulkDeleteUsers ? handleDelete : undefined}
             isDeleting={deleteMutation.isPending || bulkDeleteMutation.isPending}
             deletingUserId={deleteUserId}
           />
         </CardContent>
       </Card>
 
-      <UserForm
-        open={isDialogOpen}
-        onOpenChange={handleDialogOpenChange}
-        editingUser={editingUser}
-        tenants={tenants}
-        onSubmit={handleSubmit}
-        isSubmitting={createUserMutation.isPending || (editingUser ? false : false)} // Simplified for now
-      />
+      {(canCreateUsers || canEditUsers) && (
+        <UserForm
+          open={isDialogOpen}
+          onOpenChange={handleDialogOpenChange}
+          editingUser={editingUser}
+          tenants={tenants}
+          onSubmit={handleSubmit}
+          isSubmitting={createUserMutation.isPending || (editingUser ? false : false)} // Simplified for now
+        />
+      )}
     </div>
   )
 }

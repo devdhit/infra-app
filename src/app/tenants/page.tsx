@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card"
 import { useTenants, useCreateTenant, useUpdateTenant, useDeleteTenant, useBulkDeleteTenants } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
+import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { TenantsTable } from "@/components/tenants/tenants-table"
 import { TenantForm } from "@/components/tenants/tenant-form"
@@ -21,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 export default function TenantsPage() {
   const { t } = useTranslation()
+  const { checkPermission } = usePermissions()
   const queryClient = useQueryClient()
   const { data: tenantsData = [], isLoading, isError, error, refetch } = useTenants()
   const createTenantMutation = useCreateTenant()
@@ -32,7 +34,33 @@ export default function TenantsPage() {
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null)
   const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null)
 
+  // Check permissions
+  const canViewTenants = checkPermission('tenants', 'view')
+  const canCreateTenants = checkPermission('tenants', 'create')
+  const canEditTenants = checkPermission('tenants', 'edit')
+  const canDeleteTenants = checkPermission('tenants', 'delete')
+  const canBulkDeleteTenants = checkPermission('tenants', 'bulkDelete')
+
+  // If user doesn't have view permission, show unauthorized message
+  if (!canViewTenants) {
+    return (
+      <div className="flex items-center justify-center h-52">
+        <div className="text-center">
+          <p className="text-red-500">{t('common.unauthorized') || 'You do not have permission to view this page'}</p>
+        </div>
+      </div>
+    )
+  }
+
   const handleEdit = (tenant: Tenant | null) => {
+    if (tenant && !canEditTenants) {
+      toast.error(t('tenants.edit.unauthorized') || 'You do not have permission to edit tenants')
+      return
+    }
+    if (!tenant && !canCreateTenants) {
+      toast.error(t('tenants.create.unauthorized') || 'You do not have permission to create tenants')
+      return
+    }
     setEditingTenant(tenant)
     setIsDialogOpen(true)
   }
@@ -40,6 +68,10 @@ export default function TenantsPage() {
   const handleDelete = async (id: string) => {
     // Check if it's a bulk delete (comma-separated IDs)
     if (id.includes(',')) {
+      if (!canBulkDeleteTenants) {
+        toast.error(t('tenants.bulkDelete.unauthorized') || 'You do not have permission to bulk delete tenants')
+        return
+      }
       // Handle bulk delete
       const ids = id.split(',')
       if (window.confirm(t('tenants.bulkDelete.confirm', 'Are you sure you want to delete {0} tenants?', ids.length.toString()) || 
@@ -54,6 +86,10 @@ export default function TenantsPage() {
         }
       }
     } else {
+      if (!canDeleteTenants) {
+        toast.error(t('tenants.delete.unauthorized') || 'You do not have permission to delete tenants')
+        return
+      }
       // Handle single delete
       setDeleteTenantId(id)
       if (window.confirm(t('tenants.delete.confirm') || 'Are you sure you want to delete this tenant? This action cannot be undone.')) {
@@ -71,6 +107,10 @@ export default function TenantsPage() {
   const handleSubmit = async (data: TenantFormValues) => {
     try {
       if (editingTenant) {
+        if (!canEditTenants) {
+          toast.error(t('tenants.update.unauthorized') || 'You do not have permission to update tenants')
+          return
+        }
         // Update existing tenant
         try {
           // Use the API client directly to make the PUT request with proper authentication
@@ -90,6 +130,10 @@ export default function TenantsPage() {
           toast.error(error.message || t('tenants.update.error') || 'Failed to update tenant')
         }
       } else {
+        if (!canCreateTenants) {
+          toast.error(t('tenants.create.unauthorized') || 'You do not have permission to create tenants')
+          return
+        }
         // Create new tenant
         try {
           await createTenantMutation.mutateAsync({
@@ -154,26 +198,33 @@ export default function TenantsPage() {
                 {t('tenants.list.description') || 'A list of all tenant organizations'}
               </CardDescription>
             </div>
+            {canCreateTenants && (
+              <Button onClick={() => handleEdit(null)}>
+                {t('tenants.create.button') || 'Add Tenant'}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           <TenantsTable 
             tenants={tenantsData}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={canEditTenants ? handleEdit : undefined}
+            onDelete={canDeleteTenants || canBulkDeleteTenants ? handleDelete : undefined}
             isDeleting={deleteMutation.isPending || bulkDeleteMutation.isPending}
             deletingTenantId={deleteTenantId}
           />
         </CardContent>
       </Card>
 
-      <TenantForm
-        open={isDialogOpen}
-        onOpenChange={handleDialogOpenChange}
-        editingTenant={editingTenant}
-        onSubmit={handleSubmit}
-        isSubmitting={createTenantMutation.isPending || (editingTenant ? false : false)} // Simplified for now
-      />
+      {(canCreateTenants || canEditTenants) && (
+        <TenantForm
+          open={isDialogOpen}
+          onOpenChange={handleDialogOpenChange}
+          editingTenant={editingTenant}
+          onSubmit={handleSubmit}
+          isSubmitting={createTenantMutation.isPending || (editingTenant ? false : false)} // Simplified for now
+        />
+      )}
     </div>
   )
 }
