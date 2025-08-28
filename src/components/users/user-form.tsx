@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -59,6 +59,17 @@ export function UserForm({
     tenantId: editingUser?.tenantId || '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Update form data when editingUser changes
+  useEffect(() => {
+    setFormData({
+      email: editingUser?.email || '',
+      name: editingUser?.name || '',
+      password: '',
+      role: editingUser?.role as 'admin' | 'user' || 'user',
+      tenantId: editingUser?.tenantId || '',
+    })
+  }, [editingUser])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -202,8 +213,9 @@ export function UserForm({
                     type="password"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
-                    placeholder={t('users.form.passwordPlaceholder') || "Leave blank to keep current password"}
+                    className={errors.password ? 'border-red-500' : ''}
                     disabled={isSubmitting}
+                    placeholder={t('users.form.newPasswordPlaceholder') || 'Leave blank to keep current password'}
                   />
                   {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password}</p>}
                 </div>
@@ -216,15 +228,15 @@ export function UserForm({
               <div className="col-span-3">
                 <Select 
                   value={formData.role} 
-                  onValueChange={(value) => handleInputChange('role', value)}
+                  onValueChange={(value) => handleInputChange('role', value as 'admin' | 'user')}
                   disabled={isSubmitting}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">{t('users.roles.user') || 'User'}</SelectItem>
-                    <SelectItem value="admin">{t('users.roles.admin') || 'Administrator'}</SelectItem>
+                    <SelectItem value="user">{t('users.form.userRole') || 'User'}</SelectItem>
+                    <SelectItem value="admin">{t('users.form.adminRole') || 'Admin'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -240,7 +252,7 @@ export function UserForm({
                   disabled={isSubmitting}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t('users.form.selectTenant') || "Select a tenant"} />
+                    <SelectValue placeholder={t('users.form.selectTenant') || 'Select a tenant'} />
                   </SelectTrigger>
                   <SelectContent>
                     {tenants.map((tenant) => (
@@ -254,28 +266,16 @@ export function UserForm({
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               {t('common.cancel') || 'Cancel'}
             </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center">
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                  {t('common.saving') || 'Saving...'}
-                </div>
-              ) : editingUser ? (
-                t('common.update') || 'Update'
-              ) : (
-                t('common.create') || 'Create'
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && (
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
               )}
+              {editingUser 
+                ? t('common.update') || 'Update' 
+                : t('common.create') || 'Create'}
             </Button>
           </DialogFooter>
         </form>

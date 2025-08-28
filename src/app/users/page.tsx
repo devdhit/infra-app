@@ -16,14 +16,17 @@ import { UsersTable } from "@/components/users/users-table"
 import { UserForm } from "@/components/users/user-form"
 import { UserFormValues } from "@/components/users/types"
 import { User } from "@/hooks/useApi"
+import { api } from "@/lib/api"
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function UsersPage() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { data: users = [], isLoading, isError, error, refetch } = useUsers()
   const { data: tenants = [] } = useTenants()
   const createUserMutation = useCreateUser()
-  const updateUserMutation = useUpdateUser('')
-  const deleteMutation = useDeleteUser('')
+  const updateUserMutation = useUpdateUser('') // Placeholder, will be overridden when used
+  const deleteMutation = useDeleteUser('') // Placeholder, will be overridden when used
   const bulkDeleteMutation = useBulkDeleteUsers()
   
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -35,37 +38,33 @@ export default function UsersPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     // Check if it's a bulk delete (comma-separated IDs)
     if (id.includes(',')) {
       // Handle bulk delete
       const ids = id.split(',')
       if (window.confirm(t('users.bulkDelete.confirm', 'Are you sure you want to delete {0} users?', ids.length.toString()) || 
           `Are you sure you want to delete ${ids.length} users?`)) {
-        bulkDeleteMutation.mutate({ ids }, {
-          onSuccess: () => {
-            toast.success(t('users.bulkDelete.success', '{0} users deleted successfully', ids.length.toString()) || 
-                         `${ids.length} users deleted successfully`)
-            refetch()
-          },
-          onError: (error: any) => {
-            toast.error(error.message || t('users.bulkDelete.error') || 'Failed to delete users')
-          }
-        })
+        try {
+          await bulkDeleteMutation.mutateAsync({ ids })
+          toast.success(t('users.bulkDelete.success', '{0} users deleted successfully', ids.length.toString()) || 
+                       `${ids.length} users deleted successfully`)
+          refetch()
+        } catch (error: any) {
+          toast.error(error.message || t('users.bulkDelete.error') || 'Failed to delete users')
+        }
       }
     } else {
       // Handle single delete
       setDeleteUserId(id)
       if (window.confirm(t('users.delete.confirm') || 'Are you sure you want to delete this user?')) {
-        deleteMutation.mutate(id, {
-          onSuccess: () => {
-            toast.success(t('users.delete.success') || 'User deleted successfully')
-            refetch()
-          },
-          onError: (error: any) => {
-            toast.error(error.message || t('users.delete.error') || 'Failed to delete user')
-          }
-        })
+        try {
+          await deleteMutation.mutateAsync(id)
+          toast.success(t('users.delete.success') || 'User deleted successfully')
+          refetch()
+        } catch (error: any) {
+          toast.error(error.message || t('users.delete.error') || 'Failed to delete user')
+        }
       }
     }
   }
@@ -74,46 +73,56 @@ export default function UsersPage() {
     try {
       if (editingUser) {
         // Update existing user
-        await updateUserMutation.mutateAsync({
-          id: editingUser.id,
-          email: data.email,
-          name: data.name,
-          role: data.role,
-          tenantId: data.tenantId,
-          ...(data.password ? { password: data.password } : {})
-        }, {
-          onSuccess: () => {
-            toast.success(t('users.update.success') || 'User updated successfully')
-            setIsDialogOpen(false)
-            refetch()
-          },
-          onError: (error: any) => {
-            toast.error(error.message || t('users.update.error') || 'Failed to update user')
-          }
-        })
+        try {
+          // Use the API client directly to make the PUT request with proper authentication
+          const response = await api.put<User, Partial<UserFormValues>>(`/users/${editingUser.id}`, {
+            email: data.email,
+            name: data.name,
+            role: data.role,
+            tenantId: data.tenantId,
+            ...(data.password ? { password: data.password } : {})
+          });
+          
+          toast.success(t('users.update.success') || 'User updated successfully')
+          setIsDialogOpen(false)
+          setEditingUser(null) // Clear the editing user state
+          // Invalidate the users query to force a refresh
+          await queryClient.invalidateQueries({ queryKey: ['users'] })
+          // Also invalidate the specific user query
+          await queryClient.invalidateQueries({ queryKey: ['users', editingUser.id] })
+        } catch (error: any) {
+          toast.error(error.message || t('users.update.error') || 'Failed to update user')
+        }
       } else {
         // Create new user
-        await createUserMutation.mutateAsync({
-          email: data.email,
-          name: data.name,
-          password: data.password || '',
-          role: data.role,
-          tenantId: data.tenantId
-        }, {
-          onSuccess: () => {
-            toast.success(t('users.create.success') || 'User created successfully')
-            setIsDialogOpen(false)
-            refetch()
-          },
-          onError: (error: any) => {
-            toast.error(error.message || t('users.create.error') || 'Failed to create user')
-          }
-        })
+        try {
+          await createUserMutation.mutateAsync({
+            email: data.email,
+            name: data.name,
+            password: data.password || '',
+            role: data.role,
+            tenantId: data.tenantId
+          })
+          toast.success(t('users.create.success') || 'User created successfully')
+          setIsDialogOpen(false)
+          // Invalidate the users query to force a refresh
+          await queryClient.invalidateQueries({ queryKey: ['users'] })
+        } catch (error: any) {
+          toast.error(error.message || t('users.create.error') || 'Failed to create user')
+        }
       }
     } catch (error: any) {
       toast.error(error.message || (editingUser 
         ? t('users.update.error') || 'Failed to update user' 
         : t('users.create.error') || 'Failed to create user'))
+    }
+  }
+
+  // Reset editing state when dialog is closed
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open)
+    if (!open) {
+      setEditingUser(null)
     }
   }
 
@@ -168,11 +177,11 @@ export default function UsersPage() {
 
       <UserForm
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleDialogOpenChange}
         editingUser={editingUser}
         tenants={tenants}
         onSubmit={handleSubmit}
-        isSubmitting={createUserMutation.isPending || updateUserMutation.isPending}
+        isSubmitting={createUserMutation.isPending || (editingUser ? false : false)} // Simplified for now
       />
     </div>
   )

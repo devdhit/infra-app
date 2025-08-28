@@ -1,10 +1,8 @@
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { unauthorizedResponse, errorResponse, successResponse } from '@/lib/api-utils'
-import { PrismaClient } from '@prisma/client'
+import { db } from '@/lib/db'
 import { createHistoryRecord } from '@/lib/history'
-
-const prisma = new PrismaClient()
 
 // POST /api/tenants/bulk-delete - Bulk delete tenants
 export async function POST(request: NextRequest) {
@@ -23,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if any tenant has associated users or assets
-    const tenantsWithRelations = await prisma.tenant.findMany({
+    const tenantsWithRelations = await db.tenant.findMany({
       where: {
         id: {
           in: ids
@@ -68,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Perform bulk delete
-    await prisma.tenant.deleteMany({
+    await db.tenant.deleteMany({
       where: {
         id: {
           in: ids

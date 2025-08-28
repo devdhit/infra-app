@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -44,6 +44,14 @@ export function TenantForm({
     description: editingTenant?.description || '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Update form data when editingTenant changes
+  useEffect(() => {
+    setFormData({
+      name: editingTenant?.name || '',
+      description: editingTenant?.description || '',
+    })
+  }, [editingTenant])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}

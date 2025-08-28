@@ -1,10 +1,8 @@
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { unauthorizedResponse, errorResponse, successResponse } from '@/lib/api-utils'
-import { PrismaClient } from '@prisma/client'
+import { db } from '@/lib/db'
 import { createHistoryRecord } from '@/lib/history'
-
-const prisma = new PrismaClient()
 
 // POST /api/users/bulk-delete - Bulk delete users
 export async function POST(request: NextRequest) {
@@ -28,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch users to be deleted for history records
-    const usersToDelete = await prisma.user.findMany({
+    const usersToDelete = await db.user.findMany({
       where: {
         id: {
           in: ids
@@ -50,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Perform bulk delete
-    await prisma.user.deleteMany({
+    await db.user.deleteMany({
       where: {
         id: {
           in: ids

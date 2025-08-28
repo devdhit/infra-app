@@ -16,13 +16,16 @@ import { TenantsTable } from "@/components/tenants/tenants-table"
 import { TenantForm } from "@/components/tenants/tenant-form"
 import { TenantFormValues } from "@/components/tenants/types"
 import { Tenant } from "@/hooks/useApi"
+import { api } from "@/lib/api"
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function TenantsPage() {
   const { t } = useTranslation()
-  const { data: tenants = [], isLoading, isError, error, refetch } = useTenants()
+  const queryClient = useQueryClient()
+  const { data: tenantsData = [], isLoading, isError, error, refetch } = useTenants()
   const createTenantMutation = useCreateTenant()
-  const updateTenantMutation = useUpdateTenant('')
-  const deleteMutation = useDeleteTenant('')
+  const updateTenantMutation = useUpdateTenant('') // Placeholder, will be overridden when used
+  const deleteMutation = useDeleteTenant('') // Placeholder, will be overridden when used
   const bulkDeleteMutation = useBulkDeleteTenants()
   
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -34,37 +37,33 @@ export default function TenantsPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     // Check if it's a bulk delete (comma-separated IDs)
     if (id.includes(',')) {
       // Handle bulk delete
       const ids = id.split(',')
       if (window.confirm(t('tenants.bulkDelete.confirm', 'Are you sure you want to delete {0} tenants?', ids.length.toString()) || 
           `Are you sure you want to delete ${ids.length} tenants?`)) {
-        bulkDeleteMutation.mutate({ ids }, {
-          onSuccess: () => {
-            toast.success(t('tenants.bulkDelete.success', '{0} tenants deleted successfully', ids.length.toString()) || 
-                         `${ids.length} tenants deleted successfully`)
-            refetch()
-          },
-          onError: (error: any) => {
-            toast.error(error.message || t('tenants.bulkDelete.error') || 'Failed to delete tenants')
-          }
-        })
+        try {
+          await bulkDeleteMutation.mutateAsync({ ids })
+          toast.success(t('tenants.bulkDelete.success', '{0} tenants deleted successfully', ids.length.toString()) || 
+                       `${ids.length} tenants deleted successfully`)
+          refetch()
+        } catch (error: any) {
+          toast.error(error.message || t('tenants.bulkDelete.error') || 'Failed to delete tenants')
+        }
       }
     } else {
       // Handle single delete
       setDeleteTenantId(id)
       if (window.confirm(t('tenants.delete.confirm') || 'Are you sure you want to delete this tenant? This action cannot be undone.')) {
-        deleteMutation.mutate(id, {
-          onSuccess: () => {
-            toast.success(t('tenants.delete.success') || 'Tenant deleted successfully')
-            refetch()
-          },
-          onError: (error: any) => {
-            toast.error(error.message || t('tenants.delete.error') || 'Failed to delete tenant')
-          }
-        })
+        try {
+          await deleteMutation.mutateAsync(id)
+          toast.success(t('tenants.delete.success') || 'Tenant deleted successfully')
+          refetch()
+        } catch (error: any) {
+          toast.error(error.message || t('tenants.delete.error') || 'Failed to delete tenant')
+        }
       }
     }
   }
@@ -73,40 +72,50 @@ export default function TenantsPage() {
     try {
       if (editingTenant) {
         // Update existing tenant
-        await updateTenantMutation.mutateAsync({
-          id: editingTenant.id,
-          name: data.name,
-          description: data.description,
-        }, {
-          onSuccess: () => {
-            toast.success(t('tenants.update.success') || 'Tenant updated successfully')
-            setIsDialogOpen(false)
-            refetch()
-          },
-          onError: (error: any) => {
-            toast.error(error.message || t('tenants.update.error') || 'Failed to update tenant')
-          }
-        })
+        try {
+          // Use the API client directly to make the PUT request with proper authentication
+          const response = await api.put<Tenant, Partial<TenantFormValues>>(`/tenants/${editingTenant.id}`, {
+            name: data.name,
+            description: data.description,
+          });
+          
+          toast.success(t('tenants.update.success') || 'Tenant updated successfully')
+          setIsDialogOpen(false)
+          setEditingTenant(null) // Clear the editing tenant state
+          // Invalidate the tenants query to force a refresh
+          await queryClient.invalidateQueries({ queryKey: ['tenants'] })
+          // Also invalidate the specific tenant query
+          await queryClient.invalidateQueries({ queryKey: ['tenants', editingTenant.id] })
+        } catch (error: any) {
+          toast.error(error.message || t('tenants.update.error') || 'Failed to update tenant')
+        }
       } else {
         // Create new tenant
-        await createTenantMutation.mutateAsync({
-          name: data.name,
-          description: data.description,
-        }, {
-          onSuccess: () => {
-            toast.success(t('tenants.create.success') || 'Tenant created successfully')
-            setIsDialogOpen(false)
-            refetch()
-          },
-          onError: (error: any) => {
-            toast.error(error.message || t('tenants.create.error') || 'Failed to create tenant')
-          }
-        })
+        try {
+          await createTenantMutation.mutateAsync({
+            name: data.name,
+            description: data.description,
+          })
+          toast.success(t('tenants.create.success') || 'Tenant created successfully')
+          setIsDialogOpen(false)
+          // Invalidate the tenants query to force a refresh
+          await queryClient.invalidateQueries({ queryKey: ['tenants'] })
+        } catch (error: any) {
+          toast.error(error.message || t('tenants.create.error') || 'Failed to create tenant')
+        }
       }
     } catch (error: any) {
       toast.error(error.message || (editingTenant 
         ? t('tenants.update.error') || 'Failed to update tenant' 
         : t('tenants.create.error') || 'Failed to create tenant'))
+    }
+  }
+
+  // Reset editing state when dialog is closed
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open)
+    if (!open) {
+      setEditingTenant(null)
     }
   }
 
@@ -149,7 +158,7 @@ export default function TenantsPage() {
         </CardHeader>
         <CardContent>
           <TenantsTable 
-            tenants={tenants}
+            tenants={tenantsData}
             onEdit={handleEdit}
             onDelete={handleDelete}
             isDeleting={deleteMutation.isPending || bulkDeleteMutation.isPending}
@@ -160,10 +169,10 @@ export default function TenantsPage() {
 
       <TenantForm
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleDialogOpenChange}
         editingTenant={editingTenant}
         onSubmit={handleSubmit}
-        isSubmitting={createTenantMutation.isPending || updateTenantMutation.isPending}
+        isSubmitting={createTenantMutation.isPending || (editingTenant ? false : false)} // Simplified for now
       />
     </div>
   )

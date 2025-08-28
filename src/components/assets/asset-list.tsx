@@ -659,20 +659,6 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     );
   };
   
-  // Show loading state while translations are loading
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-52">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-  
-  // Show skeleton while loading initial data
-  if (isLoading && (!data || assets.length === 0)) {
-    return <AssetListSkeleton title={title} columns={allColumns} />;
-  }
-  
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -741,7 +727,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                 <Input
                   placeholder={t('common.search.placeholder', "Search assets...")}
                   value={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
                   className="pl-8 w-full sm:w-64"
                 />
               </div>
@@ -824,33 +810,22 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
           </div>
         </CardHeader>
         <CardContent>
-          {isError ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-              <h3 className="text-lg font-medium mb-2">{t('common.error', "Error")}</h3>
-              <p className="text-muted-foreground mb-4">
-                {t('assets.list.error', "Failed to load assets. Please try again later.")}
-              </p>
-              <Button onClick={() => refetch()}>
-                {t('common.retry', "Retry")}
-              </Button>
-            </div>
-          ) : (
-            <>
-              <DataTable
-                columns={dataTableColumns}
-                data={assets}
-                searchable={false} // We're handling search outside the DataTable
-                filterable={false} // We're handling filtering outside the DataTable
-                sortable={true}
-                pagination={false} // We're handling pagination outside the DataTable
-                pageSize={10}
-                onRowSelectionChange={handleRowSelectionChange}
-              />
-              
-              {renderPagination()}
-            </>
-          )}
+          <DataTable
+            columns={dataTableColumns}
+            data={assets}
+            searchable={false}
+            filterable={false}
+            sortable={true}
+            pagination={true}
+            pageSize={10}
+            onRowSelectionChange={handleRowSelectionChange}
+            loading={isLoading && (!data || assets.length === 0)}
+            error={isError ? (error as ApiError).message : null}
+            onRefresh={refetch}
+            disableBuiltInFeatures={true}
+          />
+          
+          {renderPagination()}
         </CardContent>
       </Card>
       
