@@ -7,17 +7,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
+import { ColumnDef } from '@tanstack/react-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +36,7 @@ import {
   Eye as EyeIcon
 } from "lucide-react";
 import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { AssetFormDialog } from "./asset-form";
 import { AssetDetailDialog } from "./asset-detail-dialog";
@@ -74,12 +67,153 @@ interface AssetListProps {
   formFields: AssetFormField[];
 }
 
+// Define columns for the DataTable
+const getAssetColumns = (
+  t: (key: string, fallback?: string) => string,
+  visibleColumns: AssetColumn[],
+  allFormFields: AssetFormField[],
+  assetType: string,
+  customFieldsData: any,
+  handleView: (asset: Asset) => void,
+  handleEdit: (asset: Asset) => void,
+  handleDelete: (id: string) => void,
+  assets: Asset[],
+  queryClient: any,
+  currentPage: number,
+  search: string,
+  statusFilter: string,
+): ColumnDef<Asset>[] => {
+  // Create the selection column
+  const selectionColumn: ColumnDef<Asset> = {
+    id: 'select',
+    header: ({ table }) => (
+      <div className="w-12">
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      </div>
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  };
+
+  // Create data columns
+  const dataColumns: ColumnDef<Asset>[] = visibleColumns.map((column, index) => {
+    // Determine if this is a custom field
+    const isCustom = isCustomField(column.key, {}, customFieldsData);
+    // Create a unique key for the header
+    const uniqueHeaderKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
+    
+    return {
+      accessorKey: uniqueHeaderKey,
+      header: t(column.label, column.label),
+      cell: ({ row }) => {
+        const asset = row.original;
+        
+        // Find the corresponding form field for this column
+        const field = allFormFields.find(f => f.name === column.key);
+        
+        // Determine if this is a custom field
+        const isCustom = isCustomField(column.key, asset, customFieldsData);
+        // Safely access the cell value
+        const cellValue = getFieldValue(column.key, asset, isCustom);
+        
+        // Create a unique key to avoid duplicates
+        const uniqueKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
+        
+        return field ? (
+          <InlineEditCell
+            asset={asset}
+            assetType={assetType}
+            field={field}
+            value={cellValue}
+            isCustomField={isCustom}
+            onUpdate={(newValue) => {
+              // Update the asset in the local state
+              const updatedAssets = assets.map(a => 
+                a.id === asset.id 
+                  ? { 
+                      ...a, 
+                      ...(isCustom 
+                        ? { customFields: { ...(a.customFields || {}), [column.key]: newValue } } 
+                        : { [column.key]: newValue }
+                      )
+                    } 
+                  : a
+              );
+              // Update the query cache to reflect the changes
+              queryClient.setQueryData(
+                ['assets', assetType, JSON.stringify({ page: currentPage, limit: 10, search, status: statusFilter })], 
+                (oldData: any) => ({
+                  ...oldData,
+                  data: updatedAssets
+                })
+              );
+              
+              // Also invalidate the query to ensure data consistency
+              queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+            }}
+          />
+        ) : (
+          column.render ? column.render(asset[column.key]) : String(asset[column.key] || '')
+        );
+      },
+    };
+  });
+
+  // Create actions column
+  const actionsColumn: ColumnDef<Asset> = {
+    id: 'actions',
+    header: () => <div className="text-right">{t('common.actions', 'Actions')}</div>,
+    cell: ({ row }) => {
+      const asset = row.original;
+      
+      return (
+        <div className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">{t('common.openMenu', 'Open menu')}</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleView(asset)}>
+                <Eye className="mr-2 h-4 w-4" />
+                {t('common.view', 'View')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(asset)}>
+                <Edit className="mr-2 h-4 w-4" />
+                {t('common.edit', 'Edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDelete(asset.id)}>
+                <Trash className="mr-2 h-4 w-4" />
+                {t('common.delete', 'Delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    },
+  };
+
+  return [selectionColumn, ...dataColumns, actionsColumn];
+};
+
 export function AssetList({ assetType, title, columns, formFields }: AssetListProps) {
   const { t, loading } = useTranslation();
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tableRef = useRef<HTMLDivElement>(null);
   
   // Map assetType to modelType for custom fields
   const modelType = getModelType(assetType);
@@ -385,20 +519,46 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     }
   }, [assets, selectedAssets.length]);
 
-  // Show loading state while translations are loading
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-52">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-  
-  // Show skeleton while loading initial data
-  if (isLoading && (!data || assets.length === 0)) {
-    return <AssetListSkeleton title={title} columns={allColumns} />;
-  }
-  
+  // Get columns for DataTable
+  const dataTableColumns = useMemo(() => 
+    getAssetColumns(
+      t,
+      visibleColumns,
+      allFormFields,
+      assetType,
+      customFieldsData,
+      handleView,
+      handleEdit,
+      handleDelete,
+      assets,
+      queryClient,
+      currentPage,
+      search,
+      statusFilter,
+    ), 
+    [
+      t,
+      visibleColumns,
+      allFormFields,
+      assetType,
+      customFieldsData,
+      handleView,
+      handleEdit,
+      handleDelete,
+      assets,
+      queryClient,
+      currentPage,
+      search,
+      statusFilter,
+    ]
+  );
+
+  // Handle row selection change from DataTable
+  const handleRowSelectionChange = useCallback((selectedRows: Record<string, boolean>) => {
+    const selectedIds = Object.keys(selectedRows).filter(key => selectedRows[key]);
+    setSelectedAssets(selectedIds);
+  }, []);
+
   // Pagination component
   const renderPagination = () => {
     if (pagination.pages <= 1) return null;
@@ -567,7 +727,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                 <Input
                   placeholder={t('common.search.placeholder', "Search assets...")}
                   value={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
                   className="pl-8 w-full sm:w-64"
                 />
               </div>
@@ -650,149 +810,22 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
           </div>
         </CardHeader>
         <CardContent>
-          {isError ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-              <h3 className="text-lg font-medium mb-2">{t('common.error', "Error")}</h3>
-              <p className="text-muted-foreground mb-4">
-                {t('assets.list.error', "Failed to load assets. Please try again later.")}
-              </p>
-              <Button onClick={() => refetch()}>
-                {t('common.retry', "Retry")}
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="rounded-md border overflow-x-auto" ref={tableRef}>
-                <Table className="min-w-full">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
-                        <Checkbox
-                          checked={isSelectAllChecked}
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </TableHead>
-                      {visibleColumns.map((column, index) => {
-                        // Determine if this is a custom field
-                        const isCustom = isCustomField(column.key, {}, customFieldsData);
-                        // Create a unique key for the header
-                        const uniqueHeaderKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
-                        
-                        return (
-                          <TableHead key={uniqueHeaderKey} className="whitespace-nowrap">
-                            {t(column.label, column.label)}
-                          </TableHead>
-                        );
-                      })}
-                      <TableHead className="text-right whitespace-nowrap">{t('common.actions', "Actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assets.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
-                          {search || statusFilter 
-                            ? t('common.noResults', "No results found")
-                            : t('assets.list.empty', "No assets found")}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      assets.map((asset) => (
-                        <TableRow key={asset.id} className={selectedAssets.includes(asset.id) ? "bg-muted" : ""}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedAssets.includes(asset.id)}
-                              onCheckedChange={() => handleSelectAsset(asset.id)}
-                            />
-                          </TableCell>
-                          {visibleColumns.map((column, index) => {
-                            // Find the corresponding form field for this column
-                            const field = allFormFields.find(f => f.name === column.key);
-                            
-                            // Determine if this is a custom field
-                            const isCustom = isCustomField(column.key, asset, customFieldsData);
-                            // Safely access the cell value
-                            const cellValue = getFieldValue(column.key, asset, isCustom);
-                            
-                            // Create a unique key to avoid duplicates
-                            const uniqueKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
-                            
-                            return (
-                              <TableCell key={uniqueKey} className="py-2 whitespace-nowrap">
-                                {field ? (
-                                  <InlineEditCell
-                                    asset={asset}
-                                    assetType={assetType}
-                                    field={field}
-                                    value={cellValue}
-                                    isCustomField={isCustom}
-                                    onUpdate={(newValue) => {
-                                      // Update the asset in the local state
-                                      const updatedAssets = assets.map(a => 
-                                        a.id === asset.id 
-                                          ? { 
-                                              ...a, 
-                                              ...(isCustom 
-                                                ? { customFields: { ...(a.customFields || {}), [column.key]: newValue } } 
-                                                : { [column.key]: newValue }
-                                              )
-                                            } 
-                                          : a
-                                      );
-                                      // Update the query cache to reflect the changes
-                                      queryClient.setQueryData(
-                                        ['assets', assetType, JSON.stringify({ page: currentPage, limit: 10, search, status: statusFilter })], 
-                                        (oldData: any) => ({
-                                          ...oldData,
-                                          data: updatedAssets
-                                        })
-                                      );
-                                      
-                                      // Also invalidate the query to ensure data consistency
-                                      queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-                                    }}
-                                  />
-                                ) : (
-                                  column.render ? column.render(asset[column.key]) : String(asset[column.key] || '')
-                                )}
-                              </TableCell>
-                            );
-                          })}
-                          <TableCell className="text-right py-2 whitespace-nowrap">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <span className="sr-only">{t('common.openMenu', "Open menu")}</span>
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleView(asset)}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  {t('common.view', "View")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(asset)}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  {t('common.edit', "Edit")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDelete(asset.id)}>
-                                  <Trash className="mr-2 h-4 w-4" />
-                                  {t('common.delete', "Delete")}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              
-              {renderPagination()}
-            </>
-          )}
+          <DataTable
+            columns={dataTableColumns}
+            data={assets}
+            searchable={false}
+            filterable={false}
+            sortable={true}
+            pagination={true}
+            pageSize={10}
+            onRowSelectionChange={handleRowSelectionChange}
+            loading={isLoading && (!data || assets.length === 0)}
+            error={isError ? (error as ApiError).message : null}
+            onRefresh={refetch}
+            disableBuiltInFeatures={true}
+          />
+          
+          {renderPagination()}
         </CardContent>
       </Card>
       

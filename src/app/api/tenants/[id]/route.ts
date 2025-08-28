@@ -65,6 +65,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const resolvedParams = await params;
     
+    // Validate input
+    if (body.name !== undefined && (!body.name || body.name.trim().length === 0)) {
+      return new Response(JSON.stringify({ error: 'Tenant name is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     const tenant = await db.tenant.update({
       where: { id: resolvedParams.id },
       data: {
@@ -81,6 +89,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (error.code === 'P2025') {
       return new Response(JSON.stringify({ error: 'Tenant not found' }), {
         status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    
+    if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
+      return new Response(JSON.stringify({ error: 'A tenant with this name already exists' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' }
       })
     }
