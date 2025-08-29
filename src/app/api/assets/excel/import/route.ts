@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Remove the user field from row data since it's not a direct field in the database
-            const { user: userField, userName, ...pcRowData } = row as any;
+            const { user: userField, userName: pcUserNameField, ...pcRowData } = row as any;
 
             // Create the PC record first
             const createdPC = await db.pC.create({
@@ -103,40 +103,30 @@ export async function POST(request: NextRequest) {
           case 'laptop':
             // Validate required fields for Laptop
             // Check if fields exist and are not null
-            if (row.barcode === null || row.barcode === undefined ||
-                row.dept === null || row.dept === undefined) {
-              errors.push(`Row missing required fields: Barcode and Department`)
+            if (row.dept === null || row.dept === undefined) {
+              errors.push(`Row missing required field: Department`)
               continue
             }
 
-            // Check if Laptop with this barcode already exists
-            const existingLaptop = await db.laptop.findUnique({
-              where: { barcode: String(row.barcode) }
-            })
+            // Check if Laptop with this barcode already exists (unless it's "No Barcode")
+            if (row.barcode && row.barcode !== 'No Barcode' && row.barcode !== 'N/A') {
+              const existingLaptop = await db.laptop.findUnique({
+                where: { barcode: String(row.barcode) }
+              })
 
-            if (existingLaptop) {
-              errors.push(`Laptop with Barcode ${String(row.barcode)} already exists`)
-              continue
-            }
-
-            // Handle user field mapping - if user field exists, we need to find the user ID
-            let laptopUserId = null;
-            // Check if user field exists and is not empty before trying to find the user
-            if (row.user) {
-              // Try to find user by email or name
-              const foundUser = await db.user.findFirst({
-                where: {
-                  OR: [
-                    { email: String(row.user) },
-                    { name: String(row.user) }
-                  ],
-                  tenantId: user.tenantId
-                }
-              });
-              
-              if (foundUser) {
-                laptopUserId = foundUser.id;
+              if (existingLaptop) {
+                errors.push(`Laptop with Barcode ${String(row.barcode)} already exists`)
+                continue
               }
+            }
+
+            // Handle user field mapping - if user field exists, store it as userName
+            let laptopUserName = undefined;
+            // Check if user field exists and is not empty
+            if (row.user) {
+              laptopUserName = String(row.user);
+            } else if (row.userName) {
+              laptopUserName = String(row.userName);
             }
 
             // Process date fields
@@ -154,15 +144,24 @@ export async function POST(request: NextRequest) {
               }
             }
 
-            // Remove the user field from row data since it's not a direct field in the database
-            const { user: laptopUserField, dateBuy, ...laptopRowData } = row as any;
+            // Handle case sensitivity for status field
+            let statusValue = 'working'; // default value
+            if (row.status) {
+              statusValue = String(row.status);
+            } else if (row.Status) {
+              statusValue = String(row.Status);
+            }
+
+            // Remove the user and status fields from row data since we're handling them separately
+            const { user: laptopUserField, userName: laptopUserNameField, Status, status, dateBuy, ...laptopRowData } = row as any;
 
             // Create the Laptop record first
             const createdLaptop = await db.laptop.create({
               data: {
                 ...laptopRowData,
+                userName: laptopUserName, // Use userName instead of userId
                 dateBuy: dateBuyValue,
-                userId: laptopUserId, // Use the resolved userId instead of the user field
+                status: statusValue, // Use the properly cased status value
                 tenantId: user.tenantId
               }
             });
@@ -189,16 +188,6 @@ export async function POST(request: NextRequest) {
               continue
             }
 
-            // Check if Printer with this barcode already exists
-            const existingPrinter = await db.printer.findUnique({
-              where: { barcode: String(row.barcode) }
-            })
-
-            if (existingPrinter) {
-              errors.push(`Printer with Barcode ${String(row.barcode)} already exists`)
-              continue
-            }
-
             // Process date field if present
             let printerDateValue = null;
             if (row.date && typeof row.date === 'string' && row.date !== 'N/A') {
@@ -216,27 +205,145 @@ export async function POST(request: NextRequest) {
 
             // Remove date from row data to handle it separately
             const { date: printerDate, ...printerRowData } = row as any;
-
-            // Create the Printer record first
-            const createdPrinter = await db.printer.create({
-              data: {
-                ...printerRowData,
-                date: printerDateValue,
-                tenantId: user.tenantId
+            
+            // Convert barcode to string
+            let barcodeValue = String(row.barcode);
+            
+            // Ensure color field is properly handled as string
+            if (printerRowData.color !== undefined && printerRowData.color !== null) {
+              if (typeof printerRowData.color !== 'string') {
+                // Convert any non-string value to string
+                printerRowData.color = String(printerRowData.color);
               }
-            });
+            } else {
+              // Default to "Black & White" if color is not provided
+              printerRowData.color = "Black & White";
+            }
+            
+            // Debug logging
+            console.log(`Processing printer row with barcode: ${barcodeValue}`);
+            console.log(`Original row data:`, JSON.stringify(row, null, 2));
+            console.log(`Processed row data (printerRowData):`, JSON.stringify(printerRowData, null, 2));
 
-            // Then create the history record separately
-            await db.history.create({
-              data: {
-                action: 'create',
-                modelType: 'Printer',
-                recordId: createdPrinter.id,
-                changes: JSON.stringify(row),
-                userId: user.id,
-                tenantId: user.tenantId
+            try {
+              // For "No Barcode" printers, we need to generate unique barcodes to avoid unique constraint violations
+              if (barcodeValue === 'No Barcode' || barcodeValue === 'N/A') {
+                // Check if a printer with this exact barcode already exists
+                const existingNoBarcodePrinter = await db.printer.findFirst({
+                  where: {
+                    barcode: barcodeValue,
+                    tenantId: user.tenantId
+                  }
+                });
+                
+                // If a printer with "No Barcode" or "N/A" already exists, generate a unique barcode
+                if (existingNoBarcodePrinter) {
+                  // Generate a unique barcode by appending a timestamp
+                  barcodeValue = `${barcodeValue}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                  console.log(`Generated unique barcode for No Barcode printer: ${barcodeValue}`);
+                }
+                
+                console.log(`Creating printer with generated unique barcode: ${barcodeValue}`);
+                // Create the Printer record first
+                const createdPrinter = await db.printer.create({
+                  data: {
+                    ...printerRowData,
+                    barcode: barcodeValue,
+                    date: printerDateValue,
+                    tenantId: user.tenantId
+                  }
+                });
+
+                // Then create the history record separately
+                await db.history.create({
+                  data: {
+                    action: 'create',
+                    modelType: 'Printer',
+                    recordId: createdPrinter.id,
+                    changes: JSON.stringify(row),
+                    userId: user.id,
+                    tenantId: user.tenantId
+                  }
+                });
+              } else {
+                console.log(`Checking for existing printer with barcode: ${barcodeValue}`);
+                // For printers with actual barcodes, first check if one already exists in the database
+                const existingPrinter = await db.printer.findFirst({
+                  where: {
+                    barcode: barcodeValue,
+                    tenantId: user.tenantId
+                  }
+                });
+
+                if (existingPrinter) {
+                  // Printer already exists in database, skip this row
+                  console.log(`Printer with barcode ${barcodeValue} already exists in database:`, existingPrinter);
+                  errors.push(`Printer with Barcode ${barcodeValue} already exists in database (ID: ${existingPrinter.id})`)
+                  continue
+                }
+
+                // Check if we've already processed a printer with this barcode in this import batch
+                // This prevents duplicate creation within the same import operation
+                const isDuplicateInBatch = jsonData.slice(0, jsonData.indexOf(row)).some(
+                  (prevRow: any) => {
+                    // Make sure we're comparing the same barcode field
+                    const prevBarcode = prevRow.barcode !== undefined && prevRow.barcode !== null ? String(prevRow.barcode) : '';
+                    const isMatch = prevBarcode === barcodeValue && prevRow !== row;
+                    if (isMatch) {
+                      console.log(`Found duplicate in batch: ${barcodeValue}`);
+                    }
+                    return isMatch;
+                  }
+                );
+
+                if (isDuplicateInBatch) {
+                  errors.push(`Printer with Barcode ${barcodeValue} already exists in this import batch`)
+                  continue
+                }
+
+                console.log(`Creating new printer with barcode: ${barcodeValue}`);
+                // Printer doesn't exist, create it
+                  console.log(`Printer data to create:`, JSON.stringify({
+                    ...printerRowData,
+                    barcode: barcodeValue,
+                    date: printerDateValue,
+                    tenantId: user.tenantId
+                  }, null, 2));
+                
+                const createdPrinter = await db.printer.create({
+                  data: {
+                    ...printerRowData,
+                    barcode: barcodeValue,
+                    date: printerDateValue,
+                    tenantId: user.tenantId
+                  }
+                });
+
+                // Then create the history record separately
+                await db.history.create({
+                  data: {
+                    action: 'create',
+                    modelType: 'Printer',
+                    recordId: createdPrinter.id,
+                    changes: JSON.stringify(row),
+                    userId: user.id,
+                    tenantId: user.tenantId
+                  }
+                });
               }
-            });
+            } catch (printerError: any) {
+              // More detailed error handling
+              console.error(`Error processing printer row with barcode ${barcodeValue}:`, printerError);
+              if (printerError.code === 'P2002') {
+                // Prisma unique constraint error
+                errors.push(`Unique constraint error for barcode ${barcodeValue}: A printer with this barcode already exists`)
+              } else if (printerError.code) {
+                errors.push(`Database error for barcode ${barcodeValue} (code: ${printerError.code}): ${printerError.message}`)
+              } else {
+                errors.push(`Error processing row with barcode ${barcodeValue}: ${printerError.message || 'Unknown error'}`)
+              }
+              continue
+            }
             break
 
           case 'license':

@@ -44,7 +44,7 @@ async function testPCBulkDelete() {
           cpuBarcode: `PC-CPU-${Date.now()}-${i}`,
           cpuSapBarcode: `SAP-CPU-${Date.now()}-${i}`,
           pcName: `Test-PC-${Date.now()}-${i}`,
-          status: 'active',
+          status: 'working',
           note: `Test PC asset ${i}`
         })
       });

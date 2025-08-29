@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { useTranslation } from "@/hooks/use-translation"
 import apiClient from "@/lib/api"
 import { Loader2, Download } from "lucide-react"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   Select,
   SelectContent,
@@ -31,8 +31,7 @@ interface ExcelExportDialogProps {
   isOpen: boolean
   onClose: () => void
   selectedAssetIds?: string[]
-  // Add departments prop to get departments from current table data
-  departments?: string[]
+  // Remove departments prop since we'll fetch from database
 }
 
 // Define the export options type
@@ -43,8 +42,7 @@ export function ExcelExportDialog({
   title,
   isOpen,
   onClose,
-  selectedAssetIds = [],
-  departments = []
+  selectedAssetIds = []
 }: ExcelExportDialogProps) {
   const { t } = useTranslation()
   const [isExporting, setIsExporting] = useState<boolean>(false)
@@ -52,12 +50,32 @@ export function ExcelExportDialog({
   const [exportProgress, setExportProgress] = useState<number>(0) // For progress indication
   const [exportOption, setExportOption] = useState<ExportOption>('all')
   const [department, setDepartment] = useState<string>('')
+  const [departments, setDepartments] = useState<string[]>([]) // State for fetched departments
+  const [loadingDepartments, setLoadingDepartments] = useState<boolean>(false)
 
   // WarehouseIT assets don't have department fields, so we disable the byDept option for them
   const showByDeptOption = assetType !== 'warehouse'
 
-  // Extract unique departments from the current table data
-  const uniqueDepartments = Array.from(new Set(departments)).filter(Boolean) as string[]
+  // Fetch departments from the database when the dialog opens and assetType supports departments
+  const fetchDepartments = useCallback(async () => {
+    setLoadingDepartments(true)
+    try {
+      const response = await apiClient.get(`/assets/departments?assetType=${assetType}`)
+      setDepartments(response.data.departments || [])
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+      toast.error(t('assets.excel.export.deptFetchError', 'Failed to fetch departments from database'))
+      setDepartments([])
+    } finally {
+      setLoadingDepartments(false)
+    }
+  }, [assetType, t]) // Removed apiClient from dependencies
+
+  useEffect(() => {
+    if (isOpen && showByDeptOption) {
+      fetchDepartments()
+    }
+  }, [isOpen, showByDeptOption, fetchDepartments])
 
   // Add reset function for when there's an error
   const resetExport = useCallback(() => {
@@ -72,13 +90,18 @@ export function ExcelExportDialog({
     setExportProgress(10)
     
     // Set a longer timeout for API calls - 5 minutes
-    const exportTimeout = 300000; 
+    const exportTimeout = 300000
     
     try {
       if (exportOption === 'eachDept' && showByDeptOption) {
         // Export each department to separate files
-        if (uniqueDepartments.length === 0) {
-          toast.error(t('assets.excel.export.noDepartments', 'No departments found in current data'))
+        // Check if a specific department is selected
+        let departmentsToExport = departments
+        if (department) {
+          // If a specific department is selected, only export that one
+          departmentsToExport = [department]
+        } else if (departments.length === 0) {
+          toast.error(t('assets.excel.export.noDepartments', 'No departments found in database'))
           resetExport()
           return
         }
@@ -88,24 +111,25 @@ export function ExcelExportDialog({
 
         // Export each department separately
         let completedDepts = 0
-        const totalDepts = uniqueDepartments.length
-        
-        for (const dept of uniqueDepartments) {
+        const totalDepts = departmentsToExport.length
+      
+        for (const dept of departmentsToExport) {
           try {
             setExportStatus(t('assets.excel.export.processingDept', 'Processing department: {0}', dept))
-            
+          
             // Calculate progress percentage based on completed departments
             const deptProgress = 20 + Math.floor((completedDepts / totalDepts) * 70)
             setExportProgress(deptProgress)
-            
+          
             // Build URL with query parameters
             const params = new URLSearchParams({
               assetType,
               dept
-            });
-            
+            })
+          
+            // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
             const url = `/assets/excel/export?${params.toString()}`
-            
+          
             // Use apiClient with timeout and proper authentication
             const config: AxiosRequestConfig = {
               responseType: 'blob',
@@ -114,22 +138,22 @@ export function ExcelExportDialog({
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Cache-Control': 'no-store, no-cache'
               }
-            };
+            }
 
-            console.log(`Fetching from URL: ${url} with timeout ${exportTimeout}ms`);
+            console.log(`Fetching from URL: ${url} with timeout ${exportTimeout}ms`)
             // Log the absolute URL for debugging
-            console.log('Absolute URL:', window.location.origin + url);
-            
-            const response = await apiClient.get(url, config);
-            
-            setExportStatus(t('assets.excel.export.downloading', 'Downloading file...'));
-            setExportProgress(80);
-            
+            console.log('Absolute URL:', window.location.origin + url)
+          
+            const response = await apiClient.get(url, config)
+          
+            setExportStatus(t('assets.excel.export.downloading', 'Downloading file...'))
+            setExportProgress(80)
+          
             // Check if the response is empty or invalid
             if (response.data.size === 0) {
-              throw new Error(t('assets.excel.export.emptyResponse', 'Server returned an empty response'));
+              throw new Error(t('assets.excel.export.emptyResponse', 'Server returned an empty response'))
             }
-            
+          
             // Create a blob URL and trigger download
             const urlObj = window.URL.createObjectURL(new Blob([response.data]))
             const a = document.createElement('a')
@@ -139,63 +163,68 @@ export function ExcelExportDialog({
             a.click()
             document.body.removeChild(a)
             window.URL.revokeObjectURL(urlObj)
-            
-            completedDepts++;
+          
+            completedDepts++
           } catch (deptError: any) {
             console.error(`Export error for department ${dept}:`, deptError)
-            
+          
             // Handle different types of errors
-            let errorMessage = '';
+            let errorMessage = ''
             if (deptError.code === 'ECONNABORTED') {
-              errorMessage = t('assets.excel.export.deptTimeout', 'Export timed out for department {0}', dept);
+              errorMessage = t('assets.excel.export.deptTimeout', 'Export timed out for department {0}', dept)
             } else if (deptError.response?.status === 401) {
-              errorMessage = t('assets.excel.export.unauthorized', 'Unauthorized access. Please log in again.');
+              errorMessage = t('assets.excel.export.unauthorized', 'Unauthorized access. Please log in again.')
               // Redirect to login page
               if (typeof window !== 'undefined') {
-                window.location.href = '/auth/login';
+                window.location.href = '/auth/login'
               }
             } else {
-              errorMessage = t('assets.excel.export.deptError', 'Failed to export {0} for department {1}', title, dept);
+              errorMessage = t('assets.excel.export.deptError', 'Failed to export {0} for department {1}', title, dept)
             }
-            
-            toast.error(errorMessage)
-            
-            // Continue with the next department instead of stopping the entire process
-            completedDepts++;
-          }
           
+            toast.error(errorMessage)
+          
+            // Continue with the next department instead of stopping the entire process
+            completedDepts++
+          }
+        
           // Add a small delay between downloads to prevent browser issues
           await new Promise(resolve => setTimeout(resolve, 500))
         }
 
         setExportStatus(t('assets.excel.export.completing', 'Completing export...'))
         setExportProgress(100)
-        
-        toast.success(t('assets.excel.export.successAllDepts', '{0} export completed for all departments', title))
+      
+        if (department && exportOption === 'eachDept') {
+          toast.success(t('assets.excel.export.successSingleDept', '{0} export completed for department {1}', title, department))
+        } else {
+          toast.success(t('assets.excel.export.successAllDepts', '{0} export completed for all departments', title))
+        }
       } else {
         // Handle single file exports (all, selected, by department)
         // Build URL with query parameters
         const params = new URLSearchParams({
           assetType
-        });
-        
+        })
+      
         // If exporting selected items and we have selected items, add them to the query
         if (exportOption === 'selected' && selectedAssetIds.length > 0) {
-          params.append('selectedIds', JSON.stringify(selectedAssetIds));
+          params.append('selectedIds', JSON.stringify(selectedAssetIds))
         }
-        
+      
         // If exporting by department and the asset type supports departments, add the department parameter
-        if (exportOption === 'allDepts' && department && showByDeptOption) {
-          params.append('dept', department);
+        if ((exportOption === 'allDepts') && department && showByDeptOption) {
+          params.append('dept', department)
         }
 
-        const url = `/api/assets/excel/export?${params.toString()}`;
+        // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
+        const url = `/assets/excel/export?${params.toString()}`
 
         // Log the URL for debugging
-        console.log('Export URL:', url);
+        console.log('Export URL:', url)
         // Log the absolute URL for debugging
-        console.log('Absolute URL:', window.location.origin + url);
-        
+        console.log('Absolute URL:', window.location.origin + url)
+      
         setExportStatus(t('assets.excel.export.processing', 'Processing export...'))
         setExportProgress(50)
 
@@ -207,13 +236,13 @@ export function ExcelExportDialog({
             headers: {
               'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             }
-          };
+          }
 
-          const response = await apiClient.get(url, config);
-          
+          const response = await apiClient.get(url, config)
+        
           setExportStatus(t('assets.excel.export.downloading', 'Downloading file...'))
           setExportProgress(80)
-          
+        
           // Create a blob URL and trigger download
           const urlObj = window.URL.createObjectURL(new Blob([response.data]))
           const a = document.createElement('a')
@@ -226,27 +255,27 @@ export function ExcelExportDialog({
 
           setExportStatus(t('assets.excel.export.completed', 'Export completed'))
           setExportProgress(100)
-          
+        
           toast.success(t('assets.excel.export.success', '{0} export completed', title))
         } catch (singleExportError: any) {
-          console.error('Single export error:', singleExportError);
-          
+          console.error('Single export error:', singleExportError)
+        
           // Handle different types of errors
-          let message = '';
+          let message = ''
           if (singleExportError.code === 'ECONNABORTED') {
-            message = t('assets.excel.export.timeout', 'Export timed out. The data might be too large.');
+            message = t('assets.excel.export.timeout', 'Export timed out. The data might be too large.')
           } else if (singleExportError.response?.status === 401) {
-            message = t('assets.excel.export.unauthorized', 'Unauthorized access. Please log in again.');
+            message = t('assets.excel.export.unauthorized', 'Unauthorized access. Please log in again.')
             // Redirect to login page
             if (typeof window !== 'undefined') {
-              window.location.href = '/auth/login';
+              window.location.href = '/auth/login'
             }
           } else {
-            message = singleExportError.message || t('assets.excel.export.error', 'Failed to export assets');
+            message = singleExportError.message || t('assets.excel.export.error', 'Failed to export assets')
           }
-            
-          toast.error(message);
-          throw singleExportError;
+          
+          toast.error(message)
+          throw singleExportError
         }
       }
     } catch (error: any) {
@@ -255,7 +284,7 @@ export function ExcelExportDialog({
     } finally {
       resetExport()
     }
-  }, [assetType, title, t, exportOption, selectedAssetIds, department, showByDeptOption, uniqueDepartments, resetExport])
+  }, [assetType, title, t, exportOption, selectedAssetIds, department, showByDeptOption, departments, resetExport]) // Removed apiClient from dependencies
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -276,7 +305,6 @@ export function ExcelExportDialog({
             
             <div className="space-y-4">
               <div className="space-y-3">
-                <Label>{t('assets.excel.export.options', 'Export Options')}</Label>
                 <RadioGroup 
                   value={exportOption} 
                   onValueChange={(value: string) => setExportOption(value as ExportOption)}
@@ -316,86 +344,97 @@ export function ExcelExportDialog({
                       id="export-selected" 
                       disabled={selectedAssetIds.length === 0}
                     />
-                    <Label htmlFor="export-selected">
-                      {t('assets.excel.export.selected', '{0} selected items', selectedAssetIds.length.toString())}
-                      {selectedAssetIds.length === 0 && (
-                        <span className="text-muted-foreground">
-                          {' '}({t('assets.excel.export.noSelection', 'no items selected')})
-                        </span>
-                      )}
+                    <Label htmlFor="export-selected" className={selectedAssetIds.length === 0 ? "text-muted-foreground" : ""}>
+                      {selectedAssetIds.length > 0 
+                        ? t('assets.excel.export.selected', '{0} selected items', selectedAssetIds.length.toString())
+                        : t('assets.excel.export.noSelection', 'No items selected')
+                      }
                     </Label>
                   </div>
                 </RadioGroup>
-                
-                {(exportOption === 'allDepts' || exportOption === 'eachDept') && showByDeptOption && (
-                  <div className="mt-2">
-                    <Label htmlFor="department">
-                      {t('assets.excel.export.department', 'Department')}
-                    </Label>
-                    <Select onValueChange={setDepartment} value={department}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t('assets.excel.export.selectDept', 'Select department')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {uniqueDepartments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              <p className="text-sm text-muted-foreground">
-                {exportOption === 'all' 
-                  ? t('assets.excel.export.info.all', 'This will export all {0} data to an Excel file with proper formatting.', title.toLowerCase())
-                  : exportOption === 'allDepts' && showByDeptOption
-                  ? t('assets.excel.export.info.allDepts', 'This will export all {0} data for the selected department to an Excel file with proper formatting.', title.toLowerCase())
-                  : exportOption === 'eachDept' && showByDeptOption
-                  ? t('assets.excel.export.info.eachDept', 'This will export {0} data for each department to separate Excel files with proper formatting.', title.toLowerCase())
-                  : t('assets.excel.export.info.selected', 'This will export only the selected {0} items to an Excel file with proper formatting.', title.toLowerCase())
-                }
-              </p>
               
-              {/* Add progress indicator */}
-              {isExporting && (
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">{exportStatus}</span>
-                    <span className="text-sm">{exportProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div className="bg-primary h-2.5 rounded-full" style={{ width: `${exportProgress}%` }}></div>
-                  </div>
+              {(exportOption === 'allDepts' || exportOption === 'eachDept') && showByDeptOption && (
+                <div className="mt-2">
+                  <Label htmlFor="department">
+                    {t('assets.excel.export.department', 'Department')}
+                  </Label>
+                  <Select 
+                    onValueChange={setDepartment} 
+                    value={department}
+                    disabled={loadingDepartments}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue 
+                        placeholder={loadingDepartments 
+                          ? t('assets.excel.export.loadingDepts', 'Loading departments...') 
+                          : t('assets.excel.export.selectDept', 'Select department')
+                        } 
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
-              
-              <Button
-                onClick={handleExport}
-                disabled={
-                  isExporting || 
-                  (exportOption === 'selected' && selectedAssetIds.length === 0) || 
-                  ((exportOption === 'allDepts') && showByDeptOption && !department && uniqueDepartments.length === 0)
-                }
-                className="w-full"
-              >
-                {isExporting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('assets.excel.export.exporting', 'Exporting...')}
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    {t('assets.excel.export.button', 'Export Data')}
-                  </>
-                )}
-              </Button>
             </div>
+
+            <p className="text-sm text-muted-foreground">
+              {exportOption === 'all' 
+                ? t('assets.excel.export.info.all', 'This will export all {0} data to an Excel file with proper formatting.', title.toLowerCase())
+                : exportOption === 'allDepts' && showByDeptOption
+                ? t('assets.excel.export.info.allDepts', 'This will export all {0} data for the selected department to an Excel file with proper formatting.', title.toLowerCase())
+                : exportOption === 'eachDept' && showByDeptOption
+                ? department 
+                  ? t('assets.excel.export.info.singleDept', 'This will export {0} data for the selected department ({1}) to an Excel file with proper formatting.', title.toLowerCase(), department)
+                  : t('assets.excel.export.info.eachDept', 'This will export {0} data for each department to separate Excel files with proper formatting.', title.toLowerCase())
+                : selectedAssetIds.length > 0
+                ? t('assets.excel.export.info.selected', 'This will export only the selected {0} items to an Excel file with proper formatting.', title.toLowerCase())
+                : t('assets.excel.export.info.noSelection', 'No items selected for export.')
+              }
+            </p>
+            
+            {/* Add progress indicator */}
+            {isExporting && (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">{exportStatus}</span>
+                  <span className="text-sm">{exportProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div className="bg-primary h-2.5 rounded-full" style={{ width: `${exportProgress}%` }}></div>
+                </div>
+              </div>
+            )}
+            
+            <Button
+              onClick={handleExport}
+              disabled={
+                isExporting || 
+                (exportOption === 'selected' && selectedAssetIds.length === 0) || 
+                ((exportOption === 'allDepts') && showByDeptOption && !department && departments.length === 0)
+              }
+              className="w-full"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('assets.excel.export.exporting', 'Exporting...')}
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  {t('assets.excel.export.button', 'Export Data')}
+                </>
+              )}
+            </Button>
           </div>
         </div>
+      </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} disabled={isExporting}>

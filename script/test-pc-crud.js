@@ -75,7 +75,7 @@ async function testPcCrud() {
       cpuBarcode: 'PC004-' + Date.now(), // Make it unique
       cpuSapBarcode: 'SAP004',
       pcName: 'IT-PC-004',
-      status: 'active',
+      status: 'working',
       note: 'New test PC'
     });
     

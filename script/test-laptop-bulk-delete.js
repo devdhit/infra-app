@@ -43,7 +43,7 @@ async function testLaptopBulkDelete() {
           barcode: `LAP-${Date.now()}-${i}`,
           sapBarcode: `SAP-LAP-${Date.now()}-${i}`,
           model: `Test Laptop Model ${i}`,
-          status: 'active',
+          status: 'working',
           note: `Test Laptop asset ${i}`
         })
       });

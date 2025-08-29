@@ -120,7 +120,8 @@ export async function GET(request: NextRequest) {
           upsSapBarcode: pc.upsSapBarcode ?? undefined,
           pcName: pc.pcName,
           userName: pc.userName ?? undefined,
-          status: pc.status,
+          // Normalize status values to lowercase to match standardized values
+          status: pc.status ? pc.status.toLowerCase() : 'working',
           note: pc.note ?? undefined
         }))
         
@@ -150,12 +151,19 @@ export async function GET(request: NextRequest) {
         console.log('Laptop where clause:', laptopWhereClause)
         const laptopData = await db.laptop.findMany({
           where: laptopWhereClause,
-          include: {
-            user: {
-              select: {
-                name: true
-              }
-            }
+          select: {
+            id: true,
+            dept: true,
+            barcode: true,
+            sapBarcode: true,
+            dateBuy: true,
+            userName: true,
+            email: true,
+            model: true,
+            status: true,
+            customFields: true,
+            createdAt: true,
+            updatedAt: true
           },
           take: MAX_RECORDS // Limit the number of records
         })
@@ -167,11 +175,12 @@ export async function GET(request: NextRequest) {
           dept: laptop.dept,
           barcode: laptop.barcode,
           sapBarcode: laptop.sapBarcode ?? undefined,
-          dateBuy: laptop.dateBuy ? laptop.dateBuy.toISOString() : undefined,
-          user: laptop.user?.name ?? undefined,
+          dateBuy: laptop.dateBuy ? laptop.dateBuy.toISOString().split('T')[0] : undefined, // Only include date part
+          userName: laptop.userName ?? undefined, // Use userName instead of user
           email: laptop.email ?? undefined,
           model: laptop.model ?? undefined,
-          status: laptop.status
+          // Normalize status values to lowercase to match standardized values
+          status: laptop.status ? laptop.status.toLowerCase() : 'working'
         }))
         
         console.log('Starting Laptop Excel export...');
@@ -293,7 +302,8 @@ export async function GET(request: NextRequest) {
           mac: license.mac ?? undefined,
           ip: license.ip ?? undefined,
           date: license.date ? license.date.toISOString() : undefined,
-          updateStatus: license.updateStatus ?? 'active'
+          // Normalize updateStatus values to lowercase to match standardized values
+          updateStatus: license.updateStatus ? license.updateStatus.toLowerCase() : 'working'
         }))
         
         console.log('Starting License Excel export...');
@@ -343,7 +353,8 @@ export async function GET(request: NextRequest) {
           monitorSapBarcode: warehouse.monitorSapBarcode ?? undefined,
           upsBarcode: warehouse.upsBarcode ?? undefined,
           upsSapBarcode: warehouse.upsSapBarcode ?? undefined,
-          status: warehouse.status,
+          // Normalize status values to lowercase to match standardized values
+          status: warehouse.status ? warehouse.status.toLowerCase() : 'working',
           note: warehouse.note ?? undefined
         }))
         

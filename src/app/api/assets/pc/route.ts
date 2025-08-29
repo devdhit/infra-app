@@ -29,7 +29,7 @@ const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'PC',
   requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
   uniqueField: 'cpuBarcode',
-  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note']
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note', 'userName']
 })
 
 // GET /api/assets/pc - Get all PC assets for the user's tenant

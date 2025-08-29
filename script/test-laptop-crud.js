@@ -75,7 +75,7 @@ async function testPcCrud() {
       barcode: 'Laptop004-' + Date.now(), // Make it unique
       sapBarcode: 'SAP004',
       model: 'ThinkPad X1 Carbon',
-      status: 'active'
+      status: 'working'
     });
     
     const createOptions = {

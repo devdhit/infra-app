@@ -114,11 +114,9 @@ const getAssetColumns = (
   const dataColumns: ColumnDef<Asset>[] = visibleColumns.map((column, index) => {
     // Determine if this is a custom field
     const isCustom = isCustomField(column.key, {}, customFieldsData);
-    // Create a unique key for the header
-    const uniqueHeaderKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
     
     return {
-      accessorKey: uniqueHeaderKey,
+      accessorKey: column.key, // Use the original key as accessorKey
       header: t(column.label, column.label),
       cell: ({ row }) => {
         const asset = row.original;
@@ -130,9 +128,6 @@ const getAssetColumns = (
         const isCustom = isCustomField(column.key, asset, customFieldsData);
         // Safely access the cell value
         const cellValue = getFieldValue(column.key, asset, isCustom);
-        
-        // Create a unique key to avoid duplicates
-        const uniqueKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
         
         return field ? (
           <InlineEditCell
@@ -156,7 +151,7 @@ const getAssetColumns = (
               );
               // Update the query cache to reflect the changes
               queryClient.setQueryData(
-                ['assets', assetType, JSON.stringify({ page: currentPage, limit: 10, search, status: statusFilter })], 
+                ['assets', assetType, JSON.stringify({ page: currentPage, limit: 10, search, statusFilter })], 
                 (oldData: any) => ({
                   ...oldData,
                   data: updatedAssets
@@ -168,7 +163,7 @@ const getAssetColumns = (
             }}
           />
         ) : (
-          column.render ? column.render(asset[column.key]) : String(asset[column.key] || '')
+          column.render ? column.render(cellValue) : String(cellValue || '')
         );
       },
     };
@@ -843,14 +838,14 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                   <DropdownMenuItem onClick={() => handleStatusFilterChange("")}>
                     {t('common.all', "All")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusFilterChange("active")}>
-                    {t('assets.status.active', "Active")}
+                  <DropdownMenuItem onClick={() => handleStatusFilterChange("working")}>
+                    {t('assets.status.working', "Working")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusFilterChange("inactive")}>
-                    {t('assets.status.inactive', "Inactive")}
+                  <DropdownMenuItem onClick={() => handleStatusFilterChange("leave")}>
+                    {t('assets.status.leave', "Leave")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusFilterChange("maintenance")}>
-                    {t('assets.status.maintenance', "Maintenance")}
+                  <DropdownMenuItem onClick={() => handleStatusFilterChange("repair")}>
+                    {t('assets.status.repair', "Repair")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -991,7 +986,6 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
         isOpen={isExportDialogOpen}
         onClose={() => setIsExportDialogOpen(false)}
         selectedAssetIds={selectedAssets}
-        departments={departments}
       />
     </div>
   );
