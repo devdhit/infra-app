@@ -37,7 +37,6 @@ model User {
   updatedAt DateTime  @updatedAt
   histories History[]
   laptops   Laptop[]
-  pcs       PC[]
   tenant    Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
@@ -53,7 +52,7 @@ model PC {
   upsBarcode        String?
   upsSapBarcode     String?
   pcName            String
-  userId            String?
+  userName          String?
   status            String    @default("active")
   note              String?
   tenantId          String
@@ -61,10 +60,8 @@ model PC {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   tenant            Tenant    @relation(fields: [tenantId], references: [id])
-  user              User?     @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
-  @@index([userId])
 }
 
 model Laptop {

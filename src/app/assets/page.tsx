@@ -13,6 +13,7 @@ import {
   Upload
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 const assetTypes = [
   {
@@ -53,6 +54,8 @@ const assetTypes = [
 ];
 
 export default function AssetsPage() {
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -61,7 +64,7 @@ export default function AssetsPage() {
           <p className="text-muted-foreground">Manage all your IT assets in one place</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>
             <Download className="h-4 w-4 mr-2" />
             Export All
           </Button>

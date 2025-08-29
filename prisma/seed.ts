@@ -64,7 +64,7 @@ async function main() {
         status: 'active',
         note: 'Main IT department computer',
         tenantId: tenant.id,
-        userId: adminUser.id
+        userName: adminUser.name
       }
     }),
     prisma.pC.create({
@@ -76,7 +76,7 @@ async function main() {
         status: 'active',
         note: 'HR department computer',
         tenantId: tenant.id,
-        userId: regularUser.id
+        userName: regularUser.name
       }
     }),
     prisma.pC.create({

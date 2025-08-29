@@ -11,6 +11,7 @@ A comprehensive IT asset management solution built with modern web technologies.
 - [Installation](#installation)
 - [Database Schema](#database-schema)
 - [API Documentation](#api-documentation)
+- [Excel Export Functionality](#excel-export-functionality)
 - [Role-Based Access Control](#role-based-access-control)
 - [Deployment](#deployment)
 - [Roadmap](#roadmap)
@@ -39,7 +40,7 @@ The IT Asset Management System (ITAMS) is a comprehensive solution for organizat
 
 3. **Excel Import/Export**
    - Template-based data import for all asset types
-   - Bulk export functionality
+   - Bulk export functionality with department filtering
    - Data validation during import
 
 4. **Custom Fields**
@@ -199,6 +200,35 @@ All API endpoints are RESTful and follow standard conventions:
 
 ### Users
 - `GET /api/users` - List users
+
+## Excel Export Functionality
+
+The ITAMS provides comprehensive Excel export capabilities for all asset types:
+
+### Individual Asset Type Export
+- Export any single asset type (PC, Laptop, Printer, License, Warehouse) to a dedicated Excel template
+- Available from each asset list page with "Export" button
+- Options to export all items, items by department, or only selected items
+
+### Department-Based Export
+- Export assets filtered by department (IT, HR, Finance, Operations)
+- Available for PC, Laptop, Printer, and License assets
+- Provides targeted data exports for specific organizational units
+
+### All Assets Export
+- Export all asset types in a single Excel file with multiple sheets
+- Available from the main Assets page with "Export All" button
+- Each asset type is placed on a separate worksheet
+
+### Technical Implementation
+- Uses template-based approach with predefined Excel templates
+- Backend API routes handle data fetching and Excel generation
+- Frontend dialogs provide user interface for export options
+- Supports filtering by selection and department for targeted exports
+
+For detailed technical information, see:
+- `docs/excel-export-functionality.md` for general export functionality
+- `docs/department-based-export.md` for department-based export details
 
 ## Role-Based Access Control
 

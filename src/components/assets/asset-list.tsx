@@ -213,6 +213,18 @@ const getAssetColumns = (
   return [selectionColumn, ...dataColumns, actionsColumn];
 };
 
+// Add this helper function to extract unique departments from assets
+const extractDepartments = (assets: Asset[]): string[] => {
+  const departments = new Set<string>();
+  assets.forEach(asset => {
+    // Only include non-empty department values
+    if (asset.dept && asset.dept.trim() !== '') {
+      departments.add(asset.dept);
+    }
+  });
+  return Array.from(departments).sort();
+};
+
 export function AssetList({ assetType, title, columns, formFields }: AssetListProps) {
   const { t, loading } = useTranslation();
   const queryClient = useQueryClient();
@@ -709,6 +721,23 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     );
   };
   
+  // Add this helper function to extract unique departments from assets
+  const extractDepartments = useCallback((assets: Asset[]): string[] => {
+    const departments = new Set<string>();
+    assets.forEach(asset => {
+      // Only include non-empty department values
+      if (asset.dept && asset.dept.trim() !== '') {
+        departments.add(asset.dept);
+      }
+    });
+    return Array.from(departments).sort();
+  }, []);
+
+  // Extract departments from current assets data
+  const departments = useMemo(() => {
+    return extractDepartments(assets);
+  }, [assets, extractDepartments]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -961,6 +990,8 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
         title={title}
         isOpen={isExportDialogOpen}
         onClose={() => setIsExportDialogOpen(false)}
+        selectedAssetIds={selectedAssets}
+        departments={departments}
       />
     </div>
   );

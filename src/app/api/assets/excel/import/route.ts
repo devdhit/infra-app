@@ -67,33 +67,22 @@ export async function POST(request: NextRequest) {
             }
 
             // Handle user field mapping - if user field exists, we need to find the user ID
-            let pcUserId = null;
-            // Check if user field is not 'N/A' before trying to find the user
-            if (row.user && row.user !== 'N/A') {
-              // Try to find user by email or name
-              const foundUser = await db.user.findFirst({
-                where: {
-                  OR: [
-                    { email: String(row.user) },
-                    { name: String(row.user) }
-                  ],
-                  tenantId: user.tenantId
-                }
-              });
-              
-              if (foundUser) {
-                pcUserId = foundUser.id;
-              }
+            let pcUserName = undefined;
+            // Check if user field exists and is not empty before trying to find the user
+            if (row.user) {
+              pcUserName = String(row.user);
+            } else if (row.userName) {
+              pcUserName = String(row.userName);
             }
 
             // Remove the user field from row data since it's not a direct field in the database
-            const { user: userField, ...pcRowData } = row as any;
+            const { user: userField, userName, ...pcRowData } = row as any;
 
             // Create the PC record first
             const createdPC = await db.pC.create({
               data: {
                 ...pcRowData,
-                userId: pcUserId, // Use the resolved userId instead of the user field
+                userName: pcUserName, // Use the user name instead of user ID
                 tenantId: user.tenantId
               }
             });
@@ -132,8 +121,8 @@ export async function POST(request: NextRequest) {
 
             // Handle user field mapping - if user field exists, we need to find the user ID
             let laptopUserId = null;
-            // Check if user field is not 'N/A' before trying to find the user
-            if (row.user && row.user !== 'N/A') {
+            // Check if user field exists and is not empty before trying to find the user
+            if (row.user) {
               // Try to find user by email or name
               const foundUser = await db.user.findFirst({
                 where: {
@@ -150,13 +139,29 @@ export async function POST(request: NextRequest) {
               }
             }
 
+            // Process date fields
+            let dateBuyValue = null;
+            if (row.dateBuy && typeof row.dateBuy === 'string' && row.dateBuy !== 'N/A') {
+              try {
+                // The date should already be in ISO format from the importFromExcelWithTemplate function
+                dateBuyValue = new Date(row.dateBuy);
+                if (isNaN(dateBuyValue.getTime())) {
+                  dateBuyValue = null;
+                }
+              } catch (e) {
+                console.error('Error parsing date:', e);
+                dateBuyValue = null;
+              }
+            }
+
             // Remove the user field from row data since it's not a direct field in the database
-            const { user: laptopUserField, ...laptopRowData } = row as any;
+            const { user: laptopUserField, dateBuy, ...laptopRowData } = row as any;
 
             // Create the Laptop record first
             const createdLaptop = await db.laptop.create({
               data: {
                 ...laptopRowData,
+                dateBuy: dateBuyValue,
                 userId: laptopUserId, // Use the resolved userId instead of the user field
                 tenantId: user.tenantId
               }
@@ -194,10 +199,29 @@ export async function POST(request: NextRequest) {
               continue
             }
 
+            // Process date field if present
+            let printerDateValue = null;
+            if (row.date && typeof row.date === 'string' && row.date !== 'N/A') {
+              try {
+                // The date should already be in ISO format from the importFromExcelWithTemplate function
+                printerDateValue = new Date(row.date);
+                if (isNaN(printerDateValue.getTime())) {
+                  printerDateValue = null;
+                }
+              } catch (e) {
+                console.error('Error parsing date:', e);
+                printerDateValue = null;
+              }
+            }
+
+            // Remove date from row data to handle it separately
+            const { date: printerDate, ...printerRowData } = row as any;
+
             // Create the Printer record first
             const createdPrinter = await db.printer.create({
               data: {
-                ...row as any,
+                ...printerRowData,
+                date: printerDateValue,
                 tenantId: user.tenantId
               }
             });
@@ -224,10 +248,29 @@ export async function POST(request: NextRequest) {
               continue
             }
 
+            // Process date field if present
+            let licenseDateValue = null;
+            if (row.date && typeof row.date === 'string' && row.date !== 'N/A') {
+              try {
+                // The date should already be in ISO format from the importFromExcelWithTemplate function
+                licenseDateValue = new Date(row.date);
+                if (isNaN(licenseDateValue.getTime())) {
+                  licenseDateValue = null;
+                }
+              } catch (e) {
+                console.error('Error parsing date:', e);
+                licenseDateValue = null;
+              }
+            }
+
+            // Remove date from row data to handle it separately
+            const { date: licenseDate, ...licenseRowData } = row as any;
+
             // Create the License record first
             const createdLicense = await db.license.create({
               data: {
-                ...row as any,
+                ...licenseRowData,
+                date: licenseDateValue,
                 tenantId: user.tenantId
               }
             });

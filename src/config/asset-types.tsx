@@ -41,9 +41,9 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.pc.pcName') || "PC Name"
       },
       {
-        key: "user",
+        key: "userName",
         label: t('assets.pc.user') || "User",
-        render: (user: any) => user?.name || "-"
+        render: (userName: string) => userName || "-"
       },
       {
         key: "status",
@@ -119,6 +119,12 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         type: "text",
         required: true,
         placeholder: "Workstation-001"
+      },
+      {
+        name: "userName",
+        label: t('assets.pc.user') || "User",
+        type: "text",
+        placeholder: "John Doe or john.doe@example.com"
       },
       {
         name: "status",
