@@ -43,7 +43,7 @@ import { ApiError, ValidationError } from "@/lib/api";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AssetFormSkeleton } from "./asset-form-skeleton";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation"; // Unused
 import { Badge } from "@/components/ui/badge";
 import { getModelType } from "@/lib/custom-fields";
 
@@ -190,7 +190,7 @@ export function AssetFormDialog({
 }: AssetFormProps) {
   const { t } = useTranslation();
   const isEditing = !!initialData;
-  const router = useRouter();
+  // const router = useRouter(); // Unused
   
   // Map assetType to modelType for custom fields
   const modelType = getModelType(assetType);

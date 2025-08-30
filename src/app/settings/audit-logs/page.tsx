@@ -8,14 +8,7 @@ import { Button } from "@/components/ui/button"
 import { useTranslation } from "@/hooks/use-translation"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+
 import { FileText, Save, RotateCcw, Bell, SettingsIcon, AlertCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useAuditLogsSettings, useUpdateAuditLogsSettings } from "@/hooks/useApi"

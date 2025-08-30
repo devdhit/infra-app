@@ -219,12 +219,6 @@ export function TenantsTable({
               {t('common.delete', 'Delete')} ({selectedTenants.length})
             </Button>
           )}
-          {onEdit && (
-            <Button onClick={() => onEdit(null)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('tenants.create.button') || 'Add Tenant'}
-            </Button>
-          )}
         </div>
       </div>
 

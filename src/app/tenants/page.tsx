@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useTenants, useCreateTenant, useUpdateTenant, useDeleteTenant, useBulkDeleteTenants } from "@/hooks/useApi"
+import { useTenants, useCreateTenant, useDeleteTenant, useBulkDeleteTenants } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
@@ -27,7 +27,6 @@ export default function TenantsPage() {
   const queryClient = useQueryClient()
   const { data: tenantsData = [], isLoading, isError, error, refetch } = useTenants()
   const createTenantMutation = useCreateTenant()
-  const updateTenantMutation = useUpdateTenant('') // Placeholder, will be overridden when used
   const deleteMutation = useDeleteTenant('') // Placeholder, will be overridden when used
   const bulkDeleteMutation = useBulkDeleteTenants()
   
@@ -115,7 +114,7 @@ export default function TenantsPage() {
         // Update existing tenant
         try {
           // Use the API client directly to make the PUT request with proper authentication
-          const response = await api.put<Tenant, Partial<TenantFormValues>>(`/tenants/${editingTenant.id}`, {
+          await api.put<Tenant, Partial<TenantFormValues>>(`/tenants/${editingTenant.id}`, {
             name: data.name,
             description: data.description,
           });

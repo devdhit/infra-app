@@ -1,8 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { Language, supportedLanguages, defaultLanguage, getTranslations, translate as translateFunction, hasTranslation } from '@/lib/i18n'
-import { usePathname, useRouter } from 'next/navigation'
+import { Language, defaultLanguage, getTranslations, translate as translateFunction, hasTranslation } from '@/lib/i18n'
 
 type I18nContextType = {
   language: Language

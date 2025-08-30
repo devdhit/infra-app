@@ -29,16 +29,14 @@ import {
 import { 
   useApiQuery, 
   useApiMutation, 
-  useApiUpdate, 
-  useApiDelete 
+  useApiUpdate
 } from "@/hooks/useApi";
 import { useState } from "react";
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle, 
-  DialogTrigger,
+  DialogTitle,
   DialogDescription
 } from "@/components/ui/dialog";
 import { 
@@ -110,7 +108,6 @@ export default function CustomFieldsPage() {
   
   const createMutation = useApiMutation<CustomField, CustomFieldFormData>('/custom-fields');
   const updateMutation = useApiUpdate<CustomField, CustomFieldFormData>(`/custom-fields/${editingField?.id}`);
-  const deleteMutation = useApiDelete<CustomField>(`/custom-fields/${editingField?.id}`);
   
   const form = useForm<CustomFieldFormData>({
     defaultValues: {

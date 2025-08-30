@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+
 import { useTranslation } from "@/hooks/use-translation"
 import { User, Tenant } from "@/hooks/useApi"
 

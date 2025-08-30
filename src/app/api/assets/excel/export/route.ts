@@ -6,17 +6,11 @@ import {
   exportLaptopToExcel, 
   exportPrinterToExcel, 
   exportLicenseToExcel, 
-  exportWarehouseITToExcel,
-  PCAsset,
-  LaptopAsset,
-  PrinterAsset,
-  LicenseAsset,
-  WarehouseITAsset
+  exportWarehouseITToExcel
 } from '@/lib/excel'
 
 // Define types for our data
 type AssetType = 'pc' | 'laptop' | 'printer' | 'license' | 'warehouse'
-type ExportData = PCAsset[] | LaptopAsset[] | PrinterAsset[] | LicenseAsset[] | WarehouseITAsset[]
 
 // GET /api/assets/excel/export - Export assets to Excel
 export async function GET(request: NextRequest) {
@@ -31,7 +25,6 @@ export async function GET(request: NextRequest) {
   try {
     // Create a controller to allow aborting the fetch if it takes too long
     const controller = new AbortController();
-    const signal = controller.signal;
     
     // Set a timeout to abort the request if it takes too long
     timer = setTimeout(() => {
@@ -68,7 +61,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const data: ExportData = []
     let buffer: ArrayBuffer
 
     // Parse selected IDs if provided

@@ -32,7 +32,23 @@
     // Allow importing .js files in TypeScript project
     "allowSyntheticDefaultImports": true,
     // Ensure proper handling of module resolution
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    // Additional strict type checking options
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false
   },
   "include": [
     "**/*.ts",

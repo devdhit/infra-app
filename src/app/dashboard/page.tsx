@@ -10,20 +10,17 @@ import {
   Key, 
   Warehouse,
   Activity,
-  User,
   Building,
   Settings,
   TrendingUp,
   AlertTriangle,
   CheckCircle,
   Clock,
-  ArrowUpRight,
-  Calendar,
-  DollarSign
+  ArrowUpRight
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useTranslation } from "@/hooks/use-translation";
-import { DashboardData, StatusBreakdownItem, DepartmentAssetStat } from "@/types/dashboard";
+import { DashboardData, StatusBreakdownItem } from "@/types/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -118,14 +115,6 @@ export default function DashboardPage() {
 
   // Prepare data for pie chart
   const pieData = assetData.filter(item => item.count > 0);
-
-  // Prepare department statistics data
-  const departmentStatsData = dashboardData?.departmentStats?.map((dept: DepartmentAssetStat) => ({
-    name: dept.department,
-    pcs: dept.pcCount,
-    monitors: dept.monitorCount,
-    ups: dept.upsCount
-  })) || [];
 
   // Prepare department statistics for all asset types
   const allDepartmentStatsData = {
@@ -260,7 +249,7 @@ export default function DashboardPage() {
                     dataKey="count"
                     label={({ name, percent }) => `${t(`nav.${name.toLowerCase()}`) || name}: ${((percent || 0) * 100).toFixed(0)}%`}
                   >
-                    {pieData.map((entry, index) => (
+                    {pieData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>

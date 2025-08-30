@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         switch (assetType) {
           case 'pc':
             // Validate required fields for PC
-            // Check if fields exist and are not null
+            // Check if fields exist and are not null or undefined (but allow 'N/A')
             if (row.cpuBarcode === null || row.cpuBarcode === undefined ||
                 row.pcName === null || row.pcName === undefined ||
                 row.dept === null || row.dept === undefined) {
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
 
           case 'laptop':
             // Validate required fields for Laptop
-            // Check if fields exist and are not null
+            // Check if fields exist and are not null or undefined (but allow 'N/A')
             if (row.dept === null || row.dept === undefined) {
               errors.push(`Row missing required field: Department`)
               continue
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
 
           case 'printer':
             // Validate required fields for Printer
-            // Check if fields exist and are not null
+            // Check if fields exist and are not null or undefined (but allow 'N/A')
             if (row.barcode === null || row.barcode === undefined ||
                 row.dept === null || row.dept === undefined) {
               errors.push(`Row missing required fields: Barcode and Department`)
@@ -497,10 +497,68 @@ export async function POST(request: NextRequest) {
             break
 
           case 'license':
+            // Normalize field names to handle case sensitivity
+            if (row.ProductType && !row.productType) {
+              row.productType = row.ProductType;
+            }
+            if (row.ProductKey && !row.productKey) {
+              row.productKey = row.ProductKey;
+            }
+            if (row.DeviceName && !row.deviceName) {
+              row.deviceName = row.DeviceName;
+            }
+            if (row.UpdateStatus && !row.updateStatus) {
+              row.updateStatus = row.UpdateStatus;
+            }
+            if (row.Date && !row.date) {
+              row.date = row.Date;
+              // Remove the uppercase Date field to avoid Prisma errors
+              delete row.Date;
+            }
+            if (row.Dept && !row.dept) {
+              row.dept = row.Dept;
+              delete row.Dept;
+            }
+            if (row.Model && !row.model) {
+              row.model = row.Model;
+              delete row.Model;
+            }
+            if (row.PC && !row.pc) {
+              row.pc = row.PC;
+              delete row.PC;
+            }
+            if (row.MAC && !row.mac) {
+              row.mac = row.MAC;
+              delete row.MAC;
+            }
+            if (row.IP && !row.ip) {
+              row.ip = row.IP;
+              delete row.IP;
+            }
+            
+            // Handle updateStatus field - convert ON to working, OFF to leave
+            if (row.updateStatus) {
+              const status = String(row.updateStatus).toUpperCase();
+              if (status === 'ON') {
+                row.updateStatus = 'working';
+              } else if (status === 'OFF') {
+                row.updateStatus = 'leave';
+              }
+            }
+            
             // Validate required fields for License
-            // Check if fields exist and are not null
-            if (row.productType === null || row.productType === undefined ||
-                row.productKey === null || row.productKey === undefined) {
+            // Check if fields exist and are not null, undefined, empty strings, or 'N/A'
+            const isProductTypeValid = row.productType !== null && 
+                                      row.productType !== undefined && 
+                                      row.productType !== '' && 
+                                      String(row.productType).toLowerCase() !== 'n/a';
+            
+            const isProductKeyValid = row.productKey !== null && 
+                                     row.productKey !== undefined && 
+                                     row.productKey !== '' && 
+                                     String(row.productKey).toLowerCase() !== 'n/a';
+            
+            if (!isProductTypeValid || !isProductKeyValid) {
               errors.push(`Row missing required fields: Product Type and Product Key`)
               continue
             }
@@ -521,7 +579,16 @@ export async function POST(request: NextRequest) {
             }
 
             // Remove date from row data to handle it separately
-            const { date: licenseDate, ...licenseRowData } = row as any;
+            const { 
+              date: licenseDate, 
+              Date: upperCaseDate, 
+              Dept, 
+              Model, 
+              PC, 
+              MAC, 
+              IP, 
+              ...licenseRowData 
+            } = row as any;
             
             // Extract custom fields from row data
             let licenseCustomFields: Record<string, any> | undefined;

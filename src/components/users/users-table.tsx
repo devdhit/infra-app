@@ -205,12 +205,6 @@ export function UsersTable({
               {t('common.delete', 'Delete')} ({selectedUsers.length})
             </Button>
           )}
-          {onEdit && (
-            <Button onClick={() => onEdit(null)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('users.create.button') || 'Add User'}
-            </Button>
-          )}
         </div>
       </div>
 

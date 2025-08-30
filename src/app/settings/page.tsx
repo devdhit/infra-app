@@ -1,6 +1,6 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Settings, 
@@ -11,13 +11,6 @@ import {
   Users,
   Building,
   FileText,
-  PaletteIcon,
-  BellIcon,
-  ShieldIcon,
-  DatabaseIcon,
-  UsersIcon,
-  BuildingIcon,
-  FileTextIcon,
   ArrowRight
 } from "lucide-react";
 import Link from "next/link";

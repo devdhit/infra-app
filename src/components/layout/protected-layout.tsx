@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
+
 import { useCurrentUser } from '@/hooks/useApi'
 import { usePathname } from 'next/navigation'
 import { Navigation } from './navigation'
 import { Header } from './header'
-import { useTranslation } from '@/hooks/use-translation'
+
 import type { UserRole } from '@/lib/permissions'
 
 interface ProtectedLayoutProps {
@@ -14,7 +14,6 @@ interface ProtectedLayoutProps {
 
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const pathname = usePathname()
-  const { t } = useTranslation()
   const { data: user, isLoading, isError } = useCurrentUser()
 
   // For auth routes, don't show the navigation layout

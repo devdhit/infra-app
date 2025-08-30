@@ -9,7 +9,6 @@ import type {
   Row,
   Column,
   HeaderGroup,
-  Cell,
   Table as ReactTable,
   RowSelectionState,
 } from '@tanstack/react-table'
@@ -21,18 +20,12 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ChevronDown, ChevronLeft, ChevronRight, Search, Eye, EyeOff, Filter, GripVertical } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
+
+
 import {
   Table,
   TableBody,
@@ -47,6 +40,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
+
+// Add virtualization support
+
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -70,13 +66,15 @@ interface DataTableProps<TData, TValue> {
   responsive?: boolean
   // New prop for column resizing
   enableColumnResizing?: boolean
+  // New prop for virtualization
+  enableVirtualization?: boolean
+  virtualItemHeight?: number
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   searchable = true,
-  filterable = true,
   sortable = true,
   pagination = true,
   pageSize = 10,
@@ -87,14 +85,14 @@ export function DataTable<TData, TValue>({
   onRefresh,
   disableBuiltInFeatures = false,
   getRowId,
-  responsive = true,
   enableColumnResizing = false,
+  enableVirtualization = false,
+  virtualItemHeight = 50,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
-  const [searchValue, setSearchValue] = React.useState('')
   // State for column resizing
   const [columnSizing, setColumnSizing] = React.useState<Record<string, number>>({})
   // State for mobile view toggle
@@ -148,6 +146,13 @@ export function DataTable<TData, TValue>({
         pageIndex: 0,
         pageSize,
       },
+      // Initialize column visibility based on the 'hide' property in column definitions
+      columnVisibility: columns.reduce((acc, column: any) => {
+        if (column.hide === true) {
+          acc[column.accessorKey || column.id] = false;
+        }
+        return acc;
+      }, {} as VisibilityState),
     },
     enableGlobalFilter: searchable,
     // Use custom row ID function if provided
@@ -169,30 +174,6 @@ export function DataTable<TData, TValue>({
     })
     setColumnVisibility(newState)
   }
-
-  // Handle clear filters
-  const handleClearFilters = () => {
-    setColumnFilters([])
-    setSearchValue('')
-  }
-
-  // Remove duplicate columns based on id
-  const getUniqueColumns = React.useCallback(() => {
-    const seen = new Set()
-    return table
-      .getAllColumns()
-      .filter((column: Column<TData, unknown>) => {
-        if (typeof column.accessorFn !== 'undefined' && column.getCanHide()) {
-          const key = column.id
-          if (seen.has(key)) {
-            return false
-          }
-          seen.add(key)
-          return true
-        }
-        return false
-      })
-  }, [table])
 
   if (loading) {
     return (
@@ -243,39 +224,7 @@ export function DataTable<TData, TValue>({
               Table View
             </Button>
             
-            {/* Column visibility control */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <Eye className="h-4 w-4" />
-                  Fields
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium leading-none">Fields</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Select which fields to display in cards
-                    </p>
-                  </div>
-                  <Separator />
-                  <div className="grid gap-2 max-h-60 overflow-y-auto">
-                    {table.getAllColumns().map((column) => (
-                      column.getCanHide() ? (
-                        <div key={column.id} className="flex items-center justify-between">
-                          <span className="text-sm">{String(column.columnDef.header)}</span>
-                          <Checkbox
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                          />
-                        </div>
-                      ) : null
-                    ))}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+            {/* Column visibility control has been removed */}
           </div>
         </div>
         
@@ -355,6 +304,59 @@ export function DataTable<TData, TValue>({
     );
   }
 
+  // Add optimized rendering for large datasets
+  const OptimizedTableBody = React.memo<{
+    table: ReactTable<TData>;
+    data: TData[];
+    onRowClick?: (row: TData) => void;
+    enableVirtualization?: boolean;
+    virtualItemHeight?: number;
+  }>(({ table, onRowClick }) => {
+    // Only render visible rows based on current pagination
+    return (
+      <TableBody>
+        {table.getRowModel().rows?.length ? (
+          table.getRowModel().rows.map((row: Row<TData>) => (
+            <TableRow
+              key={row.id}
+              data-state={row.getIsSelected() && 'selected'}
+              onClick={() => onRowClick?.(row.original)}
+              className={`data-table-row ${onRowClick ? 'cursor-pointer' : ''}`}
+            >
+              {row.getVisibleCells().map((cell, index) => {
+                const isFirstColumn = index === 0;
+                const isCheckboxColumn = cell.column.id === 'select';
+                
+                return (
+                  <TableCell 
+                    key={cell.id} 
+                    className={`align-middle ${isFirstColumn ? 'sticky-column' : ''}`}
+                    style={{
+                      width: isCheckboxColumn ? 40 : cell.column.getSize(),
+                      minWidth: isCheckboxColumn ? 40 : 120,
+                      maxWidth: isCheckboxColumn ? 40 : 'none',
+                    }}
+                  >
+                    <div className={`${isCheckboxColumn ? '' : 'break-words whitespace-normal text-sm'} overflow-hidden text-ellipsis`}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          ))
+        ) : (
+          <TableRow>
+            <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">
+              No results found.
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    );
+  });
+  OptimizedTableBody.displayName = 'OptimizedTableBody';
+
   return (
     <div className="space-y-4">
       {/* Table Controls */}
@@ -373,58 +375,7 @@ export function DataTable<TData, TValue>({
             Card View
           </Button>
           
-          {/* Column visibility control */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                Columns
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="end">
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium leading-none">Columns</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Select which columns to display
-                  </p>
-                </div>
-                <Separator />
-                <div className="grid gap-2 max-h-60 overflow-y-auto">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Select All</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => toggleAllColumns(true)}
-                      className="h-8 px-2"
-                    >
-                      Show
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => toggleAllColumns(false)}
-                      className="h-8 px-2"
-                    >
-                      Hide
-                    </Button>
-                  </div>
-                  {table.getAllColumns().map((column) => (
-                    column.getCanHide() ? (
-                      <div key={column.id} className="flex items-center justify-between">
-                        <span className="text-sm">{String(column.columnDef.header)}</span>
-                        <Checkbox
-                          checked={column.getIsVisible()}
-                          onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                        />
-                      </div>
-                    ) : null
-                  ))}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Column visibility control has been removed */}
         </div>
       </div>
       
@@ -495,45 +446,13 @@ export function DataTable<TData, TValue>({
                 </TableRow>
               ))}
             </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row: Row<TData>) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                    onClick={() => onRowClick?.(row.original)}
-                    className={`data-table-row ${onRowClick ? 'cursor-pointer' : ''}`}
-                  >
-                    {row.getVisibleCells().map((cell, index) => {
-                      const isFirstColumn = index === 0;
-                      const isCheckboxColumn = cell.column.id === 'select';
-                      
-                      return (
-                        <TableCell 
-                          key={cell.id} 
-                          className={`align-middle ${isFirstColumn ? 'sticky-column' : ''}`}
-                          style={{
-                            width: isCheckboxColumn ? 40 : cell.column.getSize(),
-                            minWidth: isCheckboxColumn ? 40 : 120,
-                            maxWidth: isCheckboxColumn ? 40 : 'none',
-                          }}
-                        >
-                          <div className={`${isCheckboxColumn ? '' : 'break-words whitespace-normal text-sm'} overflow-hidden text-ellipsis`}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </div>
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
+            <OptimizedTableBody 
+              table={table} 
+              data={data} 
+              onRowClick={onRowClick} 
+              enableVirtualization={enableVirtualization}
+              virtualItemHeight={virtualItemHeight}
+            />
           </Table>
         </div>
       </div>

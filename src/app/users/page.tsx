@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useTenants, useBulkDeleteUsers } from "@/hooks/useApi"
+import { useUsers, useCreateUser, useDeleteUser, useTenants, useBulkDeleteUsers } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
@@ -28,7 +28,7 @@ export default function UsersPage() {
   const { data: users = [], isLoading, isError, error, refetch } = useUsers()
   const { data: tenants = [] } = useTenants()
   const createUserMutation = useCreateUser()
-  const updateUserMutation = useUpdateUser('') // Placeholder, will be overridden when used
+  // const updateUserMutation = useUpdateUser('') // Placeholder, will be overridden when used - unused
   const deleteMutation = useDeleteUser('') // Placeholder, will be overridden when used
   const bulkDeleteMutation = useBulkDeleteUsers()
   
@@ -116,7 +116,7 @@ export default function UsersPage() {
         // Update existing user
         try {
           // Use the API client directly to make the PUT request with proper authentication
-          const response = await api.put<User, Partial<UserFormValues>>(`/users/${editingUser.id}`, {
+          await api.put<User, Partial<UserFormValues>>(`/users/${editingUser.id}`, {
             email: data.email,
             name: data.name,
             role: data.role,

@@ -21,6 +21,7 @@ export interface AssetColumn {
   render?: (value: any) => React.ReactNode;
   originalKey?: string; // For unique key handling
   isCustomField?: boolean; // To identify custom fields
+  hide?: boolean; // Whether to hide the column by default
 }
 
 export interface AssetFormField {

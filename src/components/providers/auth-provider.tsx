@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const { data: user, isLoading: userLoading, isError, status } = useCurrentUser();
+  const { data: user, isLoading: userLoading, status } = useCurrentUser();
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);

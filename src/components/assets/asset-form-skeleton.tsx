@@ -16,7 +16,7 @@ interface AssetFormSkeletonProps {
   fieldCount?: number
 }
 
-export function AssetFormSkeleton({ title, fieldCount = 5 }: AssetFormSkeletonProps) {
+export function AssetFormSkeleton({ fieldCount = 5 }: AssetFormSkeletonProps) {
   return (
     <Dialog open>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">

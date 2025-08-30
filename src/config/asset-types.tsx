@@ -364,15 +364,18 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
     columns: [
       {
         key: "deviceName",
-        label: t('assets.license.softwareName') || "Software Name"
+        label: t('assets.license.softwareName') || "Software Name",
+        hide: true
       },
       {
         key: "productType",
-        label: t('assets.license.productType') || "Product Type"
+        label: t('assets.license.productType') || "Product Type",
+        hide: true
       },
       {
         key: "productKey",
-        label: t('assets.license.licenseKey') || "License Key"
+        label: t('assets.license.licenseKey') || "License Key",
+        hide: true
       },
       {
         key: "userName",
@@ -506,10 +509,10 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
     name: "WarehouseIT",
     key: "warehouse",
     columns: [
-      {
-        key: "dept",
-        label: t('assets.warehouse.dept') || "Department"
-      },
+      // {
+      //   key: "dept",
+      //   label: t('assets.warehouse.dept') || "Department"
+      // },
       {
         key: "cpuBarcode",
         label: t('assets.warehouse.cpuBarcode') || "CPU Barcode"

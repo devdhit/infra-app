@@ -29,10 +29,10 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
-  Loader2,
-  AlertCircle,
+  // Loader2, // Unused
+  // AlertCircle, // Unused
   Settings,
-  EyeOff,
+  // EyeOff, // Unused
   Eye as EyeIcon
 } from "lucide-react";
 import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
@@ -47,7 +47,7 @@ import { Asset, AssetResponse, AssetColumn, AssetFormField } from "@/types/asset
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
-import { AssetListSkeleton } from "./asset-list-skeleton";
+// import { AssetListSkeleton } from "./asset-list-skeleton"; // Unused
 import { InlineEditCell } from "./inline-edit-cell";
 import { useCustomFields } from "@/hooks/useApi";
 import { getModelType, isCustomField, getFieldValue } from "@/lib/custom-fields";
@@ -58,6 +58,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { debounce } from '@/lib/performance';
 
 // Import the new separate Excel dialogs
 import { ExcelImportDialog } from "./excel-import-dialog";
@@ -111,27 +112,24 @@ const getAssetColumns = (
   };
 
   // Create data columns
-  const dataColumns: ColumnDef<Asset>[] = visibleColumns.map((column, index) => {
-    // Determine if this is a custom field
-    const isCustom = isCustomField(column.key, {}, customFieldsData);
-    
+  const dataColumns: ColumnDef<Asset>[] = visibleColumns.map((column) => {
     return {
       accessorKey: column.key, // Use the original key as accessorKey
       header: t(column.label, column.label),
       enableSorting: true, // Enable sorting for all columns
-      sortingFn: column.key === 'status' ? 
-        // Custom sorting function for status to sort by working > leave > repair order
-        (rowA, rowB, columnId) => {
-          const statusOrder: Record<string, number> = { 
-            working: 1, 
-            leave: 2, 
-            repair: 3 
-          };
-          const valueA = String(rowA.getValue(columnId) || '');
-          const valueB = String(rowB.getValue(columnId) || '');
-          return (statusOrder[valueA] || 999) - (statusOrder[valueB] || 999);
-        } : 
-        undefined, // Use default sorting for other columns
+      ...(column.key === 'status' ? {
+        sortingFn: // Custom sorting function for status to sort by working > leave > repair order
+          (rowA, rowB, columnId) => {
+            const statusOrder: Record<string, number> = { 
+              working: 1, 
+              leave: 2, 
+              repair: 3 
+            };
+            const valueA = String(rowA.getValue(columnId) || '');
+            const valueB = String(rowB.getValue(columnId) || '');
+            return (statusOrder[valueA] || 999) - (statusOrder[valueB] || 999);
+          }
+      } : {}), // Use default sorting for other columns
       cell: ({ row }) => {
         const asset = row.original;
         
@@ -222,20 +220,10 @@ const getAssetColumns = (
   return [selectionColumn, ...dataColumns, actionsColumn];
 };
 
-// Add this helper function to extract unique departments from assets
-const extractDepartments = (assets: Asset[]): string[] => {
-  const departments = new Set<string>();
-  assets.forEach(asset => {
-    // Only include non-empty department values
-    if (asset.dept && asset.dept.trim() !== '') {
-      departments.add(asset.dept);
-    }
-  });
-  return Array.from(departments).sort();
-};
+// extractDepartments function removed - was unused
 
 export function AssetList({ assetType, title, columns, formFields }: AssetListProps) {
-  const { t, loading } = useTranslation();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -253,8 +241,8 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
-  const [editingCell, setEditingCell] = useState<{ assetId: string; fieldKey: string } | null>(null);
+  // const [isSelectAllChecked, setIsSelectAllChecked] = useState(false); // Unused
+  // const [editingCell, setEditingCell] = useState<{ assetId: string; fieldKey: string } | null>(null); // Unused
   
   // Import/Export dialog states (separate states for import and export)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -302,8 +290,8 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   useEffect(() => {
     const initialVisibility: Record<string, boolean> = {};
     allColumns.forEach(column => {
-      // Hide columns that match our default hidden list
-      initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key);
+      // Show columns by default, unless they're in the default hidden list OR have hide: true property
+      initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
     });
     setColumnVisibility(initialVisibility);
   }, [allColumns, defaultHiddenColumns]);
@@ -325,10 +313,21 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     setColumnVisibility(newVisibility);
   };
 
-  // Get visible columns
-  const visibleColumns = useMemo(() => {
-    return allColumns.filter(column => columnVisibility[column.key]);
+  // Optimize memoization with proper dependencies
+  const filteredColumns = useMemo(() => {
+    // Create a more efficient filtering mechanism
+    return allColumns.filter(column => {
+      // Only show columns that are explicitly set to visible
+      return columnVisibility[column.key] === true;
+    });
   }, [allColumns, columnVisibility]);
+
+// handleLargeDataset and related useEffect removed - was unused
+
+  // More efficient data transformation with memoization
+  const visibleColumns = useMemo(() => {
+    return filteredColumns; 
+  }, [filteredColumns]);
 
   // Create a version of allColumns with unique keys for the detail dialog
   const detailDialogColumns = useMemo(() => {
@@ -432,10 +431,18 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     }
   }, [isError, error, t]);
   
+  // Debounced search to reduce API calls
+  const debouncedSearch = useMemo(
+    () => debounce((value: string) => {
+      setSearch(value);
+      setIsSearching(true);
+    }, 300),
+    []
+  );
+  
   const handleSearchChange = useCallback((value: string) => {
-    setSearch(value);
-    setIsSearching(true);
-  }, []);
+    debouncedSearch(value);
+  }, [debouncedSearch]);
   
   const handleStatusFilterChange = useCallback((status: string) => {
     setStatusFilter(status);
@@ -531,21 +538,9 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     }
   }, [viewAsset, handleEdit]);
 
-  const handleSelectAsset = useCallback((id: string) => {
-    setSelectedAssets(prev => 
-      prev.includes(id) 
-        ? prev.filter(assetId => assetId !== id) 
-        : [...prev, id]
-    );
-  }, []);
+  // handleSelectAsset removed - was unused
   
-  const handleSelectAll = useCallback(() => {
-    if (selectedAssets.length === assets.length) {
-      setSelectedAssets([]);
-    } else {
-      setSelectedAssets(assets.map((asset: Asset) => asset.id));
-    }
-  }, [assets, selectedAssets.length]);
+  // handleSelectAll removed - was unused
   
   const handleFormSuccess = useCallback(() => {
     // Invalidate the query to refetch all data
@@ -570,15 +565,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     refetch();
   }, [assetType, queryClient, refetch]);
   
-  // Effect to handle select all/deselect all when assets change
-  useEffect(() => {
-    if (selectedAssets.length > 0 && selectedAssets.length === assets.length) {
-      // All assets are selected
-      setIsSelectAllChecked(true);
-    } else {
-      setIsSelectAllChecked(false);
-    }
-  }, [assets, selectedAssets.length]);
+  // Effect to handle select all/deselect all removed - was unused
 
   // Effect to clear selection when data changes significantly (e.g., after delete operations)
   // But not after import operations
@@ -638,14 +625,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     setSelectedAssets(selectedIds);
   }, []);
   
-  // Effect to update select all checkbox state
-  useEffect(() => {
-    if (assets.length > 0 && selectedAssets.length === assets.length) {
-      setIsSelectAllChecked(true);
-    } else {
-      setIsSelectAllChecked(false);
-    }
-  }, [assets, selectedAssets.length]);
+  // Effect to update select all checkbox state removed - was unused
 
   // Pagination component
   const renderPagination = () => {
@@ -746,23 +726,6 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       </div>
     );
   };
-  
-  // Add this helper function to extract unique departments from assets
-  const extractDepartments = useCallback((assets: Asset[]): string[] => {
-    const departments = new Set<string>();
-    assets.forEach(asset => {
-      // Only include non-empty department values
-      if (asset.dept && asset.dept.trim() !== '') {
-        departments.add(asset.dept);
-      }
-    });
-    return Array.from(departments).sort();
-  }, []);
-
-  // Extract departments from current assets data
-  const departments = useMemo(() => {
-    return extractDepartments(assets);
-  }, [assets, extractDepartments]);
 
   return (
     <div className="space-y-6">
@@ -955,6 +918,8 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               getRowId={(row: Asset) => row.id}
               responsive={true}
               enableColumnResizing={true}
+              enableVirtualization={assets.length > 100} // Enable virtualization for large datasets
+              virtualItemHeight={50}
             />
           </div>
 
@@ -998,7 +963,6 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       {/* Bulk Delete Confirmation Dialog */}
       <BulkDeleteDialog
         title={title}
-        assetType={assetType}
         count={selectedAssets.length}
         isOpen={isBulkDeleteDialogOpen}
         isDeleting={bulkDeleteMutation.isPending}

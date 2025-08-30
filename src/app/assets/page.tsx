@@ -14,7 +14,6 @@ import {
   Home as HomeIcon
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import { useTranslation } from "@/hooks/use-translation";
 
 const assetTypes = [
@@ -56,7 +55,6 @@ const assetTypes = [
 ];
 
 export default function AssetsPage() {
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const { t } = useTranslation();
 
   return (
@@ -70,7 +68,7 @@ export default function AssetsPage() {
           <p className="text-muted-foreground">{t('assets.description') || 'Manage all your IT assets in one place'}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} className="rounded-lg">
+          <Button variant="outline" className="rounded-lg">
             <Download className="h-4 w-4 mr-2" />
             {t('common.export') || 'Export All'}
           </Button>
