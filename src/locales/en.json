@@ -46,7 +46,9 @@
     "help": "Help",
     "openMenu": "Open menu",
     "gotIt": "Got it",
-    "more": "more"
+    "more": "more",
+    "required": "Required",
+    "optional": "Optional"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -66,6 +68,8 @@
     "errorLoading": "Error loading dashboard data. Please try again later."
   },
   "settings": {
+    "description": "Manage your system preferences",
+    "configure": "Configure",
     "customFields": {
       "title": "Custom Fields",
       "description": "Manage tenant-specific custom fields for different asset types",
@@ -118,6 +122,199 @@
       "usage": "Usage",
       "usageDescription": "Once created, custom fields will automatically appear in the asset forms for their respective model types. They can be used for filtering, reporting, and displaying additional information about your assets.",
       "errorLoading": "Error loading custom fields. Please try again later."
+    },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Customize the look and feel of the application",
+      "theme": {
+        "title": "Theme",
+        "description": "Select the theme for the application",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "accentColor": "Accent Color",
+      "accentColorDescription": "Choose the accent color for the application",
+      "borderRadius": "Border Radius",
+      "borderRadiusDescription": "Adjust the roundness of corners",
+      "borderRadiusOptions": {
+        "none": "None",
+        "sm": "Small",
+        "md": "Medium",
+        "lg": "Large",
+        "xl": "Extra Large"
+      },
+      "reset": "Reset to Defaults",
+      "themeUpdated": "Theme updated successfully",
+      "borderRadiusUpdated": "Border radius updated",
+      "resetSuccess": "Settings reset to defaults"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Configure how you receive notifications",
+      "channels": {
+        "title": "Notification Channels",
+        "description": "Select which channels you want to receive notifications through",
+        "email": "Email",
+        "emailDescription": "Receive notifications via email",
+        "sms": "SMS",
+        "smsDescription": "Receive notifications via text message",
+        "push": "Push Notifications",
+        "pushDescription": "Receive notifications in the app"
+      },
+      "events": {
+        "title": "Notification Events",
+        "description": "Select which events trigger notifications",
+        "assetCreated": "Asset Created",
+        "assetUpdated": "Asset Updated",
+        "assetDeleted": "Asset Deleted",
+        "maintenanceReminder": "Maintenance Reminder",
+        "licenseExpiry": "License Expiry"
+      },
+      "recipients": {
+        "title": "Notification Recipients",
+        "description": "Specify who should receive notifications",
+        "email": "Email Recipients",
+        "emailPlaceholder": "Enter email addresses (comma separated)",
+        "emailHelp": "Enter email addresses separated by commas",
+        "sms": "SMS Recipients",
+        "smsPlaceholder": "Enter phone numbers (one per line)",
+        "smsHelp": "Enter phone numbers, one per line"
+      },
+      "save": "Save Settings",
+      "reset": "Reset to Defaults",
+      "saveSuccess": "Notification settings saved successfully",
+      "resetSuccess": "Settings reset to defaults"
+    },
+    "security": {
+      "title": "Security",
+      "description": "Manage your security preferences and settings",
+      "twoFactor": {
+        "title": "Two-Factor Authentication",
+        "description": "Add an extra layer of security to your account",
+        "enable": "Enable Two-Factor Authentication",
+        "enableDescription": "Require a second form of authentication when signing in",
+        "setup": "Setup Instructions",
+        "step1": "Download an authenticator app like Google Authenticator or Authy",
+        "step2": "Scan the QR code with your authenticator app",
+        "step3": "Enter the 6-digit code from your app to complete setup",
+        "qrCode": "QR Code",
+        "codePlaceholder": "Enter 6-digit code",
+        "verify": "Verify"
+      },
+      "password": {
+        "title": "Password Requirements",
+        "description": "Set requirements for user passwords",
+        "minLength": "Minimum Length",
+        "requireUppercase": "Require Uppercase Letters",
+        "requireLowercase": "Require Lowercase Letters",
+        "requireNumbers": "Require Numbers",
+        "requireSpecial": "Require Special Characters"
+      },
+      "sessions": {
+        "title": "Active Sessions",
+        "description": "Manage your active sessions across devices",
+        "device": "Device",
+        "location": "Location",
+        "lastActive": "Last Active",
+        "status": "Status",
+        "actions": "Actions",
+        "current": "Current",
+        "active": "Active",
+        "end": "End Session",
+        "endAll": "End All Other Sessions"
+      },
+      "save": "Save Settings",
+      "reset": "Reset to Defaults",
+      "saveSuccess": "Security settings saved successfully",
+      "resetSuccess": "Settings reset to defaults",
+      "sessionEnded": "Session ended successfully",
+      "allSessionsEnded": "All sessions ended except current"
+    },
+    "dataManagement": {
+      "title": "Data Management",
+      "description": "Manage your data backup, retention, and export settings",
+      "backup": {
+        "title": "Backup Schedules",
+        "description": "Configure automated backup schedules for your data",
+        "name": "Name",
+        "frequency": "Frequency",
+        "time": "Time",
+        "status": "Status",
+        "actions": "Actions",
+        "frequencies": {
+          "daily": "Daily",
+          "weekly": "Weekly",
+          "monthly": "Monthly"
+        },
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "add": "Add Backup Schedule"
+      },
+      "retention": {
+        "title": "Data Retention",
+        "description": "Configure how long different types of data are retained",
+        "assetType": "Asset Type",
+        "period": "Retention Period (Days)",
+        "autoArchive": "Auto Archive"
+      },
+      "export": {
+        "title": "Data Export",
+        "description": "Export your data in various formats",
+        "json": "Export as JSON",
+        "csv": "Export as CSV",
+        "excel": "Export as Excel",
+        "options": "Export Options",
+        "includeAudit": "Include Audit Trail",
+        "includeCustom": "Include Custom Fields",
+        "includeHistory": "Include Change History"
+      },
+      "save": "Save Settings",
+      "reset": "Reset to Defaults",
+      "saveSuccess": "Data management settings saved successfully",
+      "resetSuccess": "Settings reset to defaults",
+      "backupAdded": "Backup schedule added"
+    },
+    "auditLogs": {
+      "title": "Audit Logs",
+      "description": "Configure audit logging and monitoring settings",
+      "general": {
+        "title": "General Settings",
+        "description": "Basic audit logging configuration",
+        "enabled": "Enable Audit Logs",
+        "enabledDescription": "Turn on audit logging for your organization",
+        "retentionPeriod": "Retention Period",
+        "days": "days",
+        "retentionDescription": "How long to keep audit logs before automatic deletion"
+      },
+      "events": {
+        "title": "Event Types",
+        "description": "Select which events to log",
+        "assetCreation": "Asset Creation",
+        "assetUpdates": "Asset Updates",
+        "assetDeletion": "Asset Deletion",
+        "userLogin": "User Login",
+        "userLogout": "User Logout",
+        "permissionChanges": "Permission Changes"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Configure how you receive audit log notifications",
+        "criticalEvents": "Notify on Critical Events",
+        "channels": "Notification Channels",
+        "email": "Email",
+        "slack": "Slack",
+        "emailAddress": "Notification Email",
+        "emailPlaceholder": "admin@example.com",
+        "emailDescription": "Email address to receive audit notifications"
+      },
+      "save": "Save Settings",
+      "reset": "Reset to Defaults",
+      "saving": "Saving...",
+      "saveSuccess": "Audit logs settings saved successfully",
+      "saveError": "Failed to save audit logs settings",
+      "resetSuccess": "Settings reset to defaults",
+      "loadError": "Failed to load audit logs settings"
     }
   },
   "auth": {

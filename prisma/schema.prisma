@@ -9,19 +9,20 @@ datasource db {
 }
 
 model Tenant {
-  id           String        @id @default(uuid())
-  name         String
-  description  String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  customFields CustomField[]
-  histories    History[]
-  laptops      Laptop[]
-  licenses     License[]
-  pcs          PC[]
-  printers     Printer[]
-  users        User[]
-  warehouseITs WarehouseIT[]
+  id                 String             @id @default(uuid())
+  name               String
+  description        String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  customFields       CustomField[]
+  histories          History[]
+  laptops            Laptop[]
+  licenses           License[]
+  pcs                PC[]
+  printers           Printer[]
+  users              User[]
+  warehouseITs       WarehouseIT[]
+  auditLogsSettings  AuditLogsSettings?
 
   @@index([id])
 }
@@ -174,4 +175,26 @@ model History {
   @@index([tenantId])
   @@index([userId])
   @@index([modelType, recordId])
+}
+
+model AuditLogsSettings {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+  enabled               Boolean  @default(true)
+  retentionPeriod       Int      @default(90)
+  logAssetCreation      Boolean  @default(true)
+  logAssetUpdates       Boolean  @default(true)
+  logAssetDeletion      Boolean  @default(true)
+  logUserLogin          Boolean  @default(true)
+  logUserLogout         Boolean  @default(true)
+  logPermissionChanges  Boolean  @default(true)
+  notifyOnCriticalEvents Boolean @default(true)
+  emailNotifications    Boolean  @default(true)
+  slackNotifications    Boolean  @default(false)
+  notificationEmail     String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }

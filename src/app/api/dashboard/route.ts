@@ -1,5 +1,3 @@
-'use client'
-
 import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
