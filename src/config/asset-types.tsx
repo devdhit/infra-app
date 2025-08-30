@@ -367,12 +367,36 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.license.softwareName') || "Software Name"
       },
       {
+        key: "productType",
+        label: t('assets.license.productType') || "Product Type"
+      },
+      {
         key: "productKey",
         label: t('assets.license.licenseKey') || "License Key"
       },
       {
         key: "userName",
         label: t('assets.license.userName') || "User Name"
+      },
+      {
+        key: "dept",
+        label: t('assets.license.department') || "Department"
+      },
+      {
+        key: "model",
+        label: t('assets.license.model') || "Model"
+      },
+      {
+        key: "pc",
+        label: t('assets.license.pc') || "PC"
+      },
+      {
+        key: "mac",
+        label: t('assets.license.mac') || "MAC Address"
+      },
+      {
+        key: "ip",
+        label: t('assets.license.ip') || "IP Address"
       },
       {
         key: "date",
@@ -406,6 +430,12 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         placeholder: "Microsoft Office 365"
       },
       {
+        name: "productType",
+        label: t('assets.license.productType') || "Product Type",
+        type: "text",
+        placeholder: "Software"
+      },
+      {
         name: "productKey",
         label: t('assets.license.licenseKey') || "License Key",
         type: "text",
@@ -417,6 +447,36 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.license.userName') || "User Name",
         type: "text",
         placeholder: "John Doe"
+      },
+      {
+        name: "dept",
+        label: t('assets.license.department') || "Department",
+        type: "text",
+        placeholder: "IT Department"
+      },
+      {
+        name: "model",
+        label: t('assets.license.model') || "Model",
+        type: "text",
+        placeholder: "Professional"
+      },
+      {
+        name: "pc",
+        label: t('assets.license.pc') || "PC",
+        type: "text",
+        placeholder: "PC-001"
+      },
+      {
+        name: "mac",
+        label: t('assets.license.mac') || "MAC Address",
+        type: "text",
+        placeholder: "00:00:00:00:00:00"
+      },
+      {
+        name: "ip",
+        label: t('assets.license.ip') || "IP Address",
+        type: "text",
+        placeholder: "192.168.1.100"
       },
       {
         name: "date",
@@ -446,6 +506,10 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
     name: "WarehouseIT",
     key: "warehouse",
     columns: [
+      {
+        key: "dept",
+        label: t('assets.warehouse.dept') || "Department"
+      },
       {
         key: "cpuBarcode",
         label: t('assets.warehouse.cpuBarcode') || "CPU Barcode"
@@ -486,9 +550,25 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
             </span>
           );
         }
+      },
+      {
+        key: "createdAt",
+        label: t('assets.warehouse.createdAt') || "Created At",
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
+      },
+      {
+        key: "updatedAt",
+        label: t('assets.warehouse.updatedAt') || "Updated At",
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
       }
     ],
     formFields: [
+      {
+        name: "dept",
+        label: t('assets.warehouse.dept') || "Department",
+        type: "text",
+        placeholder: t('assets.warehouse.dept') || "IT Department"
+      },
       {
         name: "cpuBarcode",
         label: t('assets.warehouse.cpuBarcode') || "CPU Barcode",

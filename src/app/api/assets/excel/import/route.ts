@@ -77,12 +77,62 @@ export async function POST(request: NextRequest) {
 
             // Remove the user field from row data since it's not a direct field in the database
             const { user: userField, userName: pcUserNameField, ...pcRowData } = row as any;
+            
+            // Extract custom fields from row data
+            let pcCustomFields: Record<string, any> | undefined;
+            
+            // Get custom fields for this asset type and tenant
+            const pcCustomFieldsConfig = await db.customField.findMany({
+              where: {
+                tenantId: user.tenantId,
+                modelType: 'PC'
+              }
+            });
+            
+            // Extract custom field values from row data
+            if (pcCustomFieldsConfig.length > 0) {
+              pcCustomFields = {};
+              for (const customField of pcCustomFieldsConfig) {
+                if (pcRowData[customField.name] !== undefined && pcRowData[customField.name] !== null) {
+                  // Handle different custom field types
+                  switch (customField.type) {
+                    case 'number':
+                      const numValue = Number(pcRowData[customField.name]);
+                      pcCustomFields[customField.name] = isNaN(numValue) ? pcRowData[customField.name] : numValue;
+                      break;
+                    case 'boolean':
+                      // Convert string values to boolean
+                      if (typeof pcRowData[customField.name] === 'string') {
+                        const strValue = (pcRowData[customField.name] as string).toLowerCase();
+                        pcCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                      } else {
+                        pcCustomFields[customField.name] = Boolean(pcRowData[customField.name]);
+                      }
+                      break;
+                    case 'date':
+                      // Try to parse date values
+                      if (typeof pcRowData[customField.name] === 'string') {
+                        const dateValue = new Date(pcRowData[customField.name]);
+                        pcCustomFields[customField.name] = isNaN(dateValue.getTime()) ? pcRowData[customField.name] : dateValue.toISOString();
+                      } else {
+                        pcCustomFields[customField.name] = pcRowData[customField.name];
+                      }
+                      break;
+                    default:
+                      pcCustomFields[customField.name] = pcRowData[customField.name];
+                  }
+                  // Remove custom field from row data
+                  delete pcRowData[customField.name];
+                }
+              }
+            }
 
             // Create the PC record first
             const createdPC = await db.pC.create({
               data: {
                 ...pcRowData,
                 userName: pcUserName, // Use the user name instead of user ID
+                ...(pcCustomFields ? { customFields: pcCustomFields } : {}),
                 tenantId: user.tenantId
               }
             });
@@ -154,6 +204,55 @@ export async function POST(request: NextRequest) {
 
             // Remove the user and status fields from row data since we're handling them separately
             const { user: laptopUserField, userName: laptopUserNameField, Status, status, dateBuy, ...laptopRowData } = row as any;
+            
+            // Extract custom fields from row data
+            let laptopCustomFields: Record<string, any> | undefined;
+            
+            // Get custom fields for this asset type and tenant
+            const laptopCustomFieldsConfig = await db.customField.findMany({
+              where: {
+                tenantId: user.tenantId,
+                modelType: 'Laptop'
+              }
+            });
+            
+            // Extract custom field values from row data
+            if (laptopCustomFieldsConfig.length > 0) {
+              laptopCustomFields = {};
+              for (const customField of laptopCustomFieldsConfig) {
+                if (laptopRowData[customField.name] !== undefined && laptopRowData[customField.name] !== null) {
+                  // Handle different custom field types
+                  switch (customField.type) {
+                    case 'number':
+                      const numValue = Number(laptopRowData[customField.name]);
+                      laptopCustomFields[customField.name] = isNaN(numValue) ? laptopRowData[customField.name] : numValue;
+                      break;
+                    case 'boolean':
+                      // Convert string values to boolean
+                      if (typeof laptopRowData[customField.name] === 'string') {
+                        const strValue = (laptopRowData[customField.name] as string).toLowerCase();
+                        laptopCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                      } else {
+                        laptopCustomFields[customField.name] = Boolean(laptopRowData[customField.name]);
+                      }
+                      break;
+                    case 'date':
+                      // Try to parse date values
+                      if (typeof laptopRowData[customField.name] === 'string') {
+                        const dateValue = new Date(laptopRowData[customField.name]);
+                        laptopCustomFields[customField.name] = isNaN(dateValue.getTime()) ? laptopRowData[customField.name] : dateValue.toISOString();
+                      } else {
+                        laptopCustomFields[customField.name] = laptopRowData[customField.name];
+                      }
+                      break;
+                    default:
+                      laptopCustomFields[customField.name] = laptopRowData[customField.name];
+                  }
+                  // Remove custom field from row data
+                  delete laptopRowData[customField.name];
+                }
+              }
+            }
 
             // Create the Laptop record first
             const createdLaptop = await db.laptop.create({
@@ -162,6 +261,7 @@ export async function POST(request: NextRequest) {
                 userName: laptopUserName, // Use userName instead of userId
                 dateBuy: dateBuyValue,
                 status: statusValue, // Use the properly cased status value
+                ...(laptopCustomFields ? { customFields: laptopCustomFields } : {}),
                 tenantId: user.tenantId
               }
             });
@@ -205,6 +305,55 @@ export async function POST(request: NextRequest) {
 
             // Remove date from row data to handle it separately
             const { date: printerDate, ...printerRowData } = row as any;
+            
+            // Extract custom fields from row data
+            let printerCustomFields: Record<string, any> | undefined;
+            
+            // Get custom fields for this asset type and tenant
+            const printerCustomFieldsConfig = await db.customField.findMany({
+              where: {
+                tenantId: user.tenantId,
+                modelType: 'Printer'
+              }
+            });
+            
+            // Extract custom field values from row data
+            if (printerCustomFieldsConfig.length > 0) {
+              printerCustomFields = {};
+              for (const customField of printerCustomFieldsConfig) {
+                if (printerRowData[customField.name] !== undefined && printerRowData[customField.name] !== null) {
+                  // Handle different custom field types
+                  switch (customField.type) {
+                    case 'number':
+                      const numValue = Number(printerRowData[customField.name]);
+                      printerCustomFields[customField.name] = isNaN(numValue) ? printerRowData[customField.name] : numValue;
+                      break;
+                    case 'boolean':
+                      // Convert string values to boolean
+                      if (typeof printerRowData[customField.name] === 'string') {
+                        const strValue = (printerRowData[customField.name] as string).toLowerCase();
+                        printerCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                      } else {
+                        printerCustomFields[customField.name] = Boolean(printerRowData[customField.name]);
+                      }
+                      break;
+                    case 'date':
+                      // Try to parse date values
+                      if (typeof printerRowData[customField.name] === 'string') {
+                        const dateValue = new Date(printerRowData[customField.name]);
+                        printerCustomFields[customField.name] = isNaN(dateValue.getTime()) ? printerRowData[customField.name] : dateValue.toISOString();
+                      } else {
+                        printerCustomFields[customField.name] = printerRowData[customField.name];
+                      }
+                      break;
+                    default:
+                      printerCustomFields[customField.name] = printerRowData[customField.name];
+                  }
+                  // Remove custom field from row data
+                  delete printerRowData[customField.name];
+                }
+              }
+            }
             
             // Convert barcode to string
             let barcodeValue = String(row.barcode);
@@ -250,6 +399,7 @@ export async function POST(request: NextRequest) {
                     ...printerRowData,
                     barcode: barcodeValue,
                     date: printerDateValue,
+                    ...(printerCustomFields ? { customFields: printerCustomFields } : {}),
                     tenantId: user.tenantId
                   }
                 });
@@ -372,12 +522,62 @@ export async function POST(request: NextRequest) {
 
             // Remove date from row data to handle it separately
             const { date: licenseDate, ...licenseRowData } = row as any;
+            
+            // Extract custom fields from row data
+            let licenseCustomFields: Record<string, any> | undefined;
+            
+            // Get custom fields for this asset type and tenant
+            const licenseCustomFieldsConfig = await db.customField.findMany({
+              where: {
+                tenantId: user.tenantId,
+                modelType: 'License'
+              }
+            });
+            
+            // Extract custom field values from row data
+            if (licenseCustomFieldsConfig.length > 0) {
+              licenseCustomFields = {};
+              for (const customField of licenseCustomFieldsConfig) {
+                if (licenseRowData[customField.name] !== undefined && licenseRowData[customField.name] !== null) {
+                  // Handle different custom field types
+                  switch (customField.type) {
+                    case 'number':
+                      const numValue = Number(licenseRowData[customField.name]);
+                      licenseCustomFields[customField.name] = isNaN(numValue) ? licenseRowData[customField.name] : numValue;
+                      break;
+                    case 'boolean':
+                      // Convert string values to boolean
+                      if (typeof licenseRowData[customField.name] === 'string') {
+                        const strValue = (licenseRowData[customField.name] as string).toLowerCase();
+                        licenseCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                      } else {
+                        licenseCustomFields[customField.name] = Boolean(licenseRowData[customField.name]);
+                      }
+                      break;
+                    case 'date':
+                      // Try to parse date values
+                      if (typeof licenseRowData[customField.name] === 'string') {
+                        const dateValue = new Date(licenseRowData[customField.name]);
+                        licenseCustomFields[customField.name] = isNaN(dateValue.getTime()) ? licenseRowData[customField.name] : dateValue.toISOString();
+                      } else {
+                        licenseCustomFields[customField.name] = licenseRowData[customField.name];
+                      }
+                      break;
+                    default:
+                      licenseCustomFields[customField.name] = licenseRowData[customField.name];
+                  }
+                  // Remove custom field from row data
+                  delete licenseRowData[customField.name];
+                }
+              }
+            }
 
             // Create the License record first
             const createdLicense = await db.license.create({
               data: {
                 ...licenseRowData,
                 date: licenseDateValue,
+                ...(licenseCustomFields ? { customFields: licenseCustomFields } : {}),
                 tenantId: user.tenantId
               }
             });
@@ -396,10 +596,61 @@ export async function POST(request: NextRequest) {
             break
 
           case 'warehouse':
+            // Extract custom fields from row data
+            let warehouseCustomFields: Record<string, any> | undefined;
+            const warehouseRowData = { ...row } as any;
+            
+            // Get custom fields for this asset type and tenant
+            const warehouseCustomFieldsConfig = await db.customField.findMany({
+              where: {
+                tenantId: user.tenantId,
+                modelType: 'WarehouseIT'
+              }
+            });
+            
+            // Extract custom field values from row data
+            if (warehouseCustomFieldsConfig.length > 0) {
+              warehouseCustomFields = {};
+              for (const customField of warehouseCustomFieldsConfig) {
+                if (warehouseRowData[customField.name] !== undefined && warehouseRowData[customField.name] !== null) {
+                  // Handle different custom field types
+                  switch (customField.type) {
+                    case 'number':
+                      const numValue = Number(warehouseRowData[customField.name]);
+                      warehouseCustomFields[customField.name] = isNaN(numValue) ? warehouseRowData[customField.name] : numValue;
+                      break;
+                    case 'boolean':
+                      // Convert string values to boolean
+                      if (typeof warehouseRowData[customField.name] === 'string') {
+                        const strValue = (warehouseRowData[customField.name] as string).toLowerCase();
+                        warehouseCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                      } else {
+                        warehouseCustomFields[customField.name] = Boolean(warehouseRowData[customField.name]);
+                      }
+                      break;
+                    case 'date':
+                      // Try to parse date values
+                      if (typeof warehouseRowData[customField.name] === 'string') {
+                        const dateValue = new Date(warehouseRowData[customField.name]);
+                        warehouseCustomFields[customField.name] = isNaN(dateValue.getTime()) ? warehouseRowData[customField.name] : dateValue.toISOString();
+                      } else {
+                        warehouseCustomFields[customField.name] = warehouseRowData[customField.name];
+                      }
+                      break;
+                    default:
+                      warehouseCustomFields[customField.name] = warehouseRowData[customField.name];
+                  }
+                  // Remove custom field from row data
+                  delete warehouseRowData[customField.name];
+                }
+              }
+            }
+
             // Create the WarehouseIT record first
             const createdWarehouseIT = await db.warehouseIT.create({
               data: {
-                ...row as any,
+                ...warehouseRowData,
+                ...(warehouseCustomFields ? { customFields: warehouseCustomFields } : {}),
                 tenantId: user.tenantId
               }
             });

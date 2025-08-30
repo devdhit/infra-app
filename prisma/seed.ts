@@ -130,7 +130,7 @@ async function main() {
         model: 'HP LaserJet Pro',
         location: 'IT Department',
         ip: '192.168.1.100',
-        color: true,
+        color: 'Color',
         tenantId: tenant.id
       }
     }),
@@ -140,7 +140,7 @@ async function main() {
         barcode: 'PRN002',
         model: 'Canon ImageCLASS',
         location: 'HR Department',
-        color: false,
+        color: 'Black & White',
         tenantId: tenant.id
       }
     })

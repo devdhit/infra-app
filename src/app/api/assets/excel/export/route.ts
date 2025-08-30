@@ -110,20 +110,27 @@ export async function GET(request: NextRequest) {
         console.log('Sample PC data:', pcData.slice(0, 2))
         
         // Convert null values to undefined to match the PCAsset interface
-        const formattedPcData = pcData.map(pc => ({
-          dept: pc.dept,
-          cpuBarcode: pc.cpuBarcode,
-          cpuSapBarcode: pc.cpuSapBarcode ?? undefined,
-          monitorBarcode: pc.monitorBarcode ?? undefined,
-          monitorSapBarcode: pc.monitorSapBarcode ?? undefined,
-          upsBarcode: pc.upsBarcode ?? undefined,
-          upsSapBarcode: pc.upsSapBarcode ?? undefined,
-          pcName: pc.pcName,
-          userName: pc.userName ?? undefined,
-          // Normalize status values to lowercase to match standardized values
-          status: pc.status ? pc.status.toLowerCase() : 'working',
-          note: pc.note ?? undefined
-        }))
+        const formattedPcData = pcData.map(pc => {
+          // Extract custom fields and add them to the formatted data
+          const customFields = pc.customFields as Record<string, any> || {};
+          
+          return {
+            dept: pc.dept,
+            cpuBarcode: pc.cpuBarcode,
+            cpuSapBarcode: pc.cpuSapBarcode ?? undefined,
+            monitorBarcode: pc.monitorBarcode ?? undefined,
+            monitorSapBarcode: pc.monitorSapBarcode ?? undefined,
+            upsBarcode: pc.upsBarcode ?? undefined,
+            upsSapBarcode: pc.upsSapBarcode ?? undefined,
+            pcName: pc.pcName,
+            userName: pc.userName ?? undefined,
+            // Normalize status values to lowercase to match standardized values
+            status: pc.status ? pc.status.toLowerCase() : 'working',
+            note: pc.note ?? undefined,
+            // Include custom fields
+            ...customFields
+          };
+        })
         
         console.log('Starting PC Excel export...');
         const pcExportStart = Date.now();
@@ -171,17 +178,24 @@ export async function GET(request: NextRequest) {
         console.log('Sample Laptop data:', laptopData.slice(0, 2))
         
         // Convert null values to undefined to match the LaptopAsset interface
-        const formattedLaptopData = laptopData.map(laptop => ({
-          dept: laptop.dept,
-          barcode: laptop.barcode,
-          sapBarcode: laptop.sapBarcode ?? undefined,
-          dateBuy: laptop.dateBuy ? laptop.dateBuy.toISOString().split('T')[0] : undefined, // Only include date part
-          userName: laptop.userName ?? undefined, // Use userName instead of user
-          email: laptop.email ?? undefined,
-          model: laptop.model ?? undefined,
-          // Normalize status values to lowercase to match standardized values
-          status: laptop.status ? laptop.status.toLowerCase() : 'working'
-        }))
+        const formattedLaptopData = laptopData.map(laptop => {
+          // Extract custom fields and add them to the formatted data
+          const customFields = laptop.customFields as Record<string, any> || {};
+          
+          return {
+            dept: laptop.dept,
+            barcode: laptop.barcode,
+            sapBarcode: laptop.sapBarcode ?? undefined,
+            dateBuy: laptop.dateBuy ? laptop.dateBuy.toISOString().split('T')[0] : undefined, // Only include date part
+            userName: laptop.userName ?? undefined, // Use userName instead of user
+            email: laptop.email ?? undefined,
+            model: laptop.model ?? undefined,
+            // Normalize status values to lowercase to match standardized values
+            status: laptop.status ? laptop.status.toLowerCase() : 'working',
+            // Include custom fields
+            ...customFields
+          };
+        })
         
         console.log('Starting Laptop Excel export...');
         const laptopExportStart = Date.now();
@@ -230,17 +244,24 @@ export async function GET(request: NextRequest) {
         console.log('Sample Printer data:', printerData.slice(0, 2))
         
         // Convert null values to undefined to match the PrinterAsset interface
-        const formattedPrinterData = printerData.map(printer => ({
-          dept: printer.dept,
-          location: printer.location ?? undefined,
-          ip: printer.ip ?? undefined,
-          model: printer.model ?? undefined,
-          color: printer.color,
-          barcode: printer.barcode,
-          sapCode: printer.sapCode ?? undefined,
-          date: printer.date ? printer.date.toISOString() : undefined,
-          note: printer.note ?? undefined
-        }))
+        const formattedPrinterData = printerData.map(printer => {
+          // Extract custom fields and add them to the formatted data
+          const customFields = printer.customFields as Record<string, any> || {};
+          
+          return {
+            dept: printer.dept,
+            location: printer.location ?? undefined,
+            ip: printer.ip ?? undefined,
+            model: printer.model ?? undefined,
+            color: printer.color,
+            barcode: printer.barcode,
+            sapCode: printer.sapCode ?? undefined,
+            date: printer.date ? printer.date.toISOString() : undefined,
+            note: printer.note ?? undefined,
+            // Include custom fields
+            ...customFields
+          };
+        })
         
         console.log('Starting Printer Excel export...');
         const printerExportStart = Date.now();
@@ -291,20 +312,27 @@ export async function GET(request: NextRequest) {
         console.log('Sample License data:', licenseData.slice(0, 2))
         
         // Convert null values to undefined to match the LicenseAsset interface
-        const formattedLicenseData = licenseData.map(license => ({
-          deviceName: license.deviceName ?? undefined,
-          userName: license.userName ?? undefined,
-          dept: license.dept ?? undefined,
-          productType: license.productType ?? undefined,
-          productKey: license.productKey ?? undefined,
-          model: license.model ?? undefined,
-          pc: license.pc ?? undefined,
-          mac: license.mac ?? undefined,
-          ip: license.ip ?? undefined,
-          date: license.date ? license.date.toISOString() : undefined,
-          // Normalize updateStatus values to lowercase to match standardized values
-          updateStatus: license.updateStatus ? license.updateStatus.toLowerCase() : 'working'
-        }))
+        const formattedLicenseData = licenseData.map(license => {
+          // Extract custom fields and add them to the formatted data
+          const customFields = license.customFields as Record<string, any> || {};
+          
+          return {
+            deviceName: license.deviceName ?? undefined,
+            userName: license.userName ?? undefined,
+            dept: license.dept ?? undefined,
+            productType: license.productType ?? undefined,
+            productKey: license.productKey ?? undefined,
+            model: license.model ?? undefined,
+            pc: license.pc ?? undefined,
+            mac: license.mac ?? undefined,
+            ip: license.ip ?? undefined,
+            date: license.date ? license.date.toISOString() : undefined,
+            // Normalize updateStatus values to lowercase to match standardized values
+            updateStatus: license.updateStatus ? license.updateStatus.toLowerCase() : 'working',
+            // Include custom fields
+            ...customFields
+          };
+        })
         
         console.log('Starting License Excel export...');
         const licenseExportStart = Date.now();
@@ -346,17 +374,24 @@ export async function GET(request: NextRequest) {
         console.log('Sample Warehouse data:', warehouseData.slice(0, 2))
         
         // Convert null values to undefined to match the WarehouseITAsset interface
-        const formattedWarehouseData = warehouseData.map(warehouse => ({
-          cpuBarcode: warehouse.cpuBarcode ?? undefined,
-          cpuSapBarcode: warehouse.cpuSapBarcode ?? undefined,
-          monitorBarcode: warehouse.monitorBarcode ?? undefined,
-          monitorSapBarcode: warehouse.monitorSapBarcode ?? undefined,
-          upsBarcode: warehouse.upsBarcode ?? undefined,
-          upsSapBarcode: warehouse.upsSapBarcode ?? undefined,
-          // Normalize status values to lowercase to match standardized values
-          status: warehouse.status ? warehouse.status.toLowerCase() : 'working',
-          note: warehouse.note ?? undefined
-        }))
+        const formattedWarehouseData = warehouseData.map(warehouse => {
+          // Extract custom fields and add them to the formatted data
+          const customFields = warehouse.customFields as Record<string, any> || {};
+          
+          return {
+            cpuBarcode: warehouse.cpuBarcode ?? undefined,
+            cpuSapBarcode: warehouse.cpuSapBarcode ?? undefined,
+            monitorBarcode: warehouse.monitorBarcode ?? undefined,
+            monitorSapBarcode: warehouse.monitorSapBarcode ?? undefined,
+            upsBarcode: warehouse.upsBarcode ?? undefined,
+            upsSapBarcode: warehouse.upsSapBarcode ?? undefined,
+            // Normalize status values to lowercase to match standardized values
+            status: warehouse.status ? warehouse.status.toLowerCase() : 'working',
+            note: warehouse.note ?? undefined,
+            // Include custom fields
+            ...customFields
+          };
+        })
         
         console.log('Starting Warehouse Excel export...');
         const warehouseExportStart = Date.now();

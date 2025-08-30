@@ -165,21 +165,27 @@
     "license": {
       "title": "授權",
       "dept": "部門",
+      "department": "部門",
       "deviceName": "設備名稱",
+      "softwareName": "軟體名稱",
       "userName": "使用者名稱",
       "productType": "產品類型",
+      "licenseKey": "授權金鑰",
       "productKey": "產品金鑰",
       "model": "型號",
       "pc": "電腦",
       "mac": "MAC位址",
       "ip": "IP位址",
       "date": "日期",
+      "purchaseDate": "購買日期",
       "updateStatus": "更新狀態",
+      "status": "狀態",
       "note": "備註"
     },
     "warehouse": {
       "title": "倉儲",
       "dept": "部門",
+      "department": "部門",
       "cpuBarcode": "CPU條碼",
       "cpuSapBarcode": "CPU SAP條碼",
       "monitorBarcode": "顯示器條碼",
@@ -187,6 +193,8 @@
       "upsBarcode": "UPS條碼",
       "upsSapBarcode": "UPS SAP條碼",
       "status": "狀態",
+      "createdAt": "建立時間",
+      "updatedAt": "更新時間",
       "note": "備註"
     },
     "excel": {

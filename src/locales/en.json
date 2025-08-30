@@ -165,21 +165,27 @@
     "license": {
       "title": "License",
       "dept": "Department",
+      "department": "Department",
       "deviceName": "Device Name",
+      "softwareName": "Software Name",
       "userName": "User Name",
       "productType": "Product Type",
+      "licenseKey": "License Key",
       "productKey": "Product Key",
       "model": "Model",
       "pc": "PC",
       "mac": "MAC Address",
       "ip": "IP Address",
       "date": "Date",
+      "purchaseDate": "Purchase Date",
       "updateStatus": "Update Status",
+      "status": "Status",
       "note": "Note"
     },
     "warehouse": {
       "title": "Warehouse",
       "dept": "Department",
+      "department": "Department",
       "cpuBarcode": "CPU Barcode",
       "cpuSapBarcode": "CPU SAP Barcode",
       "monitorBarcode": "Monitor Barcode",
@@ -187,6 +193,8 @@
       "upsBarcode": "UPS Barcode",
       "upsSapBarcode": "UPS SAP Barcode",
       "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
       "note": "Note"
     },
     "excel": {
