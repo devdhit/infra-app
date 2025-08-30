@@ -532,8 +532,8 @@ export interface DashboardData {
   }>
 }
 
-export function useDashboard() {
-  return useApiQuery<DashboardData>(['dashboard'], '/dashboard')
+export function useDashboard<T = DashboardData>() {
+  return useApiQuery<T>(['dashboard'], '/dashboard')
 }
 
 // Current user hook
@@ -568,6 +568,15 @@ export interface CustomField {
   required: boolean
   createdAt: string
   updatedAt: string
+  description?: string
+}
+
+export interface CustomFieldFormData {
+  name: string
+  type: string
+  modelType: string
+  required: boolean
+  description?: string
 }
 
 export function useCustomFields(modelType?: string) {
@@ -580,7 +589,7 @@ export function useCustomFields(modelType?: string) {
 export function useCreateCustomField() {
   const queryClient = useQueryClient()
   
-  return useApiMutation<CustomField, Partial<CustomField>>(
+  return useApiMutation<CustomField, CustomFieldFormData>(
     '/custom-fields',
     {
       onSuccess: () => {
@@ -605,7 +614,7 @@ export function useCreateCustomField() {
 export function useUpdateCustomField(id: string) {
   const queryClient = useQueryClient()
   
-  return useApiUpdate<CustomField, Partial<CustomField>>(
+  return useApiUpdate<CustomField, CustomFieldFormData>(
     `/custom-fields/${id}`,
     {
       onSuccess: () => {

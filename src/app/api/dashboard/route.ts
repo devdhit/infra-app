@@ -1,3 +1,5 @@
+'use client'
+
 import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
@@ -36,6 +38,81 @@ export async function GET(request: NextRequest) {
       _count: true
     })
 
+    // Get department-based statistics for PC assets
+    const pcDepartmentStats = await db.pC.groupBy({
+      by: ['dept'],
+      where: { tenantId: user.tenantId },
+      _count: {
+        _all: true,
+        monitorBarcode: true,
+        upsBarcode: true
+      }
+    })
+
+    // Transform department stats to include counts for PCs, Monitors, and UPSs
+    const departmentAssetStats = pcDepartmentStats.map(deptStat => ({
+      department: deptStat.dept,
+      pcCount: deptStat._count._all,
+      monitorCount: deptStat._count.monitorBarcode || 0,
+      upsCount: deptStat._count.upsBarcode || 0
+    }))
+
+    // Get department-based statistics for Laptop assets
+    const laptopDepartmentStats = await db.laptop.groupBy({
+      by: ['dept'],
+      where: { tenantId: user.tenantId },
+      _count: {
+        _all: true
+      }
+    })
+
+    // Get department-based statistics for Printer assets
+    const printerDepartmentStats = await db.printer.groupBy({
+      by: ['dept'],
+      where: { tenantId: user.tenantId },
+      _count: {
+        _all: true
+      }
+    })
+
+    // Get department-based statistics for License assets
+    const licenseDepartmentStats = await db.license.groupBy({
+      by: ['dept'],
+      where: { tenantId: user.tenantId },
+      _count: {
+        _all: true
+      }
+    })
+
+    // Combine all department statistics
+    const allDepartmentStats = {
+      pc: pcDepartmentStats.map(deptStat => ({
+        department: deptStat.dept,
+        count: deptStat._count._all,
+        monitorCount: deptStat._count.monitorBarcode || 0,
+        upsCount: deptStat._count.upsBarcode || 0
+      })),
+      laptop: laptopDepartmentStats.map(deptStat => ({
+        department: deptStat.dept,
+        count: deptStat._count._all
+      })),
+      printer: printerDepartmentStats.map(deptStat => ({
+        department: deptStat.dept,
+        count: deptStat._count._all
+      })),
+      license: licenseDepartmentStats.map(deptStat => ({
+        department: deptStat.dept,
+        count: deptStat._count._all
+      }))
+    }
+
+    // Get custom fields for all asset types
+    const customFields = await db.customField.findMany({
+      where: {
+        tenantId: user.tenantId
+      }
+    })
+
     // Get recent activities (last 5 history records)
     const recentActivities = await db.history.findMany({
       where: { tenantId: user.tenantId },
@@ -65,6 +142,9 @@ export async function GET(request: NextRequest) {
         pc: pcStatusBreakdown,
         laptop: laptopStatusBreakdown
       },
+      departmentStats: departmentAssetStats,
+      allDepartmentStats,
+      customFields,
       recentActivities
     }), {
       status: 200,

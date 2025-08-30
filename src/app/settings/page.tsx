@@ -13,7 +13,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-const settingsSections = [
+interface SettingsSection {
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  description: string;
+  color: string;
+}
+
+const settingsSections: SettingsSection[] = [
   {
     name: "Custom Fields",
     icon: Settings,
@@ -71,7 +79,7 @@ export default function SettingsPage() {
           const Icon = section.icon;
           return (
             <Link key={section.name} href={section.href}>
-              <Card className="hover:shadow-md transition-shadow">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
                     {section.name}
