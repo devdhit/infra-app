@@ -12,7 +12,10 @@ import {
   Building,
   LogOut,
   Menu,
-  Settings
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  Home
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -45,7 +48,7 @@ const navigationItems: NavigationItem[] = [
   { 
     nameKey: "nav.assets", 
     href: "/assets", 
-    icon: Monitor,
+    icon: Home,
     roles: ['admin', 'user'],
     children: [
       { nameKey: "nav.pc", href: "/assets/pc", icon: Monitor, roles: ['admin', 'user'] },
@@ -83,6 +86,9 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
+    "nav.assets": true // Expand assets by default
+  });
   const logoutMutation = useLogout();
   const { t } = useTranslation();
 
@@ -105,6 +111,13 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
     return pathname === href || pathname.startsWith(href);
   };
 
+  const toggleExpand = (nameKey: string) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [nameKey]: !prev[nameKey]
+    }));
+  };
+
   return (
     <>
       {/* Mobile sidebar toggle */}
@@ -113,16 +126,20 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
           variant="ghost" 
           size="icon"
           onClick={() => setSidebarOpen(true)}
+          className="rounded-full hover:bg-muted"
         >
           <Menu className="h-6 w-6" />
         </Button>
-        <h1 className="text-xl font-bold">ITAMS</h1>
+        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          ITAMS
+        </h1>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <Button 
             variant="ghost" 
             size="icon"
             onClick={handleLogout}
+            className="rounded-full hover:bg-muted"
           >
             <LogOut className="h-6 w-6" />
           </Button>
@@ -131,49 +148,73 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
 
       {/* Sidebar */}
       <div 
-        className={`fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
+        className={`fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden transition-opacity duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setSidebarOpen(false)}
       >
         <div 
-          className="fixed inset-y-0 left-0 w-64 bg-white p-4"
+          className={`fixed inset-y-0 left-0 w-64 bg-white p-4 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-xl font-bold">IT Asset Management</h1>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              IT Asset Management
+            </h1>
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => setSidebarOpen(false)}
+              className="rounded-full hover:bg-muted"
             >
               <Menu className="h-6 w-6" />
             </Button>
           </div>
-          <nav className="space-y-2">
+          <nav className="space-y-1">
             {filteredNavigationItems.map((item) => (
               <div key={item.nameKey}>
                 <Link
                   href={item.href}
-                  className={`flex items-center px-4 py-2 rounded-md ${
+                  className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                     isActive(item.href)
-                      ? "bg-blue-100 text-blue-700"
+                      ? "bg-blue-50 text-blue-700 shadow-sm"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => {
+                    if (item.children) {
+                      toggleExpand(item.nameKey);
+                    } else {
+                      setSidebarOpen(false);
+                    }
+                  }}
                 >
                   <item.icon className="h-5 w-5 mr-3" />
-                  {t(item.nameKey)}
+                  <span className="flex-1">{t(item.nameKey)}</span>
+                  {item.children && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpand(item.nameKey);
+                      }}
+                      className="p-1 rounded-full hover:bg-muted"
+                    >
+                      {expandedItems[item.nameKey] ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                 </Link>
-                {item.children && isActive(item.href) && (
-                  <div className="ml-8 mt-2 space-y-1">
+                {item.children && expandedItems[item.nameKey] && (
+                  <div className="ml-9 mt-1 space-y-1">
                     {item.children
                       .filter(child => !child.roles || child.roles.includes(userRole))
                       .map((child) => (
                         <Link
                           key={child.nameKey}
                           href={child.href}
-                          className={`flex items-center px-4 py-2 rounded-md text-sm ${
+                          className={`flex items-center px-3 py-2 rounded-lg text-sm ${
                             isActive(child.href)
-                              ? "bg-blue-100 text-blue-700"
+                              ? "bg-blue-50 text-blue-700 shadow-sm"
                               : "text-gray-700 hover:bg-gray-100"
                           }`}
                           onClick={() => setSidebarOpen(false)}
@@ -191,41 +232,63 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
-        <div className="flex flex-col flex-grow pt-5 bg-white overflow-y-auto border-r">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <h1 className="text-xl font-bold">IT Asset Management</h1>
+      <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col z-30">
+        <div className="flex flex-col flex-grow pt-5 bg-white overflow-y-auto border-r shadow-sm">
+          <div className="flex items-center flex-shrink-0 px-6">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              IT Asset Management
+            </h1>
           </div>
           <div className="mt-5 flex-grow flex flex-col">
-            <nav className="flex-1 px-2 space-y-1">
+            <nav className="flex-1 px-3 space-y-1">
               {filteredNavigationItems.map((item) => (
                 <div key={item.nameKey}>
                   <Link
                     href={item.href}
-                    className={`flex items-center px-4 py-2 rounded-md ${
+                    className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                       isActive(item.href)
-                        ? "bg-blue-100 text-blue-700"
+                        ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border-l-4 border-blue-500"
                         : "text-gray-700 hover:bg-gray-100"
                     }`}
+                    onClick={() => {
+                      if (item.children) {
+                        toggleExpand(item.nameKey);
+                      }
+                    }}
                   >
-                    <item.icon className="h-5 w-5 mr-3" />
-                    {t(item.nameKey)}
+                    <item.icon className={`h-5 w-5 mr-3 ${isActive(item.href) ? "text-blue-600" : ""}`} />
+                    <span className="flex-1">{t(item.nameKey)}</span>
+                    {item.children && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(item.nameKey);
+                        }}
+                        className="p-1 rounded-full hover:bg-muted"
+                      >
+                        {expandedItems[item.nameKey] ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
                   </Link>
-                  {item.children && isActive(item.href) && (
-                    <div className="ml-8 mt-2 space-y-1">
+                  {item.children && expandedItems[item.nameKey] && (
+                    <div className="ml-9 mt-1 space-y-1">
                       {item.children
                         .filter(child => !child.roles || child.roles.includes(userRole))
                         .map((child) => (
                           <Link
                             key={child.nameKey}
                             href={child.href}
-                            className={`flex items-center px-4 py-2 rounded-md text-sm ${
+                            className={`flex items-center px-3 py-2 rounded-lg text-sm transition-all ${
                               isActive(child.href)
-                                ? "bg-blue-100 text-blue-700"
+                                ? "bg-blue-50 text-blue-700 shadow-sm"
                                 : "text-gray-700 hover:bg-gray-100"
                             }`}
                           >
-                            <child.icon className="h-4 w-4 mr-3" />
+                            <child.icon className={`h-4 w-4 mr-3 ${isActive(child.href) ? "text-blue-600" : ""}`} />
                             {t(child.nameKey)}
                           </Link>
                         ))}
@@ -239,7 +302,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
             <LanguageSwitcher />
             <Button 
               variant="ghost" 
-              className="justify-start"
+              className="justify-start rounded-lg hover:bg-muted"
               onClick={handleLogout}
             >
               <LogOut className="h-5 w-5 mr-3" />

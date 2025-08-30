@@ -1,5 +1,4 @@
 import { db } from '@/lib/db'
-import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'

@@ -5,8 +5,7 @@ import {
   unauthorizedResponse, 
   getQueryParams,
   parseRequestBody,
-  errorResponse,
-  badRequestResponse
+  errorResponse
 } from '@/lib/api-utils'
 import { AssetApiHandler } from '@/lib/asset-api-handler'
 

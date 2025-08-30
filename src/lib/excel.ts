@@ -163,21 +163,37 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
       
       // Insert rows for our data (shift footer down)
       if (rowsToInsert > 0) {
-        // For each row we need to insert, shift existing rows down
-        // We'll do this by iterating backwards from the footer to the data start row
-        for (let i = 0; i < rowsToInsert; i++) {
-          // Shift footer rows down by one
-          for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
-            for (let col = 1; col <= 11; col++) { // Assuming 11 columns for PC template
-              const cellValue = worksheet.cell(row, col).value();
-              worksheet.cell(row + 1, col).value(cellValue);
-              // Clear the original cell
-              worksheet.cell(row, col).value('');
+        // Find the last row with content in the footer section
+        let lastFooterRow = footerStartRow;
+        let safetyCounter = 0;
+        const MAX_ROWS = 1000;
+        while (lastFooterRow < MAX_ROWS) {
+          let hasContent = false;
+          for (let col = 1; col <= 11; col++) {
+            const cellValue = worksheet.cell(lastFooterRow, col).value();
+            if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+              hasContent = true;
+              break;
             }
+          }
+          if (!hasContent) break;
+          lastFooterRow++;
+          safetyCounter++;
+          if (safetyCounter > MAX_ROWS) break;
+        }
+        
+        // Now shift all footer rows down by rowsToInsert positions
+        // Work backwards to avoid overwriting data
+        for (let row = lastFooterRow; row >= footerStartRow; row--) {
+          for (let col = 1; col <= 11; col++) {
+            const cellValue = worksheet.cell(row, col).value();
+            worksheet.cell(row + rowsToInsert, col).value(cellValue);
+            // Clear the original cell
+            worksheet.cell(row, col).value('');
           }
         }
       }
-      console.log(`Shifted ${rowsToInsert} rows`);
+      console.log(`Shifted footer by ${rowsToInsert} rows`);
       
       // Add data rows
       data.forEach((row, rowIndex) => {
@@ -815,7 +831,10 @@ export async function importFromExcelWithTemplate(
         
         // Apply column mapping if provided
         if (columnMapping && columnMapping[header]) {
-          header = columnMapping[header]
+          const mappedHeader = columnMapping[header];
+          if (mappedHeader !== undefined) {
+            header = mappedHeader;
+          }
         }
         
         // Handle user field with email format (abc.xyz) - convert to string and handle empty values
@@ -829,6 +848,51 @@ export async function importFromExcelWithTemplate(
         // Handle PC Name field - convert empty values to 'N/A'
         else if (header === 'pcName' && (value === null || value === undefined || value === '')) {
           value = 'N/A'
+        }
+        // Handle required fields for PC assets
+        else if (assetType === 'pc' && (header === 'cpuBarcode' || header === 'dept' || header === 'pcName') && (value === null || value === undefined || value === '')) {
+          // For PC assets, we need to allow empty values for required fields during import
+          // The validation will be handled in the API route
+          value = null; // Keep as null for proper validation in the API
+        }
+        // Handle required fields for Laptop assets
+        else if (assetType === 'laptop' && header === 'dept' && (value === null || value === undefined || value === '')) {
+          // For Laptop assets, we need to allow empty values for required fields during import
+          // The validation will be handled in the API route
+          value = null; // Keep as null for proper validation in the API
+        }
+        // Handle required fields for License assets
+        else if (assetType === 'license' && (header === 'productType' || header === 'productKey' || header === 'ProductType' || header === 'ProductKey') && (value === null || value === undefined || value === '')) {
+          // For License assets, we need to allow empty values for required fields during import
+          // The validation will be handled in the API route
+          value = null; // Keep as null for proper validation in the API
+        }
+        // Fix case sensitivity issues in column names for License assets
+        if (assetType === 'license') {
+          // Map column names with case insensitivity
+          if (header === 'ProductType') {
+            header = 'productType';
+          } else if (header === 'ProductKey') {
+            header = 'productKey';
+          } else if (header === 'DeviceName') {
+            header = 'deviceName';
+          } else if (header === 'UserName') {
+            header = 'userName';
+          } else if (header === 'UpdateStatus') {
+            header = 'updateStatus';
+          } else if (header === 'Date') {
+            header = 'date';
+          } else if (header === 'Dept') {
+            header = 'dept';
+          } else if (header === 'Model') {
+            header = 'model';
+          } else if (header === 'PC') {
+            header = 'pc';
+          } else if (header === 'MAC') {
+            header = 'mac';
+          } else if (header === 'IP') {
+            header = 'ip';
+          }
         }
         // Handle Printer color field - keep as string value
         else if (assetType === 'printer' && header === 'color') {

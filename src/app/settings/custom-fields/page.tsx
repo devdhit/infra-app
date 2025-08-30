@@ -29,16 +29,14 @@ import {
 import { 
   useApiQuery, 
   useApiMutation, 
-  useApiUpdate, 
-  useApiDelete 
+  useApiUpdate
 } from "@/hooks/useApi";
 import { useState } from "react";
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle, 
-  DialogTrigger,
+  DialogTitle,
   DialogDescription
 } from "@/components/ui/dialog";
 import { 
@@ -65,8 +63,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
+import { CustomField, CustomFieldFormData, ModelTypeOption, FieldTypeOption } from "@/types/custom-fields";
+import { CustomFieldsSkeleton } from "@/components/settings/custom-fields-skeleton";
+import { useTranslation } from "@/hooks/use-translation";
 
-const modelTypes = [
+const modelTypes: ModelTypeOption[] = [
   { value: "PC", label: "PC" },
   { value: "Laptop", label: "Laptop" },
   { value: "Printer", label: "Printer" },
@@ -74,7 +75,7 @@ const modelTypes = [
   { value: "WarehouseIT", label: "Warehouse" },
 ];
 
-const fieldTypes = [
+const fieldTypes: FieldTypeOption[] = [
   { value: "text", label: "Text", description: "Single line of text" },
   { value: "textarea", label: "Text Area", description: "Multi-line text" },
   { value: "number", label: "Number", description: "Numeric values" },
@@ -83,23 +84,32 @@ const fieldTypes = [
   { value: "select", label: "Select", description: "Dropdown selection" },
 ];
 
+// Map modelType to assetType for query invalidation
+const assetTypeMap: Record<string, string> = {
+  PC: "pc",
+  Laptop: "laptop",
+  Printer: "printer",
+  License: "license",
+  WarehouseIT: "warehouse"
+};
+
 export default function CustomFieldsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingField, setEditingField] = useState<any>(null);
-  const [modelTypeFilter, setModelTypeFilter] = useState("");
+  const [editingField, setEditingField] = useState<CustomField | null>(null);
+  const [modelTypeFilter, setModelTypeFilter] = useState<string>("");
   const [showHelp, setShowHelp] = useState(false);
   
-  const { data: customFields, refetch } = useApiQuery<any>(
+  const { data: customFields, isLoading, error, refetch } = useApiQuery<CustomField[]>(
     ['custom-fields', modelTypeFilter], 
     `/custom-fields${modelTypeFilter ? `?modelType=${modelTypeFilter}` : ''}`
   );
   
-  const createMutation = useApiMutation('/custom-fields');
-  const updateMutation = useApiUpdate(`/custom-fields/${editingField?.id}`);
-  const deleteMutation = useApiDelete(`/custom-fields/${editingField?.id}`);
+  const createMutation = useApiMutation<CustomField, CustomFieldFormData>('/custom-fields');
+  const updateMutation = useApiUpdate<CustomField, CustomFieldFormData>(`/custom-fields/${editingField?.id}`);
   
-  const form = useForm({
+  const form = useForm<CustomFieldFormData>({
     defaultValues: {
       name: "",
       type: "text",
@@ -121,7 +131,7 @@ export default function CustomFieldsPage() {
     setIsFormOpen(true);
   };
   
-  const handleEdit = (field: any) => {
+  const handleEdit = (field: CustomField) => {
     setEditingField(field);
     form.reset({
       name: field.name,
@@ -133,21 +143,12 @@ export default function CustomFieldsPage() {
     setIsFormOpen(true);
   };
   
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: CustomFieldFormData) => {
     try {
       if (editingField) {
         await updateMutation.mutateAsync(values);
         toast.success('Custom field updated successfully');
         // Invalidate asset queries to refresh asset lists with updated custom fields
-        // Map modelType to assetType for query invalidation
-        const assetTypeMap: Record<string, string> = {
-          PC: "pc",
-          Laptop: "laptop",
-          Printer: "printer",
-          License: "license",
-          WarehouseIT: "warehouse"
-        };
-        
         const assetType = assetTypeMap[values.modelType] || values.modelType.toLowerCase();
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
         queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
@@ -155,15 +156,6 @@ export default function CustomFieldsPage() {
         await createMutation.mutateAsync(values);
         toast.success('Custom field created successfully');
         // Invalidate asset queries to refresh asset lists with new custom fields
-        // Map modelType to assetType for query invalidation
-        const assetTypeMap: Record<string, string> = {
-          PC: "pc",
-          Laptop: "laptop",
-          Printer: "printer",
-          License: "license",
-          WarehouseIT: "warehouse"
-        };
-        
         const assetType = assetTypeMap[values.modelType] || values.modelType.toLowerCase();
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
         queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
@@ -178,7 +170,7 @@ export default function CustomFieldsPage() {
   const handleDelete = async (id: string) => {
     try {
       // Get the field to know which model type to invalidate
-      const fieldToDelete = customFields?.find((field: any) => field.id === id);
+      const fieldToDelete = customFields?.find((field) => field.id === id);
       
       await apiClient.delete(`/custom-fields/${id}`);
       toast.success('Custom field deleted successfully');
@@ -186,15 +178,6 @@ export default function CustomFieldsPage() {
       
       // Invalidate asset queries to refresh asset lists after custom field deletion
       if (fieldToDelete) {
-        // Map modelType to assetType for query invalidation
-        const assetTypeMap: Record<string, string> = {
-          PC: "pc",
-          Laptop: "laptop",
-          Printer: "printer",
-          License: "license",
-          WarehouseIT: "warehouse"
-        };
-        
         const assetType = assetTypeMap[fieldToDelete.modelType] || fieldToDelete.modelType.toLowerCase();
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
         queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
@@ -204,52 +187,69 @@ export default function CustomFieldsPage() {
     }
   };
   
-  const filteredFields = modelTypeFilter
-    ? customFields?.filter((field: any) => field.modelType === modelTypeFilter)
+  const filteredFields: CustomField[] = modelTypeFilter
+    ? customFields?.filter((field) => field.modelType === modelTypeFilter) || []
     : customFields || [];
+  
+  if (isLoading) {
+    return <CustomFieldsSkeleton />;
+  }
+  
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-red-500">{t('common.error')}</h2>
+          <p className="text-muted-foreground">{t('settings.customFields.errorLoading')}</p>
+          <Button onClick={() => refetch()} className="mt-4">
+            {t('common.retry')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Custom Fields</h1>
-          <p className="text-muted-foreground">Manage tenant-specific custom fields for different asset types</p>
+          <h1 className="text-3xl font-bold">{t('settings.customFields.title')}</h1>
+          <p className="text-muted-foreground">{t('settings.customFields.description')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowHelp(true)}>
             <HelpCircle className="h-4 w-4 mr-2" />
-            Help
+            {t('common.help')}
           </Button>
           <Button onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Custom Field
+            {t('settings.customFields.add')}
           </Button>
         </div>
       </div>
       
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Custom Fields</AlertTitle>
+        <AlertTitle>{t('settings.customFields.infoTitle')}</AlertTitle>
         <AlertDescription>
-          Custom fields allow you to add additional properties to your assets. 
-          They will appear in asset forms and can be used for filtering and reporting.
+          {t('settings.customFields.infoDescription')}
         </AlertDescription>
       </Alert>
       
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <CardTitle>Custom Fields</CardTitle>
+            <CardTitle>{t('settings.customFields.title')}</CardTitle>
             <div className="flex gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
-                    Model Type: {modelTypeFilter || "All"} <ChevronDown className="ml-2 h-4 w-4" />
+                    {t('settings.customFields.modelType')}: {modelTypeFilter || t('settings.customFields.allModels')} <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem onSelect={() => setModelTypeFilter("")}>
-                    All Models
+                    {t('settings.customFields.allModels')}
                   </DropdownMenuItem>
                   {modelTypes.map((model) => (
                     <DropdownMenuItem 
@@ -264,22 +264,22 @@ export default function CustomFieldsPage() {
             </div>
           </div>
           <CardDescription>
-            Create custom fields for different asset types
+            {t('settings.customFields.createDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Model Type</TableHead>
-                <TableHead>Required</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('settings.customFields.name')}</TableHead>
+                <TableHead>{t('settings.customFields.type')}</TableHead>
+                <TableHead>{t('settings.customFields.modelType')}</TableHead>
+                <TableHead>{t('settings.customFields.required')}</TableHead>
+                <TableHead className="text-right">{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredFields.map((field: any) => (
+              {filteredFields.map((field) => (
                 <TableRow key={field.id}>
                   <TableCell className="font-medium">
                     <div>{field.name}</div>
@@ -295,30 +295,30 @@ export default function CustomFieldsPage() {
                   <TableCell>{field.modelType}</TableCell>
                   <TableCell>
                     {field.required ? (
-                      <Badge variant="default">Required</Badge>
+                      <Badge variant="default">{t('common.required')}</Badge>
                     ) : (
-                      <Badge variant="outline">Optional</Badge>
+                      <Badge variant="outline">{t('common.optional')}</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
+                          <span className="sr-only">{t('common.openMenu')}</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(field)}>
                           <Edit className="mr-2 h-4 w-4" />
-                          Edit
+                          {t('common.edit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDelete(field.id)}
                           className="text-red-600"
                         >
                           <Trash className="mr-2 h-4 w-4" />
-                          Delete
+                          {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -330,9 +330,9 @@ export default function CustomFieldsPage() {
           
           {filteredFields.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No custom fields found</p>
+              <p className="text-muted-foreground">{t('settings.customFields.noFields')}</p>
               <Button variant="link" onClick={handleCreate} className="mt-2">
-                Create your first custom field
+                {t('settings.customFields.createFirst')}
               </Button>
             </div>
           )}
@@ -343,12 +343,12 @@ export default function CustomFieldsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingField ? "Edit Custom Field" : "Add Custom Field"}
+              {editingField ? t('settings.customFields.edit') : t('settings.customFields.add')}
             </DialogTitle>
             <DialogDescription>
               {editingField 
-                ? "Modify the properties of this custom field" 
-                : "Create a new custom field for your assets"}
+                ? t('settings.customFields.editDescription') 
+                : t('settings.customFields.createDescription')}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -358,15 +358,15 @@ export default function CustomFieldsPage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>{t('settings.customFields.name')}</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Field name (e.g., warranty_date)" 
+                        placeholder={t('settings.customFields.namePlaceholder')} 
                         {...field} 
                       />
                     </FormControl>
                     <FormDescription>
-                      Must start with a letter or underscore and contain only letters, numbers, and underscores
+                      {t('settings.customFields.nameDescription')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -378,17 +378,17 @@ export default function CustomFieldsPage() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>{t('settings.customFields.description')}</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Describe what this field is used for..." 
+                        placeholder={t('settings.customFields.descriptionPlaceholder')} 
                         {...field} 
                         className="resize-none"
                         rows={3}
                       />
                     </FormControl>
                     <FormDescription>
-                      Optional description to help users understand the purpose of this field
+                      {t('settings.customFields.descriptionHelp')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -401,14 +401,14 @@ export default function CustomFieldsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center">
-                      Type
+                      {t('settings.customFields.type')}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Info className="ml-2 h-4 w-4 text-muted-foreground" />
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Select the type of data this field will hold</p>
+                            <p>{t('settings.customFields.typeHelp')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -416,7 +416,7 @@ export default function CustomFieldsPage() {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select field type" />
+                          <SelectValue placeholder={t('settings.customFields.selectType')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -442,11 +442,11 @@ export default function CustomFieldsPage() {
                 name="modelType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Model Type</FormLabel>
+                    <FormLabel>{t('settings.customFields.modelType')}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select model type" />
+                          <SelectValue placeholder={t('settings.customFields.selectModel')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -476,9 +476,9 @@ export default function CustomFieldsPage() {
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>Required</FormLabel>
+                      <FormLabel>{t('settings.customFields.required')}</FormLabel>
                       <FormDescription>
-                        If checked, this field must be filled when creating or updating assets
+                        {t('settings.customFields.requiredHelp')}
                       </FormDescription>
                     </div>
                   </FormItem>
@@ -487,7 +487,7 @@ export default function CustomFieldsPage() {
               
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button 
                   type="submit"
@@ -496,10 +496,10 @@ export default function CustomFieldsPage() {
                   {(createMutation.isPending || updateMutation.isPending) ? (
                     <div className="flex items-center">
                       <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                      Saving...
+                      {t('common.saving')}
                     </div>
                   ) : (
-                    editingField ? "Update" : "Create"
+                    editingField ? t('common.update') : t('common.create')
                   )}
                 </Button>
               </div>
@@ -512,54 +512,52 @@ export default function CustomFieldsPage() {
       <Dialog open={showHelp} onOpenChange={setShowHelp}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Custom Fields Help</DialogTitle>
+            <DialogTitle>{t('settings.customFields.helpTitle')}</DialogTitle>
             <DialogDescription>
-              Learn how to use custom fields effectively
+              {t('settings.customFields.helpDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <h3 className="font-medium text-lg">What are Custom Fields?</h3>
+              <h3 className="font-medium text-lg">{t('settings.customFields.whatAre')}</h3>
               <p className="text-muted-foreground mt-1">
-                Custom fields allow you to add additional properties to your assets beyond the standard fields. 
-                They can be used to track specific information relevant to your organization.
+                {t('settings.customFields.whatAreDescription')}
               </p>
             </div>
             
             <div>
-              <h3 className="font-medium text-lg">Field Types</h3>
+              <h3 className="font-medium text-lg">{t('settings.customFields.fieldTypes')}</h3>
               <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                <li><strong>Text</strong> - Single line of text for short descriptions</li>
-                <li><strong>Text Area</strong> - Multi-line text for longer descriptions</li>
-                <li><strong>Number</strong> - Numeric values for quantities, costs, etc.</li>
-                <li><strong>Date</strong> - Date values for warranties, purchase dates, etc.</li>
-                <li><strong>Boolean</strong> - True/False values for yes/no questions</li>
-                <li><strong>Select</strong> - Dropdown selection for predefined options</li>
+                <li><strong>{t('settings.customFields.text')}</strong> - {t('settings.customFields.textDescription')}</li>
+                <li><strong>{t('settings.customFields.textArea')}</strong> - {t('settings.customFields.textAreaDescription')}</li>
+                <li><strong>{t('settings.customFields.number')}</strong> - {t('settings.customFields.numberDescription')}</li>
+                <li><strong>{t('settings.customFields.date')}</strong> - {t('settings.customFields.dateDescription')}</li>
+                <li><strong>{t('settings.customFields.boolean')}</strong> - {t('settings.customFields.booleanDescription')}</li>
+                <li><strong>{t('settings.customFields.select')}</strong> - {t('settings.customFields.selectDescription')}</li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-medium text-lg">Best Practices</h3>
+              <h3 className="font-medium text-lg">{t('settings.customFields.bestPractices')}</h3>
               <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                <li>Use descriptive field names that clearly indicate their purpose</li>
-                <li>Choose the appropriate field type for your data</li>
-                <li>Mark fields as required only when necessary</li>
-                <li>Group related custom fields by model type</li>
-                <li>Regularly review and clean up unused custom fields</li>
-                <li>Add descriptions to help other users understand the purpose of each field</li>
+                <li>{t('settings.customFields.practice1')}</li>
+                <li>{t('settings.customFields.practice2')}</li>
+                <li>{t('settings.customFields.practice3')}</li>
+                <li>{t('settings.customFields.practice4')}</li>
+                <li>{t('settings.customFields.practice5')}</li>
+                <li>{t('settings.customFields.practice6')}</li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-medium text-lg">Usage</h3>
+              <h3 className="font-medium text-lg">{t('settings.customFields.usage')}</h3>
               <p className="text-muted-foreground mt-1">
-                Once created, custom fields will automatically appear in the asset forms for their respective model types. 
-                They can be used for filtering, reporting, and displaying additional information about your assets.
+                {t('settings.customFields.usageDescription')}
               </p>
             </div>
           </div>
           <div className="flex justify-end">
-            <Button onClick={() => setShowHelp(false)}>Got it</Button>
+            <Button onClick={() => setShowHelp(false)}>{t('common.gotIt')}</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -1,23 +1,32 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query'
 import { api, ApiError, ValidationError } from '@/lib/api'
 import { toast } from 'sonner'
 import { getModelType } from '@/lib/custom-fields'
 
-// Generic API hook
-export function useApiQuery<T>(key: string[], url: string, options = {}) {
-  return useQuery<T>({
+// Define more specific types for useApiQuery
+type ApiQueryOptions<T> = Omit<UseQueryOptions<T, ApiError, T, string[]>, 'queryKey' | 'queryFn'>
+
+// Generic API hook with better typing and caching
+export function useApiQuery<T>(key: string[], url: string, options: ApiQueryOptions<T> = {}) {
+  return useQuery<T, ApiError, T, string[]>({
     queryKey: key,
     queryFn: async () => {
       const response = await api.get<T>(url)
       return response
     },
+    // Implement staleTime for better caching
+    staleTime: 5 * 60 * 1000, // 5 minutes by default
+    refetchOnWindowFocus: false, // Reduce unnecessary refetches
+    refetchOnReconnect: false, // Reduce unnecessary refetches
     ...options
   })
 }
 
+// Better types for mutation hooks
+type ApiMutationOptions<T, V> = Omit<UseMutationOptions<T, ApiError, V, unknown>, 'mutationFn'>
+
 // Generic mutation hook for POST requests
-export function useApiMutation<T, V>(url: string, options = {}) {
-  const queryClient = useQueryClient()
+export function useApiMutation<T, V>(url: string, options: ApiMutationOptions<T, V> = {}) {
   
   return useMutation<T, ApiError, V>({
     mutationFn: async (data: V) => {
@@ -30,7 +39,6 @@ export function useApiMutation<T, V>(url: string, options = {}) {
 
 // Generic mutation hook for PUT requests
 export function useApiUpdate<T, V>(url: string, options = {}) {
-  const queryClient = useQueryClient()
   
   return useMutation<T, ApiError, V>({
     mutationFn: async (data: V) => {
@@ -43,7 +51,6 @@ export function useApiUpdate<T, V>(url: string, options = {}) {
 
 // Generic mutation hook for DELETE requests
 export function useApiDelete<T>(url: string, options = {}) {
-  const queryClient = useQueryClient()
   
   return useMutation<T, ApiError, void>({
     mutationFn: async () => {
@@ -63,23 +70,44 @@ export function useApiDeleteWithId<T>(url: string, options = {}) {
       const response = await api.delete<T>(`${url}/${id}`)
       return response
     },
+    onSuccess: (...args) => {
+      // Invalidate all queries related to assets when a deletion occurs
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
+      // Call any additional onSuccess handlers
+      if (options && typeof options === 'object' && 'onSuccess' in options) {
+        const onSuccess = (options as any).onSuccess
+        if (onSuccess && typeof onSuccess === 'function') {
+          onSuccess(...args)
+        }
+      }
+    },
     ...options
   })
 }
 
 // Asset-specific hooks
-export function useAssets<T>(assetType: string, params: Record<string, any> = {}) {
+export function useAssets<T>(assetType: string, params: Record<string, any> = {}, options: ApiQueryOptions<T> = {}) {
   const queryString = new URLSearchParams(params).toString()
   const url = `/assets/${assetType}${queryString ? `?${queryString}` : ''}`
   
   // Convert params object to a string for the query key to ensure it's serializable
   const paramsKey = JSON.stringify(params)
   
-  return useApiQuery<T>(['assets', assetType, paramsKey], url)
+  return useApiQuery<T>(['assets', assetType, paramsKey], url, {
+    // Asset data can be cached longer since it doesn't change frequently
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    ...options
+  })
 }
 
 export function useAsset<T>(assetType: string, id: string) {
-  return useApiQuery<T>(['assets', assetType, id], `/assets/${assetType}/${id}`)
+  return useApiQuery<T>(['assets', assetType, id], `/assets/${assetType}/${id}`, {
+    // Individual asset data can be cached for a moderate time
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 }
 
 export function useCreateAsset<T, V>(assetType: string) {
@@ -532,8 +560,8 @@ export interface DashboardData {
   }>
 }
 
-export function useDashboard() {
-  return useApiQuery<DashboardData>(['dashboard'], '/dashboard')
+export function useDashboard<T = DashboardData>() {
+  return useApiQuery<T>(['dashboard'], '/dashboard')
 }
 
 // Current user hook
@@ -546,16 +574,6 @@ export function useCurrentUser() {
     retry: false, // Don't retry on failure to avoid infinite loops
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!hasToken, // Only run the query if we have a token
-    onError: (error: ApiError) => {
-      console.error('Error fetching current user:', error)
-      let message = 'Failed to fetch user information'
-      
-      if (error.message) {
-        message = error.message
-      }
-      
-      toast.error(message)
-    }
   })
 }
 
@@ -568,6 +586,15 @@ export interface CustomField {
   required: boolean
   createdAt: string
   updatedAt: string
+  description?: string
+}
+
+export interface CustomFieldFormData {
+  name: string
+  type: string
+  modelType: string
+  required: boolean
+  description?: string
 }
 
 export function useCustomFields(modelType?: string) {
@@ -580,7 +607,7 @@ export function useCustomFields(modelType?: string) {
 export function useCreateCustomField() {
   const queryClient = useQueryClient()
   
-  return useApiMutation<CustomField, Partial<CustomField>>(
+  return useApiMutation<CustomField, CustomFieldFormData>(
     '/custom-fields',
     {
       onSuccess: () => {
@@ -605,7 +632,7 @@ export function useCreateCustomField() {
 export function useUpdateCustomField(id: string) {
   const queryClient = useQueryClient()
   
-  return useApiUpdate<CustomField, Partial<CustomField>>(
+  return useApiUpdate<CustomField, CustomFieldFormData>(
     `/custom-fields/${id}`,
     {
       onSuccess: () => {
@@ -674,6 +701,52 @@ export function useUpdateAssetCustomFields(assetType: string, id: string) {
       onError: (error: ApiError) => {
         console.error(`Error updating asset custom fields for ${assetType} with id ${id}:`, error)
         let message = 'Failed to update asset custom fields'
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
+      }
+    }
+  )
+}
+
+// Audit Logs Settings hooks
+export interface AuditLogsSettings {
+  id?: string
+  enabled: boolean
+  retentionPeriod: number
+  logAssetCreation: boolean
+  logAssetUpdates: boolean
+  logAssetDeletion: boolean
+  logUserLogin: boolean
+  logUserLogout: boolean
+  logPermissionChanges: boolean
+  notifyOnCriticalEvents: boolean
+  emailNotifications: boolean
+  slackNotifications: boolean
+  notificationEmail: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export function useAuditLogsSettings() {
+  return useApiQuery<AuditLogsSettings>(['audit-logs-settings'], '/settings/audit-logs')
+}
+
+export function useUpdateAuditLogsSettings() {
+  const queryClient = useQueryClient()
+  
+  return useApiUpdate<AuditLogsSettings, Partial<AuditLogsSettings>>(
+    '/settings/audit-logs',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['audit-logs-settings'] })
+      },
+      onError: (error: ApiError) => {
+        console.error('Error updating audit logs settings:', error)
+        let message = 'Failed to update audit logs settings'
         
         if (error.message) {
           message = error.message

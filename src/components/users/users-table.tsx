@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, MoreHorizontal, Edit, Trash, Plus } from "lucide-react"
+import { Search, MoreHorizontal, Edit, Trash } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { User, Tenant } from "@/hooks/useApi"
 import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"
@@ -205,12 +205,6 @@ export function UsersTable({
               {t('common.delete', 'Delete')} ({selectedUsers.length})
             </Button>
           )}
-          {onEdit && (
-            <Button onClick={() => onEdit(null)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('users.create.button') || 'Add User'}
-            </Button>
-          )}
         </div>
       </div>
 
@@ -223,6 +217,10 @@ export function UsersTable({
         pagination={true}
         pageSize={10}
         onRowSelectionChange={handleRowSelection}
+        // Enable responsive features
+        responsive={true}
+        // Enable column resizing
+        enableColumnResizing={true}
       />
 
       <BulkDeleteDialog

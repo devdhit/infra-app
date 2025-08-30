@@ -1,101 +1,156 @@
-// Performance monitoring utilities
+/**
+ * Performance Optimization Utilities
+ * 
+ * This file contains utility functions to help optimize performance across the application.
+ * Note: This file should NOT contain React hooks. See performance-hooks.ts for React-specific utilities.
+ */
 
-// Define memory info interface
-interface MemoryInfo {
-  usedJSHeapSize: number
-  totalJSHeapSize: number
-  jsHeapSizeLimit: number
-}
-
-// Track component render time
-export function trackRenderTime(componentName: string, startTime: number) {
-  const endTime = performance.now();
-  const renderTime = endTime - startTime;
+/**
+ * Type-safe debounce function
+ * @param func The function to debounce
+ * @param wait Wait time in milliseconds
+ */
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
   
-  // Log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[${componentName}] Render time: ${renderTime.toFixed(2)}ms`);
-  }
-  
-  // In production, you might send this to your analytics service
-  // Example: analytics.track('component_render_time', { componentName, renderTime });
-}
-
-// Track API request time
-export function trackApiRequest(url: string, startTime: number) {
-  const endTime = performance.now();
-  const requestTime = endTime - startTime;
-  
-  // Log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[API] ${url} - Request time: ${requestTime.toFixed(2)}ms`);
-  }
-  
-  // In production, you might send this to your analytics service
-  // Example: analytics.track('api_request_time', { url, requestTime });
-}
-
-// Track database query time
-export function trackDbQuery(query: string, startTime: number) {
-  const endTime = performance.now();
-  const queryTime = endTime - startTime;
-  
-  // Log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[DB] ${query} - Query time: ${queryTime.toFixed(2)}ms`);
-  }
-  
-  // In production, you might send this to your analytics service
-  // Example: analytics.track('db_query_time', { query, queryTime });
-}
-
-// Memory usage tracking (browser only)
-export function trackMemoryUsage() {
-  if (typeof window !== 'undefined' && 'memory' in performance) {
-    // Cast performance to access memory property which is not standard
-    const memory = (performance as any).memory as MemoryInfo;
-    if (memory) {
-      const usedMB = Math.round(memory.usedJSHeapSize / 1048576);
-      const totalMB = Math.round(memory.totalJSHeapSize / 1048576);
-      const limitMB = Math.round(memory.jsHeapSizeLimit / 1048576);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Memory] Used: ${usedMB}MB, Total: ${totalMB}MB, Limit: ${limitMB}MB`);
-      }
-      
-      // In production, you might send this to your analytics service
-      // Example: analytics.track('memory_usage', { usedMB, totalMB, limitMB });
+  return function(...args: Parameters<T>) {
+    const later = () => {
+      timeout = null;
+      func(...args);
+    };
+    
+    if (timeout !== null) {
+      clearTimeout(timeout);
     }
-  }
+    timeout = setTimeout(later, wait);
+  };
 }
 
-// Track page load time
-export function trackPageLoad() {
-  if (typeof window !== 'undefined') {
-    window.addEventListener('load', () => {
+/**
+ * Type-safe throttle function
+ * @param func The function to throttle
+ * @param limit Limit in milliseconds
+ */
+export function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  limit: number
+): (...args: Parameters<T>) => void {
+  let inThrottle = false;
+  
+  return function(...args: Parameters<T>) {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
       setTimeout(() => {
-        const perfData = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-        if (perfData) {
-          const loadTime = perfData.loadEventEnd - perfData.loadEventStart;
-          
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[Page Load] Time: ${loadTime.toFixed(2)}ms`);
-          }
-          
-          // In production, you might send this to your analytics service
-          // Example: analytics.track('page_load_time', { loadTime });
-        }
-      }, 0);
+        inThrottle = false;
+      }, limit);
+    }
+  };
+}
+
+/**
+ * Optimize large array operations by processing in chunks
+ * @param array The array to process
+ * @param chunkSize Size of each processing chunk
+ * @param processor Function to process each chunk
+ */
+export async function processArrayInChunks<T, R>(
+  array: T[],
+  chunkSize: number,
+  processor: (chunk: T[]) => Promise<R[]>
+): Promise<R[]> {
+  const results: R[] = [];
+  
+  for (let i = 0; i < array.length; i += chunkSize) {
+    const chunk = array.slice(i, i + chunkSize);
+    const chunkResults = await processor(chunk);
+    results.push(...chunkResults);
+  }
+  
+  return results;
+}
+
+/**
+ * Calculate optimal batch size based on item complexity and estimated processing time
+ * @param itemCount Number of items to process
+ * @param complexity Complexity factor (1-10, where 10 is most complex)
+ */
+export function calculateOptimalBatchSize(itemCount: number, complexity: number): number {
+  // Base batch size for average complexity
+  const baseBatchSize = 500;
+  
+  // Adjust for complexity (1-10 scale)
+  const complexityFactor = Math.max(1, Math.min(10, complexity));
+  const adjustedBatchSize = Math.floor(baseBatchSize / (complexityFactor / 2));
+  
+  // Adjust for very small datasets
+  if (itemCount < 100) {
+    return itemCount;
+  }
+  
+  return Math.min(adjustedBatchSize, itemCount);
+}
+
+/**
+ * Measure the execution time of a function
+ * @param fn Function to measure
+ * @param label Label for console output
+ */
+export async function measureExecutionTime<T>(
+  fn: () => Promise<T>,
+  label: string
+): Promise<T> {
+  const start = performance.now();
+  const result = await fn();
+  const end = performance.now();
+  
+  console.log(`${label} execution time: ${Math.round(end - start)}ms`);
+  
+  return result;
+}
+
+/**
+ * Cache manager for optimizing repeated operations
+ */
+export class CacheManager<K, V> {
+  private cache = new Map<K, { value: V, timestamp: number }>();
+  private ttl: number;
+  
+  constructor(ttlInMs: number = 5 * 60 * 1000) {
+    this.ttl = ttlInMs;
+  }
+  
+  get(key: K): V | undefined {
+    const item = this.cache.get(key);
+    
+    if (!item) {
+      return undefined;
+    }
+    
+    const now = Date.now();
+    if (now - item.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return undefined;
+    }
+    
+    return item.value;
+  }
+  
+  set(key: K, value: V): void {
+    this.cache.set(key, {
+      value,
+      timestamp: Date.now()
     });
   }
-}
-
-// Track user interactions
-export function trackUserInteraction(action: string, label?: string) {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[User Interaction] ${action}${label ? `: ${label}` : ''}`);
+  
+  invalidate(key: K): void {
+    this.cache.delete(key);
   }
   
-  // In production, you might send this to your analytics service
-  // Example: analytics.track('user_interaction', { action, label });
+  invalidateAll(): void {
+    this.cache.clear();
+  }
 }

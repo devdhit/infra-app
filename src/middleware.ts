@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { supportedLanguages, defaultLanguage } from '@/lib/i18n'
+import { defaultLanguage } from '@/lib/i18n'
 
 // Match all request paths except for the ones starting with:
 // - api (API routes)
@@ -12,7 +12,6 @@ export const config = {
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
   
   // Get the preferred language from the Accept-Language header
   const acceptLanguage = request.headers.get('accept-language')
@@ -21,14 +20,17 @@ export function middleware(request: NextRequest) {
   if (acceptLanguage) {
     const languages = acceptLanguage.split(',')
     for (const lang of languages) {
-      const cleanLang = lang.split(';')[0].trim().toLowerCase()
-      if (cleanLang === 'zh-tw' || cleanLang === 'zh-hant') {
-        preferredLanguage = 'zh-tw'
-        break
-      }
-      if (cleanLang.startsWith('en')) {
-        preferredLanguage = 'en'
-        break
+      const parts = lang.split(';')
+      if (parts.length > 0 && parts[0] !== undefined) {
+        const cleanLang = parts[0].trim().toLowerCase()
+        if (cleanLang === 'zh-tw' || cleanLang === 'zh-hant') {
+          preferredLanguage = 'zh-tw'
+          break
+        }
+        if (cleanLang.startsWith('en')) {
+          preferredLanguage = 'en'
+          break
+        }
       }
     }
   }

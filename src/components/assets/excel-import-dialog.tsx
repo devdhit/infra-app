@@ -110,7 +110,18 @@ export function ExcelImportDialog({
       const XLSX = await import('xlsx');
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
+      
+      // Check if firstSheetName exists before using it as an index
+      if (!firstSheetName) {
+        throw new Error(t('assets.excel.import.invalidFile', 'Invalid Excel file: No sheets found'));
+      }
+      
       const worksheet = workbook.Sheets[firstSheetName];
+      
+      // Check if worksheet exists
+      if (!worksheet) {
+        throw new Error(t('assets.excel.import.invalidFile', 'Invalid Excel file: Sheet not found'));
+      }
       
       // Get the first row (headers)
       const headers: string[] = [];
@@ -138,7 +149,10 @@ export function ExcelImportDialog({
       const fileList = Array.from(files)
       setSelectedFiles(fileList)
       // Extract columns from the first file
-      extractExcelColumns(fileList[0])
+      const firstFile = fileList[0];
+      if (firstFile) {
+        extractExcelColumns(firstFile)
+      }
     }
   }
 
@@ -154,8 +168,10 @@ export function ExcelImportDialog({
 
   const updateColumnMapping = (index: number, field: keyof ColumnMapping, value: string) => {
     const newMappings = [...columnMappings]
-    newMappings[index][field] = value
-    setColumnMappings(newMappings)
+    if (newMappings[index]) {
+      newMappings[index][field] = value
+      setColumnMappings(newMappings)
+    }
   }
 
   const handleImport = useCallback(async () => {

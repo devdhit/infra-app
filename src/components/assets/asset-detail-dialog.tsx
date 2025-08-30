@@ -179,7 +179,7 @@ export function AssetDetailDialog({
           </div>
           <div className="p-4">
             <div className="grid gap-4">
-              {columns.map((column, index) => {
+              {columns.map((column) => {
                 // Extract the original key and custom field status
                 const originalKey = column.originalKey || column.key;
                 // Use the utility function to determine if this is a custom field

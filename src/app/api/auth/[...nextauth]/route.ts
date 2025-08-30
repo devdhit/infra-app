@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 }
 
 // POST /api/auth/logout - User logout
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   try {
     // Clear token cookie
     const cookieStore = await cookies();

@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useTenants, useBulkDeleteUsers } from "@/hooks/useApi"
+import { useUsers, useCreateUser, useDeleteUser, useTenants, useBulkDeleteUsers } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
@@ -19,6 +19,7 @@ import { UserFormValues } from "@/components/users/types"
 import { User } from "@/hooks/useApi"
 import { api } from "@/lib/api"
 import { useQueryClient } from '@tanstack/react-query'
+import { Plus, Users as UsersIcon } from "lucide-react"
 
 export default function UsersPage() {
   const { t } = useTranslation()
@@ -27,7 +28,7 @@ export default function UsersPage() {
   const { data: users = [], isLoading, isError, error, refetch } = useUsers()
   const { data: tenants = [] } = useTenants()
   const createUserMutation = useCreateUser()
-  const updateUserMutation = useUpdateUser('') // Placeholder, will be overridden when used
+  // const updateUserMutation = useUpdateUser('') // Placeholder, will be overridden when used - unused
   const deleteMutation = useDeleteUser('') // Placeholder, will be overridden when used
   const bulkDeleteMutation = useBulkDeleteUsers()
   
@@ -115,7 +116,7 @@ export default function UsersPage() {
         // Update existing user
         try {
           // Use the API client directly to make the PUT request with proper authentication
-          const response = await api.put<User, Partial<UserFormValues>>(`/users/${editingUser.id}`, {
+          await api.put<User, Partial<UserFormValues>>(`/users/${editingUser.id}`, {
             email: data.email,
             name: data.name,
             role: data.role,
@@ -192,11 +193,14 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">{t('users.title') || 'Users'}</h1>
+        <h1 className="text-3xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <UsersIcon className="h-8 w-8 mr-3 text-blue-500" />
+          {t('users.title') || 'Users'}
+        </h1>
         <p className="text-muted-foreground">{t('users.description') || 'Manage system users'}</p>
       </div>
 
-      <Card>
+      <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -206,7 +210,8 @@ export default function UsersPage() {
               </CardDescription>
             </div>
             {canCreateUsers && (
-              <Button onClick={() => handleEdit(null)}>
+              <Button onClick={() => handleEdit(null)} className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700">
+                <Plus className="h-4 w-4 mr-2" />
                 {t('users.create.button') || 'Add User'}
               </Button>
             )}

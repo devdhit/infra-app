@@ -8,7 +8,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface BulkDeleteDialogProps {
   title: string;
-  assetType: string;
   count: number;
   isOpen: boolean;
   isDeleting: boolean;
@@ -19,7 +18,6 @@ interface BulkDeleteDialogProps {
 
 export function BulkDeleteDialog({
   title,
-  assetType,
   count,
   isOpen,
   isDeleting,

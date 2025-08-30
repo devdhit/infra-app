@@ -4,7 +4,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, In
 export class ApiError extends Error {
   constructor(
     public status: number,
-    public message: string,
+    public override message: string,
     public data?: unknown
   ) {
     super(message)

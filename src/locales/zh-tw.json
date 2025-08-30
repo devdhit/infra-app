@@ -39,7 +39,16 @@
     "status": "狀態",
     "yes": "是",
     "no": "否",
-    "unauthorized": "您沒有權限查看此頁面"
+    "unauthorized": "您沒有權限查看此頁面",
+    "error": "錯誤",
+    "retry": "重試",
+    "count": "計數",
+    "help": "幫助",
+    "openMenu": "開啟選單",
+    "gotIt": "知道了",
+    "more": "更多",
+    "required": "必填",
+    "optional": "選填"
   },
   "dashboard": {
     "title": "儀表板",
@@ -49,9 +58,264 @@
     "maintenanceAssets": "維護中資產",
     "retiredAssets": "已報廢資產",
     "assetDistribution": "資產類型分佈",
+    "assetBreakdown": "資產細分",
+    "assetBreakdownDescription": "不同類型資產的分佈",
     "assetStatus": "電腦和筆電狀態分佈",
     "recentActivities": "最近活動",
-    "latestChanges": "資產庫存的最新變化"
+    "latestChanges": "資產庫存的最新變化",
+    "noAssets": "未找到資產",
+    "noRecentActivities": "無最近活動",
+    "errorLoading": "載入儀表板資料時出錯。請稍後再試。"
+  },
+  "settings": {
+    "description": "管理您的系統偏好設定",
+    "configure": "設定",
+    "customFields": {
+      "title": "自訂欄位",
+      "description": "管理不同資產類型的租戶特定自訂欄位",
+      "add": "新增自訂欄位",
+      "edit": "編輯自訂欄位",
+      "name": "名稱",
+      "type": "類型",
+      "modelType": "模型類型",
+      "required": "必填",
+      "description": "描述",
+      "infoTitle": "自訂欄位",
+      "infoDescription": "自訂欄位允許您為資產添加額外屬性。它們將出現在資產表單中，可用於篩選和報告。",
+      "allModels": "所有模型",
+      "createDescription": "為不同資產類型創建自訂欄位",
+      "noFields": "未找到自訂欄位",
+      "createFirst": "創建您的第一個自訂欄位",
+      "namePlaceholder": "欄位名稱（例如：warranty_date）",
+      "nameDescription": "必須以字母或下劃線開頭，只能包含字母、數字和下劃線",
+      "descriptionPlaceholder": "描述此欄位的用途...",
+      "descriptionHelp": "可選描述，幫助用戶理解此欄位的用途",
+      "selectType": "選擇欄位類型",
+      "typeHelp": "選擇此欄位將保存的資料類型",
+      "selectModel": "選擇模型類型",
+      "requiredHelp": "如果選中，創建或更新資產時必須填寫此欄位",
+      "editDescription": "修改此自訂欄位的屬性",
+      "helpTitle": "自訂欄位幫助",
+      "helpDescription": "學習如何有效使用自訂欄位",
+      "whatAre": "什麼是自訂欄位？",
+      "whatAreDescription": "自訂欄位允許您在標準欄位之外為資產添加額外屬性。它們可用於跟踪與您的組織相關的特定資訊。",
+      "fieldTypes": "欄位類型",
+      "text": "文字",
+      "textDescription": "用於簡短描述的單行文字",
+      "textArea": "文字區域",
+      "textAreaDescription": "用於較長描述的多行文字",
+      "number": "數字",
+      "numberDescription": "用於數量、成本等的數值",
+      "date": "日期",
+      "dateDescription": "用於保固、購買日期等的日期值",
+      "boolean": "布林值",
+      "booleanDescription": "是/否問題的真/假值",
+      "select": "選擇",
+      "selectDescription": "預定義選項的下拉選擇",
+      "bestPractices": "最佳實踐",
+      "practice1": "使用能清楚指示用途的描述性欄位名稱",
+      "practice2": "為您的資料選擇適當的欄位類型",
+      "practice3": "僅在必要時將欄位標記為必填",
+      "practice4": "按模型類型對相關自訂欄位進行分組",
+      "practice5": "定期審查和清理未使用的自訂欄位",
+      "practice6": "添加描述以幫助其他用戶理解每個欄位的用途",
+      "usage": "使用方法",
+      "usageDescription": "創建後，自訂欄位將自動出現在其各自模型類型的資產表單中。它們可用於篩選、報告和顯示有關您資產的額外資訊。",
+      "errorLoading": "載入自訂欄位時出錯。請稍後再試。"
+    },
+    "appearance": {
+      "title": "外觀",
+      "description": "自訂應用程式的外觀和感覺",
+      "theme": {
+        "title": "主題",
+        "description": "選擇應用程式的主題",
+        "light": "淺色",
+        "dark": "深色",
+        "system": "系統"
+      },
+      "accentColor": "強調色",
+      "accentColorDescription": "選擇應用程式的強調色",
+      "borderRadius": "邊框圓角",
+      "borderRadiusDescription": "調整角落的圓潤程度",
+      "borderRadiusOptions": {
+        "none": "無",
+        "sm": "小",
+        "md": "中",
+        "lg": "大",
+        "xl": "超大"
+      },
+      "reset": "重置為預設值",
+      "themeUpdated": "主題更新成功",
+      "borderRadiusUpdated": "邊框圓角已更新",
+      "resetSuccess": "設定已重置為預設值"
+    },
+    "notifications": {
+      "title": "通知",
+      "description": "設定您接收通知的方式",
+      "channels": {
+        "title": "通知管道",
+        "description": "選擇您希望透過哪些管道接收通知",
+        "email": "電子郵件",
+        "emailDescription": "透過電子郵件接收通知",
+        "sms": "簡訊",
+        "smsDescription": "透過文字訊息接收通知",
+        "push": "推播通知",
+        "pushDescription": "在應用程式中接收通知"
+      },
+      "events": {
+        "title": "通知事件",
+        "description": "選擇觸發通知的事件",
+        "assetCreated": "資產新增",
+        "assetUpdated": "資產更新",
+        "assetDeleted": "資產刪除",
+        "maintenanceReminder": "維護提醒",
+        "licenseExpiry": "授權到期"
+      },
+      "recipients": {
+        "title": "通知接收者",
+        "description": "指定誰應該接收通知",
+        "email": "電子郵件接收者",
+        "emailPlaceholder": "輸入電子郵件地址（以逗號分隔）",
+        "emailHelp": "輸入以逗號分隔的電子郵件地址",
+        "sms": "簡訊接收者",
+        "smsPlaceholder": "輸入電話號碼（每行一個）",
+        "smsHelp": "輸入電話號碼，每行一個"
+      },
+      "save": "儲存設定",
+      "reset": "重置為預設值",
+      "saveSuccess": "通知設定儲存成功",
+      "resetSuccess": "設定已重置為預設值"
+    },
+    "security": {
+      "title": "安全性",
+      "description": "管理您的安全偏好設定",
+      "twoFactor": {
+        "title": "雙重認證",
+        "description": "為您的帳戶添加額外的安全層",
+        "enable": "啟用雙重認證",
+        "enableDescription": "登入時需要第二種認證方式",
+        "setup": "設定說明",
+        "step1": "下載認證器應用程式，如 Google Authenticator 或 Authy",
+        "step2": "使用認證器應用程式掃描 QR 碼",
+        "step3": "輸入應用程式中的 6 位數代碼完成設定",
+        "qrCode": "QR 碼",
+        "codePlaceholder": "輸入 6 位數代碼",
+        "verify": "驗證"
+      },
+      "password": {
+        "title": "密碼要求",
+        "description": "設定用戶密碼要求",
+        "minLength": "最小長度",
+        "requireUppercase": "需要大寫字母",
+        "requireLowercase": "需要小寫字母",
+        "requireNumbers": "需要數字",
+        "requireSpecial": "需要特殊字符"
+      },
+      "sessions": {
+        "title": "活動工作階段",
+        "description": "管理您跨設備的活動工作階段",
+        "device": "設備",
+        "location": "位置",
+        "lastActive": "最後活動",
+        "status": "狀態",
+        "actions": "操作",
+        "current": "目前",
+        "active": "活動中",
+        "end": "結束工作階段",
+        "endAll": "結束所有其他工作階段"
+      },
+      "save": "儲存設定",
+      "reset": "重置為預設值",
+      "saveSuccess": "安全設定儲存成功",
+      "resetSuccess": "設定已重置為預設值",
+      "sessionEnded": "工作階段結束成功",
+      "allSessionsEnded": "除目前工作階段外，所有工作階段均已結束"
+    },
+    "dataManagement": {
+      "title": "資料管理",
+      "description": "管理您的資料備份、保留和匯出設定",
+      "backup": {
+        "title": "備份排程",
+        "description": "設定資料的自動備份排程",
+        "name": "名稱",
+        "frequency": "頻率",
+        "time": "時間",
+        "status": "狀態",
+        "actions": "操作",
+        "frequencies": {
+          "daily": "每日",
+          "weekly": "每週",
+          "monthly": "每月"
+        },
+        "enabled": "已啟用",
+        "disabled": "已停用",
+        "add": "新增備份排程"
+      },
+      "retention": {
+        "title": "資料保留",
+        "description": "設定不同類型資料的保留時間",
+        "assetType": "資產類型",
+        "period": "保留期間（天）",
+        "autoArchive": "自動歸檔"
+      },
+      "export": {
+        "title": "資料匯出",
+        "description": "以各種格式匯出您的資料",
+        "json": "匯出為 JSON",
+        "csv": "匯出為 CSV",
+        "excel": "匯出為 Excel",
+        "options": "匯出選項",
+        "includeAudit": "包含審計軌跡",
+        "includeCustom": "包含自訂欄位",
+        "includeHistory": "包含變更歷史"
+      },
+      "save": "儲存設定",
+      "reset": "重置為預設值",
+      "saveSuccess": "資料管理設定儲存成功",
+      "resetSuccess": "設定已重置為預設值",
+      "backupAdded": "備份排程已新增"
+    },
+    "auditLogs": {
+      "title": "稽核日誌",
+      "description": "設定稽核日誌和監控設定",
+      "general": {
+        "title": "一般設定",
+        "description": "基本稽核日誌設定",
+        "enabled": "啟用稽核日誌",
+        "enabledDescription": "為您的組織開啟稽核日誌",
+        "retentionPeriod": "保留期間",
+        "days": "天",
+        "retentionDescription": "在自動刪除之前保留稽核日誌的時間長度"
+      },
+      "events": {
+        "title": "事件類型",
+        "description": "選擇要記錄的事件",
+        "assetCreation": "資產新增",
+        "assetUpdates": "資產更新",
+        "assetDeletion": "資產刪除",
+        "userLogin": "用戶登入",
+        "userLogout": "用戶登出",
+        "permissionChanges": "權限變更"
+      },
+      "notifications": {
+        "title": "通知",
+        "description": "設定接收稽核日誌通知的方式",
+        "criticalEvents": "關鍵事件通知",
+        "channels": "通知管道",
+        "email": "電子郵件",
+        "slack": "Slack",
+        "emailAddress": "通知信箱",
+        "emailPlaceholder": "admin@example.com",
+        "emailDescription": "接收稽核通知的電子郵件地址"
+      },
+      "save": "儲存設定",
+      "reset": "重置為預設值",
+      "saving": "儲存中...",
+      "saveSuccess": "稽核日誌設定儲存成功",
+      "saveError": "儲存稽核日誌設定失敗",
+      "resetSuccess": "設定已重置為預設值",
+      "loadError": "載入稽核日誌設定失敗"
+    }
   },
   "auth": {
     "login_a": "登入",
@@ -280,8 +544,8 @@
       "placeholder": "搜尋使用者..."
     },
     "create": {
-      "users": "使用者",
-      "description": "新增使用者",
+      "title": "新增使用者",
+      "description": "新增一個使用者到系統中",
       "button": "新增使用者",
       "success": "使用者新增成功",
       "unauthorized": "您沒有權限新增使用者"
@@ -381,6 +645,6 @@
   "bulkDelete": {
     "confirmation": "您確定要刪除{0}個{1}嗎？此操作無法復原。",
     "warning": "重要",
-    "warningDescription": "此操作將永久刪除{0}個{1}且無法復原。請確認您要繼續進行。"
+    "warningDescription": "此操作將永久刪除{0}個{1}且無法復原。請確保您要繼續進行。"
   }
 }

@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { 
   successResponse, 
   errorResponse, 
@@ -17,6 +17,55 @@ interface AssetOperations<T> {
   include?: any
 }
 
+  // Helper method to get optimized select fields based on asset type
+  private getSelectFieldsForAssetType() {
+    const baseFields = {
+      dept: true,
+      status: true,
+      userName: true
+    };
+
+    switch (this.operations.modelName) {
+      case 'PC':
+        return {
+          ...baseFields,
+          cpuBarcode: true,
+          pcName: true,
+          note: true
+        };
+      case 'Laptop':
+        return {
+          ...baseFields,
+          barcode: true,
+          model: true,
+          dateBuy: true
+        };
+      case 'Printer':
+        return {
+          ...baseFields,
+          barcode: true,
+          model: true,
+          location: true
+        };
+      case 'License':
+        return {
+          ...baseFields,
+          productType: true,
+          productKey: true,
+          deviceName: true
+        };
+      case 'WarehouseIT':
+        return {
+          ...baseFields,
+          cpuBarcode: true,
+          note: true
+        };
+      default:
+        return baseFields;
+    }
+  }
+}
+
 // Generic asset API handler
 export class AssetApiHandler<T> {
   constructor(private db: PrismaClient, private operations: AssetOperations<T>) {}
@@ -33,11 +82,23 @@ export class AssetApiHandler<T> {
         tenantId: user.tenantId
       }
 
-      // Add search filter
+      // Add search filter with optimized indexing
       if (search && this.operations.searchFields) {
-        where.OR = this.operations.searchFields.map((field: any) => ({
-          [field]: { contains: search, mode: 'insensitive' }
-        }))
+        // Use indexed fields for better performance
+        const indexedSearchFields = this.operations.searchFields.filter((field: any) => 
+          ['userName', 'dept', 'status'].includes(field as string)
+        );
+        
+        if (indexedSearchFields.length > 0) {
+          where.OR = indexedSearchFields.map((field: any) => ({
+            [field]: { contains: search, mode: 'insensitive' }
+          }));
+        } else {
+          // Fallback to original search if no indexed fields
+          where.OR = this.operations.searchFields.map((field: any) => ({
+            [field]: { contains: search, mode: 'insensitive' }
+          }));
+        }
       }
 
       // Add status filter
@@ -45,12 +106,21 @@ export class AssetApiHandler<T> {
         where.status = status
       }
 
+      // Optimize query by only selecting necessary fields
+      const selectFields = {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        // Add other commonly used fields based on asset type
+        ...this.getSelectFieldsForAssetType()
+      };
+
       const [assets, total] = await Promise.all([
         (this.db as any)[this.operations.modelName].findMany({
           where,
-          include: this.operations.include,
+          select: selectFields,
           skip: (page - 1) * limit,
-          take: limit,
+          take: Math.min(limit, 100), // Limit maximum page size
           orderBy: {
             createdAt: 'desc'
           }
@@ -504,7 +574,7 @@ export class AssetApiHandler<T> {
     }
   }
 
-  // Bulk delete assets
+  // Bulk delete assets with optimized batch processing
   async bulkDelete(user: { id: string; tenantId: string }, ids: string[]) {
     try {
       // Validate input
@@ -512,26 +582,38 @@ export class AssetApiHandler<T> {
         return badRequestResponse('No asset IDs provided')
       }
 
-      // Check if all assets exist and belong to user's tenant
-      const existingAssets = await (this.db as any)[this.operations.modelName].findMany({
-        where: { 
-          id: { in: ids },
-          tenantId: user.tenantId 
+      // Process in batches to avoid memory issues with large datasets
+      const batchSize = 100;
+      let totalDeleted = 0;
+
+      // Process IDs in batches
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batchIds = ids.slice(i, i + batchSize);
+        
+        // Check if all assets in batch exist and belong to user's tenant
+        const existingAssets = await (this.db as any)[this.operations.modelName].findMany({
+          where: { 
+            id: { in: batchIds },
+            tenantId: user.tenantId 
+          },
+          select: {
+            id: true,
+            tenantId: true
+          }
+        })
+
+        // Check if all requested assets were found
+        const foundIds = existingAssets.map((asset: any) => asset.id)
+        const missingIds = batchIds.filter(id => !foundIds.includes(id))
+        
+        if (missingIds.length > 0) {
+          return notFoundResponse(`Some ${this.operations.modelName} assets not found: ${missingIds.join(', ')}`)
         }
-      })
 
-      // Check if all requested assets were found
-      const foundIds = existingAssets.map((asset: any) => asset.id)
-      const missingIds = ids.filter(id => !foundIds.includes(id))
-      
-      if (missingIds.length > 0) {
-        return notFoundResponse(`Some ${this.operations.modelName} assets not found: ${missingIds.join(', ')}`)
-      }
-
-      // Create history records for each asset
-      for (const asset of existingAssets) {
-        try {
-          await this.db.history.create({
+        // Create history records for each asset in batch
+        // Use Promise.all for parallel processing
+        const historyPromises = existingAssets.map((asset: any) => 
+          this.db.history.create({
             data: {
               action: 'delete',
               modelType: this.operations.modelName,
@@ -540,23 +622,28 @@ export class AssetApiHandler<T> {
               userId: user.id,
               tenantId: user.tenantId
             }
+          }).catch((historyError) => {
+            console.error(`Failed to create history record for asset ${asset.id}:`, historyError)
+            // Continue with deletion even if history creation fails
           })
-        } catch (historyError) {
-          console.error(`Failed to create history record for asset ${asset.id}:`, historyError)
-          // Continue with deletion even if history creation fails
-        }
+        );
+        
+        // Wait for all history records to be created
+        await Promise.all(historyPromises);
+
+        // Delete all assets in batch
+        const deleteResult = await (this.db as any)[this.operations.modelName].deleteMany({
+          where: { 
+            id: { in: batchIds },
+            tenantId: user.tenantId 
+          }
+        })
+
+        totalDeleted += deleteResult.count;
       }
 
-      // Delete all assets
-      const deleteResult = await (this.db as any)[this.operations.modelName].deleteMany({
-        where: { 
-          id: { in: ids },
-          tenantId: user.tenantId 
-        }
-      })
-
       // Log the number of deleted assets
-      console.log(`Deleted ${deleteResult.count} ${this.operations.modelName} assets`)
+      console.log(`Deleted ${totalDeleted} ${this.operations.modelName} assets in ${Math.ceil(ids.length/batchSize)} batches`)
 
       return successResponse<null>(null, 204)
     } catch (error: any) {

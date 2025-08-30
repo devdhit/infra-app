@@ -22,12 +22,15 @@ export async function getCurrentLanguage(): Promise<Language> {
   if (acceptLanguage) {
     const languages = acceptLanguage.split(',')
     for (const lang of languages) {
-      const cleanLang = lang.split(';')[0].trim().toLowerCase()
-      if (cleanLang === 'zh-tw' || cleanLang === 'zh-hant') {
-        return 'zh-tw'
-      }
-      if (cleanLang.startsWith('en')) {
-        return 'en'
+      const parts = lang.split(';')
+      if (parts.length > 0 && parts[0] !== undefined) {
+        const cleanLang = parts[0].trim().toLowerCase()
+        if (cleanLang === 'zh-tw' || cleanLang === 'zh-hant') {
+          return 'zh-tw'
+        }
+        if (cleanLang.startsWith('en')) {
+          return 'en'
+        }
       }
     }
   }

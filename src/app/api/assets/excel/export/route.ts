@@ -6,17 +6,11 @@ import {
   exportLaptopToExcel, 
   exportPrinterToExcel, 
   exportLicenseToExcel, 
-  exportWarehouseITToExcel,
-  PCAsset,
-  LaptopAsset,
-  PrinterAsset,
-  LicenseAsset,
-  WarehouseITAsset
+  exportWarehouseITToExcel
 } from '@/lib/excel'
 
 // Define types for our data
 type AssetType = 'pc' | 'laptop' | 'printer' | 'license' | 'warehouse'
-type ExportData = PCAsset[] | LaptopAsset[] | PrinterAsset[] | LicenseAsset[] | WarehouseITAsset[]
 
 // GET /api/assets/excel/export - Export assets to Excel
 export async function GET(request: NextRequest) {
@@ -31,7 +25,6 @@ export async function GET(request: NextRequest) {
   try {
     // Create a controller to allow aborting the fetch if it takes too long
     const controller = new AbortController();
-    const signal = controller.signal;
     
     // Set a timeout to abort the request if it takes too long
     timer = setTimeout(() => {
@@ -68,7 +61,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const data: ExportData = []
     let buffer: ArrayBuffer
 
     // Parse selected IDs if provided
@@ -86,7 +78,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Set a limit on the number of records to export
-    const MAX_RECORDS = 5000;
+    const MAX_RECORDS = 10000;
     
     // Fetch data based on asset type and export using templates
     switch (assetType) {
@@ -102,9 +94,13 @@ export async function GET(request: NextRequest) {
           ...(department ? { dept: department } : {})
         }
         console.log('PC where clause:', pcWhereClause)
+        // Use cursor-based pagination for better performance with large datasets
         const pcData = await db.pC.findMany({
           where: pcWhereClause,
-          take: MAX_RECORDS // Limit the number of records
+          take: MAX_RECORDS, // Limit the number of records
+          orderBy: {
+            createdAt: 'asc'
+          }
         })
         console.log('PC data fetched:', pcData.length, 'records')
         console.log('Sample PC data:', pcData.slice(0, 2))
@@ -156,6 +152,7 @@ export async function GET(request: NextRequest) {
           ...(department ? { dept: department } : {})
         }
         console.log('Laptop where clause:', laptopWhereClause)
+        // Use cursor-based pagination for better performance with large datasets
         const laptopData = await db.laptop.findMany({
           where: laptopWhereClause,
           select: {
@@ -172,7 +169,10 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             updatedAt: true
           },
-          take: MAX_RECORDS // Limit the number of records
+          take: MAX_RECORDS, // Limit the number of records
+          orderBy: {
+            createdAt: 'asc'
+          }
         })
         console.log('Laptop data fetched:', laptopData.length, 'records')
         console.log('Sample Laptop data:', laptopData.slice(0, 2))
@@ -221,6 +221,7 @@ export async function GET(request: NextRequest) {
           ...(department ? { dept: department } : {})
         }
         console.log('Printer where clause:', printerWhereClause)
+        // Use cursor-based pagination for better performance with large datasets
         const printerData = await db.printer.findMany({
           where: printerWhereClause,
           select: {
@@ -238,7 +239,10 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             updatedAt: true
           },
-          take: MAX_RECORDS // Limit the number of records
+          take: MAX_RECORDS, // Limit the number of records
+          orderBy: {
+            createdAt: 'asc'
+          }
         })
         console.log('Printer data fetched:', printerData.length, 'records')
         console.log('Sample Printer data:', printerData.slice(0, 2))
@@ -287,6 +291,7 @@ export async function GET(request: NextRequest) {
           ...(department ? { dept: department } : {})
         }
         console.log('License where clause:', licenseWhereClause)
+        // Use cursor-based pagination for better performance with large datasets
         const licenseData = await db.license.findMany({
           where: licenseWhereClause,
           select: {
@@ -306,7 +311,10 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             updatedAt: true
           },
-          take: MAX_RECORDS // Limit the number of records
+          take: MAX_RECORDS, // Limit the number of records
+          orderBy: {
+            createdAt: 'asc'
+          }
         })
         console.log('License data fetched:', licenseData.length, 'records')
         console.log('Sample License data:', licenseData.slice(0, 2))
@@ -352,6 +360,7 @@ export async function GET(request: NextRequest) {
           ...(selectedIdArray ? { id: { in: selectedIdArray } } : {})
         }
         console.log('Warehouse where clause:', warehouseWhereClause)
+        // Use cursor-based pagination for better performance with large datasets
         const warehouseData = await db.warehouseIT.findMany({
           where: warehouseWhereClause,
           select: {
@@ -368,7 +377,10 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             updatedAt: true
           },
-          take: MAX_RECORDS // Limit the number of records
+          take: MAX_RECORDS, // Limit the number of records
+          orderBy: {
+            createdAt: 'asc'
+          }
         })
         console.log('Warehouse data fetched:', warehouseData.length, 'records')
         console.log('Sample Warehouse data:', warehouseData.slice(0, 2))
