@@ -62,6 +62,10 @@ model PC {
   tenant            Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
+  @@index([status])
+  @@index([userName])
+  @@index([dept])
+  @@index([createdAt])
 }
 
 model Laptop {
@@ -81,6 +85,11 @@ model Laptop {
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
+  @@index([status])
+  @@index([userName])
+  @@index([dept])
+  @@index([createdAt])
+  @@index([dateBuy])
 }
 
 model Printer {
@@ -101,6 +110,9 @@ model Printer {
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
+  @@index([dept])
+  @@index([createdAt])
+  @@index([barcode])
 }
 
 model License {
@@ -123,6 +135,11 @@ model License {
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
+  @@index([updateStatus])
+  @@index([userName])
+  @@index([dept])
+  @@index([createdAt])
+  @@index([productType])
 }
 
 model WarehouseIT {
@@ -142,6 +159,8 @@ model WarehouseIT {
   tenant            Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model CustomField {

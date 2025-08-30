@@ -7,7 +7,6 @@ import type {
   SortingState,
   VisibilityState,
   Row,
-  Column,
   HeaderGroup,
   Table as ReactTable,
   RowSelectionState,
@@ -20,10 +19,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 
 
 import {
@@ -34,12 +32,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { Separator } from '@/components/ui/separator'
 
 // Add virtualization support
 
@@ -163,17 +155,6 @@ export function DataTable<TData, TValue>({
   React.useEffect(() => {
     table.setPageIndex(0)
   }, [data, table])
-
-  // Toggle all columns visibility
-  const toggleAllColumns = (visible: boolean) => {
-    const newState: VisibilityState = {}
-    table.getAllColumns().forEach((col: Column<TData, unknown>) => {
-      if (col.getCanHide()) {
-        newState[col.id] = visible
-      }
-    })
-    setColumnVisibility(newState)
-  }
 
   if (loading) {
     return (

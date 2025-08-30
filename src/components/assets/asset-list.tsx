@@ -394,11 +394,18 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   }, [currentPage, search, statusFilter, router]);
   
   // Query assets with current parameters
+  // Optimize asset fetching with better caching and pagination
   const { data, isLoading, isError, error, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
     page: currentPage,
-    limit: 10,
+    limit: 20, // Increase page size for fewer requests
     search,
     status: statusFilter
+  }, {
+    // Optimize caching for better performance
+    staleTime: 30 * 1000, // 30 seconds
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
   
   // Memoize assets to prevent unnecessary re-renders
@@ -918,7 +925,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               getRowId={(row: Asset) => row.id}
               responsive={true}
               enableColumnResizing={true}
-              enableVirtualization={assets.length > 100} // Enable virtualization for large datasets
+              enableVirtualization={assets.length > 50} // Enable virtualization for medium datasets
               virtualItemHeight={50}
             />
           </div>

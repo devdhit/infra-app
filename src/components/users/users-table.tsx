@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, MoreHorizontal, Edit, Trash, Plus } from "lucide-react"
+import { Search, MoreHorizontal, Edit, Trash } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { User, Tenant } from "@/hooks/useApi"
 import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"

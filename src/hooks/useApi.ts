@@ -86,7 +86,7 @@ export function useApiDeleteWithId<T>(url: string, options = {}) {
 }
 
 // Asset-specific hooks
-export function useAssets<T>(assetType: string, params: Record<string, any> = {}) {
+export function useAssets<T>(assetType: string, params: Record<string, any> = {}, options: ApiQueryOptions<T> = {}) {
   const queryString = new URLSearchParams(params).toString()
   const url = `/assets/${assetType}${queryString ? `?${queryString}` : ''}`
   
@@ -96,6 +96,10 @@ export function useAssets<T>(assetType: string, params: Record<string, any> = {}
   return useApiQuery<T>(['assets', assetType, paramsKey], url, {
     // Asset data can be cached longer since it doesn't change frequently
     staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    ...options
   })
 }
 
