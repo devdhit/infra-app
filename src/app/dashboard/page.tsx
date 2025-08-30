@@ -147,7 +147,7 @@ export default function DashboardPage() {
       {/* Page title and description */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
             {t('dashboard.title')}
           </h1>
           <p className="text-muted-foreground">{t('dashboard.welcome')}</p>
@@ -157,7 +157,7 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 mr-2" />
             {t('common.export')}
           </Button>
-          <Button size="sm" className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700">
+          <Button size="sm" className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-700 dark:hover:from-blue-700 dark:hover:to-indigo-800">
             <Settings className="h-4 w-4 mr-2" />
             {t('settings.configure')}
           </Button>
@@ -166,25 +166,25 @@ export default function DashboardPage() {
 
       {/* Enhanced Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
+        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500 dark:border-t-blue-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.totalAssets')}</CardTitle>
-            <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+            <div className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300">
               <Activity className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardData?.assets?.total || 0}</div>
             <div className="flex items-center text-xs text-muted-foreground mt-1">
-              <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
+              <ArrowUpRight className="h-3 w-3 text-green-500 mr-1 dark:text-green-400" />
               <span>+12% {t('common.fromLastMonth')}</span>
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-green-500">
+        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-green-500 dark:border-t-green-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.activeAssets')}</CardTitle>
-            <div className="p-2 rounded-full bg-green-100 text-green-600">
+            <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300">
               <CheckCircle className="h-4 w-4" />
             </div>
           </CardHeader>
@@ -195,10 +195,10 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-yellow-500">
+        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-yellow-500 dark:border-t-yellow-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.maintenanceAssets')}</CardTitle>
-            <div className="p-2 rounded-full bg-yellow-100 text-yellow-600">
+            <div className="p-2 rounded-full bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-300">
               <AlertTriangle className="h-4 w-4" />
             </div>
           </CardHeader>
@@ -209,10 +209,10 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-gray-500">
+        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-gray-500 dark:border-t-gray-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.retiredAssets')}</CardTitle>
-            <div className="p-2 rounded-full bg-gray-100 text-gray-600">
+            <div className="p-2 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
               <Clock className="h-4 w-4" />
             </div>
           </CardHeader>
@@ -230,7 +230,7 @@ export default function DashboardPage() {
         <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Activity className="h-5 w-5 mr-2 text-blue-500" />
+              <Activity className="h-5 w-5 mr-2 text-blue-500 dark:text-blue-400" />
               {t('dashboard.assetBreakdown')}
             </CardTitle>
             <CardDescription>{t('dashboard.assetBreakdownDescription')}</CardDescription>
@@ -276,7 +276,7 @@ export default function DashboardPage() {
         <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2 text-green-500" />
+              <TrendingUp className="h-5 w-5 mr-2 text-green-500 dark:text-green-400" />
               {t('dashboard.assetStatus')}
             </CardTitle>
             <CardDescription>{t('dashboard.assetStatus')}</CardDescription>
@@ -323,24 +323,24 @@ export default function DashboardPage() {
       <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Building className="h-5 w-5 mr-2 text-purple-500" />
+            <Building className="h-5 w-5 mr-2 text-purple-500 dark:text-purple-400" />
             {t('common.distribution')} {t('common.by')} {t('common.department')}
           </CardTitle>
           <CardDescription>{t('common.distribution')} {t('common.by')} {t('common.department')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="pc" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-muted/50">
-              <TabsTrigger value="pc" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <TabsList className="grid w-full grid-cols-4 bg-muted/50 dark:bg-muted/20">
+              <TabsTrigger value="pc" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
                 {t('assets.pc.title')}
               </TabsTrigger>
-              <TabsTrigger value="laptop" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <TabsTrigger value="laptop" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
                 {t('assets.laptop.title')}
               </TabsTrigger>
-              <TabsTrigger value="printer" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <TabsTrigger value="printer" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
                 {t('assets.printer.title')}
               </TabsTrigger>
-              <TabsTrigger value="license" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <TabsTrigger value="license" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
                 {t('assets.license.title')}
               </TabsTrigger>
             </TabsList>
@@ -531,7 +531,7 @@ export default function DashboardPage() {
           <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Settings className="h-5 w-5 mr-2 text-indigo-500" />
+                <Settings className="h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400" />
                 {t('settings.customFields.title')}
               </CardTitle>
               <CardDescription>
@@ -594,7 +594,7 @@ export default function DashboardPage() {
         <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Activity className="h-5 w-5 mr-2 text-orange-500" />
+              <Activity className="h-5 w-5 mr-2 text-orange-500 dark:text-orange-400" />
               {t('dashboard.recentActivities')}
             </CardTitle>
             <CardDescription>{t('dashboard.latestChanges')}</CardDescription>
@@ -602,9 +602,9 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {dashboardData?.recentActivities?.map((activity) => (
-                <div key={activity.id} className="flex items-start p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                <div key={activity.id} className="flex items-start p-3 rounded-lg hover:bg-muted/50 transition-colors dark:hover:bg-muted/30">
                   <div className="flex-shrink-0 mt-1">
-                    <div className="bg-gray-100 rounded-full p-2">
+                    <div className="bg-gray-100 rounded-full p-2 dark:bg-gray-800">
                       {activity.action === 'create' && <div className="bg-green-500 rounded-full w-2 h-2"></div>}
                       {activity.action === 'update' && <div className="bg-blue-500 rounded-full w-2 h-2"></div>}
                       {activity.action === 'delete' && <div className="bg-red-500 rounded-full w-2 h-2"></div>}

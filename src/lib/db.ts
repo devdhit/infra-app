@@ -1,11 +1,8 @@
-import { PrismaClient } from '@/generated/prisma'
+import { PrismaClient } from '../generated/prisma'
 
-declare global {
-  var prisma: PrismaClient | undefined
-}
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 
-// Optimize Prisma client with query logging in development
-const client = globalThis.prisma || new PrismaClient({
+export const db = globalForPrisma.prisma || new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? [
     {
       emit: 'event',
@@ -26,19 +23,4 @@ const client = globalThis.prisma || new PrismaClient({
   ] : [],
 })
 
-if (process.env.NODE_ENV !== 'production') globalThis.prisma = client
-
-export const db = client
-
-// Add query performance monitoring in development
-if (process.env.NODE_ENV === 'development') {
-  client.$on('query', (e) => {
-    console.log('Query: ' + e.query)
-    console.log('Params: ' + e.params)
-    console.log('Duration: ' + e.duration + 'ms')
-  })
-  
-  client.$on('error', (e) => {
-    console.error('Prisma Error: ', e)
-  })
-}
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db

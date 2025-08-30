@@ -24,6 +24,7 @@ import { useLogout } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LanguageSwitcher } from "./language-switcher";
+import { ThemeToggle } from "./theme-toggle";
 import { useTranslation } from "@/hooks/use-translation";
 
 // Define user roles
@@ -121,7 +122,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
   return (
     <>
       {/* Mobile sidebar toggle */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b p-4 flex items-center justify-between">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b p-4 flex items-center justify-between">
         <Button 
           variant="ghost" 
           size="icon"
@@ -130,10 +131,11 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
         >
           <Menu className="h-6 w-6" />
         </Button>
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
           ITAMS
         </h1>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <LanguageSwitcher />
           <Button 
             variant="ghost" 
@@ -152,11 +154,11 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
         onClick={() => setSidebarOpen(false)}
       >
         <div 
-          className={`fixed inset-y-0 left-0 w-64 bg-white p-4 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          className={`fixed inset-y-0 left-0 w-64 bg-background p-4 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
               IT Asset Management
             </h1>
             <Button 
@@ -175,8 +177,8 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
                   href={item.href}
                   className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                     isActive(item.href)
-                      ? "bg-blue-50 text-blue-700 shadow-sm"
-                      : "text-gray-700 hover:bg-gray-100"
+                      ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+                      : "text-foreground hover:bg-muted"
                   }`}
                   onClick={() => {
                     if (item.children) {
@@ -214,8 +216,8 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
                           href={child.href}
                           className={`flex items-center px-3 py-2 rounded-lg text-sm ${
                             isActive(child.href)
-                              ? "bg-blue-50 text-blue-700 shadow-sm"
-                              : "text-gray-700 hover:bg-gray-100"
+                              ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+                              : "text-foreground hover:bg-muted"
                           }`}
                           onClick={() => setSidebarOpen(false)}
                         >
@@ -233,9 +235,9 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
 
       {/* Desktop sidebar */}
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col z-30">
-        <div className="flex flex-col flex-grow pt-5 bg-white overflow-y-auto border-r shadow-sm">
+        <div className="flex flex-col flex-grow pt-5 bg-background overflow-y-auto border-r shadow-sm">
           <div className="flex items-center flex-shrink-0 px-6">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
               IT Asset Management
             </h1>
           </div>
@@ -247,8 +249,8 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
                     href={item.href}
                     className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                       isActive(item.href)
-                        ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border-l-4 border-blue-500"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border-l-4 border-blue-500 dark:from-blue-950/50 dark:to-indigo-950/50 dark:text-blue-300"
+                        : "text-foreground hover:bg-muted"
                     }`}
                     onClick={() => {
                       if (item.children) {
@@ -256,7 +258,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
                       }
                     }}
                   >
-                    <item.icon className={`h-5 w-5 mr-3 ${isActive(item.href) ? "text-blue-600" : ""}`} />
+                    <item.icon className={`h-5 w-5 mr-3 ${isActive(item.href) ? "text-blue-600 dark:text-blue-400" : ""}`} />
                     <span className="flex-1">{t(item.nameKey)}</span>
                     {item.children && (
                       <button 
@@ -284,11 +286,11 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
                             href={child.href}
                             className={`flex items-center px-3 py-2 rounded-lg text-sm transition-all ${
                               isActive(child.href)
-                                ? "bg-blue-50 text-blue-700 shadow-sm"
-                                : "text-gray-700 hover:bg-gray-100"
+                                ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+                                : "text-foreground hover:bg-muted"
                             }`}
                           >
-                            <child.icon className={`h-4 w-4 mr-3 ${isActive(child.href) ? "text-blue-600" : ""}`} />
+                            <child.icon className={`h-4 w-4 mr-3 ${isActive(child.href) ? "text-blue-600 dark:text-blue-400" : ""}`} />
                             {t(child.nameKey)}
                           </Link>
                         ))}
@@ -299,7 +301,10 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
             </nav>
           </div>
           <div className="flex-shrink-0 p-4 border-t flex items-center justify-between">
-            <LanguageSwitcher />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <LanguageSwitcher />
+            </div>
             <Button 
               variant="ghost" 
               className="justify-start rounded-lg hover:bg-muted"

@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/contexts/i18n-context";
 import { getCurrentLanguage } from '@/lib/i18n-server';
 import { ProtectedLayout } from "@/components/layout/protected-layout";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,14 +25,21 @@ export default async function RootLayout({
   const language = await getCurrentLanguage();
   
   return (
-    <html lang={language}>
+    <html lang={language} suppressHydrationWarning>
       <body className={inter.className}>
         <I18nProvider initialLanguage={language}>
           <ReactQueryProvider>
-            <ProtectedLayout>
-              {children}
-            </ProtectedLayout>
-            <Toaster />
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <ProtectedLayout>
+                {children}
+              </ProtectedLayout>
+              <Toaster />
+            </ThemeProvider>
           </ReactQueryProvider>
         </I18nProvider>
       </body>

@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Transform department stats to include counts for PCs, Monitors, and UPSs
-    const departmentAssetStats = pcDepartmentStats.map(deptStat => ({
+    const departmentAssetStats = pcDepartmentStats.map((deptStat: any) => ({
       department: deptStat.dept,
       pcCount: deptStat._count._all,
       monitorCount: deptStat._count.monitorBarcode || 0,
@@ -84,21 +84,21 @@ export async function GET(request: NextRequest) {
 
     // Combine all department statistics
     const allDepartmentStats = {
-      pc: pcDepartmentStats.map(deptStat => ({
+      pc: pcDepartmentStats.map((deptStat: any) => ({
         department: deptStat.dept,
         count: deptStat._count._all,
         monitorCount: deptStat._count.monitorBarcode || 0,
         upsCount: deptStat._count.upsBarcode || 0
       })),
-      laptop: laptopDepartmentStats.map(deptStat => ({
+      laptop: laptopDepartmentStats.map((deptStat: any) => ({
         department: deptStat.dept,
         count: deptStat._count._all
       })),
-      printer: printerDepartmentStats.map(deptStat => ({
+      printer: printerDepartmentStats.map((deptStat: any) => ({
         department: deptStat.dept,
         count: deptStat._count._all
       })),
-      license: licenseDepartmentStats.map(deptStat => ({
+      license: licenseDepartmentStats.map((deptStat: any) => ({
         department: deptStat.dept,
         count: deptStat._count._all
       }))

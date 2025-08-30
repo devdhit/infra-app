@@ -1,6 +1,7 @@
 'use client'
 
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useTranslation } from "@/hooks/use-translation";
 import { Bell, Search, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -14,10 +15,10 @@ export function Header() {
   const { data: user } = useCurrentUser();
   
   return (
-    <header className="sticky top-0 right-0 left-0 z-30 bg-white/80 backdrop-blur-md border-b shadow-sm">
+    <header className="sticky top-0 right-0 left-0 z-30 bg-background/80 backdrop-blur-md border-b shadow-sm">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
             ITAMS
           </h1>
           <div className="relative hidden md:block">
@@ -36,6 +37,7 @@ export function Header() {
               3
             </Badge>
           </Button>
+          <ThemeToggle />
           <LanguageSwitcher />
           <div className="hidden md:flex items-center gap-2 ml-2">
             <Avatar className="h-8 w-8 border border-muted">

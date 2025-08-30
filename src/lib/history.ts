@@ -1,5 +1,4 @@
 import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
 
 export interface HistoryRecord {
   action: string;

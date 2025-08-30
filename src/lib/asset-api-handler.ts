@@ -17,6 +17,10 @@ interface AssetOperations<T> {
   include?: any
 }
 
+// Generic asset API handler
+export class AssetApiHandler<T> {
+  constructor(private db: PrismaClient, private operations: AssetOperations<T>) {}
+
   // Helper method to get optimized select fields based on asset type
   private getSelectFieldsForAssetType() {
     const baseFields = {
@@ -64,11 +68,6 @@ interface AssetOperations<T> {
         return baseFields;
     }
   }
-}
-
-// Generic asset API handler
-export class AssetApiHandler<T> {
-  constructor(private db: PrismaClient, private operations: AssetOperations<T>) {}
 
   // Get all assets with pagination and filtering
   async getAll(
@@ -622,7 +621,7 @@ export class AssetApiHandler<T> {
               userId: user.id,
               tenantId: user.tenantId
             }
-          }).catch((historyError) => {
+          }).catch((historyError: any) => {
             console.error(`Failed to create history record for asset ${asset.id}:`, historyError)
             // Continue with deletion even if history creation fails
           })

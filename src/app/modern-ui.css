@@ -7,44 +7,44 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: hsl(var(--background));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: hsl(var(--muted-foreground) / 0.5);
 }
 
 /* Fixed header shadow for tables */
 .sticky-header-shadow {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px hsl(var(--background) / 0.1);
 }
 
 /* Improved card styling */
 .modern-card {
   transition: all 0.2s ease-in-out;
-  border-radius: 0.5rem;
-  border-width: 1px;
-  border-color: rgba(0, 0, 0, 0.05);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(var(--background) / 0.05);
+  background-color: hsl(var(--card));
 }
 
 .modern-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px hsl(var(--background) / 0.1);
 }
 
 /* Glass morphism effects */
 .glass-morphism {
-  background: rgba(255, 255, 255, 0.8);
+  background: hsl(var(--background) / 0.8);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid hsl(var(--border) / 0.18);
 }
 
 /* Fixed stacking contexts */
@@ -76,4 +76,18 @@
 /* Improved table cell padding for better readability */
 .data-table-cell {
   padding: 0.75rem 1rem;
+}
+
+/* Theme-aware focus styles */
+.focus-ring {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

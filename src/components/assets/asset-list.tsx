@@ -403,7 +403,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   }, {
     // Optimize caching for better performance
     staleTime: 30 * 1000, // 30 seconds
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes (previously cacheTime)
     refetchOnWindowFocus: false,
     refetchOnReconnect: false
   });
