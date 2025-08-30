@@ -41,19 +41,18 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.pc.pcName') || "PC Name"
       },
       {
-        key: "user",
+        key: "userName",
         label: t('assets.pc.user') || "User",
-        render: (user: any) => user?.name || "-"
+        render: (userName: string) => userName || "-"
       },
       {
         key: "status",
         label: t('assets.pc.status') || "Status",
         render: (value: string) => {
           const statusClass: Record<string, string> = {
-            active: "bg-green-100 text-green-800",
-            inactive: "bg-gray-100 text-gray-800",
-            maintenance: "bg-yellow-100 text-yellow-800",
-            retired: "bg-red-100 text-red-800"
+            working: "bg-green-100 text-green-800",
+            leave: "bg-blue-100 text-blue-800",
+            repair: "bg-yellow-100 text-yellow-800"
           };
           
           return (
@@ -121,15 +120,20 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         placeholder: "Workstation-001"
       },
       {
+        name: "userName",
+        label: t('assets.pc.user') || "User",
+        type: "text",
+        placeholder: "John Doe or john.doe@example.com"
+      },
+      {
         name: "status",
         label: t('assets.pc.status') || "Status",
         type: "select",
         required: true,
         options: [
-          { label: t('assets.status.active') || "Active", value: "active" },
-          { label: t('assets.status.inactive') || "Inactive", value: "inactive" },
-          { label: t('assets.status.maintenance') || "Maintenance", value: "maintenance" },
-          { label: t('assets.status.retired') || "Retired", value: "retired" }
+          { label: t('assets.status.working') || "Working", value: "working" },
+          { label: t('assets.status.leave') || "Leave", value: "leave" },
+          { label: t('assets.status.repair') || "Repair", value: "repair" }
         ]
       },
       {
@@ -159,12 +163,7 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
       {
         key: "dateBuy",
         label: t('assets.laptop.purchaseDate') || "Date Buy",
-        render: (date: string) => date ? formatDate(date) : "-"
-      },
-      {
-        key: "user",
-        label: t('assets.laptop.assignedTo') || "User",
-        render: (user: any) => user?.name || "-"
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
       },
       {
         key: "email",
@@ -175,14 +174,17 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.laptop.model') || "Model"
       },
       {
+        key: "userName",
+        label: t('assets.laptop.userName') || "User Name"
+      },
+      {
         key: "status",
         label: t('assets.laptop.status') || "Status",
         render: (value: string) => {
           const statusClass: Record<string, string> = {
-            active: "bg-green-100 text-green-800",
-            inactive: "bg-gray-100 text-gray-800",
-            maintenance: "bg-yellow-100 text-yellow-800",
-            retired: "bg-red-100 text-red-800"
+            working: "bg-green-100 text-green-800",
+            leave: "bg-blue-100 text-blue-800",
+            repair: "bg-yellow-100 text-yellow-800"
           };
           
           return (
@@ -237,10 +239,9 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         type: "select", 
         required: true,
         options: [
-          { label: t('assets.status.active') || "Active", value: "active" },
-          { label: t('assets.status.inactive') || "Inactive", value: "inactive" },
-          { label: t('assets.status.maintenance') || "Maintenance", value: "maintenance" },
-          { label: t('assets.status.retired') || "Retired", value: "retired" },
+          { label: t('assets.status.working') || "Working", value: "working" },
+          { label: t('assets.status.leave') || "Leave", value: "leave" },
+          { label: t('assets.status.repair') || "Repair", value: "repair" }
         ]
       },
       {
@@ -274,7 +275,9 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
       { 
         key: "color", 
         label: t('assets.printer.color') || "Color",
-        render: (value: string) => value === "true" ? t('assets.printer.colorValue') || "Color" : t('assets.printer.bw') || "Black & White"
+        render: (value: string) => {
+          return value || t('assets.printer.bw') || "Black & White";
+        }
       },
       {
         key: "barcode",
@@ -287,7 +290,7 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
       {
         key: "date",
         label: t('assets.printer.date') || "Date",
-        render: (date: string) => date ? formatDate(date) : "-"
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
       },
       {
         key: "note",
@@ -325,8 +328,8 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.printer.color') || "Color", 
         type: "select", 
         options: [
-          { label: t('assets.printer.bw') || "Black & White", value: "false" },
-          { label: t('assets.printer.colorValue') || "Color", value: "true" },
+          { label: t('assets.printer.bw') || "Black & White", value: "Black & White" },
+          { label: t('assets.printer.colorValue') || "Color", value: "Color" },
         ]
       },
       {
@@ -364,26 +367,50 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.license.softwareName') || "Software Name"
       },
       {
+        key: "productType",
+        label: t('assets.license.productType') || "Product Type"
+      },
+      {
         key: "productKey",
         label: t('assets.license.licenseKey') || "License Key"
       },
       {
         key: "userName",
-        label: t('assets.license.assignedTo') || "Assigned To"
+        label: t('assets.license.userName') || "User Name"
+      },
+      {
+        key: "dept",
+        label: t('assets.license.department') || "Department"
+      },
+      {
+        key: "model",
+        label: t('assets.license.model') || "Model"
+      },
+      {
+        key: "pc",
+        label: t('assets.license.pc') || "PC"
+      },
+      {
+        key: "mac",
+        label: t('assets.license.mac') || "MAC Address"
+      },
+      {
+        key: "ip",
+        label: t('assets.license.ip') || "IP Address"
       },
       {
         key: "date",
         label: t('assets.license.purchaseDate') || "Purchase Date",
-        render: (date: string) => date ? formatDate(date) : "-"
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
       },
       {
         key: "updateStatus",
         label: t('assets.license.status') || "Status",
         render: (value: string) => {
           const statusClass: Record<string, string> = {
-            active: "bg-green-100 text-green-800",
-            expired: "bg-red-100 text-red-800",
-            inactive: "bg-gray-100 text-gray-800"
+            working: "bg-green-100 text-green-800",
+            leave: "bg-blue-100 text-blue-800",
+            repair: "bg-yellow-100 text-yellow-800"
           };
           
           return (
@@ -403,6 +430,12 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         placeholder: "Microsoft Office 365"
       },
       {
+        name: "productType",
+        label: t('assets.license.productType') || "Product Type",
+        type: "text",
+        placeholder: "Software"
+      },
+      {
         name: "productKey",
         label: t('assets.license.licenseKey') || "License Key",
         type: "text",
@@ -411,9 +444,39 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
       },
       {
         name: "userName",
-        label: t('assets.license.assignedTo') || "Assigned To",
+        label: t('assets.license.userName') || "User Name",
         type: "text",
         placeholder: "John Doe"
+      },
+      {
+        name: "dept",
+        label: t('assets.license.department') || "Department",
+        type: "text",
+        placeholder: "IT Department"
+      },
+      {
+        name: "model",
+        label: t('assets.license.model') || "Model",
+        type: "text",
+        placeholder: "Professional"
+      },
+      {
+        name: "pc",
+        label: t('assets.license.pc') || "PC",
+        type: "text",
+        placeholder: "PC-001"
+      },
+      {
+        name: "mac",
+        label: t('assets.license.mac') || "MAC Address",
+        type: "text",
+        placeholder: "00:00:00:00:00:00"
+      },
+      {
+        name: "ip",
+        label: t('assets.license.ip') || "IP Address",
+        type: "text",
+        placeholder: "192.168.1.100"
       },
       {
         name: "date",
@@ -426,9 +489,9 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         type: "select", 
         required: true,
         options: [
-          { label: t('assets.status.active') || "Active", value: "active" },
-          { label: t('assets.status.expired') || "Expired", value: "expired" },
-          { label: t('assets.status.inactive') || "Inactive", value: "inactive" },
+          { label: t('assets.status.working') || "Working", value: "working" },
+          { label: t('assets.status.leave') || "Leave", value: "leave" },
+          { label: t('assets.status.repair') || "Repair", value: "repair" }
         ]
       },
       {
@@ -443,6 +506,10 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
     name: "WarehouseIT",
     key: "warehouse",
     columns: [
+      {
+        key: "dept",
+        label: t('assets.warehouse.dept') || "Department"
+      },
       {
         key: "cpuBarcode",
         label: t('assets.warehouse.cpuBarcode') || "CPU Barcode"
@@ -472,10 +539,9 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.warehouse.status') || "Status",
         render: (value: string) => {
           const statusClass: Record<string, string> = {
-            available: "bg-green-100 text-green-800",
-            reserved: "bg-blue-100 text-blue-800",
-            used: "bg-yellow-100 text-yellow-800",
-            maintenance: "bg-red-100 text-red-800"
+            working: "bg-green-100 text-green-800",
+            leave: "bg-blue-100 text-blue-800",
+            repair: "bg-yellow-100 text-yellow-800"
           };
           
           return (
@@ -484,9 +550,25 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
             </span>
           );
         }
+      },
+      {
+        key: "createdAt",
+        label: t('assets.warehouse.createdAt') || "Created At",
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
+      },
+      {
+        key: "updatedAt",
+        label: t('assets.warehouse.updatedAt') || "Updated At",
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
       }
     ],
     formFields: [
+      {
+        name: "dept",
+        label: t('assets.warehouse.dept') || "Department",
+        type: "text",
+        placeholder: t('assets.warehouse.dept') || "IT Department"
+      },
       {
         name: "cpuBarcode",
         label: t('assets.warehouse.cpuBarcode') || "CPU Barcode",
@@ -528,10 +610,9 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.warehouse.status') || "Status", 
         type: "select", 
         options: [
-          { label: t('assets.status.available') || "Available", value: "available" },
-          { label: t('assets.status.reserved') || "Reserved", value: "reserved" },
-          { label: t('assets.status.used') || "Used", value: "used" },
-          { label: t('assets.status.maintenance') || "Maintenance", value: "maintenance" },
+          { label: t('assets.status.working') || "Working", value: "working" },
+          { label: t('assets.status.leave') || "Leave", value: "leave" },
+          { label: t('assets.status.repair') || "Repair", value: "repair" }
         ]
       },
       {

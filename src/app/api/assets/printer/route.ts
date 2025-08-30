@@ -16,7 +16,7 @@ interface PrinterAsset {
   location?: string
   ip?: string
   model?: string
-  color: boolean
+  color: string
   barcode: string
   sapCode?: string
   date?: string

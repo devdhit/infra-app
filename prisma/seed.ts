@@ -61,10 +61,10 @@ async function main() {
         cpuBarcode: 'PC001',
         cpuSapBarcode: 'SAP001',
         pcName: 'IT-PC-001',
-        status: 'active',
+        status: 'working',
         note: 'Main IT department computer',
         tenantId: tenant.id,
-        userId: adminUser.id
+        userName: adminUser.name
       }
     }),
     prisma.pC.create({
@@ -73,10 +73,10 @@ async function main() {
         cpuBarcode: 'PC002',
         cpuSapBarcode: 'SAP002',
         pcName: 'HR-PC-001',
-        status: 'active',
+        status: 'working',
         note: 'HR department computer',
         tenantId: tenant.id,
-        userId: regularUser.id
+        userName: regularUser.name
       }
     }),
     prisma.pC.create({
@@ -84,7 +84,7 @@ async function main() {
         dept: 'Finance',
         cpuBarcode: 'PC003',
         pcName: 'FIN-PC-001',
-        status: 'maintenance',
+        status: 'repair',
         note: 'Under maintenance',
         tenantId: tenant.id
       }
@@ -102,9 +102,9 @@ async function main() {
         sapBarcode: 'SAPL001',
         model: 'Dell XPS 15',
         email: 'sales@demo.com',
-        status: 'active',
+        status: 'working',
         tenantId: tenant.id,
-        userId: regularUser.id
+        userName: regularUser.name // Changed from userId to userName
       }
     }),
     prisma.laptop.create({
@@ -112,8 +112,9 @@ async function main() {
         dept: 'Marketing',
         barcode: 'LAP002',
         model: 'MacBook Pro',
-        status: 'inactive',
-        tenantId: tenant.id
+        status: 'leave',
+        tenantId: tenant.id,
+        userName: adminUser.name // Added userName field
       }
     })
   ])
@@ -129,7 +130,7 @@ async function main() {
         model: 'HP LaserJet Pro',
         location: 'IT Department',
         ip: '192.168.1.100',
-        color: true,
+        color: 'Color',
         tenantId: tenant.id
       }
     }),
@@ -139,7 +140,7 @@ async function main() {
         barcode: 'PRN002',
         model: 'Canon ImageCLASS',
         location: 'HR Department',
-        color: false,
+        color: 'Black & White',
         tenantId: tenant.id
       }
     })
@@ -155,7 +156,7 @@ async function main() {
         productKey: 'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX',
         userName: 'admin@demo.com',
         dept: 'IT',
-        updateStatus: 'active',
+        updateStatus: 'working',
         tenantId: tenant.id
       }
     }),
@@ -165,7 +166,7 @@ async function main() {
         productKey: 'YYYYY-YYYYY-YYYYY-YYYYY-YYYYY',
         userName: 'user@demo.com',
         dept: 'Design',
-        updateStatus: 'expired',
+        updateStatus: 'leave',
         tenantId: tenant.id
       }
     })
@@ -179,7 +180,7 @@ async function main() {
       data: {
         cpuBarcode: 'CPU001',
         cpuSapBarcode: 'SAPCPU001',
-        status: 'available',
+        status: 'working',
         note: 'New in stock',
         tenantId: tenant.id
       }
@@ -187,7 +188,7 @@ async function main() {
     prisma.warehouseIT.create({
       data: {
         cpuBarcode: 'CPU002',
-        status: 'reserved',
+        status: 'leave',
         note: 'Reserved for IT department',
         tenantId: tenant.id
       }

@@ -4,65 +4,66 @@ import { promises as fs } from 'fs'
 
 // Define interfaces for asset templates
 export interface PCAsset {
-  dept: string
-  cpuBarcode: string
-  cpuSapBarcode?: string
-  monitorBarcode?: string
-  monitorSapBarcode?: string
-  upsBarcode?: string
-  upsSapBarcode?: string
-  pcName: string
-  user?: string
-  status: string
-  note?: string
+  dept: string;
+  cpuBarcode: string;
+  cpuSapBarcode?: string;
+  monitorBarcode?: string;
+  monitorSapBarcode?: string;
+  upsBarcode?: string;
+  upsSapBarcode?: string;
+  pcName: string;
+  userName?: string;  // Changed from 'user' to 'userName' to match the database field
+  status: string;
+  note?: string;
 }
 
 export interface LaptopAsset {
-  dept: string
-  barcode: string
-  sapBarcode?: string
-  dateBuy?: string
-  user?: string
-  email?: string
-  model?: string
-  status: string
+  dept: string;
+  barcode: string;
+  sapBarcode?: string;
+  dateBuy?: string;
+  userName?: string;  // Changed from 'user' to 'userName' to match the database field
+  email?: string;
+  model?: string;
+  status: string;
 }
 
 export interface PrinterAsset {
-  dept: string
-  location?: string
-  ip?: string
-  model?: string
-  color: boolean
-  barcode: string
-  sapCode?: string
-  date?: string
-  note?: string
+  dept: string;
+  location?: string;
+  ip?: string;
+  model?: string;
+  color: string;
+  barcode: string;
+  sapCode?: string;
+  date?: string;
+  note?: string;
 }
 
 export interface LicenseAsset {
-  deviceName?: string
-  userName?: string
-  dept?: string
-  productType?: string
-  productKey?: string
-  model?: string
-  pc?: string
-  mac?: string
-  ip?: string
-  date?: string
-  updateStatus: string
+  deviceName?: string;
+  userName?: string;
+  dept?: string;
+  productType?: string;
+  productKey?: string;
+  model?: string;
+  pc?: string;
+  mac?: string;
+  ip?: string;
+  date?: string;
+  updateStatus: string;
 }
 
 export interface WarehouseITAsset {
-  cpuBarcode?: string
-  cpuSapBarcode?: string
-  monitorBarcode?: string
-  monitorSapBarcode?: string
-  upsBarcode?: string
-  upsSapBarcode?: string
-  status: string
-  note?: string
+  dept?: string;
+  cpuBarcode?: string;
+  cpuSapBarcode?: string;
+  monitorBarcode?: string;
+  monitorSapBarcode?: string;
+  upsBarcode?: string;
+  upsSapBarcode?: string;
+  status: string;
+  note?: string;
 }
 
 /**
@@ -70,13 +71,19 @@ export interface WarehouseITAsset {
  */
 async function readTemplateFile(templateName: string): Promise<ArrayBuffer> {
   try {
-    const templatePath = path.join(process.cwd(), 'src', 'templates', templateName)
-    const fileBuffer = await fs.readFile(templatePath)
+    // Use path.resolve to ensure we get the correct absolute path
+    const templatePath = path.resolve(process.cwd(), 'src', 'templates', templateName);
+    console.log(`Attempting to read template file from: ${templatePath}`);
+    const fileBuffer = await fs.readFile(templatePath);
+    console.log(`Successfully read template file: ${templateName}, size: ${fileBuffer.byteLength} bytes`);
     // Convert Buffer to ArrayBuffer
-    return fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer
+    const arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer;
+    console.log(`Converted to ArrayBuffer, size: ${arrayBuffer.byteLength} bytes`);
+    return arrayBuffer;
   } catch (error) {
-    console.error(`Error reading template file ${templateName}:`, error)
-    throw new Error(`Template file ${templateName} not found`)
+    console.error(`Error reading template file ${templateName}:`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Template file ${templateName} not found or could not be read: ${errorMessage}`);
   }
 }
 
@@ -85,75 +92,141 @@ async function readTemplateFile(templateName: string): Promise<ArrayBuffer> {
  */
 export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
   try {
+    console.log(`Starting exportPCToExcel with ${data.length} records`);
     // Read the PC template
-    const templateBuffer = await readTemplateFile('PC_Template.xlsx')
-    const workbook = await XLSX.fromDataAsync(templateBuffer)
-    const worksheet = workbook.sheet(0)
+    const templateBuffer = await readTemplateFile('PC_Template.xlsx');
+    console.log('Template buffer loaded, creating workbook');
+    const workbook = await XLSX.fromDataAsync(templateBuffer);
+    console.log('Workbook created, getting worksheet');
+    const worksheet = workbook.sheet(0);
+    console.log('Worksheet obtained, finding data start row');
     
     // Find the data start row (usually row 2, but we'll look for the first empty row after headers)
-    let dataStartRow = 2
-    while (worksheet.cell(dataStartRow, 1).value() !== null && worksheet.cell(dataStartRow, 1).value() !== '') {
-      dataStartRow++
+    let dataStartRow = 2;
+    // Add a safety check to prevent infinite loop
+    let safetyCounter = 0;
+    const MAX_ROWS = 1000; // Reasonable limit
+    while (dataStartRow < MAX_ROWS) {
+      try {
+        const cellValue = worksheet.cell(dataStartRow, 1).value();
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          break;
+        }
+      } catch (cellError) {
+        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        break;
+      }
+      dataStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        dataStartRow = 3;
+        break;
+      }
     }
+    console.log(`Data start row found at row ${dataStartRow}`);
     
     // Find the footer row (look for a row after data that has content)
-    let footerStartRow = dataStartRow
-    // Skip data rows
-    while (footerStartRow < 1000) { // Reasonable limit
-      const hasData = worksheet.cell(footerStartRow, 1).value() !== null && worksheet.cell(footerStartRow, 1).value() !== ''
-      if (hasData) break
-      footerStartRow++
+    let footerStartRow = dataStartRow;
+    // Skip data rows - look for the first row with content after the data start row
+    safetyCounter = 0; // Reset safety counter
+    while (footerStartRow < MAX_ROWS) { // Reasonable limit
+      // Check if this row has content in any of the columns
+      let hasContent = false;
+      for (let col = 1; col <= 11; col++) { // Check columns 1-11 (our data columns)
+        try {
+          const cellValue = worksheet.cell(footerStartRow, col).value();
+          if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+            hasContent = true;
+            break;
+          }
+        } catch (cellError) {
+          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+        }
+      }
+      if (hasContent) break;
+      footerStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
+        break;
+      }
     }
+    console.log(`Footer start row found at row ${footerStartRow}`);
     
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < 1000) {
+      console.log('Footer detected, inserting rows');
       // Calculate how many rows we need to insert
-      const rowsToInsert = data.length
-      const currentFooterRow = footerStartRow
+      const rowsToInsert = data.length;
       
       // Insert rows for our data (shift footer down)
       if (rowsToInsert > 0) {
-        worksheet.insertRows(dataStartRow, rowsToInsert)
+        // For each row we need to insert, shift existing rows down
+        // We'll do this by iterating backwards from the footer to the data start row
+        for (let i = 0; i < rowsToInsert; i++) {
+          // Shift footer rows down by one
+          for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
+            for (let col = 1; col <= 11; col++) { // Assuming 11 columns for PC template
+              const cellValue = worksheet.cell(row, col).value();
+              worksheet.cell(row + 1, col).value(cellValue);
+              // Clear the original cell
+              worksheet.cell(row, col).value('');
+            }
+          }
+        }
       }
+      console.log(`Shifted ${rowsToInsert} rows`);
       
       // Add data rows
       data.forEach((row, rowIndex) => {
-        const currentRow = dataStartRow + rowIndex
-        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
-        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A')
-        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A')
-        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A')
-        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 8).value(row.pcName || 'N/A')
-        worksheet.cell(currentRow, 9).value(row.user || 'N/A')
-        worksheet.cell(currentRow, 10).value(row.status || 'N/A')
-        worksheet.cell(currentRow, 11).value(row.note || 'N/A')
-      })
+        const currentRow = dataStartRow + rowIndex;
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
+        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A');
+        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A');
+        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A');
+        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A');
+        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A');
+        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A');
+        worksheet.cell(currentRow, 8).value(row.pcName || 'N/A');
+        worksheet.cell(currentRow, 9).value(row.userName || 'N/A');
+        // Normalize status values to lowercase
+        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
+        worksheet.cell(currentRow, 10).value(normalizedStatus);
+        worksheet.cell(currentRow, 11).value(row.note || 'N/A');
+      });
+      console.log('Data rows added with footer preservation');
     } else {
+      console.log('No footer detected, adding data rows normally');
       // No footer found, just add data rows normally
       data.forEach((row, rowIndex) => {
-        const currentRow = dataStartRow + rowIndex
-        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
-        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A')
-        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A')
-        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A')
-        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 8).value(row.pcName || 'N/A')
-        worksheet.cell(currentRow, 9).value(row.user || 'N/A')
-        worksheet.cell(currentRow, 10).value(row.status || 'N/A')
-        worksheet.cell(currentRow, 11).value(row.note || 'N/A')
-      })
+        const currentRow = dataStartRow + rowIndex;
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
+        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A');
+        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A');
+        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A');
+        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A');
+        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A');
+        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A');
+        worksheet.cell(currentRow, 8).value(row.pcName || 'N/A');
+        worksheet.cell(currentRow, 9).value(row.userName || 'N/A');
+        // Normalize status values to lowercase
+        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
+        worksheet.cell(currentRow, 10).value(normalizedStatus);
+        worksheet.cell(currentRow, 11).value(row.note || 'N/A');
+      });
+      console.log('Data rows added without footer preservation');
     }
     
+    console.log('Converting workbook to buffer');
     // Convert to buffer and return
-    return await workbook.outputAsync() as ArrayBuffer
+    const result = await workbook.outputAsync() as ArrayBuffer;
+    console.log('Workbook converted to buffer successfully');
+    return result;
   } catch (error) {
-    console.error('Error exporting PC to Excel:', error)
-    throw error
+    console.error('Error exporting PC to Excel:', error);
+    throw error;
   }
 }
 
@@ -162,35 +235,158 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
  */
 export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuffer> {
   try {
+    console.log(`Starting exportLaptopToExcel with ${data.length} records`);
     // Read the Laptop template
-    const templateBuffer = await readTemplateFile('Laptop_Template.xlsx')
-    const workbook = await XLSX.fromDataAsync(templateBuffer)
-    const worksheet = workbook.sheet(0)
+    const templateBuffer = await readTemplateFile('Laptop_Template.xlsx');
+    console.log('Template buffer loaded, creating workbook');
+    const workbook = await XLSX.fromDataAsync(templateBuffer);
+    console.log('Workbook created, getting worksheet');
+    const worksheet = workbook.sheet(0);
+    console.log('Worksheet obtained, finding data start row');
     
     // Find the data start row
-    let dataStartRow = 2
-    while (worksheet.cell(dataStartRow, 1).value() !== null && worksheet.cell(dataStartRow, 1).value() !== '') {
-      dataStartRow++
+    let dataStartRow = 2;
+    // Add a safety check to prevent infinite loop
+    let safetyCounter = 0;
+    const MAX_ROWS = 1000; // Reasonable limit
+    console.log(`Checking cell values for data start row detection:`);
+    while (dataStartRow < MAX_ROWS) {
+      try {
+        const cellValue = worksheet.cell(dataStartRow, 1).value();
+        console.log(`Row ${dataStartRow}, Column 1 cell value:`, cellValue);
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          console.log(`Found empty cell at row ${dataStartRow}, breaking loop`);
+          break;
+        }
+      } catch (cellError) {
+        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        break;
+      }
+      dataStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        dataStartRow = 3;
+        break;
+      }
+    }
+    console.log(`Data start row found at row ${dataStartRow}`);
+    
+    // Find the footer row (look for a row after data that has content)
+    let footerStartRow = dataStartRow;
+    // Skip data rows - look for the first row with content after the data start row
+    safetyCounter = 0; // Reset safety counter
+    while (footerStartRow < MAX_ROWS) { // Reasonable limit
+      // Check if this row has content in any of the columns
+      let hasContent = false;
+      for (let col = 1; col <= 8; col++) { // Check columns 1-8 (our data columns)
+        try {
+          const cellValue = worksheet.cell(footerStartRow, col).value();
+          if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+            hasContent = true;
+            break;
+          }
+        } catch (cellError) {
+          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+        }
+      }
+      if (hasContent) break;
+      footerStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
+        break;
+      }
     }
     
-    // Add data rows (no footer handling needed)
-    data.forEach((row, rowIndex) => {
-      const currentRow = dataStartRow + rowIndex
-      worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
-      worksheet.cell(currentRow, 2).value(row.barcode || 'N/A')
-      worksheet.cell(currentRow, 3).value(row.sapBarcode || 'N/A')
-      worksheet.cell(currentRow, 4).value(row.dateBuy || 'N/A')
-      worksheet.cell(currentRow, 5).value(row.user || 'N/A')
-      worksheet.cell(currentRow, 6).value(row.email || 'N/A')
-      worksheet.cell(currentRow, 7).value(row.model || 'N/A')
-      worksheet.cell(currentRow, 8).value(row.status || 'N/A')
-    })
+    // If we found a footer, we need to insert rows for our data
+    if (footerStartRow < MAX_ROWS) {
+      // Calculate how many rows we need to insert
+      const rowsToInsert = data.length;
+      
+      // Insert rows for our data (shift footer down)
+      if (rowsToInsert > 0) {
+        // For each row we need to insert, shift existing rows down
+        // We'll do this by iterating backwards from the footer to the data start row
+        for (let i = 0; i < rowsToInsert; i++) {
+          // Shift footer rows down by one
+          for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
+            for (let col = 1; col <= 8; col++) { // Assuming 8 columns for Laptop template
+              const cellValue = worksheet.cell(row, col).value();
+              worksheet.cell(row + 1, col).value(cellValue);
+              // Clear the original cell
+              worksheet.cell(row, col).value('');
+            }
+          }
+        }
+      }
+      
+      // Add data rows
+      console.log('Adding data rows');
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex;
+        console.log(`Setting values for row ${currentRow}`);
+        try {
+          worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
+          worksheet.cell(currentRow, 2).value(row.barcode || 'N/A');
+          worksheet.cell(currentRow, 3).value(row.sapBarcode || 'N/A');
+          worksheet.cell(currentRow, 4).value(row.dateBuy || 'N/A');
+          worksheet.cell(currentRow, 5).value(row.userName || 'N/A');  // Changed from 'user' to 'userName'
+          worksheet.cell(currentRow, 6).value(row.email || 'N/A');
+          worksheet.cell(currentRow, 7).value(row.model || 'N/A');
+          // Normalize status values to lowercase
+          const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
+          worksheet.cell(currentRow, 8).value(normalizedStatus);
+          console.log(`Completed setting values for row ${currentRow}`);
+        } catch (rowError) {
+          console.error(`Error setting values for row ${currentRow}:`, rowError);
+        }
+      });
+      console.log('Data rows added with footer preservation');
+    } else {
+      // No footer found, just add data rows normally
+      console.log('Adding data rows');
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex;
+        console.log(`Setting values for row ${currentRow}`);
+        try {
+          worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
+          worksheet.cell(currentRow, 2).value(row.barcode || 'N/A');
+          worksheet.cell(currentRow, 3).value(row.sapBarcode || 'N/A');
+          worksheet.cell(currentRow, 4).value(row.dateBuy || 'N/A');
+          worksheet.cell(currentRow, 5).value(row.userName || 'N/A');  // Changed from 'user' to 'userName'
+          worksheet.cell(currentRow, 6).value(row.email || 'N/A');
+          worksheet.cell(currentRow, 7).value(row.model || 'N/A');
+          // Normalize status values to lowercase
+          const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
+          worksheet.cell(currentRow, 8).value(normalizedStatus);
+          console.log(`Completed setting values for row ${currentRow}`);
+        } catch (rowError) {
+          console.error(`Error setting values for row ${currentRow}:`, rowError);
+        }
+      });
+      console.log('Data rows added without footer preservation');
+    }
     
+    console.log('Converting workbook to buffer');
     // Convert to buffer and return
-    return await workbook.outputAsync() as ArrayBuffer
+    console.log('Calling workbook.outputAsync()');
+    // Add a timeout to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Workbook output timeout after 30 seconds')), 30000);
+    });
+    
+    const result = await Promise.race([
+      workbook.outputAsync() as Promise<ArrayBuffer>,
+      timeoutPromise
+    ]);
+    console.log('workbook.outputAsync() completed successfully');
+    console.log('Workbook converted to buffer successfully');
+    return result;
   } catch (error) {
-    console.error('Error exporting Laptop to Excel:', error)
-    throw error
+    console.error('Error exporting Laptop to Excel:', error);
+    throw error;
   }
 }
 
@@ -206,23 +402,106 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
     
     // Find the data start row
     let dataStartRow = 2
-    while (worksheet.cell(dataStartRow, 1).value() !== null && worksheet.cell(dataStartRow, 1).value() !== '') {
-      dataStartRow++
+    // Add a safety check to prevent infinite loop
+    let safetyCounter = 0;
+    const MAX_ROWS = 1000; // Reasonable limit
+    while (dataStartRow < MAX_ROWS) {
+      try {
+        const cellValue = worksheet.cell(dataStartRow, 1).value();
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          break;
+        }
+      } catch (cellError) {
+        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        break;
+      }
+      dataStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        dataStartRow = 3;
+        break;
+      }
     }
     
-    // Add data rows (no footer handling needed)
-    data.forEach((row, rowIndex) => {
-      const currentRow = dataStartRow + rowIndex
-      worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
-      worksheet.cell(currentRow, 2).value(row.location || 'N/A')
-      worksheet.cell(currentRow, 3).value(row.ip || 'N/A')
-      worksheet.cell(currentRow, 4).value(row.model || 'N/A')
-      worksheet.cell(currentRow, 5).value(row.color ? 'Color' : 'Black & White')
-      worksheet.cell(currentRow, 6).value(row.barcode || 'N/A')
-      worksheet.cell(currentRow, 7).value(row.sapCode || 'N/A')
-      worksheet.cell(currentRow, 8).value(row.date || 'N/A')
-      worksheet.cell(currentRow, 9).value(row.note || 'N/A')
-    })
+    // Find the footer row (look for a row after data that has content)
+    let footerStartRow = dataStartRow;
+    // Skip data rows - look for the first row with content after the data start row
+    safetyCounter = 0; // Reset safety counter
+    while (footerStartRow < MAX_ROWS) { // Reasonable limit
+      // Check if this row has content in any of the columns
+      let hasContent = false;
+      for (let col = 1; col <= 9; col++) { // Check columns 1-9 (our data columns)
+        try {
+          const cellValue = worksheet.cell(footerStartRow, col).value();
+          if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+            hasContent = true;
+            break;
+          }
+        } catch (cellError) {
+          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+        }
+      }
+      if (hasContent) break;
+      footerStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
+        break;
+      }
+    }
+    
+    // If we found a footer, we need to insert rows for our data
+    if (footerStartRow < MAX_ROWS) {
+      // Calculate how many rows we need to insert
+      const rowsToInsert = data.length;
+      
+      // Insert rows for our data (shift footer down)
+      if (rowsToInsert > 0) {
+        // For each row we need to insert, shift existing rows down
+        // We'll do this by iterating backwards from the footer to the data start row
+        for (let i = 0; i < rowsToInsert; i++) {
+          // Shift footer rows down by one
+          for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
+            for (let col = 1; col <= 9; col++) { // Assuming 9 columns for Printer template
+              const cellValue = worksheet.cell(row, col).value();
+              worksheet.cell(row + 1, col).value(cellValue);
+              // Clear the original cell
+              worksheet.cell(row, col).value('');
+            }
+          }
+        }
+      }
+      
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.location || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.ip || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.model || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.color || 'Black & White')
+        worksheet.cell(currentRow, 6).value(row.barcode || 'N/A')
+        worksheet.cell(currentRow, 7).value(row.sapCode || 'N/A')
+        worksheet.cell(currentRow, 8).value(row.date || 'N/A')
+        worksheet.cell(currentRow, 9).value(row.note || 'N/A')
+      });
+    } else {
+      // No footer found, just add data rows normally
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.location || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.ip || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.model || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.color || 'Black & White')
+        worksheet.cell(currentRow, 6).value(row.barcode || 'N/A')
+        worksheet.cell(currentRow, 7).value(row.sapCode || 'N/A')
+        worksheet.cell(currentRow, 8).value(row.date || 'N/A')
+        worksheet.cell(currentRow, 9).value(row.note || 'N/A')
+      });
+    }
     
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
@@ -244,25 +523,114 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
     
     // Find the data start row
     let dataStartRow = 2
-    while (worksheet.cell(dataStartRow, 1).value() !== null && worksheet.cell(dataStartRow, 1).value() !== '') {
-      dataStartRow++
+    // Add a safety check to prevent infinite loop
+    let safetyCounter = 0;
+    const MAX_ROWS = 1000; // Reasonable limit
+    while (dataStartRow < MAX_ROWS) {
+      try {
+        const cellValue = worksheet.cell(dataStartRow, 1).value();
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          break;
+        }
+      } catch (cellError) {
+        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        break;
+      }
+      dataStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        dataStartRow = 3;
+        break;
+      }
     }
     
-    // Add data rows (no footer handling needed)
-    data.forEach((row, rowIndex) => {
-      const currentRow = dataStartRow + rowIndex
-      worksheet.cell(currentRow, 1).value(row.deviceName || 'N/A')
-      worksheet.cell(currentRow, 2).value(row.userName || 'N/A')
-      worksheet.cell(currentRow, 3).value(row.dept || 'N/A')
-      worksheet.cell(currentRow, 4).value(row.productType || 'N/A')
-      worksheet.cell(currentRow, 5).value(row.productKey || 'N/A')
-      worksheet.cell(currentRow, 6).value(row.model || 'N/A')
-      worksheet.cell(currentRow, 7).value(row.pc || 'N/A')
-      worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
-      worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
-      worksheet.cell(currentRow, 10).value(row.date || 'N/A')
-      worksheet.cell(currentRow, 11).value(row.updateStatus || 'N/A')
-    })
+    // Find the footer row (look for a row after data that has content)
+    let footerStartRow = dataStartRow;
+    // Skip data rows - look for the first row with content after the data start row
+    safetyCounter = 0; // Reset safety counter
+    while (footerStartRow < MAX_ROWS) { // Reasonable limit
+      // Check if this row has content in any of the columns
+      let hasContent = false;
+      for (let col = 1; col <= 11; col++) { // Check columns 1-11 (our data columns)
+        try {
+          const cellValue = worksheet.cell(footerStartRow, col).value();
+          if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+            hasContent = true;
+            break;
+          }
+        } catch (cellError) {
+          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+        }
+      }
+      if (hasContent) break;
+      footerStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
+        break;
+      }
+    }
+    
+    // If we found a footer, we need to insert rows for our data
+    if (footerStartRow < MAX_ROWS) {
+      // Calculate how many rows we need to insert
+      const rowsToInsert = data.length;
+      
+      // Insert rows for our data (shift footer down)
+      if (rowsToInsert > 0) {
+        // For each row we need to insert, shift existing rows down
+        // We'll do this by iterating backwards from the footer to the data start row
+        for (let i = 0; i < rowsToInsert; i++) {
+          // Shift footer rows down by one
+          for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
+            for (let col = 1; col <= 9; col++) { // Assuming 9 columns for Printer template
+              const cellValue = worksheet.cell(row, col).value();
+              worksheet.cell(row + 1, col).value(cellValue);
+              // Clear the original cell
+              worksheet.cell(row, col).value('');
+            }
+          }
+        }
+      }
+      
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.deviceName || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.userName || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.productType || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.productKey || 'N/A')
+        worksheet.cell(currentRow, 6).value(row.model || 'N/A')
+        worksheet.cell(currentRow, 7).value(row.pc || 'N/A')
+        worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
+        worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
+        worksheet.cell(currentRow, 10).value(row.date || 'N/A')
+        // Normalize updateStatus values to lowercase
+        const normalizedStatus = row.updateStatus ? row.updateStatus.toLowerCase() : 'N/A';
+        worksheet.cell(currentRow, 11).value(normalizedStatus)
+      });
+    } else {
+      // No footer found, just add data rows normally
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.deviceName || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.userName || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.productType || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.productKey || 'N/A')
+        worksheet.cell(currentRow, 6).value(row.model || 'N/A')
+        worksheet.cell(currentRow, 7).value(row.pc || 'N/A')
+        worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
+        worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
+        worksheet.cell(currentRow, 10).value(row.date || 'N/A')
+        // Normalize updateStatus values to lowercase
+        const normalizedStatus = row.updateStatus ? row.updateStatus.toLowerCase() : 'N/A';
+        worksheet.cell(currentRow, 11).value(normalizedStatus)
+      });
+    }
     
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
@@ -284,22 +652,110 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
     
     // Find the data start row
     let dataStartRow = 2
-    while (worksheet.cell(dataStartRow, 1).value() !== null && worksheet.cell(dataStartRow, 1).value() !== '') {
-      dataStartRow++
+    // Add a safety check to prevent infinite loop
+    let safetyCounter = 0;
+    const MAX_ROWS = 1000; // Reasonable limit
+    while (dataStartRow < MAX_ROWS) {
+      try {
+        const cellValue = worksheet.cell(dataStartRow, 1).value();
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          break;
+        }
+      } catch (cellError) {
+        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        break;
+      }
+      dataStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        dataStartRow = 3;
+        break;
+      }
     }
     
-    // Add data rows (no footer handling needed)
-    data.forEach((row, rowIndex) => {
-      const currentRow = dataStartRow + rowIndex
-      worksheet.cell(currentRow, 1).value(row.cpuBarcode || 'N/A')
-      worksheet.cell(currentRow, 2).value(row.cpuSapBarcode || 'N/A')
-      worksheet.cell(currentRow, 3).value(row.monitorBarcode || 'N/A')
-      worksheet.cell(currentRow, 4).value(row.monitorSapBarcode || 'N/A')
-      worksheet.cell(currentRow, 5).value(row.upsBarcode || 'N/A')
-      worksheet.cell(currentRow, 6).value(row.upsSapBarcode || 'N/A')
-      worksheet.cell(currentRow, 7).value(row.status || 'N/A')
-      worksheet.cell(currentRow, 8).value(row.note || 'N/A')
-    })
+    // Find the footer row (look for a row after data that has content)
+    let footerStartRow = dataStartRow;
+    // Skip data rows - look for the first row with content after the data start row
+    safetyCounter = 0; // Reset safety counter
+    while (footerStartRow < MAX_ROWS) { // Reasonable limit
+      // Check if this row has content in any of the columns
+      let hasContent = false;
+      for (let col = 1; col <= 8; col++) { // Check columns 1-8 (our data columns)
+        try {
+          const cellValue = worksheet.cell(footerStartRow, col).value();
+          if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+            hasContent = true;
+            break;
+          }
+        } catch (cellError) {
+          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+        }
+      }
+      if (hasContent) break;
+      footerStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
+        break;
+      }
+    }
+    
+    // If we found a footer, we need to insert rows for our data
+    if (footerStartRow < MAX_ROWS) {
+      // Calculate how many rows we need to insert
+      const rowsToInsert = data.length;
+      
+      // Insert rows for our data (shift footer down)
+      if (rowsToInsert > 0) {
+        // For each row we need to insert, shift existing rows down
+        // We'll do this by iterating backwards from the footer to the data start row
+        for (let i = 0; i < rowsToInsert; i++) {
+          // Shift footer rows down by one
+          for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
+            for (let col = 1; col <= 9; col++) { // Assuming 9 columns for Printer template
+              const cellValue = worksheet.cell(row, col).value();
+              worksheet.cell(row + 1, col).value(cellValue);
+              // Clear the original cell
+              worksheet.cell(row, col).value('');
+            }
+          }
+        }
+      }
+      
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A')
+        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A')
+        // Normalize status values to lowercase
+        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
+        worksheet.cell(currentRow, 8).value(normalizedStatus)
+        worksheet.cell(currentRow, 9).value(row.note || 'N/A')
+      });
+    } else {
+      // No footer found, just add data rows normally
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A')
+        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A')
+        // Normalize status values to lowercase
+        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
+        worksheet.cell(currentRow, 8).value(normalizedStatus)
+        worksheet.cell(currentRow, 9).value(row.note || 'N/A')
+      });
+    }
     
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
@@ -363,7 +819,7 @@ export async function importFromExcelWithTemplate(
         }
         
         // Handle user field with email format (abc.xyz) - convert to string and handle empty values
-        if (header === 'user') {
+        if (header === 'userName' || header === 'user') {  // Added check for 'userName' as well
           if (value === null || value === undefined || value === '') {
             value = 'N/A' // Change empty user fields to 'N/A'
           } else {
@@ -373,6 +829,19 @@ export async function importFromExcelWithTemplate(
         // Handle PC Name field - convert empty values to 'N/A'
         else if (header === 'pcName' && (value === null || value === undefined || value === '')) {
           value = 'N/A'
+        }
+        // Handle Printer color field - keep as string value
+        else if (assetType === 'printer' && header === 'color') {
+          if (typeof value === 'string') {
+            // Use the string value as is
+            value = value;
+          } else if (value === null || value === undefined || value === '') {
+            // Empty values default to "Black & White"
+            value = "Black & White";
+          } else {
+            // Convert any other type to string
+            value = String(value);
+          }
         }
         // Convert numeric values to strings for barcode fields to prevent Prisma validation errors
         // This is especially important for SAP barcode fields that might be interpreted as numbers
@@ -415,8 +884,8 @@ export function generatePCTemplate(): PCAsset[] {
     upsBarcode: '',
     upsSapBarcode: '',
     pcName: '',
-    user: '',
-    status: 'active',
+    userName: '',  // Changed from 'user' to 'userName'
+    status: 'working',  // Changed from 'active' to 'working'
     note: ''
   }]
 }
@@ -430,10 +899,10 @@ export function generateLaptopTemplate(): LaptopAsset[] {
     barcode: '',
     sapBarcode: '',
     dateBuy: '',
-    user: '',
+    userName: '',  // Changed from 'user' to 'userName'
     email: '',
     model: '',
-    status: 'active'
+    status: 'working'  // Changed from 'active' to 'working'
   }]
 }
 
@@ -446,7 +915,7 @@ export function generatePrinterTemplate(): PrinterAsset[] {
     location: '',
     ip: '',
     model: '',
-    color: false,
+    color: 'Black & White',
     barcode: '',
     sapCode: '',
     date: '',
@@ -469,7 +938,7 @@ export function generateLicenseTemplate(): LicenseAsset[] {
     mac: '',
     ip: '',
     date: '',
-    updateStatus: 'active'
+    updateStatus: 'working'  // Changed from 'active' to 'working'
   }]
 }
 
@@ -484,7 +953,7 @@ export function generateWarehouseITTemplate(): WarehouseITAsset[] {
     monitorSapBarcode: '',
     upsBarcode: '',
     upsSapBarcode: '',
-    status: 'available',
+    status: 'working',  // Changed from 'available' to 'working'
     note: ''
   }]
 }

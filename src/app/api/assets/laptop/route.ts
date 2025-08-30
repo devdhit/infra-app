@@ -15,7 +15,7 @@ interface LaptopAsset {
   barcode: string
   sapBarcode?: string
   dateBuy?: string
-  userId?: string
+  userName?: string
   email?: string
   model?: string
   status: string
@@ -26,16 +26,7 @@ const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
   modelName: 'Laptop',
   requiredFields: ['dept', 'barcode', 'status'],
   uniqueField: 'barcode',
-  searchFields: ['barcode', 'dept', 'model'],
-  include: {
-    user: {
-      select: {
-        id: true,
-        name: true,
-        email: true
-      }
-    }
-  }
+  searchFields: ['barcode', 'dept', 'model']
 })
 
 // GET /api/assets/laptop - Get all Laptop assets for the user's tenant

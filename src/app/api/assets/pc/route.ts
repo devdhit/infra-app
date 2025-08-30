@@ -19,7 +19,7 @@ interface PCAsset {
   upsBarcode?: string
   upsSapBarcode?: string
   pcName: string
-  userId?: string
+  userName?: string
   status: string
   note?: string
 }
@@ -29,16 +29,7 @@ const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'PC',
   requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
   uniqueField: 'cpuBarcode',
-  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note'],
-  include: {
-    user: {
-      select: {
-        id: true,
-        name: true,
-        email: true
-      }
-    }
-  }
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note', 'userName']
 })
 
 // GET /api/assets/pc - Get all PC assets for the user's tenant

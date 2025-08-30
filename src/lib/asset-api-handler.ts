@@ -181,12 +181,23 @@ export class AssetApiHandler<T> {
 
       // Check if asset with unique field already exists
       if (this.operations.uniqueField && body[this.operations.uniqueField]) {
-        const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
-          where: { [this.operations.uniqueField]: body[this.operations.uniqueField] }
-        })
+        // For Printer model, we use findFirst instead of findUnique since we removed the @unique constraint
+        let existingAsset;
+        if (this.operations.modelName === 'Printer') {
+          existingAsset = await (this.db as any)[this.operations.modelName].findFirst({
+            where: { 
+              [this.operations.uniqueField]: body[this.operations.uniqueField],
+              tenantId: user.tenantId
+            }
+          });
+        } else {
+          existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
+            where: { [this.operations.uniqueField]: body[this.operations.uniqueField] }
+          });
+        }
 
         if (existingAsset) {
-          return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`)
+          return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`);
         }
       }
 
@@ -341,15 +352,27 @@ export class AssetApiHandler<T> {
       // Check if unique field is being updated and already exists for another asset
       if (this.operations.uniqueField && body[this.operations.uniqueField] && 
           body[this.operations.uniqueField] !== existingAsset[this.operations.uniqueField as keyof typeof existingAsset]) {
-        const existingAssetWithUniqueField = await (this.db as any)[this.operations.modelName].findUnique({
-          where: { 
-            [this.operations.uniqueField]: body[this.operations.uniqueField],
-            NOT: { id: id }
-          }
-        })
+        // For Printer model, we use findFirst instead of findUnique since we removed the @unique constraint
+        let existingAssetWithUniqueField;
+        if (this.operations.modelName === 'Printer') {
+          existingAssetWithUniqueField = await (this.db as any)[this.operations.modelName].findFirst({
+            where: { 
+              [this.operations.uniqueField]: body[this.operations.uniqueField],
+              tenantId: user.tenantId,
+              NOT: { id: id }
+            }
+          });
+        } else {
+          existingAssetWithUniqueField = await (this.db as any)[this.operations.modelName].findUnique({
+            where: { 
+              [this.operations.uniqueField]: body[this.operations.uniqueField],
+              NOT: { id: id }
+            }
+          });
+        }
 
         if (existingAssetWithUniqueField) {
-          return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`)
+          return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`);
         }
       }
 
@@ -387,7 +410,7 @@ export class AssetApiHandler<T> {
       // Filter out undefined values to prevent setting fields to undefined
       // Also filter out invalid fields that don't exist in the model
       const validFields = {
-        'PC': ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userId', 'status', 'note', 'customFields'],
+        'PC': ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userName', 'status', 'note', 'customFields'],
         'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'userId', 'email', 'model', 'status', 'customFields'],
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],

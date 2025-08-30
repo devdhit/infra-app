@@ -36,8 +36,6 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   histories History[]
-  laptops   Laptop[]
-  pcs       PC[]
   tenant    Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
@@ -53,18 +51,16 @@ model PC {
   upsBarcode        String?
   upsSapBarcode     String?
   pcName            String
-  userId            String?
-  status            String    @default("active")
+  userName          String?
+  status            String    @default("working")
   note              String?
   tenantId          String
   customFields      Json?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   tenant            Tenant    @relation(fields: [tenantId], references: [id])
-  user              User?     @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
-  @@index([userId])
 }
 
 model Laptop {
@@ -73,19 +69,17 @@ model Laptop {
   barcode      String    @unique
   sapBarcode   String?
   dateBuy      DateTime?
-  userId       String?
+  userName     String?
   email        String?
   model        String?
-  status       String    @default("active")
+  status       String    @default("working")
   tenantId     String
   customFields Json?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
-  user         User?     @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
-  @@index([userId])
 }
 
 model Printer {
@@ -94,8 +88,8 @@ model Printer {
   location     String?
   ip           String?
   model        String?
-  color        Boolean   @default(false)
-  barcode      String    @unique
+  color        String    @default("Black & White")
+  barcode      String
   sapCode      String?
   date         DateTime?
   note         String?
@@ -120,7 +114,7 @@ model License {
   mac          String?
   ip           String?
   date         DateTime?
-  updateStatus String?   @default("active")
+  updateStatus String?   @default("working")
   tenantId     String
   customFields Json?
   createdAt    DateTime  @default(now())
@@ -138,7 +132,7 @@ model WarehouseIT {
   monitorSapBarcode String?
   upsBarcode        String?
   upsSapBarcode     String?
-  status            String    @default("available")
+  status            String    @default("working")
   note              String?
   tenantId          String
   customFields      Json?

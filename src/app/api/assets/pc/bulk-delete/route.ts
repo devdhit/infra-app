@@ -18,7 +18,7 @@ interface PCAsset {
   upsBarcode?: string
   upsSapBarcode?: string
   pcName: string
-  userId?: string
+  userName?: string
   status: string
   note?: string
 }
@@ -28,16 +28,7 @@ const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'PC',
   requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
   uniqueField: 'cpuBarcode',
-  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note'],
-  include: {
-    user: {
-      select: {
-        id: true,
-        name: true,
-        email: true
-      }
-    }
-  }
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note']
 })
 
 // POST /api/assets/pc/bulk-delete - Bulk delete PC assets

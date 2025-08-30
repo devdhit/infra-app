@@ -101,7 +101,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {dashboardData?.statusBreakdown?.pc?.find((s: any) => s.status === 'active')?._count || 0}
+              {dashboardData?.statusBreakdown?.pc?.find((s: any) => s.status === 'working')?._count || 0}
             </div>
           </CardContent>
         </Card>
