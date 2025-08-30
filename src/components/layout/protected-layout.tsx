@@ -36,14 +36,16 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     return null
   }
 
-  // If authenticated, show the protected layout
+  // If authenticated, show the protected layout with fixed positioning
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Navigation userRole={(user?.role as UserRole) || 'user'} />
-      <div className="flex flex-col flex-1 md:ml-64">
+      <div className="flex flex-col flex-1 md:ml-64 relative">
         <Header />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          {children}
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="max-w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

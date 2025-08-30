@@ -118,6 +118,20 @@ const getAssetColumns = (
     return {
       accessorKey: column.key, // Use the original key as accessorKey
       header: t(column.label, column.label),
+      enableSorting: true, // Enable sorting for all columns
+      sortingFn: column.key === 'status' ? 
+        // Custom sorting function for status to sort by working > leave > repair order
+        (rowA, rowB, columnId) => {
+          const statusOrder: Record<string, number> = { 
+            working: 1, 
+            leave: 2, 
+            repair: 3 
+          };
+          const valueA = String(rowA.getValue(columnId) || '');
+          const valueB = String(rowB.getValue(columnId) || '');
+          return (statusOrder[valueA] || 999) - (statusOrder[valueB] || 999);
+        } : 
+        undefined, // Use default sorting for other columns
       cell: ({ row }) => {
         const asset = row.original;
         
@@ -268,14 +282,31 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     return [...columns, ...uniqueCustomFieldColumns];
   }, [columns, customFieldsData]);
 
-  // Initialize column visibility state
+  // Define the column keys we want to hide by default
+  const defaultHiddenColumns = useMemo(() => {
+    // This will hide technical/identifier columns by default that aren't usually needed
+    // in day-to-day operations but can be shown if needed
+    return [
+      'cpuSapBarcode',
+      'monitorSapBarcode',
+      'upsSapBarcode',
+      'sapBarcode',
+      'upsBarcode',
+      'purchaseDate',
+      'dateBuy',
+      'note'
+    ];
+  }, []);
+
+  // Initialize column visibility state with intelligent defaults
   useEffect(() => {
     const initialVisibility: Record<string, boolean> = {};
     allColumns.forEach(column => {
-      initialVisibility[column.key] = true;
+      // Hide columns that match our default hidden list
+      initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key);
     });
     setColumnVisibility(initialVisibility);
-  }, [allColumns]);
+  }, [allColumns, defaultHiddenColumns]);
 
   // Toggle column visibility
   const toggleColumnVisibility = (columnKey: string) => {
@@ -795,7 +826,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
         </div>
       </div>
       
-      <Card>
+      <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -825,101 +856,107 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                   className="pl-8 w-full sm:w-64"
                 />
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    {statusFilter 
-                      ? t(`assets.status.${statusFilter}`, statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1))
-                      : t('common.filter', "Filter")}
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleStatusFilterChange("")}>
-                    {t('common.all', "All")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusFilterChange("working")}>
-                    {t('assets.status.working', "Working")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusFilterChange("leave")}>
-                    {t('assets.status.leave', "Leave")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusFilterChange("repair")}>
-                    {t('assets.status.repair', "Repair")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              {/* Column visibility control */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <EyeIcon className="h-4 w-4 mr-2" />
-                    {t('common.columns', "Columns")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80" align="end">
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <h4 className="font-medium leading-none">{t('common.columns', "Columns")}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {t('assets.list.columnVisibility', "Select which columns to display")}
-                      </p>
-                    </div>
-                    <Separator />
-                    <div className="grid gap-2 max-h-60 overflow-y-auto">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{t('common.selectAll', "Select All")}</span>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => toggleAllColumns(true)}
-                          className="h-8 px-2"
-                        >
-                          {t('common.show', "Show")}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => toggleAllColumns(false)}
-                          className="h-8 px-2"
-                        >
-                          {t('common.hide', "Hide")}
-                        </Button>
+              <div className="flex gap-2 w-full sm:w-auto justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      {statusFilter 
+                        ? t(`assets.status.${statusFilter}`, statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1))
+                        : t('common.filter', "Filter")}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleStatusFilterChange("")}>
+                      {t('common.all', "All")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStatusFilterChange("working")}>
+                      {t('assets.status.working', "Working")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStatusFilterChange("leave")}>
+                      {t('assets.status.leave', "Leave")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStatusFilterChange("repair")}>
+                      {t('assets.status.repair', "Repair")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                {/* Moved column visibility control to card header for better accessibility */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      <EyeIcon className="h-4 w-4 mr-2" />
+                      {t('common.columns', "Columns")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80" align="end">
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium leading-none">{t('common.columns', "Columns")}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {t('assets.list.columnVisibility', "Select which columns to display")}
+                        </p>
                       </div>
-                      {allColumns.map((column) => (
-                        <div key={column.key} className="flex items-center justify-between">
-                          <span className="text-sm">{t(column.label, column.label)}</span>
-                          <Checkbox
-                            checked={columnVisibility[column.key]}
-                            onCheckedChange={() => toggleColumnVisibility(column.key)}
-                          />
+                      <Separator />
+                      <div className="grid gap-2 max-h-60 overflow-y-auto">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{t('common.selectAll', "Select All")}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => toggleAllColumns(true)}
+                            className="h-8 px-2"
+                          >
+                            {t('common.show', "Show")}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => toggleAllColumns(false)}
+                            className="h-8 px-2"
+                          >
+                            {t('common.hide', "Hide")}
+                          </Button>
                         </div>
-                      ))}
+                        {allColumns.map((column) => (
+                          <div key={column.key} className="flex items-center justify-between">
+                            <span className="text-sm">{t(column.label, column.label)}</span>
+                            <Checkbox
+                              checked={columnVisibility[column.key]}
+                              onCheckedChange={() => toggleColumnVisibility(column.key)}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <DataTable
-            columns={dataTableColumns}
-            data={assets}
-            searchable={false}
-            filterable={false}
-            sortable={true}
-            pagination={false}
-            pageSize={10}
-            onRowSelectionChange={handleRowSelectionChange}
-            loading={isLoading && (!data || assets.length === 0)}
-            error={isError ? (error as ApiError).message : null}
-            onRefresh={refetch}
-            disableBuiltInFeatures={true}
-            // Pass the getRowId function to use asset IDs as row identifiers
-            getRowId={(row: Asset) => row.id}
-          />
+          {/* Remove redundant columns management UI element here */}
+          <div className="rounded-md border overflow-hidden">
+            <DataTable
+              columns={dataTableColumns}
+              data={assets}
+              searchable={false}
+              filterable={false}
+              sortable={true} // Make sure sorting is enabled
+              pagination={false}
+              pageSize={10}
+              onRowSelectionChange={handleRowSelectionChange}
+              loading={isLoading && (!data || assets.length === 0)}
+              error={isError ? (error as ApiError).message : null}
+              onRefresh={refetch}
+              disableBuiltInFeatures={false} // Enable built-in features for sorting
+              getRowId={(row: Asset) => row.id}
+              responsive={true}
+              enableColumnResizing={true}
+            />
+          </div>
 
           {renderPagination()}
         </CardContent>

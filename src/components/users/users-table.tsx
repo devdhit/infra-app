@@ -223,6 +223,10 @@ export function UsersTable({
         pagination={true}
         pageSize={10}
         onRowSelectionChange={handleRowSelection}
+        // Enable responsive features
+        responsive={true}
+        // Enable column resizing
+        enableColumnResizing={true}
       />
 
       <BulkDeleteDialog

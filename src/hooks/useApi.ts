@@ -693,3 +693,49 @@ export function useUpdateAssetCustomFields(assetType: string, id: string) {
     }
   )
 }
+
+// Audit Logs Settings hooks
+export interface AuditLogsSettings {
+  id?: string
+  enabled: boolean
+  retentionPeriod: number
+  logAssetCreation: boolean
+  logAssetUpdates: boolean
+  logAssetDeletion: boolean
+  logUserLogin: boolean
+  logUserLogout: boolean
+  logPermissionChanges: boolean
+  notifyOnCriticalEvents: boolean
+  emailNotifications: boolean
+  slackNotifications: boolean
+  notificationEmail: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export function useAuditLogsSettings() {
+  return useApiQuery<AuditLogsSettings>(['audit-logs-settings'], '/settings/audit-logs')
+}
+
+export function useUpdateAuditLogsSettings() {
+  const queryClient = useQueryClient()
+  
+  return useApiUpdate<AuditLogsSettings, Partial<AuditLogsSettings>>(
+    '/settings/audit-logs',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['audit-logs-settings'] })
+      },
+      onError: (error: ApiError) => {
+        console.error('Error updating audit logs settings:', error)
+        let message = 'Failed to update audit logs settings'
+        
+        if (error.message) {
+          message = error.message
+        }
+        
+        toast.error(message)
+      }
+    }
+  )
+}

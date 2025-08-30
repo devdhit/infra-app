@@ -19,6 +19,7 @@ import { TenantFormValues } from "@/components/tenants/types"
 import { Tenant } from "@/hooks/useApi"
 import { api } from "@/lib/api"
 import { useQueryClient } from '@tanstack/react-query'
+import { Plus, Building as BuildingIcon } from "lucide-react"
 
 export default function TenantsPage() {
   const { t } = useTranslation()
@@ -185,11 +186,14 @@ export default function TenantsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">{t('tenants.title') || 'Tenants'}</h1>
+        <h1 className="text-3xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <BuildingIcon className="h-8 w-8 mr-3 text-blue-500" />
+          {t('tenants.title') || 'Tenants'}
+        </h1>
         <p className="text-muted-foreground">{t('tenants.description') || 'Manage tenant organizations'}</p>
       </div>
 
-      <Card>
+      <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -199,7 +203,8 @@ export default function TenantsPage() {
               </CardDescription>
             </div>
             {canCreateTenants && (
-              <Button onClick={() => handleEdit(null)}>
+              <Button onClick={() => handleEdit(null)} className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700">
+                <Plus className="h-4 w-4 mr-2" />
                 {t('tenants.create.button') || 'Add Tenant'}
               </Button>
             )}
