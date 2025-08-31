@@ -581,12 +581,12 @@ export async function POST(request: NextRequest) {
             // Remove date from row data to handle it separately
             const { 
               date: licenseDate, 
-              Date: upperCaseDate, 
-              Dept, 
-              Model, 
-              PC, 
-              MAC, 
-              IP, 
+              Date: upperCaseDateField, 
+              Dept: deptField, 
+              Model: modelField, 
+              PC: pcField, 
+              MAC: macField, 
+              IP: ipField, 
               ...licenseRowData 
             } = row as any;
             
@@ -665,7 +665,29 @@ export async function POST(request: NextRequest) {
           case 'warehouse':
             // Extract custom fields from row data
             let warehouseCustomFields: Record<string, any> | undefined;
-            const warehouseRowData = { ...row } as any;
+            
+            // Destructure to only keep valid WarehouseIT fields
+            const { 
+              Dept: warehouseDeptField, 
+              Model: warehouseModelField, 
+              PC: warehousePCField, 
+              MAC: warehouseMACField, 
+              IP: warehouseIPField, 
+              DeviceName: warehouseDeviceNameField,
+              ProductType: warehouseProductTypeField,
+              ProductKey: warehouseProductKeyField,
+              Date: warehouseDateField,
+              updateStatus: warehouseUpdateStatusField,
+              barcode: warehouseBarcodeField,
+              sapBarcode: warehouseSapBarcodeField,
+              dateBuy: warehouseDateBuyField,
+              userId: warehouseUserIdField,
+              email: warehouseEmailField,
+              location: warehouseLocationField,
+              color: warehouseColorField,
+              sapCode: warehouseSapCodeField,
+              ...warehouseRowData 
+            } = row as any;
             
             // Get custom fields for this asset type and tenant
             const warehouseCustomFieldsConfig = await db.customField.findMany({

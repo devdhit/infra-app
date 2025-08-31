@@ -23,49 +23,128 @@ export class AssetApiHandler<T> {
 
   // Helper method to get optimized select fields based on asset type
   private getSelectFieldsForAssetType() {
-    const baseFields = {
-      dept: true,
-      status: true,
-      userName: true
+    // Base fields vary by model type as not all models have the same fields
+    const getBaseFieldsForModel = (modelName: string) => {
+      // Default base fields for all models
+      const defaultBaseFields = {
+        dept: true,
+      };
+      
+      // Add status field for models that have it
+      if (modelName === 'PC' || modelName === 'Laptop' || modelName === 'WarehouseIT') {
+        return {
+          ...defaultBaseFields,
+          status: true,
+          userName: modelName !== 'WarehouseIT' ? true : undefined
+        };
+      } else if (modelName === 'License') {
+        return {
+          ...defaultBaseFields,
+          updateStatus: true,
+          userName: true
+        };
+      }
+      
+      // Printer doesn't have status or userName fields
+      return defaultBaseFields;
     };
+
+    // Special handling for WarehouseIT which doesn't have dept field
+    if (this.operations.modelName === 'WarehouseIT') {
+      const baseFields = {
+        status: true,
+      };
+
+      return {
+        ...baseFields,
+        cpuBarcode: true,
+        cpuSapBarcode: true,
+        monitorBarcode: true,
+        monitorSapBarcode: true,
+        upsBarcode: true,
+        upsSapBarcode: true,
+        note: true,
+        customFields: true // Include custom fields
+      };
+    }
+
+    const baseFields = getBaseFieldsForModel(this.operations.modelName);
+
+    // Remove undefined fields from baseFields to prevent Prisma errors
+    const cleanBaseFields = Object.fromEntries(
+      Object.entries(baseFields).filter(([_, value]) => value !== undefined)
+    );
 
     switch (this.operations.modelName) {
       case 'PC':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
           cpuBarcode: true,
+          cpuSapBarcode: true,
+          monitorBarcode: true,
+          monitorSapBarcode: true,
+          upsBarcode: true,
+          upsSapBarcode: true,
           pcName: true,
-          note: true
+          userName: true,
+          note: true,
+          customFields: true // Include custom fields
         };
       case 'Laptop':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
           barcode: true,
+          sapBarcode: true,
           model: true,
-          dateBuy: true
+          dateBuy: true,
+          userName: true,
+          email: true,
+          customFields: true // Include custom fields
         };
       case 'Printer':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
           barcode: true,
           model: true,
-          location: true
+          location: true,
+          color: true,
+          ip: true,
+          sapCode: true,
+          date: true,
+          note: true,
+          customFields: true // Include custom fields
         };
       case 'License':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
+          deviceName: true,
           productType: true,
           productKey: true,
-          deviceName: true
+          model: true,
+          pc: true,
+          mac: true,
+          ip: true,
+          date: true,
+          updateStatus: true,
+          customFields: true // Include custom fields
         };
       case 'WarehouseIT':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
           cpuBarcode: true,
-          note: true
+          cpuSapBarcode: true,
+          monitorBarcode: true,
+          monitorSapBarcode: true,
+          upsBarcode: true,
+          upsSapBarcode: true,
+          note: true,
+          customFields: true // Include custom fields
         };
       default:
-        return baseFields;
+        return {
+          ...cleanBaseFields,
+          customFields: true // Include custom fields by default
+        };
     }
   }
 
@@ -83,10 +162,35 @@ export class AssetApiHandler<T> {
 
       // Add search filter with optimized indexing
       if (search && this.operations.searchFields) {
+        // Get indexed fields appropriate for this model
+        const modelAppropriateSearchFields = (field: any) => {
+          // Handle model-specific field availability
+          if (this.operations.modelName === 'Printer' && field === 'status') {
+            return false;
+          }
+          
+          // Handle License model which uses updateStatus instead of status
+          if (this.operations.modelName === 'License' && field === 'status') {
+            return false;
+          }
+          
+          // Map of indexed fields by model
+          const indexedFieldsByModel: Record<string, string[]> = {
+            'PC': ['userName', 'dept', 'status', 'cpuBarcode'],
+            'Laptop': ['userName', 'dept', 'status', 'barcode'],
+            'Printer': ['dept', 'barcode'],
+            'License': ['userName', 'dept', 'updateStatus', 'productKey'],
+            'WarehouseIT': ['status', 'cpuBarcode']  // Removed 'dept' as WarehouseIT doesn't have this field
+          };
+          
+          // Get indexed fields for this model
+          const modelIndexedFields = indexedFieldsByModel[this.operations.modelName] || ['status'];  // Changed default to 'status'
+          
+          return modelIndexedFields.includes(field as string);
+        };
+        
         // Use indexed fields for better performance
-        const indexedSearchFields = this.operations.searchFields.filter((field: any) => 
-          ['userName', 'dept', 'status'].includes(field as string)
-        );
+        const indexedSearchFields = this.operations.searchFields.filter(modelAppropriateSearchFields);
         
         if (indexedSearchFields.length > 0) {
           where.OR = indexedSearchFields.map((field: any) => ({
@@ -100,9 +204,13 @@ export class AssetApiHandler<T> {
         }
       }
 
-      // Add status filter
+      // Add status filter based on model-specific status fields
       if (status) {
-        where.status = status
+        if (this.operations.modelName === 'License') {
+          where.updateStatus = status; // License uses updateStatus instead of status
+        } else if (this.operations.modelName !== 'Printer') {
+          where.status = status; // Other models use status (except Printer which has no status)
+        }
       }
 
       // Optimize query by only selecting necessary fields
@@ -480,7 +588,7 @@ export class AssetApiHandler<T> {
       // Also filter out invalid fields that don't exist in the model
       const validFields = {
         'PC': ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userName', 'status', 'note', 'customFields'],
-        'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'userId', 'email', 'model', 'status', 'customFields'],
+        'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'email', 'model', 'status', 'userName', 'customFields'],
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 'customFields']

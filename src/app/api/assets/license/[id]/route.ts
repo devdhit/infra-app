@@ -28,7 +28,10 @@ interface LicenseAsset {
 const licenseHandler = new AssetApiHandler<LicenseAsset>(db, {
   modelName: 'License',
   requiredFields: ['productKey'],
-  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip']
+  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip'],
+  include: {
+    customFields: true // Include custom fields in responses
+  }
 })
 
 // GET /api/assets/license/[id] - Get a specific License asset

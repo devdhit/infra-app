@@ -29,7 +29,10 @@ const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'PC',
   requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
   uniqueField: 'cpuBarcode',
-  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note']
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note'],
+  include: {
+    customFields: true // Include custom fields in responses
+  }
 })
 
 // GET /api/assets/pc/[id] - Get a specific PC asset

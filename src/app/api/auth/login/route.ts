@@ -7,9 +7,70 @@ import {
 } from '@/lib/api-utils'
 import { generateToken, verifyPassword } from '@/lib/auth'
 
+// Simple in-memory rate limiter (in production, use Redis or similar)
+const rateLimiter = new Map<string, { attempts: number; lastAttempt: number }>()
+
+// Rate limiting configuration
+const MAX_ATTEMPTS = 5
+const LOCKOUT_TIME = 15 * 60 * 1000 // 15 minutes
+const CLEANUP_INTERVAL = 60 * 60 * 1000 // 1 hour
+
+// Clean up old rate limiter entries periodically
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, value] of rateLimiter.entries()) {
+    if (now - value.lastAttempt > CLEANUP_INTERVAL) {
+      rateLimiter.delete(key)
+    }
+  }
+}, CLEANUP_INTERVAL)
+
+// Check if an IP is rate limited
+function isRateLimited(ip: string): boolean {
+  const record = rateLimiter.get(ip)
+  if (!record) return false
+  
+  const now = Date.now()
+  if (now - record.lastAttempt > LOCKOUT_TIME) {
+    // Lockout period expired, reset attempts
+    rateLimiter.delete(ip)
+    return false
+  }
+  
+  return record.attempts >= MAX_ATTEMPTS
+}
+
+// Record a failed login attempt
+function recordFailedAttempt(ip: string): void {
+  const record = rateLimiter.get(ip)
+  const now = Date.now()
+  
+  if (record) {
+    rateLimiter.set(ip, {
+      attempts: record.attempts + 1,
+      lastAttempt: now
+    })
+  } else {
+    rateLimiter.set(ip, {
+      attempts: 1,
+      lastAttempt: now
+    })
+  }
+}
+
 // POST /api/auth/login - User login
 export async function POST(request: NextRequest) {
   try {
+    // Get client IP for rate limiting
+    const ip = request.headers.get('x-forwarded-for') || 
+               request.headers.get('x-real-ip') || 
+               'unknown'
+    
+    // Check rate limiting
+    if (isRateLimited(ip)) {
+      return errorResponse('Too many login attempts. Please try again later.', 429)
+    }
+
     // Check if content type is JSON
     const contentType = request.headers.get('content-type')
     if (!contentType || !contentType.includes('application/json')) {
@@ -37,14 +98,19 @@ export async function POST(request: NextRequest) {
 
     // Check if user exists
     if (!user) {
+      recordFailedAttempt(ip)
       return errorResponse('Invalid email or password', 401)
     }
 
     // Verify password
     const isValidPassword = await verifyPassword(password, user.password)
     if (!isValidPassword) {
+      recordFailedAttempt(ip)
       return errorResponse('Invalid email or password', 401)
     }
+
+    // Reset rate limiter on successful login
+    rateLimiter.delete(ip)
 
     // Generate JWT token
     const token = generateToken({

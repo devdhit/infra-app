@@ -48,7 +48,9 @@
     "gotIt": "知道了",
     "more": "更多",
     "required": "必填",
-    "optional": "選填"
+    "optional": "選填",
+    "allRightsReserved": "版權所有。",
+    "profile": "個人檔案"
   },
   "dashboard": {
     "title": "儀表板",
@@ -324,17 +326,34 @@
       "description": "請登入您的帳戶",
       "success": "登入成功",
       "error": "電子郵件或密碼錯誤",
-      "signingIn": "登入中..."
+      "signingIn": "登入中...",
+      "tooManyAttempts": "登入嘗試次數過多。請稍後再試。",
+      "footer": "需要幫助？請聯繫您的系統管理員"
     },
     "logout_a": "登出",
     "logout": {
       "success": "成功登出",
-      "error": "登出失敗"
+      "error": "登出失敗",
+      "confirmTitle": "確認登出",
+      "confirmDescription": "您確定要登出嗎？您需要重新登入才能存取系統。",
+      "loggingOut": "登出中..."
     },
     "email": "電子郵件",
     "password": "密碼",
     "rememberMe": "記住我",
-    "forgotPassword": "忘記密碼？"
+    "forgotPassword": "忘記密碼？",
+    "forgotPassword": {
+      "title": "忘記密碼？",
+      "description": "輸入您的電子郵件地址，我們將發送重設密碼的指示。",
+      "success": "密碼重設指示已發送到您的電子郵件",
+      "error": "無法發送密碼重設指示",
+      "checkEmail": "檢查您的電子郵件",
+      "instructionsSent": "我們已將密碼重設指示發送到您的電子郵件。",
+      "notReceived": "沒有收到電子郵件？請檢查您的垃圾郵件資料夾或",
+      "tryAgain": "再試一次",
+      "sending": "發送中...",
+      "sendInstructions": "發送指示"
+    }
   },
   "assets": {
     "list": {

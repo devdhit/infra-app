@@ -26,7 +26,10 @@ const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
   modelName: 'Laptop',
   requiredFields: ['dept', 'barcode', 'status'],
   uniqueField: 'barcode',
-  searchFields: ['barcode', 'dept', 'model']
+  searchFields: ['barcode', 'dept', 'model'],
+  include: {
+    customFields: true // Include custom fields in responses
+  }
 })
 
 // GET /api/assets/laptop/[id] - Get a specific Laptop asset

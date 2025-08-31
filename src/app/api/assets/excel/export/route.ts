@@ -388,7 +388,6 @@ export async function GET(request: NextRequest) {
           const customFields = warehouse.customFields as Record<string, any> || {};
           
           return {
-            dept: warehouse.dept,
             cpuBarcode: warehouse.cpuBarcode,
             cpuSapBarcode: warehouse.cpuSapBarcode ?? undefined,
             monitorBarcode: warehouse.monitorBarcode ?? undefined,
