@@ -72,6 +72,24 @@
   "settings": {
     "description": "Manage your system preferences",
     "configure": "Configure",
+    "application": {
+      "title": "Application",
+      "description": "Customize application name and branding",
+      "name": "Application Name",
+      "nameDescription": "Set the name that appears in the sidebar and header",
+      "fullName": "Full Application Name",
+      "namePlaceholder": "Enter application name",
+      "shortName": "Short Name Preview",
+      "shortNameDescription": "This will appear in the mobile header and small spaces",
+      "reset": "Reset to Default",
+      "preview": "Preview",
+      "previewDescription": "See how the application name will appear",
+      "desktopPreview": "Desktop Sidebar",
+      "mobilePreview": "Mobile Header",
+      "nameUpdated": "Application name updated successfully",
+      "updateError": "Failed to update application name",
+      "resetSuccess": "Application name reset to default"
+    },
     "customFields": {
       "title": "Custom Fields",
       "description": "Manage tenant-specific custom fields for different asset types",

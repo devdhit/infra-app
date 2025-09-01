@@ -9,6 +9,7 @@ import { useTranslation } from "@/hooks/use-translation"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { SettingsLayout } from "@/components/settings/settings-layout"
 
 interface NotificationSettings {
   emailEnabled: boolean
@@ -86,14 +87,11 @@ export default function NotificationsSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{t('settings.notifications.title') || 'Notifications'}</h1>
-        <p className="text-muted-foreground">
-          {t('settings.notifications.description') || 'Configure how you receive notifications'}
-        </p>
-      </div>
-
+    <SettingsLayout
+      title={t('settings.notifications.title') || 'Notifications'}
+      description={t('settings.notifications.description') || 'Configure how you receive notifications'}
+      currentPage={t('settings.notifications.title') || 'Notifications'}
+    >
       <Card>
         <CardHeader>
           <CardTitle>{t('settings.notifications.channels.title') || 'Notification Channels'}</CardTitle>
@@ -266,6 +264,8 @@ export default function NotificationsSettingsPage() {
           {t('settings.notifications.save') || 'Save Settings'}
         </Button>
       </div>
-    </div>
+    </SettingsLayout>
   )
 }
+
+

@@ -17,6 +17,7 @@ import {
   TableRow 
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { SettingsLayout } from "@/components/settings/settings-layout"
 
 interface SecuritySettings {
   twoFactorEnabled: boolean
@@ -110,14 +111,11 @@ export default function SecuritySettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{t('settings.security.title') || 'Security'}</h1>
-        <p className="text-muted-foreground">
-          {t('settings.security.description') || 'Manage your security preferences and settings'}
-        </p>
-      </div>
-
+    <SettingsLayout
+      title={t('settings.security.title') || 'Security'}
+      description={t('settings.security.description') || 'Manage your security preferences and settings'}
+      currentPage={t('settings.security.title') || 'Security'}
+    >
       <Card>
         <CardHeader>
           <CardTitle>{t('settings.security.twoFactor.title') || 'Two-Factor Authentication'}</CardTitle>
@@ -296,6 +294,6 @@ export default function SecuritySettingsPage() {
           {t('settings.security.save') || 'Save Settings'}
         </Button>
       </div>
-    </div>
+    </SettingsLayout>
   )
 }

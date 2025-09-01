@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { useTranslation } from "@/hooks/use-translation";
+import { useApplicationName } from "@/hooks/use-application-name";
 
 // Define user roles
 type UserRole = 'admin' | 'user';
@@ -92,6 +93,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
   });
   const logoutMutation = useLogout();
   const { t } = useTranslation();
+  const { applicationName, shortName } = useApplicationName();
 
   // Filter navigation items based on user role
   const filteredNavigationItems = navigationItems.filter(item => 
@@ -132,7 +134,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
           <Menu className="h-6 w-6" />
         </Button>
         <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
-          ITAMS
+          {shortName}
         </h1>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -159,7 +161,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
         >
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
-              IT Asset Management
+              {applicationName}
             </h1>
             <Button 
               variant="ghost" 
@@ -238,7 +240,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
         <div className="flex flex-col flex-grow pt-5 bg-background overflow-y-auto border-r shadow-sm">
           <div className="flex items-center flex-shrink-0 px-6">
             <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
-              IT Asset Management
+              {applicationName}
             </h1>
           </div>
           <div className="mt-5 flex-grow flex flex-col">

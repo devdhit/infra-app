@@ -9,6 +9,76 @@ import {
 } from './api-utils'
 import { db } from '@/lib/db'
 
+// Define the asset types based on the Prisma schema and route files
+interface PCAsset {
+  dept: string
+  cpuBarcode: string
+  cpuSapBarcode?: string
+  monitorBarcode?: string
+  monitorSapBarcode?: string
+  upsBarcode?: string
+  upsSapBarcode?: string
+  pcName: string
+  userName?: string
+  status: string
+  note?: string
+  customFields?: any
+}
+
+interface LaptopAsset {
+  dept: string
+  barcode: string
+  sapBarcode?: string
+  dateBuy?: string
+  userName?: string
+  email?: string
+  model?: string
+  status: string
+  customFields?: any
+}
+
+interface PrinterAsset {
+  dept: string
+  location?: string
+  ip?: string
+  model?: string
+  color: string
+  barcode: string
+  sapCode?: string
+  date?: string
+  note?: string
+  customFields?: any
+}
+
+interface LicenseAsset {
+  deviceName?: string
+  userName?: string
+  dept?: string
+  productType?: string
+  productKey?: string
+  model?: string
+  pc?: string
+  mac?: string
+  ip?: string
+  date?: string
+  updateStatus?: string
+  customFields?: any
+}
+
+interface WarehouseITAsset {
+  cpuBarcode?: string
+  cpuSapBarcode?: string
+  monitorBarcode?: string
+  monitorSapBarcode?: string
+  upsBarcode?: string
+  upsSapBarcode?: string
+  status: string
+  note?: string
+  createdAt?: string
+  updatedAt?: string
+  customFields?: any
+}
+
 // Define the structure for asset operations
 interface AssetOperations<T> {
   modelName: string
@@ -571,7 +641,7 @@ export class AssetApiHandler<T> {
         }
 
         if (existingAssetWithUniqueField) {
-          console.log(`Asset with ${this.operations.uniqueField} ${body[this.operations.uniqueField]} already exists`);
+          console.log(`Asset with ${String(this.operations.uniqueField)} ${body[this.operations.uniqueField]} already exists`);
           return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`);
         }
       }
@@ -804,10 +874,40 @@ export class AssetApiHandler<T> {
 }
 
 // Create handler for PC assets
-const pcHandler = new AssetApiHandler<PCAsset>(db, {
+export const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'PC',
   requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
   uniqueField: 'cpuBarcode',
   searchFields: ['cpuBarcode', 'pcName', 'dept', 'note']
   // Remove the include option as customFields is a scalar field, not a relation
+})
+
+// Create handler for Laptop assets
+export const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
+  modelName: 'Laptop',
+  requiredFields: ['dept', 'barcode', 'status'],
+  uniqueField: 'barcode',
+  searchFields: ['barcode', 'userName', 'dept', 'model']
+})
+
+// Create handler for Printer assets
+export const printerHandler = new AssetApiHandler<PrinterAsset>(db, {
+  modelName: 'Printer',
+  requiredFields: ['dept', 'barcode', 'color'],
+  uniqueField: 'barcode',
+  searchFields: ['barcode', 'dept', 'model', 'ip', 'note']
+})
+
+// Create handler for License assets
+export const licenseHandler = new AssetApiHandler<LicenseAsset>(db, {
+  modelName: 'License',
+  requiredFields: ['productKey'],
+  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'updateStatus']
+})
+
+// Create handler for WarehouseIT assets
+export const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
+  modelName: 'WarehouseIT',
+  requiredFields: ['status'],
+  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note']
 })

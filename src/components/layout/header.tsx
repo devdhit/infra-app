@@ -19,11 +19,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useApplicationName } from "@/hooks/use-application-name";
 
 export function Header() {
   const { t } = useTranslation();
   const { data: user } = useCurrentUser();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const { shortName } = useApplicationName();
   
   return (
     <>
@@ -31,7 +33,7 @@ export function Header() {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-6">
             <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
-              ITAMS
+              {shortName}
             </h1>
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

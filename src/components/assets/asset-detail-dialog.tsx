@@ -56,6 +56,15 @@ export function AssetDetailDialog({
 
   if (!displayAsset) return null;
 
+  // Handle edit action with automatic closing
+  const handleEdit = () => {
+    onEdit();
+    // Close the dialog after a short delay to allow the edit dialog to open
+    setTimeout(() => {
+      onClose();
+    }, 100);
+  };
+
   // Helper function to format displayed values
   const formatValue = (key: string, value: any): React.ReactNode => {
     // Handle undefined or null values
@@ -156,7 +165,7 @@ export function AssetDetailDialog({
       <Button variant="outline" onClick={onClose}>
         {t('common.close', "Close")}
       </Button>
-      <Button onClick={onEdit}>
+      <Button onClick={handleEdit}>
         {t('common.edit', "Edit")}
       </Button>
     </>
