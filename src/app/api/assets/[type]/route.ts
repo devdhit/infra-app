@@ -131,7 +131,8 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               userName: true,
               dept: true,
               status: true,
-              updatedAt: true
+              updatedAt: true,
+              customFields: true // Include custom fields
             }
           })
         ]);
@@ -151,7 +152,8 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               userName: true,
               dept: true,
               status: true,
-              updatedAt: true
+              updatedAt: true,
+              customFields: true // Include custom fields
             }
           })
         ]);
@@ -170,7 +172,8 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               barcode: true,
               dept: true,
               // Printer model doesn't have status field
-              updatedAt: true
+              updatedAt: true,
+              customFields: true // Include custom fields
             }
           })
         ]);
@@ -190,7 +193,8 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               dept: true,
               // License model uses updateStatus instead of status
               updateStatus: true,
-              updatedAt: true
+              updatedAt: true,
+              customFields: true // Include custom fields
             }
           })
         ]);
@@ -207,7 +211,8 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
             select: {
               id: true,
               // WarehouseIT model doesn't have status field
-              updatedAt: true
+              updatedAt: true,
+              customFields: true // Include custom fields
             }
           })
         ]);

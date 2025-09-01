@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         console.log('Sample PC data:', pcData.slice(0, 2))
         
         // Convert null values to undefined to match the PCAsset interface
-        const formattedPcData = pcData.map(pc => {
+        const formattedPcData = pcData.map((pc: any) => {
           // Extract custom fields and add them to the formatted data
           const customFields = pc.customFields as Record<string, any> || {};
           
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
         console.log('Sample Laptop data:', laptopData.slice(0, 2))
         
         // Convert null values to undefined to match the LaptopAsset interface
-        const formattedLaptopData = laptopData.map(laptop => {
+        const formattedLaptopData = laptopData.map((laptop: any) => {
           // Extract custom fields and add them to the formatted data
           const customFields = laptop.customFields as Record<string, any> || {};
           
@@ -248,7 +248,7 @@ export async function GET(request: NextRequest) {
         console.log('Sample Printer data:', printerData.slice(0, 2))
         
         // Convert null values to undefined to match the PrinterAsset interface
-        const formattedPrinterData = printerData.map(printer => {
+        const formattedPrinterData = printerData.map((printer: any) => {
           // Extract custom fields and add them to the formatted data
           const customFields = printer.customFields as Record<string, any> || {};
           
@@ -320,22 +320,19 @@ export async function GET(request: NextRequest) {
         console.log('Sample License data:', licenseData.slice(0, 2))
         
         // Convert null values to undefined to match the LicenseAsset interface
-        const formattedLicenseData = licenseData.map(license => {
+        const formattedLicenseData = licenseData.map((license: any) => {
           // Extract custom fields and add them to the formatted data
           const customFields = license.customFields as Record<string, any> || {};
           
           return {
             deviceName: license.deviceName ?? undefined,
             userName: license.userName ?? undefined,
-            dept: license.dept ?? undefined,
+            dept: license.dept,
             productType: license.productType ?? undefined,
             productKey: license.productKey ?? undefined,
             model: license.model ?? undefined,
             pc: license.pc ?? undefined,
-            mac: license.mac ?? undefined,
-            ip: license.ip ?? undefined,
-            date: license.date ? license.date.toISOString() : undefined,
-            // Normalize updateStatus values to lowercase to match standardized values
+            // Normalize status values to lowercase to match standardized values
             updateStatus: license.updateStatus ? license.updateStatus.toLowerCase() : 'working',
             // Include custom fields
             ...customFields
@@ -386,20 +383,20 @@ export async function GET(request: NextRequest) {
         console.log('Sample Warehouse data:', warehouseData.slice(0, 2))
         
         // Convert null values to undefined to match the WarehouseITAsset interface
-        const formattedWarehouseData = warehouseData.map(warehouse => {
+        const formattedWarehouseData = warehouseData.map((warehouse: any) => {
           // Extract custom fields and add them to the formatted data
           const customFields = warehouse.customFields as Record<string, any> || {};
           
           return {
-            cpuBarcode: warehouse.cpuBarcode ?? undefined,
+            cpuBarcode: warehouse.cpuBarcode,
             cpuSapBarcode: warehouse.cpuSapBarcode ?? undefined,
             monitorBarcode: warehouse.monitorBarcode ?? undefined,
             monitorSapBarcode: warehouse.monitorSapBarcode ?? undefined,
             upsBarcode: warehouse.upsBarcode ?? undefined,
             upsSapBarcode: warehouse.upsSapBarcode ?? undefined,
+            note: warehouse.note ?? undefined,
             // Normalize status values to lowercase to match standardized values
             status: warehouse.status ? warehouse.status.toLowerCase() : 'working',
-            note: warehouse.note ?? undefined,
             // Include custom fields
             ...customFields
           };

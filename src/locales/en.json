@@ -48,7 +48,9 @@
     "gotIt": "Got it",
     "more": "more",
     "required": "Required",
-    "optional": "Optional"
+    "optional": "Optional",
+    "allRightsReserved": "All rights reserved.",
+    "profile": "Profile"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -329,12 +331,36 @@
     "logout_a": "Logout",
     "logout": {
       "success": "Logged out successfully",
-      "error": "Failed to logout"
+      "error": "Failed to logout",
+      "confirmTitle": "Confirm Logout",
+      "confirmDescription": "Are you sure you want to logout? You will need to sign in again to access the system.",
+      "loggingOut": "Logging out..."
     },
     "email": "Email",
     "password": "Password",
     "rememberMe": "Remember me",
-    "forgotPassword": "Forgot password?"
+    "forgotPassword": "Forgot password?",
+    "forgotPassword": {
+      "title": "Forgot Password?",
+      "description": "Enter your email address and we will send you instructions to reset your password.",
+      "success": "Password reset instructions sent to your email",
+      "error": "Failed to send password reset instructions",
+      "checkEmail": "Check Your Email",
+      "instructionsSent": "We have sent password reset instructions to your email.",
+      "notReceived": "Didn't receive the email? Check your spam folder or",
+      "tryAgain": "try again",
+      "sending": "Sending...",
+      "sendInstructions": "Send Instructions"
+    },
+    "login": {
+      "title": "IT Asset Management System",
+      "description": "Sign in to your account",
+      "success": "Logged in successfully",
+      "error": "Invalid email or password",
+      "signingIn": "Signing in...",
+      "tooManyAttempts": "Too many login attempts. Please try again later.",
+      "footer": "Need help? Contact your system administrator"
+    }
   },
   "assets": {
     "list": {

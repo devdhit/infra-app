@@ -1,16 +1,23 @@
 'use client'
 
-import { Button } from "@/components/ui/button";
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ColumnDef } from '@tanstack/react-table'
 import {
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+  Checkbox,
+  Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Separator,
+} from "@/components/ui";
 import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from '@tanstack/react-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,14 +36,10 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
-  // Loader2, // Unused
-  // AlertCircle, // Unused
   Settings,
-  // EyeOff, // Unused
   Eye as EyeIcon
 } from "lucide-react";
 import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
-import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { AssetFormDialog } from "./asset-form";
 import { AssetDetailDialog } from "./asset-detail-dialog";
@@ -44,20 +47,11 @@ import { DeleteConfirmDialog } from "./delete-confirm-dialog";
 import { BulkDeleteDialog } from "./bulk-delete-dialog";
 import { useTranslation } from "@/hooks/use-translation";
 import { Asset, AssetResponse, AssetColumn, AssetFormField } from "@/types/assets";
-import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
-// import { AssetListSkeleton } from "./asset-list-skeleton"; // Unused
 import { InlineEditCell } from "./inline-edit-cell";
 import { useCustomFields } from "@/hooks/useApi";
 import { getModelType, isCustomField, getFieldValue } from "@/lib/custom-fields";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
 import { debounce } from '@/lib/performance';
 
 // Import the new separate Excel dialogs
@@ -87,6 +81,7 @@ const getAssetColumns = (
   currentPage: number,
   search: string,
   statusFilter: string,
+  refetch: () => void, // Add refetch function as parameter
 ): ColumnDef<Asset>[] => {
   // Create the selection column
   const selectionColumn: ColumnDef<Asset> = {
@@ -148,30 +143,71 @@ const getAssetColumns = (
             field={field}
             value={cellValue}
             isCustomField={isCustom}
+            customFieldsData={customFieldsData}
             onUpdate={(newValue) => {
-              // Update the asset in the local state
-              const updatedAssets = assets.map(a => 
-                a.id === asset.id 
-                  ? { 
-                      ...a, 
-                      ...(isCustom 
-                        ? { customFields: { ...(a.customFields || {}), [column.key]: newValue } } 
-                        : { [column.key]: newValue }
-                      )
-                    } 
-                  : a
-              );
-              // Update the query cache to reflect the changes
-              queryClient.setQueryData(
-                ['assets', assetType, JSON.stringify({ page: currentPage, limit: 10, search, statusFilter })], 
-                (oldData: any) => ({
-                  ...oldData,
-                  data: updatedAssets
-                })
-              );
+              // Create a truly deep clone of the assets array to avoid reference issues
+              const updatedAssets = assets.map(a => {
+                if (a.id === asset.id) {
+                  // Deep clone the asset object
+                  const newAsset = JSON.parse(JSON.stringify(a));
+                  
+                  if (isCustom) {
+                    // For custom fields, ensure the customFields object exists
+                    newAsset.customFields = newAsset.customFields || {};
+                    // Update the custom field with the new value
+                    newAsset.customFields[column.key] = newValue;
+                  } else {
+                    // For standard fields, update directly
+                    newAsset[column.key] = newValue;
+                  }
+                  
+                  return newAsset;
+                }
+                return a;
+              });
               
-              // Also invalidate the query to ensure data consistency
-              queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+              // Get the exact query key for the current view
+              const queryParams = { 
+                page: currentPage, 
+                limit: 20, 
+                search, 
+                statusFilter 
+              };
+              
+              const exactQueryKey = ['assets', assetType, JSON.stringify(queryParams)];
+              
+              // Store the updated assets directly in the query cache
+              if (queryClient) {
+                // Update the exact paginated query
+                queryClient.setQueryData(exactQueryKey, (oldData: any) => {
+                  if (!oldData) return { data: updatedAssets };
+                  return {
+                    ...oldData,
+                    data: updatedAssets
+                  };
+                });
+                
+                // Force query invalidation
+                queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+                
+                // For custom fields, also invalidate custom field queries
+                if (isCustom) {
+                  const modelType = getModelType(assetType);
+                  queryClient.invalidateQueries({ 
+                    queryKey: ['asset-custom-fields', modelType, asset.id] 
+                  });
+                  
+                  // Also invalidate the specific asset query to ensure custom fields are refreshed
+                  queryClient.invalidateQueries({ 
+                    queryKey: ['assets', assetType, asset.id] 
+                  });
+                }
+                
+                // Force a refetch to ensure we have the latest data
+                setTimeout(() => {
+                  refetch();
+                }, 100);
+              }
             }}
           />
         ) : (
@@ -181,18 +217,18 @@ const getAssetColumns = (
     };
   });
 
-  // Create actions column
+  // Create actions column with optimized width
   const actionsColumn: ColumnDef<Asset> = {
     id: 'actions',
-    header: () => <div className="text-right">{t('common.actions', 'Actions')}</div>,
+    header: () => <div className="text-center">{t('common.actions', 'Actions')}</div>,
     cell: ({ row }) => {
       const asset = row.original;
       
       return (
-        <div className="text-right">
+        <div className="text-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button variant="ghost" className="h-7 w-7 p-0">
                 <span className="sr-only">{t('common.openMenu', 'Open menu')}</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -215,6 +251,7 @@ const getAssetColumns = (
         </div>
       );
     },
+    size: 70, // Set a fixed width for the actions column
   };
 
   return [selectionColumn, ...dataColumns, actionsColumn];
@@ -250,6 +287,16 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   
   // Column visibility state
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  
+  // State for column order
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => 
+    columns.map(column => column.key)
+  );
+  
+  // Handle column order change
+  const handleColumnOrderChange = (newOrder: string[]) => {
+    setColumnOrder(newOrder);
+  };
   
   // Fetch custom fields for this asset type
   const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(modelType);
@@ -403,7 +450,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   }, {
     // Optimize caching for better performance
     staleTime: 30 * 1000, // 30 seconds
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes (previously cacheTime)
     refetchOnWindowFocus: false,
     refetchOnReconnect: false
   });
@@ -592,9 +639,9 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     }
   }, [assets, isBulkDeleteDialogOpen, isDeleteDialogOpen, selectedAssets]);
 
-  // Get columns for DataTable
-  const dataTableColumns = useMemo(() => 
-    getAssetColumns(
+  // Get columns for DataTable with proper ordering
+  const dataTableColumns = useMemo(() => {
+    const baseColumns = getAssetColumns(
       t,
       visibleColumns,
       allFormFields,
@@ -608,23 +655,36 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       currentPage,
       search,
       statusFilter,
-    ), 
-    [
-      t,
-      visibleColumns,
-      allFormFields,
-      assetType,
-      customFieldsData,
-      handleView,
-      handleEdit,
-      handleDelete,
-      assets,
-      queryClient,
-      currentPage,
-      search,
-      statusFilter,
-    ]
-  );
+      refetch, // Pass refetch function
+    );
+    
+    // Apply column order if reordering is enabled
+    if (columnOrder.length > 0) {
+      return baseColumns.sort((a, b) => {
+        const aIndex = columnOrder.indexOf(a.id as string || (a as any).accessorKey);
+        const bIndex = columnOrder.indexOf(b.id as string || (b as any).accessorKey);
+        return aIndex - bIndex;
+      });
+    }
+    
+    return baseColumns;
+  }, [
+    t,
+    visibleColumns,
+    allFormFields,
+    assetType,
+    customFieldsData,
+    handleView,
+    handleEdit,
+    handleDelete,
+    assets,
+    queryClient,
+    currentPage,
+    search,
+    statusFilter,
+    columnOrder,
+    refetch // Add refetch to dependencies
+  ]);
 
   // Handle row selection change from DataTable
   const handleRowSelectionChange = useCallback((selectedRows: Record<string, boolean>) => {
@@ -925,6 +985,8 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               getRowId={(row: Asset) => row.id}
               responsive={true}
               enableColumnResizing={true}
+              enableColumnReordering={true} // Enable column reordering
+              onColumnOrderChange={handleColumnOrderChange} // Handle column order changes
               enableVirtualization={assets.length > 50} // Enable virtualization for medium datasets
               virtualItemHeight={50}
             />

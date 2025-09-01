@@ -176,7 +176,7 @@ export function ExcelImportDialog({
 
   const handleImport = useCallback(async () => {
     if (selectedFiles.length === 0) {
-      toast.error(t('assets.excel.import.noFile', 'Please select file(s) to import'))
+      toast.error(t('assets.excel.import.noFileSelected', 'Please select at least one file to import'))
       return
     }
 
@@ -187,13 +187,13 @@ export function ExcelImportDialog({
       let totalCreatedCount = 0
       const allErrors: string[] = []
 
-      // Process each file
+      // Process each selected file
       for (const file of selectedFiles) {
         const formData = new FormData()
         formData.append('file', file)
         formData.append('assetType', assetType)
 
-        // Add column mapping if configured
+        // Add column mapping if enabled
         if (showColumnMapping && columnMappings.length > 0) {
           const mappingObj: Record<string, string> = {}
           columnMappings.forEach(mapping => {
@@ -229,13 +229,25 @@ export function ExcelImportDialog({
       
       if (allErrors.length === 0) {
         toast.success(t('assets.excel.import.success', '{0} assets imported successfully', totalCreatedCount.toString()))
+        // Close dialog automatically on success
+        setTimeout(() => {
+          handleClose()
+          onImportSuccess()
+        }, 1500)
       } else if (totalCreatedCount > 0) {
         toast.success(t('assets.excel.import.partialSuccess', '{0} assets imported with some errors', totalCreatedCount.toString()))
+        // Close dialog automatically on partial success
+        setTimeout(() => {
+          handleClose()
+          onImportSuccess()
+        }, 1500)
       } else {
         toast.error(t('assets.excel.import.error', 'Failed to import assets'))
       }
       
-      onImportSuccess()
+      if (allErrors.length === 0 || totalCreatedCount > 0) {
+        onImportSuccess()
+      }
     } catch (error: any) {
       console.error('Import error:', error)
       const message = error.message || t('assets.excel.import.error', 'Failed to import assets')

@@ -28,8 +28,8 @@ interface LicenseAsset {
 const licenseHandler = new AssetApiHandler<LicenseAsset>(db, {
   modelName: 'License',
   requiredFields: ['productKey'],
-  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip']
-  // Removed include for histories since we removed the relation
+  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'updateStatus'],
+  include: {}
 })
 
 // GET /api/assets/license - Get all License assets for the user's tenant

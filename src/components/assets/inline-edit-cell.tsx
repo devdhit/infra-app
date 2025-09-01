@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { getModelType, isCustomField, createUpdateData } from "@/lib/custom-fields"
+import { useQueryClient } from "@tanstack/react-query"
 
 interface InlineEditCellProps {
   asset: Asset
@@ -26,11 +27,13 @@ interface InlineEditCellProps {
   field: AssetFormField
   value: any
   onUpdate: (newValue: any) => void
-  isCustomField?: boolean // Add this prop to explicitly indicate if it's a custom field
+  isCustomField?: boolean
+  customFieldsData?: any[]
 }
 
-export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField }: InlineEditCellProps) {
+export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField, customFieldsData }: InlineEditCellProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value || '')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -39,9 +42,9 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
   // Map assetType to modelType for custom fields
   const modelType = getModelType(assetType);
 
-  // Determine if this is a custom field
-  const isCustom = isCustomField(field.name, asset, undefined) || propIsCustomField === true;
-
+  // Determine if this is a custom field - prioritize the prop if provided, otherwise use the utility function
+  const isCustom = propIsCustomField !== undefined ? propIsCustomField : isCustomField(field.name, asset, customFieldsData);
+  
   // Always call both hooks to comply with React's rules of hooks
   const updateCustomFieldsMutation = useUpdateAssetCustomFields(modelType, asset.id)
   const updateAssetMutation = useUpdateAsset(assetType, asset.id)
@@ -97,15 +100,40 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
       // Create update data using utility function
       const updateData = createUpdateData(field.name, processedValue, isCustom, asset);
       
+      // Send the update to the server
       await updateMutation.mutateAsync(updateData)
       
-      // Update the parent component
-      onUpdate(processedValue)
-      
-      // Exit edit mode
+      // Exit edit mode first for better UX
       setIsEditing(false)
       
+      // Show success message
       toast.success(t('assets.update.success', '{0} updated successfully', field.label))
+      
+      // This critical step allows the parent component to update its state
+      // which will then trigger React Query cache updates
+      onUpdate(processedValue)
+      
+      // Force refresh the data after a short delay to ensure the server has processed the update
+      if (queryClient) {
+        setTimeout(() => {
+          // Force direct refetch to get fresh data from the server
+          queryClient.refetchQueries({ 
+            queryKey: ['assets', assetType],
+            type: 'active',
+            exact: false
+          });
+          
+          // Also refetch the specific asset to ensure custom fields are updated
+          if (isCustom) {
+            const modelType = getModelType(assetType);
+            queryClient.refetchQueries({ 
+              queryKey: ['asset-custom-fields', modelType, asset.id],
+              type: 'active',
+              exact: true
+            });
+          }
+        }, 100);
+      }
     } catch (error: any) {
       console.error("Inline edit error:", error)
       let message = t('assets.update.error', 'Failed to update {0}', field.label)

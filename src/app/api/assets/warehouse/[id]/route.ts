@@ -11,7 +11,6 @@ import { AssetApiHandler } from '@/lib/asset-api-handler'
 
 // Define the WarehouseIT asset type
 interface WarehouseITAsset {
-  dept?: string
   cpuBarcode?: string
   cpuSapBarcode?: string
   monitorBarcode?: string
@@ -28,7 +27,8 @@ interface WarehouseITAsset {
 const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
   modelName: 'WarehouseIT',
   requiredFields: ['status'],
-  searchFields: ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'note']
+  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'note']
+  // Remove the include option as customFields is a scalar field, not a relation
 })
 
 // GET /api/assets/warehouse/[id] - Get a specific WarehouseIT asset

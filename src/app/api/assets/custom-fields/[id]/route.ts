@@ -41,6 +41,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                      assetType === 'License' ? 'License' : 
                      'WarehouseIT'
 
+    console.log(`Updating custom fields for ${assetType} asset ${resolvedParams.id} with data:`, body);
+
     // Check if asset exists and belongs to user's tenant
     const existingAsset = await (db as any)[modelName].findUnique({
       where: { 
@@ -79,6 +81,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         updateData[key] = body[key]
       }
     })
+
+    console.log("Update data to be sent to database:", updateData);
 
     // Update the asset
     const updatedAsset = await (db as any)[modelName].update({

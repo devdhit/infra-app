@@ -89,7 +89,7 @@ export class PerformanceMonitor {
 
 // Decorator for monitoring method performance
 export function MonitorPerformance(operationName: string) {
-  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function(descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     const monitor = PerformanceMonitor.getInstance();
     

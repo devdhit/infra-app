@@ -7,6 +7,7 @@ import {
   conflictResponse,
   validationErrorResponse
 } from './api-utils'
+import { db } from '@/lib/db'
 
 // Define the structure for asset operations
 interface AssetOperations<T> {
@@ -17,58 +18,136 @@ interface AssetOperations<T> {
   include?: any
 }
 
+// Generic asset API handler
+export class AssetApiHandler<T> {
+  constructor(private db: PrismaClient, private operations: AssetOperations<T>) {}
+
   // Helper method to get optimized select fields based on asset type
   private getSelectFieldsForAssetType() {
-    const baseFields = {
-      dept: true,
-      status: true,
-      userName: true
+    // Base fields vary by model type as not all models have the same fields
+    const getBaseFieldsForModel = (modelName: string) => {
+      // Default base fields for all models
+      const defaultBaseFields = {
+        dept: true,
+      };
+      
+      // Add status field for models that have it
+      if (modelName === 'PC' || modelName === 'Laptop' || modelName === 'WarehouseIT') {
+        return {
+          ...defaultBaseFields,
+          status: true,
+          userName: modelName !== 'WarehouseIT' ? true : undefined
+        };
+      } else if (modelName === 'License') {
+        return {
+          ...defaultBaseFields,
+          updateStatus: true,
+          userName: true
+        };
+      }
+      
+      // Printer doesn't have status or userName fields
+      return defaultBaseFields;
     };
+
+    // Special handling for WarehouseIT which doesn't have dept field
+    if (this.operations.modelName === 'WarehouseIT') {
+      const baseFields = {
+        status: true,
+      };
+
+      return {
+        ...baseFields,
+        cpuBarcode: true,
+        cpuSapBarcode: true,
+        monitorBarcode: true,
+        monitorSapBarcode: true,
+        upsBarcode: true,
+        upsSapBarcode: true,
+        note: true,
+        customFields: true // Include custom fields
+      };
+    }
+
+    const baseFields = getBaseFieldsForModel(this.operations.modelName);
+
+    // Remove undefined fields from baseFields to prevent Prisma errors
+    const cleanBaseFields = Object.fromEntries(
+      Object.entries(baseFields).filter(([_, value]) => value !== undefined)
+    );
 
     switch (this.operations.modelName) {
       case 'PC':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
           cpuBarcode: true,
+          cpuSapBarcode: true,
+          monitorBarcode: true,
+          monitorSapBarcode: true,
+          upsBarcode: true,
+          upsSapBarcode: true,
           pcName: true,
-          note: true
+          userName: true,
+          note: true,
+          customFields: true // Include custom fields
         };
       case 'Laptop':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
           barcode: true,
+          sapBarcode: true,
           model: true,
-          dateBuy: true
+          dateBuy: true,
+          userName: true,
+          email: true,
+          customFields: true // Include custom fields
         };
       case 'Printer':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
           barcode: true,
           model: true,
-          location: true
+          location: true,
+          color: true,
+          ip: true,
+          sapCode: true,
+          date: true,
+          note: true,
+          customFields: true // Include custom fields
         };
       case 'License':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
+          deviceName: true,
           productType: true,
           productKey: true,
-          deviceName: true
+          model: true,
+          pc: true,
+          mac: true,
+          ip: true,
+          date: true,
+          updateStatus: true,
+          customFields: true // Include custom fields
         };
       case 'WarehouseIT':
         return {
-          ...baseFields,
+          ...cleanBaseFields,
           cpuBarcode: true,
-          note: true
+          cpuSapBarcode: true,
+          monitorBarcode: true,
+          monitorSapBarcode: true,
+          upsBarcode: true,
+          upsSapBarcode: true,
+          note: true,
+          customFields: true // Include custom fields
         };
       default:
-        return baseFields;
+        return {
+          ...cleanBaseFields,
+          customFields: true // Include custom fields by default
+        };
     }
   }
-}
-
-// Generic asset API handler
-export class AssetApiHandler<T> {
-  constructor(private db: PrismaClient, private operations: AssetOperations<T>) {}
 
   // Get all assets with pagination and filtering
   async getAll(
@@ -84,10 +163,35 @@ export class AssetApiHandler<T> {
 
       // Add search filter with optimized indexing
       if (search && this.operations.searchFields) {
+        // Get indexed fields appropriate for this model
+        const modelAppropriateSearchFields = (field: any) => {
+          // Handle model-specific field availability
+          if (this.operations.modelName === 'Printer' && field === 'status') {
+            return false;
+          }
+          
+          // Handle License model which uses updateStatus instead of status
+          if (this.operations.modelName === 'License' && field === 'status') {
+            return false;
+          }
+          
+          // Map of indexed fields by model
+          const indexedFieldsByModel: Record<string, string[]> = {
+            'PC': ['userName', 'dept', 'status', 'cpuBarcode'],
+            'Laptop': ['userName', 'dept', 'status', 'barcode'],
+            'Printer': ['dept', 'barcode'],
+            'License': ['userName', 'dept', 'updateStatus', 'productKey'],
+            'WarehouseIT': ['status', 'cpuBarcode']  // Removed 'dept' as WarehouseIT doesn't have this field
+          };
+          
+          // Get indexed fields for this model
+          const modelIndexedFields = indexedFieldsByModel[this.operations.modelName] || ['status'];  // Changed default to 'status'
+          
+          return modelIndexedFields.includes(field as string);
+        };
+        
         // Use indexed fields for better performance
-        const indexedSearchFields = this.operations.searchFields.filter((field: any) => 
-          ['userName', 'dept', 'status'].includes(field as string)
-        );
+        const indexedSearchFields = this.operations.searchFields.filter(modelAppropriateSearchFields);
         
         if (indexedSearchFields.length > 0) {
           where.OR = indexedSearchFields.map((field: any) => ({
@@ -101,9 +205,13 @@ export class AssetApiHandler<T> {
         }
       }
 
-      // Add status filter
+      // Add status filter based on model-specific status fields
       if (status) {
-        where.status = status
+        if (this.operations.modelName === 'License') {
+          where.updateStatus = status; // License uses updateStatus instead of status
+        } else if (this.operations.modelName !== 'Printer') {
+          where.status = status; // Other models use status (except Printer which has no status)
+        }
       }
 
       // Optimize query by only selecting necessary fields
@@ -146,12 +254,22 @@ export class AssetApiHandler<T> {
   // Get a specific asset by ID
   async getById(user: { tenantId: string }, id: string) {
     try {
+      // Get select fields for this asset type
+      const selectFields = {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        tenantId: true,
+        // Add other commonly used fields based on asset type
+        ...this.getSelectFieldsForAssetType()
+      };
+      
       const asset = await (this.db as any)[this.operations.modelName].findUnique({
         where: { 
           id,
           tenantId: user.tenantId 
         },
-        include: this.operations.include
+        select: selectFields
       })
 
       if (!asset) {
@@ -284,7 +402,14 @@ export class AssetApiHandler<T> {
           ...createData as any,
           tenantId: user.tenantId
         },
-        include: this.operations.include
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          tenantId: true,
+          // Add other commonly used fields based on asset type
+          ...this.getSelectFieldsForAssetType()
+        }
       })
 
       // Create history record after asset creation
@@ -321,6 +446,8 @@ export class AssetApiHandler<T> {
   // Update an existing asset
   async update(user: { id: string; tenantId: string }, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
     try {
+      console.log(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
+      
       // Check if asset exists and belongs to user's tenant
       const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
         where: { 
@@ -330,6 +457,7 @@ export class AssetApiHandler<T> {
       })
 
       if (!existingAsset) {
+        console.log(`Asset ${id} not found for tenant ${user.tenantId}`);
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
 
@@ -416,6 +544,7 @@ export class AssetApiHandler<T> {
 
       // Return validation errors if any
       if (Object.keys(validationErrors).length > 0) {
+        console.log("Validation errors:", validationErrors);
         return validationErrorResponse(validationErrors)
       }
 
@@ -442,6 +571,7 @@ export class AssetApiHandler<T> {
         }
 
         if (existingAssetWithUniqueField) {
+          console.log(`Asset with ${this.operations.uniqueField} ${body[this.operations.uniqueField]} already exists`);
           return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`);
         }
       }
@@ -481,21 +611,27 @@ export class AssetApiHandler<T> {
       // Also filter out invalid fields that don't exist in the model
       const validFields = {
         'PC': ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userName', 'status', 'note', 'customFields'],
-        'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'userId', 'email', 'model', 'status', 'customFields'],
+        'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'email', 'model', 'status', 'userName', 'customFields'],
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 'customFields']
       }
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
+      console.log(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
 
       const updateData = Object.keys(body || {}).reduce((acc, key) => {
         // Only include valid fields for this model and non-undefined values
-        if (modelValidFields.includes(key) && body[key as keyof T] !== undefined) {
+        // Allow both direct fields and customFields to be updated
+        if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof T] !== undefined) {
           (acc as any)[key] = body[key as keyof T];
+        } else {
+          console.log(`Skipping field ${key} - not valid or undefined`);
         }
         return acc;
       }, {} as Partial<T>);
+      
+      console.log("Update data to be sent to database:", updateData);
 
       const asset = await (this.db as any)[this.operations.modelName].update({
         where: { 
@@ -503,12 +639,20 @@ export class AssetApiHandler<T> {
           tenantId: user.tenantId 
         },
         data: updateData as any,
-        include: this.operations.include
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          tenantId: true,
+          // Add other commonly used fields based on asset type
+          ...this.getSelectFieldsForAssetType()
+        }
       })
 
       return successResponse(asset)
     } catch (error: any) {
       if (error.code === 'P2025') {
+        console.log(`Asset ${id} not found during update`);
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
       
@@ -622,7 +766,7 @@ export class AssetApiHandler<T> {
               userId: user.id,
               tenantId: user.tenantId
             }
-          }).catch((historyError) => {
+          }).catch((historyError: any) => {
             console.error(`Failed to create history record for asset ${asset.id}:`, historyError)
             // Continue with deletion even if history creation fails
           })
@@ -658,3 +802,12 @@ export class AssetApiHandler<T> {
     }
   }
 }
+
+// Create handler for PC assets
+const pcHandler = new AssetApiHandler<PCAsset>(db, {
+  modelName: 'PC',
+  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
+  uniqueField: 'cpuBarcode',
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note']
+  // Remove the include option as customFields is a scalar field, not a relation
+})

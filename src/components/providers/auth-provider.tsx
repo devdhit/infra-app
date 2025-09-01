@@ -1,13 +1,13 @@
 'use client'
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useCallback } from "react";
 import { useCurrentUser } from "@/hooks/useApi";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/lib/api";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const { data: user, isLoading: userLoading, status } = useCurrentUser();
+  const { data: user, isLoading: userLoading, status, error } = useCurrentUser();
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,19 +20,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Determine if current path is an auth route
   const isAuthRoute = pathname?.startsWith('/auth');
 
+  // Check authentication status
+  const checkAuthStatus = useCallback(() => {
+    const token = localStorage.getItem('auth-token') || api.getToken();
+    return !!token;
+  }, []);
+
   // Initial auth check from localStorage
   useEffect(() => {
     // Check if user is authenticated by looking for token
-    const token = localStorage.getItem('auth-token') || api.getToken();
-    if (token) {
+    const isAuthenticated = checkAuthStatus();
+    if (isAuthenticated) {
       // Set token in API client to ensure all requests include it
-      api.setToken(token);
+      const token = localStorage.getItem('auth-token') || api.getToken();
+      if (token) {
+        api.setToken(token);
+      }
       setIsAuthenticated(true);
     } else {
       setIsAuthenticated(false);
     }
     setIsCheckingAuth(false);
-  }, []);
+  }, [checkAuthStatus]);
 
   // Update auth state based on API response
   useEffect(() => {
@@ -41,13 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (status === 'success' && user) {
         setIsAuthenticated(true);
       } else if (status === 'error') {
-        setIsAuthenticated(false);
-        // Clear token if it's invalid
-        localStorage.removeItem('auth-token');
-        api.setToken(null);
+        // Only clear token if it's actually invalid (401)
+        if (error && 'status' in error && error.status === 401) {
+          setIsAuthenticated(false);
+          // Clear token if it's invalid
+          localStorage.removeItem('auth-token');
+          api.setToken(null);
+        }
       }
     }
-  }, [user, status, isCheckingAuth]);
+  }, [user, status, error, isCheckingAuth]);
 
   // Handle redirects based on auth state
   useEffect(() => {

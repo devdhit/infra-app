@@ -1,5 +1,4 @@
 import { useI18n } from '@/contexts/i18n-context'
-import { Language } from '@/lib/i18n'
 
 export function useTranslation() {
   const { t, language, setLanguage, loading, hasTranslation } = useI18n()

@@ -200,6 +200,11 @@ export function ExcelExportDialog({
         } else {
           toast.success(t('assets.excel.export.successAllDepts', '{0} export completed for all departments', title))
         }
+        
+        // Close dialog automatically on success
+        setTimeout(() => {
+          onClose()
+        }, 1500)
       } else {
         // Handle single file exports (all, selected, by department)
         // Build URL with query parameters
@@ -257,6 +262,11 @@ export function ExcelExportDialog({
           setExportProgress(100)
         
           toast.success(t('assets.excel.export.success', '{0} export completed', title))
+          
+          // Close dialog automatically on success
+          setTimeout(() => {
+            onClose()
+          }, 1500)
         } catch (singleExportError: any) {
           console.error('Single export error:', singleExportError)
         
@@ -284,7 +294,7 @@ export function ExcelExportDialog({
     } finally {
       resetExport()
     }
-  }, [assetType, title, t, exportOption, selectedAssetIds, department, showByDeptOption, departments, resetExport]) // Removed apiClient from dependencies
+  }, [assetType, title, t, exportOption, selectedAssetIds, department, showByDeptOption, departments, resetExport, onClose])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

@@ -21,6 +21,25 @@ import {
 } from '@tanstack/react-table'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
+// Add dnd-kit imports for drag and drop functionality
+import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
 import { Button } from '@/components/ui/button'
 
 
@@ -61,6 +80,117 @@ interface DataTableProps<TData, TValue> {
   // New prop for virtualization
   enableVirtualization?: boolean
   virtualItemHeight?: number
+  // New prop for column reordering
+  enableColumnReordering?: boolean
+  // Callback for when columns are reordered
+  onColumnOrderChange?: (newOrder: string[]) => void
+}
+
+// Draggable table header component
+function DraggableTableHeader({
+  header,
+  index,
+  sortable,
+  disableBuiltInFeatures,
+  enableColumnResizing,
+}: {
+  header: any
+  index: number
+  sortable: boolean
+  disableBuiltInFeatures: boolean
+  enableColumnResizing: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: header.id,
+  })
+
+  const isFirstColumn = index === 0
+  const isCheckboxColumn = header.id === 'select'
+  const isActionsColumn = header.id === 'actions'
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 1 : undefined,
+    position: isFirstColumn ? 'sticky' : 'relative',
+    width: isCheckboxColumn ? 40 : isActionsColumn ? 70 : header.getSize(),
+    minWidth: isCheckboxColumn ? 40 : isActionsColumn ? 70 : 120,
+  } as React.CSSProperties
+
+  return (
+    <TableHead 
+      ref={setNodeRef}
+      style={style}
+      className={`
+        ${isFirstColumn ? 'sticky-column' : ''}
+        ${isCheckboxColumn ? 'w-10' : ''}
+        ${isActionsColumn ? 'w-[70px]' : ''}
+        ${isDragging ? 'shadow-lg rounded-md' : ''}
+      `}
+    >
+      {header.isPlaceholder ? null : (
+        <div
+          {...{
+            className: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
+              ? "cursor-pointer select-none flex items-center justify-between"
+              : "flex items-center justify-between",
+            onClick: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
+              ? header.column.getToggleSortingHandler()
+              : undefined,
+          }}
+        >
+          <div 
+            className="break-words whitespace-normal text-sm font-medium flex items-center gap-1"
+            {...(header.column.id !== 'select' && header.column.id !== 'actions' ? attributes : {})}
+            {...(header.column.id !== 'select' && header.column.id !== 'actions' ? listeners : {})}
+          >
+            {header.column.id !== 'select' && header.column.id !== 'actions' && (
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="h-4 w-4 text-muted-foreground cursor-grab"
+              >
+                <line x1="9" x2="9" y1="5" y2="19" />
+                <line x1="15" x2="15" y1="5" y2="19" />
+              </svg>
+            )}
+            <div>
+              {flexRender(
+                header.column.columnDef.header,
+                header.getContext()
+              )}
+            </div>
+          </div>
+          {(sortable && header.column.getCanSort() && !disableBuiltInFeatures) && (
+            <span className="ml-1 flex-shrink-0">
+              {{
+                asc: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-primary"><path d="m5 15 7-7 7 7"/></svg>,
+                desc: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-primary"><path d="m19 9-7 7-7-7"/></svg>
+              }[header.column.getIsSorted() as string] ?? 
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-muted-foreground opacity-30"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>}
+            </span>
+          )}
+          {enableColumnResizing && !isCheckboxColumn && (
+            <div
+              onMouseDown={header.getResizeHandler()}
+              onTouchStart={header.getResizeHandler()}
+              className={`column-resize-handle ${
+                header.column.getIsResizing() ? 'resizing' : ''
+              }`}
+            />
+          )}
+        </div>
+      )}
+    </TableHead>
+  )
 }
 
 export function DataTable<TData, TValue>({
@@ -80,6 +210,8 @@ export function DataTable<TData, TValue>({
   enableColumnResizing = false,
   enableVirtualization = false,
   virtualItemHeight = 50,
+  enableColumnReordering = false,
+  onColumnOrderChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -89,6 +221,35 @@ export function DataTable<TData, TValue>({
   const [columnSizing, setColumnSizing] = React.useState<Record<string, number>>({})
   // State for mobile view toggle
   const [isMobileView, setIsMobileView] = React.useState(false);
+  // State for column order
+  const [columnOrder, setColumnOrder] = React.useState<string[]>(() => 
+    columns.map(column => column.id as string || (column as any).accessorKey)
+  );
+
+  // Setup sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(MouseSensor, {}),
+    useSensor(TouchSensor, {}),
+    useSensor(KeyboardSensor, {})
+  )
+
+  // Handle drag end event for column reordering
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (over && active.id !== over.id) {
+      setColumnOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        const newOrder = arrayMove(items, oldIndex, newIndex)
+        
+        // Notify parent component of column order change
+        onColumnOrderChange?.(newOrder)
+        
+        return newOrder
+      })
+    }
+  }
 
   // Clear row selection when data changes (e.g., after bulk delete)
   React.useEffect(() => {
@@ -129,6 +290,7 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnSizing,
+      columnOrder: enableColumnReordering ? columnOrder : undefined,
     },
     onColumnSizingChange: setColumnSizing,
     enableColumnResizing: enableColumnResizing,
@@ -307,15 +469,16 @@ export function DataTable<TData, TValue>({
               {row.getVisibleCells().map((cell, index) => {
                 const isFirstColumn = index === 0;
                 const isCheckboxColumn = cell.column.id === 'select';
+                const isActionsColumn = cell.column.id === 'actions';
                 
                 return (
                   <TableCell 
                     key={cell.id} 
-                    className={`align-middle ${isFirstColumn ? 'sticky-column' : ''}`}
+                    className={`align-middle ${isFirstColumn ? 'sticky-column' : ''} ${isActionsColumn ? 'w-[70px]' : ''}`}
                     style={{
-                      width: isCheckboxColumn ? 40 : cell.column.getSize(),
-                      minWidth: isCheckboxColumn ? 40 : 120,
-                      maxWidth: isCheckboxColumn ? 40 : 'none',
+                      width: isCheckboxColumn ? 40 : isActionsColumn ? 70 : cell.column.getSize(),
+                      minWidth: isCheckboxColumn ? 40 : isActionsColumn ? 70 : 120,
+                      maxWidth: isCheckboxColumn ? 40 : isActionsColumn ? 70 : 'none',
                     }}
                   >
                     <div className={`${isCheckboxColumn ? '' : 'break-words whitespace-normal text-sm'} overflow-hidden text-ellipsis`}>
@@ -337,6 +500,99 @@ export function DataTable<TData, TValue>({
     );
   });
   OptimizedTableBody.displayName = 'OptimizedTableBody';
+
+  // Render table header with or without drag and drop
+  const renderTableHeader = () => {
+    if (enableColumnReordering) {
+      // Create a wrapper component that renders the table header without placing divs inside table
+      return (
+        <TableHeader className="modern-data-table-header">
+          {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => (
+            <TableRow key={headerGroup.id} className="bg-muted/30">
+              {headerGroup.headers.map((header, index) => (
+                <DraggableTableHeader
+                  key={header.id}
+                  header={header}
+                  index={index}
+                  sortable={sortable}
+                  disableBuiltInFeatures={disableBuiltInFeatures}
+                  enableColumnResizing={enableColumnResizing}
+                />
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+      );
+    }
+
+    return (
+      <TableHeader className="modern-data-table-header">
+        {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => (
+          <TableRow key={headerGroup.id} className="bg-muted/30">
+            {headerGroup.headers.map((header, index) => {
+              const isFirstColumn = index === 0;
+              const isCheckboxColumn = header.id === 'select';
+              const isActionsColumn = header.id === 'actions';
+              
+              return (
+                <TableHead 
+                  key={header.id} 
+                  className={`
+                    ${isFirstColumn ? 'sticky-column' : ''}
+                    ${isCheckboxColumn ? 'w-10' : ''}
+                    ${isActionsColumn ? 'w-[70px]' : ''}
+                  `}
+                  style={{
+                    width: isCheckboxColumn ? 40 : isActionsColumn ? 70 : header.getSize(),
+                    minWidth: isCheckboxColumn ? 40 : isActionsColumn ? 70 : 120,
+                    position: isFirstColumn ? 'sticky' : 'relative',
+                  }}
+                >
+                  {header.isPlaceholder ? null : (
+                    <div
+                      {...{
+                        className: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
+                          ? "cursor-pointer select-none flex items-center justify-between"
+                          : "flex items-center justify-between",
+                        onClick: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
+                          ? header.column.getToggleSortingHandler()
+                          : undefined,
+                      }}
+                    >
+                      <div className="break-words whitespace-normal text-sm font-medium">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </div>
+                      {(sortable && header.column.getCanSort() && !disableBuiltInFeatures) && (
+                        <span className="ml-1 flex-shrink-0">
+                          {{
+                            asc: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-primary"><path d="m5 15 7-7 7 7"/></svg>,
+                            desc: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-primary"><path d="m19 9-7 7-7-7"/></svg>
+                          }[header.column.getIsSorted() as string] ?? 
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-muted-foreground opacity-30"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>}
+                        </span>
+                      )}
+                      {enableColumnResizing && !isCheckboxColumn && (
+                        <div
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          className={`column-resize-handle ${
+                            header.column.getIsResizing() ? 'resizing' : ''
+                          }`}
+                        />
+                      )}
+                    </div>
+                  )}
+                </TableHead>
+              )
+            })}
+          </TableRow>
+        ))}
+      </TableHeader>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -363,78 +619,40 @@ export function DataTable<TData, TValue>({
       {/* Table Container with Enhanced Horizontal Scrolling */}
       <div className="modern-data-table-container">
         <div className="overflow-x-auto">
-          <Table className="w-full table-fixed">
-            <TableHeader className="modern-data-table-header">
-              {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => (
-                <TableRow key={headerGroup.id} className="bg-muted/30">
-                  {headerGroup.headers.map((header, index) => {
-                    const isFirstColumn = index === 0;
-                    const isCheckboxColumn = header.id === 'select';
-                    
-                    return (
-                      <TableHead 
-                        key={header.id} 
-                        className={`
-                          ${isFirstColumn ? 'sticky-column' : ''}
-                          ${isCheckboxColumn ? 'w-10' : ''}
-                        `}
-                        style={{
-                          width: isCheckboxColumn ? 40 : header.getSize(),
-                          minWidth: isCheckboxColumn ? 40 : 120,
-                          position: isFirstColumn ? 'sticky' : 'relative',
-                        }}
-                      >
-                        {header.isPlaceholder ? null : (
-                          <div
-                            {...{
-                              className: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
-                                ? "cursor-pointer select-none flex items-center justify-between"
-                                : "flex items-center justify-between",
-                              onClick: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
-                                ? header.column.getToggleSortingHandler()
-                                : undefined,
-                            }}
-                          >
-                            <div className="break-words whitespace-normal text-sm font-medium">
-                              {flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                            </div>
-                            {(sortable && header.column.getCanSort() && !disableBuiltInFeatures) && (
-                              <span className="ml-1 flex-shrink-0">
-                                {{
-                                  asc: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-primary"><path d="m5 15 7-7 7 7"/></svg>,
-                                  desc: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-primary"><path d="m19 9-7 7-7-7"/></svg>
-                                }[header.column.getIsSorted() as string] ?? 
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-muted-foreground opacity-30"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>}
-                              </span>
-                            )}
-                            {enableColumnResizing && !isCheckboxColumn && (
-                              <div
-                                onMouseDown={header.getResizeHandler()}
-                                onTouchStart={header.getResizeHandler()}
-                                className={`column-resize-handle ${
-                                  header.column.getIsResizing() ? 'resizing' : ''
-                                }`}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <OptimizedTableBody 
-              table={table} 
-              data={data} 
-              onRowClick={onRowClick} 
-              enableVirtualization={enableVirtualization}
-              virtualItemHeight={virtualItemHeight}
-            />
-          </Table>
+          {enableColumnReordering ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={columnOrder}
+                strategy={horizontalListSortingStrategy}
+              >
+                <Table className="w-full table-fixed">
+                  {renderTableHeader()}
+                  <OptimizedTableBody 
+                    table={table} 
+                    data={data} 
+                    onRowClick={onRowClick} 
+                    enableVirtualization={enableVirtualization}
+                    virtualItemHeight={virtualItemHeight}
+                  />
+                </Table>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <Table className="w-full table-fixed">
+              {renderTableHeader()}
+              <OptimizedTableBody 
+                table={table} 
+                data={data} 
+                onRowClick={onRowClick} 
+                enableVirtualization={enableVirtualization}
+                virtualItemHeight={virtualItemHeight}
+              />
+            </Table>
+          )}
         </div>
       </div>
 

@@ -27,8 +27,7 @@ const printerHandler = new AssetApiHandler<PrinterAsset>(db, {
   modelName: 'Printer',
   requiredFields: ['dept', 'barcode', 'color'],
   uniqueField: 'barcode',
-  searchFields: ['barcode', 'dept', 'model', 'ip', 'note'],
-  include: {}
+  searchFields: ['barcode', 'dept', 'model', 'ip', 'note']
 })
 
 // GET /api/assets/printer/[id] - Get a specific Printer asset
