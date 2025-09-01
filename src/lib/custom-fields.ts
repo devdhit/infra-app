@@ -29,12 +29,13 @@ export const isCustomField = (
   asset: any, 
   customFieldsData?: any[]
 ): boolean => {
-  // Check if the field exists in customFieldsData
+  // Check if the field exists in customFieldsData - this is the primary way to determine if a field is custom
   if (customFieldsData) {
     return customFieldsData.some((cf: any) => cf.name === fieldName);
   }
   
   // Fallback: check if field exists in asset.customFields but not directly on asset
+  // This is a more reliable check than just checking if the field exists in customFields
   return asset.customFields && 
          fieldName in asset.customFields && 
          !(fieldName in asset);

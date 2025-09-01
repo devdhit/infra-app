@@ -27,8 +27,8 @@ interface InlineEditCellProps {
   field: AssetFormField
   value: any
   onUpdate: (newValue: any) => void
-  isCustomField?: boolean // Add this prop to explicitly indicate if it's a custom field
-  customFieldsData?: any[] // Add this prop to pass custom fields data
+  isCustomField?: boolean
+  customFieldsData?: any[]
 }
 
 export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField, customFieldsData }: InlineEditCellProps) {
@@ -42,9 +42,9 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
   // Map assetType to modelType for custom fields
   const modelType = getModelType(assetType);
 
-  // Determine if this is a custom field
-  const isCustom = isCustomField(field.name, asset, customFieldsData) || propIsCustomField === true;
-
+  // Determine if this is a custom field - prioritize the prop if provided, otherwise use the utility function
+  const isCustom = propIsCustomField !== undefined ? propIsCustomField : isCustomField(field.name, asset, customFieldsData);
+  
   // Always call both hooks to comply with React's rules of hooks
   const updateCustomFieldsMutation = useUpdateAssetCustomFields(modelType, asset.id)
   const updateAssetMutation = useUpdateAsset(assetType, asset.id)
@@ -143,24 +143,6 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
       }
       
       toast.error(message)
-    }
-  }
-  
-  // Helper function to update asset data
-  const updateAssetData = (item: any, fieldName: string, value: any, isCustomField: boolean) => {
-    if (isCustomField) {
-      return {
-        ...item,
-        customFields: {
-          ...(item.customFields || {}),
-          [fieldName]: value
-        }
-      };
-    } else {
-      return {
-        ...item,
-        [fieldName]: value
-      };
     }
   }
   

@@ -27,10 +27,8 @@ interface WarehouseITAsset {
 const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
   modelName: 'WarehouseIT',
   requiredFields: ['status'],
-  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'note'],
-  include: {
-    customFields: true // Include custom fields in responses
-  }
+  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'note']
+  // Remove the include option as customFields is a scalar field, not a relation
 })
 
 // GET /api/assets/warehouse/[id] - Get a specific WarehouseIT asset

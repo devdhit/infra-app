@@ -7,6 +7,7 @@ import {
   conflictResponse,
   validationErrorResponse
 } from './api-utils'
+import { db } from '@/lib/db'
 
 // Define the structure for asset operations
 interface AssetOperations<T> {
@@ -253,12 +254,22 @@ export class AssetApiHandler<T> {
   // Get a specific asset by ID
   async getById(user: { tenantId: string }, id: string) {
     try {
+      // Get select fields for this asset type
+      const selectFields = {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        tenantId: true,
+        // Add other commonly used fields based on asset type
+        ...this.getSelectFieldsForAssetType()
+      };
+      
       const asset = await (this.db as any)[this.operations.modelName].findUnique({
         where: { 
           id,
           tenantId: user.tenantId 
         },
-        include: this.operations.include
+        select: selectFields
       })
 
       if (!asset) {
@@ -391,7 +402,14 @@ export class AssetApiHandler<T> {
           ...createData as any,
           tenantId: user.tenantId
         },
-        include: this.operations.include
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          tenantId: true,
+          // Add other commonly used fields based on asset type
+          ...this.getSelectFieldsForAssetType()
+        }
       })
 
       // Create history record after asset creation
@@ -428,6 +446,8 @@ export class AssetApiHandler<T> {
   // Update an existing asset
   async update(user: { id: string; tenantId: string }, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
     try {
+      console.log(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
+      
       // Check if asset exists and belongs to user's tenant
       const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
         where: { 
@@ -437,6 +457,7 @@ export class AssetApiHandler<T> {
       })
 
       if (!existingAsset) {
+        console.log(`Asset ${id} not found for tenant ${user.tenantId}`);
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
 
@@ -523,6 +544,7 @@ export class AssetApiHandler<T> {
 
       // Return validation errors if any
       if (Object.keys(validationErrors).length > 0) {
+        console.log("Validation errors:", validationErrors);
         return validationErrorResponse(validationErrors)
       }
 
@@ -549,6 +571,7 @@ export class AssetApiHandler<T> {
         }
 
         if (existingAssetWithUniqueField) {
+          console.log(`Asset with ${this.operations.uniqueField} ${body[this.operations.uniqueField]} already exists`);
           return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`);
         }
       }
@@ -595,14 +618,20 @@ export class AssetApiHandler<T> {
       }
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
+      console.log(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
 
       const updateData = Object.keys(body || {}).reduce((acc, key) => {
         // Only include valid fields for this model and non-undefined values
-        if (modelValidFields.includes(key) && body[key as keyof T] !== undefined) {
+        // Allow both direct fields and customFields to be updated
+        if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof T] !== undefined) {
           (acc as any)[key] = body[key as keyof T];
+        } else {
+          console.log(`Skipping field ${key} - not valid or undefined`);
         }
         return acc;
       }, {} as Partial<T>);
+      
+      console.log("Update data to be sent to database:", updateData);
 
       const asset = await (this.db as any)[this.operations.modelName].update({
         where: { 
@@ -610,12 +639,20 @@ export class AssetApiHandler<T> {
           tenantId: user.tenantId 
         },
         data: updateData as any,
-        include: this.operations.include
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          tenantId: true,
+          // Add other commonly used fields based on asset type
+          ...this.getSelectFieldsForAssetType()
+        }
       })
 
       return successResponse(asset)
     } catch (error: any) {
       if (error.code === 'P2025') {
+        console.log(`Asset ${id} not found during update`);
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
       
@@ -765,3 +802,12 @@ export class AssetApiHandler<T> {
     }
   }
 }
+
+// Create handler for PC assets
+const pcHandler = new AssetApiHandler<PCAsset>(db, {
+  modelName: 'PC',
+  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
+  uniqueField: 'cpuBarcode',
+  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note']
+  // Remove the include option as customFields is a scalar field, not a relation
+})

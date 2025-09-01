@@ -144,8 +144,34 @@ export function useUpdateAsset<T, V>(assetType: string, id: string) {
     `/assets/${assetType}/${id}`,
     {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType, id] })
+        // Get current pagination parameters from cache
+        const queryKeys = queryClient.getQueryCache().getAll().map(query => query.queryKey);
+        
+        // Refresh the main list view
+        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+        
+        // Refresh any cached pagination versions
+        queryKeys.forEach(key => {
+          // Check if this is a paginated assets query for this asset type
+          if (Array.isArray(key) && 
+              key.length > 2 && 
+              key[0] === 'assets' && 
+              key[1] === assetType && 
+              typeof key[2] === 'string') {
+            // Forcefully invalidate this specific query
+            queryClient.invalidateQueries({ queryKey: key, exact: true });
+            // Force a refetch of this specific query
+            queryClient.refetchQueries({ queryKey: key, exact: true });
+          }
+        });
+        
+        // Invalidate the specific asset query to ensure view/edit dialogs refresh
+        queryClient.invalidateQueries({ queryKey: ['assets', assetType, id] });
+        
+        // Force a refetch of all invalidated queries to ensure data is up-to-date
+        setTimeout(() => {
+          queryClient.refetchQueries({ queryKey: ['assets', assetType] });
+        }, 100);
       },
       onError: (error: ApiError) => {
         console.error(`Error updating ${assetType} with id ${id}:`, error)
