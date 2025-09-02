@@ -104,6 +104,19 @@ export async function GET(request: NextRequest) {
       }))
     }
 
+    // Get total counts for Monitors, and UPSs across all assets
+    const totalMonitorCount = pcDepartmentStats.reduce((sum, dept) => sum + (dept._count.monitorBarcode || 0), 0);
+    
+    const totalUpsCount = pcDepartmentStats.reduce((sum, dept) => sum + (dept._count.upsBarcode || 0), 0);
+
+    // Get total department count
+    const totalDepartmentCount = new Set([
+      ...pcDepartmentStats.map((dept: any) => dept.dept),
+      ...laptopDepartmentStats.map((dept: any) => dept.dept),
+      ...printerDepartmentStats.map((dept: any) => dept.dept),
+      ...licenseDepartmentStats.map((dept: any) => dept.dept)
+    ]).size;
+
     // Get custom fields for all asset types
     const customFields = await db.customField.findMany({
       where: {
@@ -127,6 +140,24 @@ export async function GET(request: NextRequest) {
       take: 5
     })
 
+    // Get license expiration data (licenses expiring in the next 30 days)
+    const upcomingExpirations = await db.license.count({
+      where: {
+        tenantId: user.tenantId,
+        date: {
+          lte: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          gte: new Date() // Not already expired
+        }
+      }
+    })
+
+    // Get user count for the tenant
+    const userCount = await db.user.count({
+      where: {
+        tenantId: user.tenantId
+      }
+    })
+
     return new Response(JSON.stringify({
       assets: {
         total: pcCount + laptopCount + printerCount + licenseCount + warehouseCount,
@@ -143,7 +174,12 @@ export async function GET(request: NextRequest) {
       departmentStats: departmentAssetStats,
       allDepartmentStats,
       customFields,
-      recentActivities
+      recentActivities,
+      licenseExpirations: upcomingExpirations,
+      userCount,
+      totalDepartmentCount,
+      totalMonitorCount,
+      totalUpsCount
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

@@ -1,50 +1,110 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "@/hooks/use-translation"
-import { useApplicationName } from "@/hooks/use-application-name"
 import { toast } from "sonner"
 import { SettingsLayout } from "@/components/settings/settings-layout"
+import { getApplicationSettings, updateApplicationSettings, resetApplicationSettings } from '@/lib/api/application'
 
 export default function ApplicationSettingsPage() {
   const { t } = useTranslation()
-  const { applicationName, updateApplicationName, resetApplicationName } = useApplicationName()
-  const [appName, setAppName] = useState(applicationName)
+  const [appName, setAppName] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  // Update the local state when the application name changes
-  useEffect(() => {
-    setAppName(applicationName)
-  }, [applicationName])
-
-  const handleSave = () => {
+  // Load application settings
+  const loadApplicationSettings = useCallback(async () => {
     try {
-      updateApplicationName(appName)
+      setIsLoading(true)
+      const settings = await getApplicationSettings()
+      setAppName(settings.applicationName)
+    } catch (error) {
+      toast.error(t('settings.application.loadError') || 'Failed to load application settings')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [t, setAppName, setIsLoading])
+
+  useEffect(() => {
+    loadApplicationSettings()
+  }, [loadApplicationSettings])
+
+  // Validate the application name
+  const validateAppName = (name: string) => {
+    if (name.length > 50) {
+      return t('settings.application.nameTooLong') || 'Application name must be less than 50 characters'
+    }
+    return ''
+  }
+
+  const handleSave = async () => {
+    // Validate input
+    const validationError = validateAppName(appName)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    
+    setError('')
+    setIsSaving(true)
+    
+    try {
+      const updatedSettings = await updateApplicationSettings({ applicationName: appName })
+      setAppName(updatedSettings.applicationName)
       // Show success message
       toast.success(t('settings.application.nameUpdated') || 'Application name updated successfully')
-      
-      // Reload the page to reflect changes
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
     } catch (error) {
       toast.error(t('settings.application.updateError') || 'Failed to update application name')
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const handleReset = () => {
-    resetApplicationName()
+  const handleReset = async () => {
+    try {
+      setIsSaving(true)
+      const updatedSettings = await resetApplicationSettings()
+      setAppName(updatedSettings.applicationName)
+      // Show success message
+      toast.success(t('settings.application.resetSuccess') || 'Application name reset to default')
+    } catch (error) {
+      toast.error(t('settings.application.resetError') || 'Failed to reset application name')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setAppName(value)
     
-    // Show success message
-    toast.success(t('settings.application.resetSuccess') || 'Application name reset to default')
+    // Clear error when user starts typing
+    if (error) {
+      setError('')
+    }
     
-    // Reload the page to reflect changes
-    setTimeout(() => {
-      window.location.reload()
-    }, 1000)
+    // Validate as user types
+    const validationError = validateAppName(value)
+    setError(validationError)
+  }
+
+  if (isLoading) {
+    return (
+      <SettingsLayout
+        title={t('settings.application.title') || 'Application Settings'}
+        description={t('settings.application.description') || 'Customize the application name and branding'}
+        currentPage={t('settings.application.title') || 'Application'}
+      >
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      </SettingsLayout>
+    )
   }
 
   return (
@@ -68,9 +128,17 @@ export default function ApplicationSettingsPage() {
             <Input
               id="app-name"
               value={appName}
-              onChange={(e) => setAppName(e.target.value)}
+              onChange={handleInputChange}
               placeholder={t('settings.application.namePlaceholder') || 'Enter application name'}
+              disabled={isSaving}
+              maxLength={50}
             />
+            {error && (
+              <p className="text-sm text-red-500">{error}</p>
+            )}
+            <p className="text-sm text-muted-foreground">
+              {appName.length}/50 {t('settings.application.characters') || 'characters'}
+            </p>
           </div>
           
           <div className="space-y-2">
@@ -86,10 +154,10 @@ export default function ApplicationSettingsPage() {
           </div>
           
           <div className="flex gap-3 pt-4">
-            <Button onClick={handleSave}>
-              {t('common.save') || 'Save'}
+            <Button onClick={handleSave} disabled={isSaving || !!error}>
+              {isSaving ? (t('common.saving') || 'Saving...') : (t('common.save') || 'Save')}
             </Button>
-            <Button variant="outline" onClick={handleReset}>
+            <Button variant="outline" onClick={handleReset} disabled={isSaving}>
               {t('settings.application.reset') || 'Reset to Default'}
             </Button>
           </div>
@@ -109,7 +177,7 @@ export default function ApplicationSettingsPage() {
               <h3 className="text-sm font-medium mb-2">{t('settings.application.desktopPreview') || 'Desktop Sidebar'}</h3>
               <div className="p-4 rounded-lg border bg-background">
                 <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
-                  {appName || 'IT Asset Management'}
+                  {appName || t('common.applicationName') || 'IT Asset Management'}
                 </div>
               </div>
             </div>

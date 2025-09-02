@@ -57,6 +57,58 @@ export interface DepartmentStats {
   }>;
 }
 
+// New interfaces for dashboard summary data
+export interface PCSummary {
+  cpu: string | null;
+  monitorBarcode: string | null;
+  upsBarcode: string | null;
+  _count: number;
+}
+
+export interface LaptopSummary {
+  status: string | null;
+  model: string | null;
+  _count: number;
+}
+
+export interface PrinterSummary {
+  color: string | null;
+  model: string | null;
+  location: string | null;
+  _count: number;
+}
+
+export interface LicenseSummary {
+  softwareName: string | null;
+  productType: string | null;
+  licenseKey: string | null;
+  _count: number;
+}
+
+export interface WarehouseITSummary {
+  cpuBarcode: string | null;
+  cpuSapBarcode: string | null;
+  monitorBarcode: string | null;
+  monitorSapBarcode: string | null;
+  upsBarcode: string | null;
+  upsSapBarcode: string | null;
+  status: string | null;
+  model: string | null;
+  ram: string | null;
+  cpu: string | null;
+  type: string | null;
+  _count: number;
+}
+
+export interface DashboardSummaryData {
+  pc: PCSummary[];
+  laptop: LaptopSummary[];
+  printer: PrinterSummary[];
+  license: LicenseSummary[];
+  warehouseIT: WarehouseITSummary[];
+  customFields: CustomField[];
+}
+
 export interface DashboardData {
   assets: AssetCounts;
   statusBreakdown: StatusBreakdown;
@@ -64,4 +116,9 @@ export interface DashboardData {
   allDepartmentStats: DepartmentStats;
   customFields: CustomField[];
   recentActivities: RecentActivity[];
+  licenseExpirations?: number;
+  userCount?: number;
+  totalDepartmentCount?: number;
+  totalMonitorCount?: number;
+  totalUpsCount?: number;
 }

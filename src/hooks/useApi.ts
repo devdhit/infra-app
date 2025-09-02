@@ -594,6 +594,51 @@ export function useDashboard<T = DashboardData>() {
   return useApiQuery<T>(['dashboard'], '/dashboard')
 }
 
+export interface DashboardSummaryData {
+  pc: Array<{
+    cpu: string | null;
+    monitorBarcode: string | null;
+    upsBarcode: string | null;
+    _count: number;
+  }>;
+  laptop: Array<{
+    status: string | null;
+    model: string | null;
+    _count: number;
+  }>;
+  printer: Array<{
+    color: string | null;
+    model: string | null;
+    location: string | null;
+    _count: number;
+  }>;
+  license: Array<{
+    softwareName: string | null;
+    productType: string | null;
+    licenseKey: string | null;
+    _count: number;
+  }>;
+  warehouseIT: Array<{
+    cpuBarcode: string | null;
+    cpuSapBarcode: string | null;
+    monitorBarcode: string | null;
+    monitorSapBarcode: string | null;
+    upsBarcode: string | null;
+    upsSapBarcode: string | null;
+    status: string | null;
+    model: string | null;
+    ram: string | null;
+    cpu: string | null;
+    type: string | null;
+    _count: number;
+  }>;
+  customFields: CustomField[];
+}
+
+export function useDashboardSummary<T = DashboardSummaryData>() {
+  return useApiQuery<T>(['dashboard-summary'], '/dashboard/summary')
+}
+
 // Current user hook
 export function useCurrentUser() {
   // Only make the API call if there's a token in localStorage or API client

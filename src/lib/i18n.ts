@@ -131,9 +131,9 @@ export function hasTranslation(key: string, translations: Record<string, any>): 
 // Function to get application name from localStorage or default
 export function getApplicationName(): string {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('applicationName') || 'IT Infra Management';
+    return localStorage.getItem('applicationName') || 'IT Asset Management';
   }
-  return 'IT Infra Management';
+  return 'IT Asset Management';
 }
 
 // Function to set application name in localStorage
