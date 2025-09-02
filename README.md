@@ -294,6 +294,15 @@ For production deployments, you can use PM2 as a process manager with Nginx as a
 3. Set up Nginx as a reverse proxy using the provided `nginx.conf`
 4. Refer to `PM2_NGINX_DEPLOYMENT.md` for detailed instructions
 
+### Automated Deployment
+
+The system includes an automated deployment mechanism that monitors the GitHub repository for changes and automatically deploys updates:
+
+1. The auto-deployment system checks for changes every 5 minutes
+2. When changes are detected in the `deploy` branch, it automatically pulls updates
+3. It handles dependency installation, database migrations, and application restarts
+4. Refer to `AUTO_DEPLOYMENT.md` for detailed setup and configuration instructions
+
 ### Docker Deployment (Optional)
 
 A Dockerfile is included for containerized deployment:

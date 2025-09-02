@@ -1,0 +1,8 @@
+[Unit]
+Description=ITAMS Auto Deployment Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/itams/scripts/auto-deploy.sh
+User=root
