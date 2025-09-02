@@ -266,25 +266,57 @@
       "title": "PCs",
       "cpu": "CPU",
       "monitorBarcode": "Monitor Barcode",
-      "upsBarcode": "UPS Barcode"
+      "upsBarcode": "UPS Barcode",
+      "dept": "Department",
+      "cpuBarcode": "CPU Barcode",
+      "cpuSapBarcode": "CPU SAP Barcode",
+      "monitorSapBarcode": "Monitor SAP Barcode",
+      "upsSapBarcode": "UPS SAP Barcode",
+      "pcName": "PC Name",
+      "user": "User",
+      "status": "Status",
+      "note": "Note"
     },
     "laptop": {
       "title": "Laptops",
       "status": "Status",
-      "model": "Model"
+      "model": "Model",
+      "department": "Department",
+      "assetTag": "Barcode",
+      "sapBarcode": "SAP Barcode",
+      "purchaseDate": "Purchase Date",
+      "userName": "User Name",
+      "notes": "Note"
     },
     "printer": {
       "title": "Printers",
       "color": "Color",
       "model": "Model",
-      "location": "Location"
+      "location": "Location",
+      "department": "Department",
+      "ip": "IP Address",
+      "barcode": "Barcode",
+      "sapCode": "SAP Code",
+      "date": "Date",
+      "note": "Note",
+      "bw": "Black & White",
+      "colorValue": "Color"
     },
     "license": {
       "title": "Licenses",
       "softwareName": "Software Name",
       "productType": "Product Type",
       "licenseKey": "License Key",
-      "productKey": "Product Key"
+      "productKey": "Product Key",
+      "userName": "User Name",
+      "department": "Department",
+      "model": "Model",
+      "pc": "PC",
+      "mac": "MAC Address",
+      "ip": "IP Address",
+      "purchaseDate": "Purchase Date",
+      "status": "Status",
+      "note": "Note"
     },
     "warehouse": {
       "title": "Warehouse IT",
@@ -298,7 +330,11 @@
       "model": "Model",
       "ram": "RAM",
       "cpu": "CPU",
-      "type": "Type"
+      "type": "Type",
+      "dept": "Department",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "note": "Note"
     },
     "status": {
       "working": "Working",

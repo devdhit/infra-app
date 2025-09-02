@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLogout } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -95,12 +95,14 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
   const { t } = useTranslation();
   const { applicationName, shortName } = useApplicationName();
 
-  // Filter navigation items based on user role
-  const filteredNavigationItems = navigationItems.filter(item => 
-    !item.roles || item.roles.includes(userRole)
-  );
+  // Memoize filtered navigation items to prevent unnecessary re-renders
+  const filteredNavigationItems = useMemo(() => {
+    return navigationItems.filter(item => 
+      !item.roles || item.roles.includes(userRole)
+    );
+  }, [userRole]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await logoutMutation.mutateAsync();
       router.push('/auth/login');
@@ -108,18 +110,88 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
     } catch (error) {
       toast.error(t('auth.logout.error') || 'Failed to logout');
     }
-  };
+  }, [logoutMutation, router, t]);
 
-  const isActive = (href: string) => {
+  const isActive = useCallback((href: string) => {
     return pathname === href || pathname.startsWith(href);
-  };
+  }, [pathname]);
 
-  const toggleExpand = (nameKey: string) => {
+  const toggleExpand = useCallback((nameKey: string) => {
     setExpandedItems(prev => ({
       ...prev,
       [nameKey]: !prev[nameKey]
     }));
-  };
+  }, []);
+
+  // Memoize the navigation items rendering to prevent unnecessary re-renders
+  const renderNavigationItems = useMemo(() => {
+    return filteredNavigationItems.map((item) => (
+      <div key={item.nameKey}>
+        <Link
+          href={item.href}
+          className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            isActive(item.href)
+              ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+              : "text-foreground hover:bg-muted"
+          }`}
+          onClick={(e) => {
+            e.preventDefault(); // Prevent default to handle navigation manually
+            if (item.children) {
+              toggleExpand(item.nameKey);
+            } else {
+              setSidebarOpen(false);
+              // Use router for navigation to enable prefetching
+              router.push(item.href);
+            }
+          }}
+        >
+          <item.icon className="h-5 w-5 mr-3" />
+          <span className="flex-1">{t(item.nameKey)}</span>
+          {item.children && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpand(item.nameKey);
+              }}
+              className="p-1 rounded-full hover:bg-muted"
+            >
+              {expandedItems[item.nameKey] ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
+          )}
+        </Link>
+        {item.children && expandedItems[item.nameKey] && (
+          <div className="ml-9 mt-1 space-y-1">
+            {item.children
+              .filter(child => !child.roles || child.roles.includes(userRole))
+              .map((child) => (
+                <Link
+                  key={child.nameKey}
+                  href={child.href}
+                  className={`flex items-center px-3 py-2 rounded-lg text-sm ${
+                    isActive(child.href)
+                      ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSidebarOpen(false);
+                    // Use router for navigation to enable prefetching
+                    router.push(child.href);
+                  }}
+                >
+                  <child.icon className="h-4 w-4 mr-3" />
+                  {t(child.nameKey)}
+                </Link>
+              ))}
+          </div>
+        )}
+      </div>
+    ));
+  }, [filteredNavigationItems, isActive, expandedItems, toggleExpand, router, t, userRole]);
 
   return (
     <>
@@ -173,64 +245,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
             </Button>
           </div>
           <nav className="space-y-1">
-            {filteredNavigationItems.map((item) => (
-              <div key={item.nameKey}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    isActive(item.href)
-                      ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
-                      : "text-foreground hover:bg-muted"
-                  }`}
-                  onClick={() => {
-                    if (item.children) {
-                      toggleExpand(item.nameKey);
-                    } else {
-                      setSidebarOpen(false);
-                    }
-                  }}
-                >
-                  <item.icon className="h-5 w-5 mr-3" />
-                  <span className="flex-1">{t(item.nameKey)}</span>
-                  {item.children && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleExpand(item.nameKey);
-                      }}
-                      className="p-1 rounded-full hover:bg-muted"
-                    >
-                      {expandedItems[item.nameKey] ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </button>
-                  )}
-                </Link>
-                {item.children && expandedItems[item.nameKey] && (
-                  <div className="ml-9 mt-1 space-y-1">
-                    {item.children
-                      .filter(child => !child.roles || child.roles.includes(userRole))
-                      .map((child) => (
-                        <Link
-                          key={child.nameKey}
-                          href={child.href}
-                          className={`flex items-center px-3 py-2 rounded-lg text-sm ${
-                            isActive(child.href)
-                              ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
-                              : "text-foreground hover:bg-muted"
-                          }`}
-                          onClick={() => setSidebarOpen(false)}
-                        >
-                          <child.icon className="h-4 w-4 mr-3" />
-                          {t(child.nameKey)}
-                        </Link>
-                      ))}
-                  </div>
-                )}
-              </div>
-            ))}
+            {renderNavigationItems}
           </nav>
         </div>
       </div>
@@ -245,61 +260,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
           </div>
           <div className="mt-5 flex-grow flex flex-col">
             <nav className="flex-1 px-3 space-y-1">
-              {filteredNavigationItems.map((item) => (
-                <div key={item.nameKey}>
-                  <Link
-                    href={item.href}
-                    className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      isActive(item.href)
-                        ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border-l-4 border-blue-500 dark:from-blue-950/50 dark:to-indigo-950/50 dark:text-blue-300"
-                        : "text-foreground hover:bg-muted"
-                    }`}
-                    onClick={() => {
-                      if (item.children) {
-                        toggleExpand(item.nameKey);
-                      }
-                    }}
-                  >
-                    <item.icon className={`h-5 w-5 mr-3 ${isActive(item.href) ? "text-blue-600 dark:text-blue-400" : ""}`} />
-                    <span className="flex-1">{t(item.nameKey)}</span>
-                    {item.children && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleExpand(item.nameKey);
-                        }}
-                        className="p-1 rounded-full hover:bg-muted"
-                      >
-                        {expandedItems[item.nameKey] ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </button>
-                    )}
-                  </Link>
-                  {item.children && expandedItems[item.nameKey] && (
-                    <div className="ml-9 mt-1 space-y-1">
-                      {item.children
-                        .filter(child => !child.roles || child.roles.includes(userRole))
-                        .map((child) => (
-                          <Link
-                            key={child.nameKey}
-                            href={child.href}
-                            className={`flex items-center px-3 py-2 rounded-lg text-sm transition-all ${
-                              isActive(child.href)
-                                ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
-                                : "text-foreground hover:bg-muted"
-                            }`}
-                          >
-                            <child.icon className={`h-4 w-4 mr-3 ${isActive(child.href) ? "text-blue-600 dark:text-blue-400" : ""}`} />
-                            {t(child.nameKey)}
-                          </Link>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {renderNavigationItems}
             </nav>
           </div>
           <div className="flex-shrink-0 p-4 border-t flex items-center justify-between">

@@ -1,8 +1,10 @@
 'use client'
 
 import { AssetList } from "@/components/assets/asset-list";
+import { AssetListSkeleton } from "@/components/assets/asset-list-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 import { getAssetTypes } from "@/config/asset-types";
+import { Suspense } from "react";
 
 export default function LicenseAssetsPage() {
   const { t, loading } = useTranslation();
@@ -25,11 +27,13 @@ export default function LicenseAssetsPage() {
   }
 
   return (
-    <AssetList
-      assetType="license"
-      title={t('assets.license.title') || "License"}
-      columns={licenseAssetType.columns}
-      formFields={licenseAssetType.formFields}
-    />
+    <Suspense fallback={<AssetListSkeleton />}>
+      <AssetList
+        assetType="license"
+        title={t('assets.license.title') || "License"}
+        columns={licenseAssetType.columns}
+        formFields={licenseAssetType.formFields}
+      />
+    </Suspense>
   );
 }

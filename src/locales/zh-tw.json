@@ -266,25 +266,57 @@
       "title": "電腦",
       "cpu": "CPU",
       "monitorBarcode": "監視器條碼",
-      "upsBarcode": "UPS 條碼"
+      "upsBarcode": "UPS 條碼",
+      "dept": "部門",
+      "cpuBarcode": "CPU 條碼",
+      "cpuSapBarcode": "CPU SAP 條碼",
+      "monitorSapBarcode": "監視器 SAP 條碼",
+      "upsSapBarcode": "UPS SAP 條碼",
+      "pcName": "電腦名稱",
+      "user": "使用者",
+      "status": "狀態",
+      "note": "備註"
     },
     "laptop": {
       "title": "筆電",
       "status": "狀態",
-      "model": "型號"
+      "model": "型號",
+      "department": "部門",
+      "assetTag": "資產標籤",
+      "sapBarcode": "SAP 條碼",
+      "purchaseDate": "購買日期",
+      "userName": "使用者名稱",
+      "notes": "備註"
     },
     "printer": {
       "title": "印表機",
       "color": "顏色",
       "model": "型號",
-      "location": "位置"
+      "location": "位置",
+      "department": "部門",
+      "ip": "IP 位址",
+      "barcode": "條碼",
+      "sapCode": "SAP 代碼",
+      "date": "日期",
+      "note": "備註",
+      "bw": "黑白",
+      "colorValue": "彩色"
     },
     "license": {
       "title": "授權",
       "softwareName": "軟體名稱",
       "productType": "產品類型",
       "licenseKey": "授權金鑰",
-      "productKey": "產品金鑰"
+      "productKey": "產品金鑰",
+      "userName": "使用者名稱",
+      "department": "部門",
+      "model": "型號",
+      "pc": "電腦",
+      "mac": "MAC 位址",
+      "ip": "IP 位址",
+      "purchaseDate": "購買日期",
+      "status": "狀態",
+      "note": "備註"
     },
     "warehouse": {
       "title": "倉儲IT",
@@ -298,7 +330,11 @@
       "model": "型號",
       "ram": "RAM",
       "cpu": "CPU",
-      "type": "類型"
+      "type": "類型",
+      "dept": "部門",
+      "createdAt": "建立時間",
+      "updatedAt": "更新時間",
+      "note": "備註"
     },
     "status": {
       "working": "工作中",

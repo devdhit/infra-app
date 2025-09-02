@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/use-translation";
+import { useMemo } from "react";
 
 const assetTypes = [
   {
@@ -57,6 +58,38 @@ const assetTypes = [
 export default function AssetsPage() {
   const { t } = useTranslation();
 
+  // Memoize the asset type cards to prevent unnecessary re-renders
+  const assetTypeCards = useMemo(() => {
+    return assetTypes.map((assetType) => {
+      const Icon = assetType.icon;
+      return (
+        <Link key={assetType.name} href={assetType.href} prefetch={false}>
+          <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full border-t-4 border-t-transparent hover:border-t-4 hover:border-t-blue-500">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {assetType.name}
+              </CardTitle>
+              <div className={`p-2 rounded-full ${assetType.color}`}>
+                <Icon className="h-4 w-4" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-muted-foreground mb-4">
+                {assetType.description}
+              </div>
+              <div className="flex items-center text-sm text-blue-600 font-medium">
+                {t('assets.view') || 'View assets'}
+                <svg className="h-4 w-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      );
+    });
+  }, [t]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -84,34 +117,7 @@ export default function AssetsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {assetTypes.map((assetType) => {
-          const Icon = assetType.icon;
-          return (
-            <Link key={assetType.name} href={assetType.href}>
-              <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full border-t-4 border-t-transparent hover:border-t-4 hover:border-t-blue-500">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {assetType.name}
-                  </CardTitle>
-                  <div className={`p-2 rounded-full ${assetType.color}`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-muted-foreground mb-4">
-                    {assetType.description}
-                  </div>
-                  <div className="flex items-center text-sm text-blue-600 font-medium">
-                    {t('assets.view') || 'View assets'}
-                    <svg className="h-4 w-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
+        {assetTypeCards}
       </div>
 
       <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">

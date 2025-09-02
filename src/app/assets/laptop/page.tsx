@@ -1,8 +1,10 @@
 'use client'
 
 import { AssetList } from "@/components/assets/asset-list";
+import { AssetListSkeleton } from "@/components/assets/asset-list-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 import { getAssetTypes } from "@/config/asset-types";
+import { Suspense } from "react";
 
 export default function LaptopAssetsPage() {
   const { t, loading } = useTranslation();
@@ -25,11 +27,13 @@ export default function LaptopAssetsPage() {
   }
 
   return (
-    <AssetList
-      assetType="laptop"
-      title={t('assets.laptop.title') || "Laptop"}
-      columns={laptopAssetType.columns}
-      formFields={laptopAssetType.formFields}
-    />
+    <Suspense fallback={<AssetListSkeleton />}>
+      <AssetList
+        assetType="laptop"
+        title={t('assets.laptop.title') || "Laptop"}
+        columns={laptopAssetType.columns}
+        formFields={laptopAssetType.formFields}
+      />
+    </Suspense>
   );
 }

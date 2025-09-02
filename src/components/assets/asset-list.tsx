@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, memo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import {
@@ -57,6 +57,30 @@ import { debounce } from '@/lib/performance';
 // Import the new separate Excel dialogs
 import { ExcelImportDialog } from "./excel-import-dialog";
 import { ExcelExportDialog } from "./excel-export-dialog";
+
+// Memoize the AssetDetailDialog component to prevent unnecessary re-renders
+const MemoizedAssetDetailDialog = memo(AssetDetailDialog);
+MemoizedAssetDetailDialog.displayName = 'MemoizedAssetDetailDialog';
+
+// Memoize the AssetFormDialog component to prevent unnecessary re-renders
+const MemoizedAssetFormDialog = memo(AssetFormDialog);
+MemoizedAssetFormDialog.displayName = 'MemoizedAssetFormDialog';
+
+// Memoize the DeleteConfirmDialog component to prevent unnecessary re-renders
+const MemoizedDeleteConfirmDialog = memo(DeleteConfirmDialog);
+MemoizedDeleteConfirmDialog.displayName = 'MemoizedDeleteConfirmDialog';
+
+// Memoize the BulkDeleteDialog component to prevent unnecessary re-renders
+const MemoizedBulkDeleteDialog = memo(BulkDeleteDialog);
+MemoizedBulkDeleteDialog.displayName = 'MemoizedBulkDeleteDialog';
+
+// Memoize the ExcelImportDialog component to prevent unnecessary re-renders
+const MemoizedExcelImportDialog = memo(ExcelImportDialog);
+MemoizedExcelImportDialog.displayName = 'MemoizedExcelImportDialog';
+
+// Memoize the ExcelExportDialog component to prevent unnecessary re-renders
+const MemoizedExcelExportDialog = memo(ExcelExportDialog);
+MemoizedExcelExportDialog.displayName = 'MemoizedExcelExportDialog';
 
 // Define the props interface for AssetList component
 interface AssetListProps {
@@ -997,7 +1021,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       </Card>
       
       {/* View Dialog */}
-      <AssetDetailDialog
+      <MemoizedAssetDetailDialog
         asset={viewAsset}
         title={title}
         columns={detailDialogColumns}
@@ -1008,7 +1032,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       />
       
       {/* Form Dialog */}
-      <AssetFormDialog
+      <MemoizedAssetFormDialog
         assetType={assetType}
         title={title}
         fields={allFormFields}
@@ -1019,7 +1043,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       />
       
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmDialog
+      <MemoizedDeleteConfirmDialog
         title={t('assets.delete.confirmTitle', `Delete {0}`, title)}
         description={t('assets.delete.confirmDescription', `Are you sure you want to delete this {0}? This action cannot be undone.`, title.toLowerCase())}
         isOpen={isDeleteDialogOpen}
@@ -1030,7 +1054,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       />
       
       {/* Bulk Delete Confirmation Dialog */}
-      <BulkDeleteDialog
+      <MemoizedBulkDeleteDialog
         title={title}
         count={selectedAssets.length}
         isOpen={isBulkDeleteDialogOpen}
@@ -1041,7 +1065,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       />
       
       {/* Import Dialog */}
-      <ExcelImportDialog
+      <MemoizedExcelImportDialog
         assetType={assetType}
         title={title}
         isOpen={isImportDialogOpen}
@@ -1050,7 +1074,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       />
       
       {/* Export Dialog */}
-      <ExcelExportDialog
+      <MemoizedExcelExportDialog
         assetType={assetType}
         title={title}
         isOpen={isExportDialogOpen}
