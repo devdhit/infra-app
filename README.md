@@ -275,15 +275,6 @@ npm run build
 npm start
 ```
 
-### Docker Deployment (Optional)
-
-A Dockerfile is included for containerized deployment:
-
-```bash
-docker build -t itams .
-docker run -p 3000:3000 itams
-```
-
 ### Environment Variables for Production
 
 Ensure the following environment variables are set in production:
@@ -292,6 +283,24 @@ Ensure the following environment variables are set in production:
 DATABASE_URL="your-production-database-url"
 JWT_SECRET="your-production-secret"
 NODE_ENV="production"
+```
+
+### PM2 and Nginx Deployment
+
+For production deployments, you can use PM2 as a process manager with Nginx as a reverse proxy:
+
+1. Install PM2 globally: `npm install -g pm2`
+2. Configure the application with PM2 using the provided `ecosystem.config.js`
+3. Set up Nginx as a reverse proxy using the provided `nginx.conf`
+4. Refer to `PM2_NGINX_DEPLOYMENT.md` for detailed instructions
+
+### Docker Deployment (Optional)
+
+A Dockerfile is included for containerized deployment:
+
+```bash
+docker build -t itams .
+docker run -p 3000:3000 itams
 ```
 
 ## Roadmap
