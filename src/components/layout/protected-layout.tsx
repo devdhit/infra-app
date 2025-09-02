@@ -1,10 +1,11 @@
 'use client'
 
-
 import { useCurrentUser } from '@/hooks/useApi'
 import { usePathname } from 'next/navigation'
 import { Navigation } from './navigation'
 import { Header } from './header'
+import { useEffect } from 'react'
+import { navigationMonitor } from '@/lib/navigation-performance'
 
 import type { UserRole } from '@/lib/permissions'
 
@@ -15,6 +16,24 @@ interface ProtectedLayoutProps {
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const pathname = usePathname()
   const { data: user, isLoading, isError } = useCurrentUser()
+
+  // Monitor navigation performance
+  useEffect(() => {
+    // Start timing when pathname changes
+    navigationMonitor.startNavigation();
+    
+    // End timing after a short delay to ensure rendering is complete
+    const timer = setTimeout(() => {
+      const duration = navigationMonitor.endNavigation(pathname);
+      
+      // Log slow navigations
+      if (duration && duration > 1000) {
+        console.warn(`[PERFORMANCE] Slow navigation detected: ${pathname} took ${duration.toFixed(2)}ms`);
+      }
+    }, 50); // Small delay to ensure rendering is complete
+    
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   // For auth routes, don't show the navigation layout
   if (pathname.startsWith('/auth/')) {

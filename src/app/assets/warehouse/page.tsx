@@ -1,8 +1,10 @@
 'use client'
 
 import { AssetList } from "@/components/assets/asset-list";
+import { AssetListSkeleton } from "@/components/assets/asset-list-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 import { getAssetTypes } from "@/config/asset-types";
+import { Suspense } from "react";
 
 export default function WarehouseAssetsPage() {
   const { t, loading } = useTranslation();
@@ -25,11 +27,13 @@ export default function WarehouseAssetsPage() {
   }
 
   return (
-    <AssetList
-      assetType="warehouse"
-      title={t('assets.warehouse.title') || "Warehouse IT"}
-      columns={warehouseAssetType.columns}
-      formFields={warehouseAssetType.formFields}
-    />
+    <Suspense fallback={<AssetListSkeleton />}>
+      <AssetList
+        assetType="warehouse"
+        title={t('assets.warehouse.title') || "Warehouse"}
+        columns={warehouseAssetType.columns}
+        formFields={warehouseAssetType.formFields}
+      />
+    </Suspense>
   );
 }

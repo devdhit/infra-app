@@ -6,51 +6,97 @@
     "laptop": "筆電",
     "printer": "印表機",
     "license": "授權",
-    "warehouse": "倉儲",
-    "settings": "設定",
+    "warehouse": "倉儲IT",
     "users": "使用者",
-    "tenants": "租戶"
+    "tenants": "租戶",
+    "settings": "設定"
+  },
+  "auth": {
+    "email": "電子郵件",
+    "login_a": "返回登入",
+    "logout_a": "登出",
+    "login": {
+      "title": "登入您的帳戶",
+      "description": "輸入您的憑證以存取您的帳戶",
+      "password": "密碼",
+      "rememberMe": "記住我",
+      "footer": "還沒有帳戶？",
+      "signIn": "登入",
+      "success": "登入成功",
+      "logout": "登出成功",
+      "error": "無效的電子郵件或密碼",
+      "tooManyAttempts": "登入嘗試次數過多。請稍後再試。",
+      "signingIn": "登入中..."
+    },
+    "logout": {
+      "success": "登出成功",
+      "error": "登出失敗"
+    },
+    "forgotPassword": {
+      "title": "忘記密碼？",
+      "description": "輸入您的電子郵件地址，我們將傳送重設密碼的指示給您。",
+      "success": "密碼重設指示已傳送至您的電子郵件",
+      "error": "無法傳送密碼重設指示",
+      "checkEmail": "請檢查您的電子郵件",
+      "instructionsSent": "我們已將密碼重設指示傳送至您的電子郵件。",
+      "notReceived": "沒有收到電子郵件？請檢查您的垃圾郵件資料夾或",
+      "tryAgain": "再試一次",
+      "sending": "傳送中...",
+      "sendInstructions": "傳送指示"
+    }
   },
   "common": {
-    "save": "儲存",
-    "saving": "儲存中...",
-    "cancel": "取消",
+    "actions": "操作",
+    "add": "新增",
     "edit": "編輯",
     "delete": "刪除",
-    "deleting": "刪除中...",
-    "create": "新增",
-    "update": "更新",
-    "view": "檢視",
+    "view": "查看",
+    "save": "儲存",
+    "cancel": "取消",
+    "close": "關閉",
+    "confirm": "確認",
     "search": "搜尋",
     "search": {
       "placeholder": "搜尋資產..."
     },
     "filter": "篩選",
+    "sort": "排序",
     "export": "匯出",
     "import": "匯入",
-    "actions": "操作",
-    "list": "列表",
-    "close": "關閉",
-    "confirm": "確認",
-    "pagination": {
-      "showing": "顯示 {0} 到 {1} 共 {2} 項"
-    },
-    "distribution": "分佈",
-    "status": "狀態",
+    "refresh": "重新整理",
+    "loading": "載入中...",
+    "error": "錯誤",
+    "success": "成功",
+    "warning": "警告",
+    "info": "資訊",
+    "retry": "重試",
     "yes": "是",
     "no": "否",
-    "unauthorized": "您沒有權限查看此頁面",
-    "error": "錯誤",
-    "retry": "重試",
-    "count": "計數",
-    "help": "幫助",
-    "openMenu": "開啟選單",
-    "gotIt": "知道了",
-    "more": "更多",
+    "ok": "確定",
     "required": "必填",
     "optional": "選填",
     "allRightsReserved": "版權所有。",
-    "profile": "個人檔案"
+    "profile": "個人檔案",
+    "count": "數量",
+    "unknown": "未知",
+    "distribution": "分佈",
+    "by": "按",
+    "department": "部門",
+    "unauthorized": "您沒有權限查看此頁面",
+    "openMenu": "開啟選單",
+    "create": "建立",
+    "list": "列表",
+    "columns": "欄位",
+    "selectAll": "全選",
+    "show": "顯示",
+    "hide": "隱藏",
+    "all": "全部",
+    "deleting": "刪除中...",
+    "pagination": {
+      "showing": "顯示第 {0} 到 {1} 項，共 {2} 項",
+      "previous": "上一頁",
+      "next": "下一頁"
+    }
   },
   "dashboard": {
     "title": "儀表板",
@@ -58,595 +104,299 @@
     "totalAssets": "總資產數",
     "activeAssets": "使用中資產",
     "maintenanceAssets": "維護中資產",
-    "retiredAssets": "已報廢資產",
-    "assetDistribution": "資產類型分佈",
-    "assetBreakdown": "資產細分",
-    "assetBreakdownDescription": "不同類型資產的分佈",
-    "assetStatus": "電腦和筆電狀態分佈",
-    "recentActivities": "最近活動",
-    "latestChanges": "資產庫存的最新變化",
+    "retiredAssets": "已退役資產",
+    "utilizationRate": "使用率",
+    "utilizationDescription": "使用中資產百分比",
+    "assetBreakdown": "資產分佈",
+    "assetBreakdownDescription": "按類型分佈的資產",
+    "assetStatus": "PC 和筆電狀態分佈",
+    "recentActivities": "近期活動",
+    "latestChanges": "資產庫的最新變化",
     "noAssets": "未找到資產",
-    "noRecentActivities": "無最近活動",
-    "errorLoading": "載入儀表板資料時出錯。請稍後再試。"
-  },
-  "settings": {
-    "description": "管理您的系統偏好設定",
-    "configure": "設定",
-    "customFields": {
-      "title": "自訂欄位",
-      "description": "管理不同資產類型的租戶特定自訂欄位",
-      "add": "新增自訂欄位",
-      "edit": "編輯自訂欄位",
-      "name": "名稱",
-      "type": "類型",
-      "modelType": "模型類型",
-      "required": "必填",
-      "description": "描述",
-      "infoTitle": "自訂欄位",
-      "infoDescription": "自訂欄位允許您為資產添加額外屬性。它們將出現在資產表單中，可用於篩選和報告。",
-      "allModels": "所有模型",
-      "createDescription": "為不同資產類型創建自訂欄位",
-      "noFields": "未找到自訂欄位",
-      "createFirst": "創建您的第一個自訂欄位",
-      "namePlaceholder": "欄位名稱（例如：warranty_date）",
-      "nameDescription": "必須以字母或下劃線開頭，只能包含字母、數字和下劃線",
-      "descriptionPlaceholder": "描述此欄位的用途...",
-      "descriptionHelp": "可選描述，幫助用戶理解此欄位的用途",
-      "selectType": "選擇欄位類型",
-      "typeHelp": "選擇此欄位將保存的資料類型",
-      "selectModel": "選擇模型類型",
-      "requiredHelp": "如果選中，創建或更新資產時必須填寫此欄位",
-      "editDescription": "修改此自訂欄位的屬性",
-      "helpTitle": "自訂欄位幫助",
-      "helpDescription": "學習如何有效使用自訂欄位",
-      "whatAre": "什麼是自訂欄位？",
-      "whatAreDescription": "自訂欄位允許您在標準欄位之外為資產添加額外屬性。它們可用於跟踪與您的組織相關的特定資訊。",
-      "fieldTypes": "欄位類型",
-      "text": "文字",
-      "textDescription": "用於簡短描述的單行文字",
-      "textArea": "文字區域",
-      "textAreaDescription": "用於較長描述的多行文字",
-      "number": "數字",
-      "numberDescription": "用於數量、成本等的數值",
-      "date": "日期",
-      "dateDescription": "用於保固、購買日期等的日期值",
-      "boolean": "布林值",
-      "booleanDescription": "是/否問題的真/假值",
-      "select": "選擇",
-      "selectDescription": "預定義選項的下拉選擇",
-      "bestPractices": "最佳實踐",
-      "practice1": "使用能清楚指示用途的描述性欄位名稱",
-      "practice2": "為您的資料選擇適當的欄位類型",
-      "practice3": "僅在必要時將欄位標記為必填",
-      "practice4": "按模型類型對相關自訂欄位進行分組",
-      "practice5": "定期審查和清理未使用的自訂欄位",
-      "practice6": "添加描述以幫助其他用戶理解每個欄位的用途",
-      "usage": "使用方法",
-      "usageDescription": "創建後，自訂欄位將自動出現在其各自模型類型的資產表單中。它們可用於篩選、報告和顯示有關您資產的額外資訊。",
-      "errorLoading": "載入自訂欄位時出錯。請稍後再試。"
-    },
-    "appearance": {
-      "title": "外觀",
-      "description": "自訂應用程式的外觀和感覺",
-      "theme": {
-        "title": "主題",
-        "description": "選擇應用程式的主題",
-        "light": "淺色",
-        "dark": "深色",
-        "system": "系統"
-      },
-      "accentColor": "強調色",
-      "accentColorDescription": "選擇應用程式的強調色",
-      "borderRadius": "邊框圓角",
-      "borderRadiusDescription": "調整角落的圓潤程度",
-      "borderRadiusOptions": {
-        "none": "無",
-        "sm": "小",
-        "md": "中",
-        "lg": "大",
-        "xl": "超大"
-      },
-      "reset": "重置為預設值",
-      "themeUpdated": "主題更新成功",
-      "borderRadiusUpdated": "邊框圓角已更新",
-      "resetSuccess": "設定已重置為預設值"
-    },
-    "notifications": {
-      "title": "通知",
-      "description": "設定您接收通知的方式",
-      "channels": {
-        "title": "通知管道",
-        "description": "選擇您希望透過哪些管道接收通知",
-        "email": "電子郵件",
-        "emailDescription": "透過電子郵件接收通知",
-        "sms": "簡訊",
-        "smsDescription": "透過文字訊息接收通知",
-        "push": "推播通知",
-        "pushDescription": "在應用程式中接收通知"
-      },
-      "events": {
-        "title": "通知事件",
-        "description": "選擇觸發通知的事件",
-        "assetCreated": "資產新增",
-        "assetUpdated": "資產更新",
-        "assetDeleted": "資產刪除",
-        "maintenanceReminder": "維護提醒",
-        "licenseExpiry": "授權到期"
-      },
-      "recipients": {
-        "title": "通知接收者",
-        "description": "指定誰應該接收通知",
-        "email": "電子郵件接收者",
-        "emailPlaceholder": "輸入電子郵件地址（以逗號分隔）",
-        "emailHelp": "輸入以逗號分隔的電子郵件地址",
-        "sms": "簡訊接收者",
-        "smsPlaceholder": "輸入電話號碼（每行一個）",
-        "smsHelp": "輸入電話號碼，每行一個"
-      },
-      "save": "儲存設定",
-      "reset": "重置為預設值",
-      "saveSuccess": "通知設定儲存成功",
-      "resetSuccess": "設定已重置為預設值"
-    },
-    "security": {
-      "title": "安全性",
-      "description": "管理您的安全偏好設定",
-      "twoFactor": {
-        "title": "雙重認證",
-        "description": "為您的帳戶添加額外的安全層",
-        "enable": "啟用雙重認證",
-        "enableDescription": "登入時需要第二種認證方式",
-        "setup": "設定說明",
-        "step1": "下載認證器應用程式，如 Google Authenticator 或 Authy",
-        "step2": "使用認證器應用程式掃描 QR 碼",
-        "step3": "輸入應用程式中的 6 位數代碼完成設定",
-        "qrCode": "QR 碼",
-        "codePlaceholder": "輸入 6 位數代碼",
-        "verify": "驗證"
-      },
-      "password": {
-        "title": "密碼要求",
-        "description": "設定用戶密碼要求",
-        "minLength": "最小長度",
-        "requireUppercase": "需要大寫字母",
-        "requireLowercase": "需要小寫字母",
-        "requireNumbers": "需要數字",
-        "requireSpecial": "需要特殊字符"
-      },
-      "sessions": {
-        "title": "活動工作階段",
-        "description": "管理您跨設備的活動工作階段",
-        "device": "設備",
-        "location": "位置",
-        "lastActive": "最後活動",
-        "status": "狀態",
-        "actions": "操作",
-        "current": "目前",
-        "active": "活動中",
-        "end": "結束工作階段",
-        "endAll": "結束所有其他工作階段"
-      },
-      "save": "儲存設定",
-      "reset": "重置為預設值",
-      "saveSuccess": "安全設定儲存成功",
-      "resetSuccess": "設定已重置為預設值",
-      "sessionEnded": "工作階段結束成功",
-      "allSessionsEnded": "除目前工作階段外，所有工作階段均已結束"
-    },
-    "dataManagement": {
-      "title": "資料管理",
-      "description": "管理您的資料備份、保留和匯出設定",
-      "backup": {
-        "title": "備份排程",
-        "description": "設定資料的自動備份排程",
-        "name": "名稱",
-        "frequency": "頻率",
-        "time": "時間",
-        "status": "狀態",
-        "actions": "操作",
-        "frequencies": {
-          "daily": "每日",
-          "weekly": "每週",
-          "monthly": "每月"
-        },
-        "enabled": "已啟用",
-        "disabled": "已停用",
-        "add": "新增備份排程"
-      },
-      "retention": {
-        "title": "資料保留",
-        "description": "設定不同類型資料的保留時間",
-        "assetType": "資產類型",
-        "period": "保留期間（天）",
-        "autoArchive": "自動歸檔"
-      },
-      "export": {
-        "title": "資料匯出",
-        "description": "以各種格式匯出您的資料",
-        "json": "匯出為 JSON",
-        "csv": "匯出為 CSV",
-        "excel": "匯出為 Excel",
-        "options": "匯出選項",
-        "includeAudit": "包含審計軌跡",
-        "includeCustom": "包含自訂欄位",
-        "includeHistory": "包含變更歷史"
-      },
-      "save": "儲存設定",
-      "reset": "重置為預設值",
-      "saveSuccess": "資料管理設定儲存成功",
-      "resetSuccess": "設定已重置為預設值",
-      "backupAdded": "備份排程已新增"
-    },
-    "auditLogs": {
-      "title": "稽核日誌",
-      "description": "設定稽核日誌和監控設定",
-      "general": {
-        "title": "一般設定",
-        "description": "基本稽核日誌設定",
-        "enabled": "啟用稽核日誌",
-        "enabledDescription": "為您的組織開啟稽核日誌",
-        "retentionPeriod": "保留期間",
-        "days": "天",
-        "retentionDescription": "在自動刪除之前保留稽核日誌的時間長度"
-      },
-      "events": {
-        "title": "事件類型",
-        "description": "選擇要記錄的事件",
-        "assetCreation": "資產新增",
-        "assetUpdates": "資產更新",
-        "assetDeletion": "資產刪除",
-        "userLogin": "用戶登入",
-        "userLogout": "用戶登出",
-        "permissionChanges": "權限變更"
-      },
-      "notifications": {
-        "title": "通知",
-        "description": "設定接收稽核日誌通知的方式",
-        "criticalEvents": "關鍵事件通知",
-        "channels": "通知管道",
-        "email": "電子郵件",
-        "slack": "Slack",
-        "emailAddress": "通知信箱",
-        "emailPlaceholder": "admin@example.com",
-        "emailDescription": "接收稽核通知的電子郵件地址"
-      },
-      "save": "儲存設定",
-      "reset": "重置為預設值",
-      "saving": "儲存中...",
-      "saveSuccess": "稽核日誌設定儲存成功",
-      "saveError": "儲存稽核日誌設定失敗",
-      "resetSuccess": "設定已重置為預設值",
-      "loadError": "載入稽核日誌設定失敗"
-    }
-  },
-  "auth": {
-    "login_a": "登入",
-    "login": {
-      "title": "IT 資產管理系統",
-      "description": "請登入您的帳戶",
-      "success": "登入成功",
-      "error": "電子郵件或密碼錯誤",
-      "signingIn": "登入中...",
-      "tooManyAttempts": "登入嘗試次數過多。請稍後再試。",
-      "footer": "需要幫助？請聯繫您的系統管理員"
-    },
-    "logout_a": "登出",
-    "logout": {
-      "success": "成功登出",
-      "error": "登出失敗",
-      "confirmTitle": "確認登出",
-      "confirmDescription": "您確定要登出嗎？您需要重新登入才能存取系統。",
-      "loggingOut": "登出中..."
-    },
-    "email": "電子郵件",
-    "password": "密碼",
-    "rememberMe": "記住我",
-    "forgotPassword": "忘記密碼？",
-    "forgotPassword": {
-      "title": "忘記密碼？",
-      "description": "輸入您的電子郵件地址，我們將發送重設密碼的指示。",
-      "success": "密碼重設指示已發送到您的電子郵件",
-      "error": "無法發送密碼重設指示",
-      "checkEmail": "檢查您的電子郵件",
-      "instructionsSent": "我們已將密碼重設指示發送到您的電子郵件。",
-      "notReceived": "沒有收到電子郵件？請檢查您的垃圾郵件資料夾或",
-      "tryAgain": "再試一次",
-      "sending": "發送中...",
-      "sendInstructions": "發送指示"
-    }
+    "noRecentActivities": "無近期活動",
+    "errorLoading": "載入儀表板資料時出錯。請稍後再試。",
+    "users": "使用者",
+    "activeUsers": "組織中的活躍使用者",
+    "licensesExpiring": "即將到期的授權",
+    "licensesExpiringSoon": "未來 30 天內到期的授權",
+    "departments": "部門",
+    "trackedDepartments": "有資產的部門",
+    "customFields": "自訂欄位",
+    "configuredFields": "已設定的自訂欄位",
+    "topDepartments": "部門排名",
+    "topDepartmentsDescription": "資產數量最多的部門",
+    "assetGrowth": "資產增長",
+    "assetGrowthDescription": "資產收購的歷史趨勢",
+    "noData": "無可用資料",
+    "unknownUser": "未知使用者",
+    "actionSuffix": "了",
+    "actionConnector": "一個",
+    "solarCalendar": "陽曆",
+    "solarCalendarDescription": "格里曆系統",
+    "taiwanCalendar": "台灣曆",
+    "taiwanCalendarDescription": "民國曆系統",
+    "vietnameseCalendar": "越南曆",
+    "vietnameseCalendarDescription": "農曆系統",
+    "vietnameseLunarPlaceholder": "農曆日期計算",
+    "currentDate": "目前日期",
+    "totalMonitors": "總監視器數",
+    "totalMonitorsDescription": "系統中追蹤的監視器",
+    "totalUPSs": "總 UPS 數",
+    "totalUPSsDescription": "系統中追蹤的 UPS 裝置",
+    "summaryByCpu": "按 CPU 分類",
+    "summaryByMonitor": "按監視器分類",
+    "summaryByUps": "按 UPS 分類",
+    "summaryByStatus": "按狀態分類",
+    "summaryByModel": "按型號分類",
+    "summaryByColor": "按顏色分類",
+    "summaryByLocation": "按位置分類",
+    "summaryBySoftware": "按軟體名稱分類",
+    "summaryByProductType": "按產品類型分類",
+    "summaryByLicenseKey": "按授權金鑰分類",
+    "summaryByCpuBarcode": "按 CPU 條碼分類",
+    "summaryByCpuSap": "按 CPU SAP 條碼分類",
+    "summaryByMonitorBarcode": "按監視器條碼分類",
+    "summaryByMonitorSap": "按監視器 SAP 條碼分類",
+    "summaryByUpsBarcode": "按 UPS 條碼分類",
+    "summaryByUpsSap": "按 UPS SAP 條碼分類",
+    "summaryByRam": "按 RAM 分類",
+    "summaryByType": "按類型分類"
   },
   "assets": {
+    "title": "資產",
+    "description": "在一個地方管理您所有的 IT 資產",
+    "import": "匯入資產",
+    "add": "新增資產",
+    "view": "查看資產",
     "list": {
-      "description": "管理您的{0}資產",
-      "empty": "未找到資產"
-    },
-    "create": {
-      "success": "{0}新增成功"
-    },
-    "update": {
-      "success": "{0}更新成功"
+      "description": "管理您的 {0} 資產",
+      "customFields": "管理自訂欄位"
     },
     "delete": {
-      "success": "{0}刪除成功",
-      "error": "{0}刪除失敗: {1}",
-      "title": "刪除{0}",
-      "description": "您確定要刪除此{0}嗎？此操作無法復原。"
+      "confirmTitle": "刪除 {0}",
+      "confirmDescription": "您確定要刪除此 {0} 嗎？此操作無法復原。",
+      "success": "{0} 刪除成功",
+      "error": "{0} 刪除失敗"
     },
     "bulkDelete": {
-      "success": "{0}資產刪除成功",
-      "error": "刪除資產失敗: {0}",
       "noSelection": "請選擇要刪除的資產",
-      "title": "批量刪除",
-      "description": "您確定要刪除{0}個{1}資產嗎？此操作無法復原。"
+      "success": "{0} 個 {1} 資產刪除成功",
+      "error": "{0} 個資產刪除失敗"
+    },
+    "search": {
+      "placeholder": "搜尋資產..."
     },
     "status": {
-      "all": "所有狀態",
       "working": "工作中",
-      "leave": "離開",
-      "repair": "維修"
+      "leave": "已離開",
+      "repair": "維修中"
     },
-    "view": {
-      "title": "{0}詳細資料",
-      "description": "查看此資產的完整詳細資料。",
-      "assetInfo": "資產資訊",
-      "systemInfo": "系統資訊",
-      "createdAt": "建立時間",
-      "updatedAt": "更新時間",
-      "tenantId": "租戶ID"
-    },
-    "form": {
-      "create": {
-        "title": "新增{0}",
-        "description": "新增一個{0}到您的庫存。"
+    "excel": {
+      "export": {
+        "title": "匯出 {0}",
+        "description": "將 {0} 資料匯出到 Excel 檔案",
+        "data": "匯出資料",
+        "all": "所有 {0}",
+        "allDepts": "所有部門",
+        "eachDept": "每個部門（獨立檔案）",
+        "selected": "已選擇 {0} 項",
+        "noSelection": "未選擇任何項目",
+        "department": "部門",
+        "loadingDepts": "載入部門中...",
+        "selectDept": "選擇部門",
+        "info": {
+          "all": "這將把所有 {0} 資料匯出到格式正確的 Excel 檔案中。",
+          "allDepts": "這將把所選部門的所有 {0} 資料匯出到格式正確的 Excel 檔案中。",
+          "singleDept": "這將把所選部門（{1}）的 {0} 資料匯出到格式正確的 Excel 檔案中。",
+          "eachDept": "這將把每個部門的 {0} 資料分別匯出到格式正確的 Excel 檔案中。",
+          "selected": "這將把所選的 {0} 項目匯出到格式正確的 Excel 檔案中。",
+          "noSelection": "未選擇任何項目進行匯出。"
+        },
+        "button": "匯出資料",
+        "exporting": "匯出中...",
+        "starting": "開始匯出...",
+        "preparingDepts": "準備部門匯出...",
+        "processingDept": "處理部門：{0}",
+        "downloading": "下載檔案中...",
+        "completing": "完成匯出...",
+        "completed": "匯出完成",
+        "success": "{0} 匯出完成",
+        "successSingleDept": "{0} 部門 {1} 匯出完成",
+        "successAllDepts": "{0} 所有部門匯出完成",
+        "error": "資產匯出失敗",
+        "timeout": "匯出逾時。資料可能過大。",
+        "unauthorized": "未經授權的存取。請重新登入。",
+        "deptFetchError": "從資料庫獲取部門失敗",
+        "noDepartments": "資料庫中未找到部門",
+        "emptyResponse": "伺服器返回空回應",
+        "deptTimeout": "部門 {0} 匯出逾時",
+        "deptError": "{0} 部門 {1} 匯出失敗"
       },
-      "edit": {
-        "title": "編輯{0}",
-        "description": "編輯此{0}的詳細資料。"
-      },
-      "error": "{0}{1}失敗: {2}"
+      "import": {
+        "title": "匯入 {0}",
+        "description": "從 Excel 檔案匯入 {0} 資料",
+        "data": "匯入資料",
+        "fileLabel": "選擇 Excel 檔案",
+        "selectFile": "選擇檔案",
+        "fileHint": "支援格式：.xlsx, .xls",
+        "columnMapping": "對應 Excel 欄位",
+        "columnMappingTitle": "欄位對應",
+        "noMappings": "未設定欄位對應。新增對應以連接 Excel 欄位與資料庫欄位。",
+        "excelColumn": "Excel 欄位",
+        "databaseField": "資料庫欄位",
+        "selectExcelColumn": "選擇 Excel 欄位",
+        "selectDatabaseField": "選擇資料庫欄位",
+        "mappingHelp": "對應 Excel 欄位名稱與資料庫欄位名稱以確保正確匯入資料。",
+        "customFieldsHelp": "此資產類型的自訂欄位也可用於對應。",
+        "button": "匯入資料",
+        "importing": "匯入中...",
+        "success": "{0} 個資產匯入成功",
+        "partialSuccess": "{0} 個資產匯入成功，但有部分錯誤",
+        "error": "資產匯入失敗",
+        "successTitle": "匯入成功",
+        "errorTitle": "匯入失敗",
+        "errors": "錯誤：",
+        "moreErrors": "還有 {0} 個錯誤",
+        "noFileSelected": "請至少選擇一個檔案進行匯入",
+        "columnExtractionError": "從 Excel 檔案提取欄位失敗",
+        "invalidFile": "無效的 Excel 檔案：未找到工作表"
+      }
     },
     "pc": {
       "title": "電腦",
-      "cpuBarcode": "CPU條碼",
-      "pcName": "電腦名稱",
+      "cpu": "CPU",
+      "monitorBarcode": "監視器條碼",
+      "upsBarcode": "UPS 條碼",
       "dept": "部門",
-      "status": "狀態",
+      "cpuBarcode": "CPU 條碼",
+      "cpuSapBarcode": "CPU SAP 條碼",
+      "monitorSapBarcode": "監視器 SAP 條碼",
+      "upsSapBarcode": "UPS SAP 條碼",
+      "pcName": "電腦名稱",
       "user": "使用者",
-      "cpuSapBarcode": "CPU SAP條碼",
-      "monitorBarcode": "顯示器條碼",
-      "monitorSapBarcode": "顯示器SAP條碼",
-      "upsBarcode": "UPS條碼",
-      "upsSapBarcode": "UPS SAP條碼",
+      "status": "狀態",
       "note": "備註"
     },
     "laptop": {
       "title": "筆電",
-      "assetTag": "條碼",
-      "sapBarcode": "SAP條碼",
-      "purchaseDate": "購買日期",
-      "userName": "用户名",
-      "department": "部門",
-      "location": "位置",
-      "model": "型號",
       "status": "狀態",
+      "model": "型號",
+      "department": "部門",
+      "assetTag": "資產標籤",
+      "sapBarcode": "SAP 條碼",
+      "purchaseDate": "購買日期",
+      "userName": "使用者名稱",
       "notes": "備註"
     },
     "printer": {
       "title": "印表機",
-      "department": "部門",
-      "location": "位置",
-      "ip": "IP位址",
-      "model": "型號",
       "color": "顏色",
-      "colorValue": "彩色",
-      "bw": "黑白",
+      "model": "型號",
+      "location": "位置",
+      "department": "部門",
+      "ip": "IP 位址",
       "barcode": "條碼",
-      "sapCode": "SAP代碼",
+      "sapCode": "SAP 代碼",
       "date": "日期",
-      "note": "備註"
+      "note": "備註",
+      "bw": "黑白",
+      "colorValue": "彩色"
     },
     "license": {
       "title": "授權",
-      "dept": "部門",
-      "department": "部門",
-      "deviceName": "設備名稱",
       "softwareName": "軟體名稱",
-      "userName": "使用者名稱",
       "productType": "產品類型",
       "licenseKey": "授權金鑰",
       "productKey": "產品金鑰",
+      "userName": "使用者名稱",
+      "department": "部門",
       "model": "型號",
       "pc": "電腦",
-      "mac": "MAC位址",
-      "ip": "IP位址",
-      "date": "日期",
+      "mac": "MAC 位址",
+      "ip": "IP 位址",
       "purchaseDate": "購買日期",
-      "updateStatus": "更新狀態",
       "status": "狀態",
       "note": "備註"
     },
     "warehouse": {
-      "title": "倉儲",
-      "dept": "部門",
-      "department": "部門",
-      "cpuBarcode": "CPU條碼",
-      "cpuSapBarcode": "CPU SAP條碼",
-      "monitorBarcode": "顯示器條碼",
-      "monitorSapBarcode": "顯示器SAP條碼",
-      "upsBarcode": "UPS條碼",
-      "upsSapBarcode": "UPS SAP條碼",
+      "title": "倉儲IT",
+      "cpuBarcode": "CPU 條碼",
+      "cpuSapBarcode": "CPU SAP 條碼",
+      "monitorBarcode": "監視器條碼",
+      "monitorSapBarcode": "監視器 SAP 條碼",
+      "upsBarcode": "UPS 條碼",
+      "upsSapBarcode": "UPS SAP 條碼",
       "status": "狀態",
+      "model": "型號",
+      "ram": "RAM",
+      "cpu": "CPU",
+      "type": "類型",
+      "dept": "部門",
       "createdAt": "建立時間",
       "updatedAt": "更新時間",
       "note": "備註"
     },
-    "excel": {
-      "export": {
-        "title": "匯出{0}",
-        "description": "將{0}資料匯出到Excel檔案",
-        "data": "匯出資料",
-        "options": "匯出選項",
-        "all": "所有{0}資產",
-        "allDepts": "所有部門",
-        "eachDept": "各部門（分開檔案）",
-        "selected": "{0}個選取項目",
-        "noSelection": "（未選取項目）",
-        "noDepartments": "資料庫中未找到部門",
-        "deptError": "{0}部門{1}匯出失敗",
-        "deptTimeout": "部門{0}匯出逾時",
-        "deptFetchError": "從資料庫獲取部門失敗",
-        "timeout": "匯出逾時。資料可能太大。",
-        "emptyResponse": "伺服器返回空回應",
-        "starting": "開始匯出...",
-        "preparingDepts": "準備部門匯出...",
-        "processingDept": "處理部門: {0}",
-        "processing": "處理匯出...",
-        "downloading": "下載文件...",
-        "preparingDownload": "準備下載...",
-        "completed": "匯出完成",
-        "successAllDepts": "{0}所有部門匯出完成",
-        "info": {
-          "all": "這將把所有{0}資料匯出到格式正確的Excel檔案中。",
-          "allDepts": "這將把選定部門的{0}資料匯出到格式正確的Excel檔案中。",
-          "eachDept": "這將把各部門的{0}資料分別匯出到格式正確的Excel檔案中。",
-          "singleDept": "這將把選定部門（{1}）的{0}資料匯出到格式正確的Excel檔案中。",
-          "selected": "這將只把選取的{0}項目匯出到格式正確的Excel檔案中。",
-          "noSelection": "未選取要匯出的項目。"
-        },
-        "department": "部門",
-        "selectDept": "選擇部門",
-        "selectDept": "選擇部門",
-        "allTitle": "匯出所有資產",
-        "allDescription": "將所有資產類型匯出到包含多個工作表的單一Excel檔案",
-        "allData": "匯出所有資產資料",
-        "allInfo": "選擇要包含在匯出中的資料",
-        "allAssets": "所有資產",
-        "selectedItems": "{0}個選取項目",
-        "allInfoAll": "這將把所有資產匯出到包含多個工作表的單一Excel檔案中。",
-        "allInfoSelected": "這將只把選取的項目匯出到包含多個工作表的單一Excel檔案中。",
-        "exporting": "匯出中...",
-        "button": "匯出資料",
-        "success": "{0}匯出完成",
-        "allSuccess": "所有資產匯出完成",
-        "error": "資產匯出失敗"
-      },
-      "import": {
-        "title": "匯入{0}",
-        "description": "從Excel檔案匯入{0}資料",
-        "data": "匯入資料",
-        "template": "下載範本",
-        "file": "選擇Excel檔案",
-        "noFile": "未選擇檔案",
-        "importing": "匯入中...",
-        "button": "匯入資料",
-        "success": "{0}匯入成功",
-        "error": "資產匯入失敗"
-      }
+    "status": {
+      "working": "工作中",
+      "leave": "已離開",
+      "repair": "維修中"
+    },
+    "overview": {
+      "title": "資產管理概覽",
+      "description": "快速操作和近期活動"
     }
-  },
-  "forms": {
-    "required": "此欄位為必填",
-    "invalidEmail": "請輸入有效的電子郵件",
-    "validationError": "請檢查表單中的錯誤",
-    "singleFieldError": "表單中有一個錯誤。請檢查標記為紅色的欄位。",
-    "multipleFieldError": "表單中有{0}個錯誤。請檢查標記為紅色的欄位。"
   },
   "users": {
     "title": "使用者",
     "description": "管理系統使用者",
-    "list": {
-      "title": "使用者列表",
-      "description": "系統中所有使用者的列表",
-      "empty": "未找到使用者"
-    },
     "search": {
       "placeholder": "搜尋使用者..."
     },
-    "create": {
-      "title": "新增使用者",
-      "description": "新增一個使用者到系統中",
-      "button": "新增使用者",
-      "success": "使用者新增成功",
-      "unauthorized": "您沒有權限新增使用者"
-    },
-    "update": {
-      "success": "使用者更新成功",
-      "error": "使用者更新失敗",
-      "unauthorized": "您沒有權限更新使用者"
-    },
-    "delete": {
-      "success": "使用者刪除成功",
-      "error": "使用者刪除失敗: {1}",
-      "title": "刪除使用者",
-      "description": "您確定要刪除此使用者嗎？此操作無法復原。",
-      "unauthorized": "您沒有權限刪除使用者"
-    },
-    "edit": {
-      "title": "編輯使用者",
-      "description": "編輯使用者詳細資料",
-      "unauthorized": "您沒有權限編輯使用者"
-    },
-    "form": {
+    "table": {
       "name": "姓名",
       "email": "電子郵件",
-      "password": "密碼",
-      "newPassword": "新密碼",
-      "newPasswordPlaceholder": "留空以保持目前密碼",
       "role": "角色",
-      "userRole": "使用者",
-      "adminRole": "管理員",
-      "tenant": "租戶",
-      "selectTenant": "選擇租戶",
-      "nameRequired": "姓名為必填",
-      "emailRequired": "電子郵件為必填",
-      "emailInvalid": "電子郵件格式無效",
-      "passwordRequired": "密碼為必填",
-      "passwordMinLength": "密碼至少需要6個字元"
+      "tenant": "租戶"
+    },
+    "list": {
+      "title": "使用者列表",
+      "description": "系統中所有使用者的列表"
+    },
+    "create": {
+      "button": "新增使用者",
+      "unauthorized": "您沒有權限建立使用者",
+      "success": "使用者建立成功",
+      "error": "使用者建立失敗"
+    },
+    "edit": {
+      "unauthorized": "您沒有權限編輯使用者"
+    },
+    "update": {
+      "unauthorized": "您沒有權限更新使用者",
+      "success": "使用者更新成功",
+      "error": "使用者更新失敗"
+    },
+    "delete": {
+      "unauthorized": "您沒有權限刪除使用者",
+      "confirm": "您確定要刪除此使用者嗎？",
+      "success": "使用者刪除成功",
+      "error": "使用者刪除失敗"
     },
     "bulkDelete": {
-      "confirm": "您確定要刪除{0}個使用者嗎？",
-      "success": "{0}個使用者刪除成功",
-      "error": "使用者刪除失敗",
-      "unauthorized": "您沒有權限批量刪除使用者"
+      "unauthorized": "您沒有權限批次刪除使用者",
+      "confirm": "您確定要刪除 {0} 個使用者嗎？",
+      "success": "{0} 個使用者刪除成功",
+      "error": "使用者刪除失敗"
+    },
+    "error": {
+      "loading": "載入使用者失敗"
     }
   },
   "tenants": {
     "title": "租戶",
     "description": "管理租戶組織",
-    "list": {
-      "title": "租戶列表",
-      "description": "所有租戶組織的列表",
-      "empty": "未找到租戶"
-    },
     "search": {
       "placeholder": "搜尋租戶..."
-    },
-    "create": {
-      "button": "新增租戶",
-      "success": "租戶新增成功",
-      "unauthorized": "您沒有權限新增租戶"
-    },
-    "update": {
-      "success": "租戶更新成功",
-      "error": "租戶更新失敗",
-      "unauthorized": "您沒有權限更新租戶"
-    },
-    "delete": {
-      "success": "租戶刪除成功",
-      "error": "租戶刪除失敗: {1}",
-      "title": "刪除租戶",
-      "description": "您確定要刪除此租戶嗎？此操作無法復原。",
-      "unauthorized": "您沒有權限刪除租戶"
-    },
-    "edit": {
-      "title": "編輯租戶",
-      "description": "編輯租戶詳細資料",
-      "unauthorized": "您沒有權限編輯租戶"
-    },
-    "form": {
-      "name": "名稱",
-      "description": "描述",
-      "nameRequired": "名稱為必填"
     },
     "table": {
       "name": "名稱",
@@ -654,16 +404,89 @@
       "assets": "資產",
       "users": "使用者"
     },
+    "list": {
+      "title": "租戶列表",
+      "description": "所有租戶組織的列表"
+    },
+    "create": {
+      "button": "新增租戶",
+      "unauthorized": "您沒有權限建立租戶",
+      "success": "租戶建立成功",
+      "error": "租戶建立失敗"
+    },
+    "edit": {
+      "unauthorized": "您沒有權限編輯租戶"
+    },
+    "update": {
+      "unauthorized": "您沒有權限更新租戶",
+      "success": "租戶更新成功",
+      "error": "租戶更新失敗"
+    },
+    "delete": {
+      "unauthorized": "您沒有權限刪除租戶",
+      "confirm": "您確定要刪除此租戶嗎？此操作無法復原。",
+      "success": "租戶刪除成功",
+      "error": "租戶刪除失敗"
+    },
     "bulkDelete": {
-      "confirm": "您確定要刪除{0}個租戶嗎？",
-      "success": "{0}個租戶刪除成功",
-      "error": "租戶刪除失敗",
-      "unauthorized": "您沒有權限批量刪除租戶"
+      "unauthorized": "您沒有權限批次刪除租戶",
+      "confirm": "您確定要刪除 {0} 個租戶嗎？",
+      "success": "{0} 個租戶刪除成功",
+      "error": "租戶刪除失敗"
+    },
+    "error": {
+      "loading": "載入租戶失敗"
     }
   },
-  "bulkDelete": {
-    "confirmation": "您確定要刪除{0}個{1}嗎？此操作無法復原。",
-    "warning": "重要",
-    "warningDescription": "此操作將永久刪除{0}個{1}且無法復原。請確保您要繼續進行。"
+  "settings": {
+    "title": "設定",
+    "configure": "設定",
+    "description": "管理您的系統偏好設定",
+    "application": {
+      "title": "應用程式設定",
+      "description": "自訂應用程式名稱和品牌",
+      "name": "應用程式名稱",
+      "nameDescription": "設定顯示在側邊欄和標題中的名稱",
+      "fullName": "完整應用程式名稱",
+      "namePlaceholder": "輸入應用程式名稱",
+      "characters": "字元",
+      "shortName": "簡短名稱預覽",
+      "shortNameDescription": "這將顯示在行動標題和小空間中",
+      "preview": "預覽",
+      "previewDescription": "查看應用程式名稱的顯示效果",
+      "desktopPreview": "桌面側邊欄",
+      "mobilePreview": "行動標題",
+      "reset": "重設為預設值",
+      "loadError": "無法載入應用程式設定",
+      "nameTooLong": "應用程式名稱必須少於 50 個字元",
+      "nameUpdated": "應用程式名稱更新成功",
+      "updateError": "無法更新應用程式名稱",
+      "resetSuccess": "應用程式名稱已重設為預設值",
+      "resetError": "無法重設應用程式名稱"
+    },
+    "customFields": {
+      "title": "自訂欄位",
+      "description": "管理資產的自訂欄位"
+    },
+    "appearance": {
+      "title": "外觀",
+      "description": "自訂外觀和風格"
+    },
+    "notifications": {
+      "title": "通知",
+      "description": "設定通知偏好"
+    },
+    "security": {
+      "title": "安全性",
+      "description": "管理安全設定"
+    },
+    "dataManagement": {
+      "title": "資料管理",
+      "description": "管理資料備份、保留和匯出設定"
+    },
+    "auditLogs": {
+      "title": "審計日誌",
+      "description": "設定審計日誌和監控設定"
+    }
   }
 }

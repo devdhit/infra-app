@@ -1,8 +1,10 @@
 'use client'
 
 import { AssetList } from "@/components/assets/asset-list";
+import { AssetListSkeleton } from "@/components/assets/asset-list-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 import { getAssetTypes } from "@/config/asset-types";
+import { Suspense } from "react";
 
 export default function PrinterAssetsPage() {
   const { t, loading } = useTranslation();
@@ -25,11 +27,13 @@ export default function PrinterAssetsPage() {
   }
 
   return (
-    <AssetList
-      assetType="printer"
-      title={t('assets.printer.title') || "Printer"}
-      columns={printerAssetType.columns}
-      formFields={printerAssetType.formFields}
-    />
+    <Suspense fallback={<AssetListSkeleton />}>
+      <AssetList
+        assetType="printer"
+        title={t('assets.printer.title') || "Printer"}
+        columns={printerAssetType.columns}
+        formFields={printerAssetType.formFields}
+      />
+    </Suspense>
   );
 }

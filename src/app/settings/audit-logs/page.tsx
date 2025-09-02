@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { FileText, Save, RotateCcw, Bell, SettingsIcon, AlertCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useAuditLogsSettings, useUpdateAuditLogsSettings } from "@/hooks/useApi"
+import { SettingsLayout } from "@/components/settings/settings-layout"
 
 interface AuditLogsSettingsData {
   id?: string
@@ -113,33 +114,11 @@ export default function AuditLogsSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            <FileText className="h-8 w-8 mr-3 text-blue-500" />
-            {t('settings.auditLogs.title') || 'Audit Logs'}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('settings.auditLogs.description') || 'Configure audit logging and monitoring settings'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={resetToDefaults} className="rounded-lg">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            {t('settings.auditLogs.reset') || 'Reset to Defaults'}
-          </Button>
-          <Button 
-            onClick={saveSettings} 
-            disabled={updateMutation.isPending}
-            className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {updateMutation.isPending ? (t('settings.auditLogs.saving') || 'Saving...') : (t('settings.auditLogs.save') || 'Save Settings')}
-          </Button>
-        </div>
-      </div>
-
+    <SettingsLayout
+      title={t('settings.auditLogs.title') || 'Audit Logs'}
+      description={t('settings.auditLogs.description') || 'Configure audit logging and monitoring settings'}
+      currentPage={t('settings.auditLogs.title') || 'Audit Logs'}
+    >
       <div className="grid gap-6">
         {/* General Settings Card */}
         <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
@@ -379,6 +358,6 @@ export default function AuditLogsSettingsPage() {
           {updateMutation.isPending ? (t('settings.auditLogs.saving') || 'Saving...') : (t('settings.auditLogs.save') || 'Save Settings')}
         </Button>
       </div>
-    </div>
+    </SettingsLayout>
   )
 }

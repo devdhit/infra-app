@@ -127,3 +127,18 @@ export function hasTranslation(key: string, translations: Record<string, any>): 
     return false
   }
 }
+
+// Function to get application name from localStorage or default
+export function getApplicationName(): string {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('applicationName') || 'IT Asset Management';
+  }
+  return 'IT Asset Management';
+}
+
+// Function to set application name in localStorage
+export function setApplicationName(name: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('applicationName', name);
+  }
+}

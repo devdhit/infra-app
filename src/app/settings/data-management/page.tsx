@@ -17,6 +17,7 @@ import {
   TableRow 
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { SettingsLayout } from "@/components/settings/settings-layout"
 
 interface BackupSchedule {
   id: string
@@ -126,14 +127,11 @@ export default function DataManagementSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{t('settings.dataManagement.title') || 'Data Management'}</h1>
-        <p className="text-muted-foreground">
-          {t('settings.dataManagement.description') || 'Manage your data backup, retention, and export settings'}
-        </p>
-      </div>
-
+    <SettingsLayout
+      title={t('settings.dataManagement.title') || 'Data Management'}
+      description={t('settings.dataManagement.description') || 'Manage your data backup, retention, and export settings'}
+      currentPage={t('settings.dataManagement.title') || 'Data Management'}
+    >
       <Card>
         <CardHeader>
           <CardTitle>{t('settings.dataManagement.backup.title') || 'Backup Schedules'}</CardTitle>
@@ -289,6 +287,6 @@ export default function DataManagementSettingsPage() {
           {t('settings.dataManagement.save') || 'Save Settings'}
         </Button>
       </div>
-    </div>
+    </SettingsLayout>
   )
 }

@@ -66,6 +66,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CustomField, CustomFieldFormData, ModelTypeOption, FieldTypeOption } from "@/types/custom-fields";
 import { CustomFieldsSkeleton } from "@/components/settings/custom-fields-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
+import { SettingsLayout } from "@/components/settings/settings-layout";
 
 const modelTypes: ModelTypeOption[] = [
   { value: "PC", label: "PC" },
@@ -210,12 +211,12 @@ export default function CustomFieldsPage() {
   }
   
   return (
-    <div className="space-y-6">
+    <SettingsLayout
+      title={t('settings.customFields.title')}
+      description={t('settings.customFields.description')}
+      currentPage={t('settings.customFields.title')}
+    >
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">{t('settings.customFields.title')}</h1>
-          <p className="text-muted-foreground">{t('settings.customFields.description')}</p>
-        </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowHelp(true)}>
             <HelpCircle className="h-4 w-4 mr-2" />
@@ -561,6 +562,6 @@ export default function CustomFieldsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </SettingsLayout>
   );
 }

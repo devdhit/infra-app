@@ -11,7 +11,8 @@ import {
   Users,
   Building,
   FileText,
-  ArrowRight
+  ArrowRight,
+  AppWindow
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/use-translation";
@@ -29,6 +30,14 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   
   const settingsSections: SettingsSection[] = [
+    {
+      name: t('settings.application.title') || "Application",
+      icon: AppWindow,
+      href: "/settings/application",
+      description: t('settings.application.description') || "Customize application name and branding",
+      color: "bg-blue-100 text-blue-700",
+      gradient: "from-blue-500 to-blue-600"
+    },
     {
       name: t('settings.customFields.title') || "Custom Fields",
       icon: Settings,

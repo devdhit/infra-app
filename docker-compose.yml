@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://itams_user:Abcd_2025@db:5432/itams_db?schema=public
+      - JWT_SECRET=your-production-secret-key-here
+      - NODE_ENV=production
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    environment:
+      - POSTGRES_USER=itams_user
+      - POSTGRES_PASSWORD=Abcd_2025
+      - POSTGRES_DB=itams_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

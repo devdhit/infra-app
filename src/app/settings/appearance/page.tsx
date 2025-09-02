@@ -10,6 +10,7 @@ import { useTheme } from "next-themes"
 import { HexColorPicker } from "react-colorful"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { SettingsLayout } from "@/components/settings/settings-layout"
 
 interface AppearanceSettings {
   theme: 'light' | 'dark' | 'system'
@@ -73,14 +74,11 @@ export default function AppearanceSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{t('settings.appearance.title') || 'Appearance'}</h1>
-        <p className="text-muted-foreground">
-          {t('settings.appearance.description') || 'Customize the look and feel of the application'}
-        </p>
-      </div>
-
+    <SettingsLayout
+      title={t('settings.appearance.title') || 'Appearance'}
+      description={t('settings.appearance.description') || 'Customize the look and feel of the application'}
+      currentPage={t('settings.appearance.title') || 'Appearance'}
+    >
       <Card>
         <CardHeader>
           <CardTitle>{t('settings.appearance.theme.title') || 'Theme'}</CardTitle>
@@ -185,6 +183,6 @@ export default function AppearanceSettingsPage() {
           {t('settings.appearance.reset') || 'Reset to Defaults'}
         </Button>
       </div>
-    </div>
+    </SettingsLayout>
   )
 }

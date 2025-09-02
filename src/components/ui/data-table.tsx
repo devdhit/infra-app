@@ -87,19 +87,19 @@ interface DataTableProps<TData, TValue> {
 }
 
 // Draggable table header component
-function DraggableTableHeader({
-  header,
-  index,
-  sortable,
-  disableBuiltInFeatures,
-  enableColumnResizing,
-}: {
-  header: any
-  index: number
-  sortable: boolean
-  disableBuiltInFeatures: boolean
-  enableColumnResizing: boolean
-}) {
+const DraggableTableHeader = React.memo(({ 
+  header, 
+  index, 
+  sortable, 
+  disableBuiltInFeatures, 
+  enableColumnResizing 
+}: { 
+  header: any 
+  index: number 
+  sortable: boolean 
+  disableBuiltInFeatures: boolean 
+  enableColumnResizing: boolean 
+}) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: header.id,
   })
@@ -191,7 +191,8 @@ function DraggableTableHeader({
       )}
     </TableHead>
   )
-}
+});
+DraggableTableHeader.displayName = 'DraggableTableHeader'
 
 export function DataTable<TData, TValue>({
   columns,

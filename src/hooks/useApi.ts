@@ -16,6 +16,7 @@ export function useApiQuery<T>(key: string[], url: string, options: ApiQueryOpti
     },
     // Implement staleTime for better caching
     staleTime: 5 * 60 * 1000, // 5 minutes by default
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
     refetchOnWindowFocus: false, // Reduce unnecessary refetches
     refetchOnReconnect: false, // Reduce unnecessary refetches
     ...options
@@ -96,7 +97,7 @@ export function useAssets<T>(assetType: string, params: Record<string, any> = {}
   return useApiQuery<T>(['assets', assetType, paramsKey], url, {
     // Asset data can be cached longer since it doesn't change frequently
     staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes (previously cacheTime)
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     ...options
@@ -107,6 +108,7 @@ export function useAsset<T>(assetType: string, id: string) {
   return useApiQuery<T>(['assets', assetType, id], `/assets/${assetType}/${id}`, {
     // Individual asset data can be cached for a moderate time
     staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
   })
 }
 
@@ -330,11 +332,17 @@ export interface UserCreateUpdate extends User {
 }
 
 export function useUsers() {
-  return useApiQuery<User[]>(['users'], '/users')
+  return useApiQuery<User[]>(['users'], '/users', {
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+  })
 }
 
 export function useUser(id: string) {
-  return useApiQuery<User>(['users', id], `/users/${id}`)
+  return useApiQuery<User>(['users', id], `/users/${id}`, {
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+  })
 }
 
 export function useCreateUser() {
@@ -456,11 +464,17 @@ export interface Tenant {
 }
 
 export function useTenants() {
-  return useApiQuery<Tenant[]>(['tenants'], '/tenants')
+  return useApiQuery<Tenant[]>(['tenants'], '/tenants', {
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+  })
 }
 
 export function useTenant(id: string) {
-  return useApiQuery<Tenant>(['tenants', id], `/tenants/${id}`)
+  return useApiQuery<Tenant>(['tenants', id], `/tenants/${id}`, {
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+  })
 }
 
 export function useCreateTenant() {
@@ -591,7 +605,58 @@ export interface DashboardData {
 }
 
 export function useDashboard<T = DashboardData>() {
-  return useApiQuery<T>(['dashboard'], '/dashboard')
+  return useApiQuery<T>(['dashboard'], '/dashboard', {
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes garbage collection time
+  })
+}
+
+export interface DashboardSummaryData {
+  pc: Array<{
+    cpu: string | null;
+    monitorBarcode: string | null;
+    upsBarcode: string | null;
+    _count: number;
+  }>;
+  laptop: Array<{
+    status: string | null;
+    model: string | null;
+    _count: number;
+  }>;
+  printer: Array<{
+    color: string | null;
+    model: string | null;
+    location: string | null;
+    _count: number;
+  }>;
+  license: Array<{
+    softwareName: string | null;
+    productType: string | null;
+    licenseKey: string | null;
+    _count: number;
+  }>;
+  warehouseIT: Array<{
+    cpuBarcode: string | null;
+    cpuSapBarcode: string | null;
+    monitorBarcode: string | null;
+    monitorSapBarcode: string | null;
+    upsBarcode: string | null;
+    upsSapBarcode: string | null;
+    status: string | null;
+    model: string | null;
+    ram: string | null;
+    cpu: string | null;
+    type: string | null;
+    _count: number;
+  }>;
+  customFields: CustomField[];
+}
+
+export function useDashboardSummary<T = DashboardSummaryData>() {
+  return useApiQuery<T>(['dashboard-summary'], '/dashboard/summary', {
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes garbage collection time
+  })
 }
 
 // Current user hook
@@ -603,6 +668,7 @@ export function useCurrentUser() {
   return useApiQuery<User>(['currentUser'], '/auth/me', {
     retry: false, // Don't retry on failure to avoid infinite loops
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
     enabled: !!hasToken, // Only run the query if we have a token
   })
 }
@@ -631,7 +697,10 @@ export function useCustomFields(modelType?: string) {
   // Use the utility function to ensure consistent model type mapping
   const mappedModelType = modelType ? getModelType(modelType) : undefined;
   const queryString = mappedModelType ? `?modelType=${mappedModelType}` : ''
-  return useApiQuery<CustomField[]>(['custom-fields', mappedModelType || 'all'], `/custom-fields${queryString}`)
+  return useApiQuery<CustomField[]>(['custom-fields', mappedModelType || 'all'], `/custom-fields${queryString}`, {
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+  })
 }
 
 export function useCreateCustomField() {
@@ -709,7 +778,10 @@ export function useDeleteCustomField(id: string) {
 
 // Asset Custom Fields hooks
 export function useAssetCustomFields(assetType: string, id: string) {
-  return useApiQuery<any>(['asset-custom-fields', assetType, id], `/assets/custom-fields/${id}?assetType=${assetType}`)
+  return useApiQuery<any>(['asset-custom-fields', assetType, id], `/assets/custom-fields/${id}?assetType=${assetType}`, {
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+  })
 }
 
 // Hook for updating asset custom fields
@@ -786,7 +858,10 @@ export interface AuditLogsSettings {
 }
 
 export function useAuditLogsSettings() {
-  return useApiQuery<AuditLogsSettings>(['audit-logs-settings'], '/settings/audit-logs')
+  return useApiQuery<AuditLogsSettings>(['audit-logs-settings'], '/settings/audit-logs', {
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+  })
 }
 
 export function useUpdateAuditLogsSettings() {

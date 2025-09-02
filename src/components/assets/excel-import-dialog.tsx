@@ -174,6 +174,24 @@ export function ExcelImportDialog({
     }
   }
 
+  const handleFileSelectClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+
+  const handleClose = useCallback(() => {
+    setSelectedFiles([])
+    setImportResult(null)
+    setShowColumnMapping(false)
+    setColumnMappings([])
+    setExcelColumns([])
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    onClose()
+  }, [onClose, setSelectedFiles, setImportResult, setShowColumnMapping, setColumnMappings, setExcelColumns])
+
   const handleImport = useCallback(async () => {
     if (selectedFiles.length === 0) {
       toast.error(t('assets.excel.import.noFileSelected', 'Please select at least one file to import'))
@@ -259,29 +277,7 @@ export function ExcelImportDialog({
     } finally {
       setIsImporting(false)
     }
-  }, [selectedFiles, assetType, t, onImportSuccess, showColumnMapping, columnMappings])
-
-  const handleFileSelectClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click()
-    }
-  }
-
-  const resetDialog = () => {
-    setSelectedFiles([])
-    setImportResult(null)
-    setShowColumnMapping(false)
-    setColumnMappings([])
-    setExcelColumns([])
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
-
-  const handleClose = () => {
-    resetDialog()
-    onClose()
-  }
+  }, [selectedFiles, assetType, t, onImportSuccess, showColumnMapping, columnMappings, handleClose])
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
