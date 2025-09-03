@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/use-translation";
+import { usePermissions } from "@/hooks/use-permissions";
+import { toast } from "sonner";
 
 interface SettingsSection {
   name: string;
@@ -24,10 +26,15 @@ interface SettingsSection {
   description: string;
   color: string;
   gradient: string;
+  requiresAdmin?: boolean; // New property to indicate if admin is required
 }
 
 export default function SettingsPage() {
   const { t } = useTranslation();
+  const { userRole, checkPermission } = usePermissions();
+  
+  // Check if user has admin permissions
+  const isAdmin = userRole === 'admin';
   
   const settingsSections: SettingsSection[] = [
     {
@@ -52,7 +59,8 @@ export default function SettingsPage() {
       href: "/users",
       description: t('users.description') || "Manage system users",
       color: "bg-green-100 text-green-700",
-      gradient: "from-green-500 to-green-600"
+      gradient: "from-green-500 to-green-600",
+      requiresAdmin: true
     },
     {
       name: t('tenants.title') || "Tenants",
@@ -60,7 +68,8 @@ export default function SettingsPage() {
       href: "/tenants",
       description: t('tenants.description') || "Manage tenant organizations",
       color: "bg-purple-100 text-purple-700",
-      gradient: "from-purple-500 to-purple-600"
+      gradient: "from-purple-500 to-purple-600",
+      requiresAdmin: true
     },
     {
       name: t('settings.appearance.title') || "Appearance",
@@ -104,6 +113,14 @@ export default function SettingsPage() {
     },
   ];
 
+  // Filter out sections that require admin access for non-admin users
+  const filteredSettingsSections = settingsSections.filter(section => {
+    if (section.requiresAdmin) {
+      return isAdmin;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -124,7 +141,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {settingsSections.map((section) => {
+        {filteredSettingsSections.map((section) => {
           const Icon = section.icon;
           return (
             <Link key={section.name} href={section.href}>

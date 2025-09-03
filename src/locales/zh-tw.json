@@ -513,23 +513,249 @@
     },
     "appearance": {
       "title": "外觀",
-      "description": "自訂外觀和風格"
+      "description": "自訂外觀和風格",
+      "theme": {
+        "title": "主題",
+        "description": "選擇應用程式的主題",
+        "light": "淺色",
+        "dark": "深色",
+        "system": "系統"
+      },
+      "accentColor": "強調色",
+      "accentColorDescription": "選擇應用程式的強調色",
+      "borderRadius": "邊框圓角",
+      "borderRadiusDescription": "調整角落的圓潤程度",
+      "borderRadiusOptions": {
+        "none": "無",
+        "sm": "小",
+        "md": "中",
+        "lg": "大",
+        "xl": "超大"
+      },
+      "reset": "重設為預設值",
+      "themeUpdated": "主題更新成功",
+      "borderRadiusUpdated": "邊框圓角已更新",
+      "resetSuccess": "設定已重設為預設值"
     },
     "notifications": {
       "title": "通知",
-      "description": "設定通知偏好"
+      "description": "設定通知偏好",
+      "email": {
+        "title": "電子郵件通知",
+        "description": "設定電子郵件通知"
+      },
+      "inApp": {
+        "title": "應用程式內通知",
+        "description": "設定應用程式內通知"
+      },
+      "push": {
+        "title": "推播通知",
+        "description": "設定推播通知"
+      },
+      "types": {
+        "assetUpdates": "資產更新",
+        "assetUpdatesDescription": "當資產被建立、更新或刪除時收到通知",
+        "maintenanceReminders": "維護提醒",
+        "maintenanceRemindersDescription": "收到即將到來的維護排程通知",
+        "licenseExpirations": "授權到期",
+        "licenseExpirationsDescription": "當授權即將到期時收到通知",
+        "userManagement": "使用者管理",
+        "userManagementDescription": "收到使用者帳戶變更通知",
+        "systemAlerts": "系統警示",
+        "systemAlertsDescription": "收到重要系統事件通知"
+      },
+      "channels": {
+        "email": "電子郵件",
+        "inApp": "應用程式內",
+        "push": "推播"
+      },
+      "saveSuccess": "通知設定儲存成功",
+      "resetSuccess": "通知設定已重設為預設值"
     },
     "security": {
       "title": "安全性",
-      "description": "管理安全設定"
+      "description": "管理安全設定",
+      "authentication": {
+        "title": "身份驗證",
+        "description": "設定身份驗證"
+      },
+      "password": {
+        "title": "密碼要求",
+        "minLength": "最小長度",
+        "requireUppercase": "需要大寫字母",
+        "requireLowercase": "需要小寫字母",
+        "requireNumbers": "需要數字",
+        "requireSpecial": "需要特殊字元"
+      },
+      "twoFactor": {
+        "title": "雙重身份驗證",
+        "enable": "啟用雙重身份驗證",
+        "description": "為您的帳戶增加額外的安全層"
+      },
+      "sessions": {
+        "title": "使用中工作階段",
+        "description": "管理工作階段",
+        "device": "裝置",
+        "location": "位置",
+        "lastActive": "最後活動",
+        "status": "狀態",
+        "actions": "操作",
+        "current": "目前",
+        "active": "使用中",
+        "end": "結束工作階段",
+        "endAll": "結束所有其他工作階段",
+        "ended": "工作階段結束成功",
+        "endedAll": "所有其他工作階段結束成功"
+      },
+      "sessionTimeout": "工作階段逾時（分鐘）",
+      "save": "儲存設定",
+      "saveSuccess": "安全設定儲存成功",
+      "reset": "重設為預設值",
+      "resetSuccess": "安全設定已重設為預設值"
     },
     "dataManagement": {
       "title": "資料管理",
-      "description": "管理資料備份、保留和匯出設定"
+      "description": "管理資料備份、保留和匯出設定",
+      "backup": {
+        "title": "備份排程",
+        "description": "為您的資料設定自動備份排程",
+        "name": "名稱",
+        "frequency": "頻率",
+        "time": "時間",
+        "status": "狀態",
+        "actions": "操作",
+        "frequencies": {
+          "daily": "每日",
+          "weekly": "每週",
+          "monthly": "每月"
+        },
+        "enabled": "已啟用",
+        "disabled": "已停用",
+        "add": "新增備份排程"
+      },
+      "retention": {
+        "title": "資料保留",
+        "description": "設定不同類型資料的保留時間",
+        "assetType": "資產類型",
+        "period": "保留期間（天）",
+        "autoArchive": "自動封存"
+      },
+      "export": {
+        "title": "資料匯出",
+        "description": "以各種格式匯出您的資料",
+        "json": "匯出為 JSON",
+        "csv": "匯出為 CSV",
+        "excel": "匯出為 Excel",
+        "options": "匯出選項",
+        "includeAudit": "包含審計軌跡",
+        "includeCustom": "包含自訂欄位",
+        "includeHistory": "包含變更歷史"
+      },
+      "save": "儲存設定",
+      "reset": "重設為預設值",
+      "backupAdded": "已新增備份排程",
+      "saveSuccess": "資料管理設定儲存成功",
+      "resetSuccess": "資料管理設定已重設為預設值"
     },
     "auditLogs": {
       "title": "審計日誌",
-      "description": "設定審計日誌和監控設定"
+      "description": "設定審計日誌和監控設定",
+      "loadError": "無法載入審計日誌設定",
+      "saveError": "無法儲存審計日誌設定",
+      "save": "儲存設定",
+      "saving": "儲存中...",
+      "reset": "重設為預設值",
+      "resetSuccess": "審計日誌設定已重設為預設值",
+      "saveSuccess": "審計日誌設定儲存成功",
+      "general": {
+        "title": "一般設定",
+        "description": "基本審計日誌設定",
+        "enabled": "啟用審計日誌",
+        "enabledDescription": "為您的組織開啟審計日誌",
+        "retentionPeriod": "保留期間",
+        "days": "天",
+        "retentionDescription": "在自動刪除前保留審計日誌的時間"
+      },
+      "events": {
+        "title": "事件類型",
+        "description": "選擇要記錄的事件",
+        "assetCreation": "資產建立",
+        "assetUpdates": "資產更新",
+        "assetDeletion": "資產刪除",
+        "userLogin": "使用者登入",
+        "userLogout": "使用者登出",
+        "permissionChanges": "權限變更"
+      },
+      "notifications": {
+        "title": "通知",
+        "description": "設定接收審計日誌通知的方式",
+        "criticalEvents": "關鍵事件通知",
+        "channels": "通知管道",
+        "email": "電子郵件",
+        "slack": "Slack",
+        "emailAddress": "通知電子郵件",
+        "emailPlaceholder": "admin@example.com",
+        "emailDescription": "接收審計通知的電子郵件地址"
+      }
+    },
+    "customFields": {
+      "title": "自訂欄位",
+      "description": "管理資產的自訂欄位",
+      "add": "新增自訂欄位",
+      "edit": "編輯自訂欄位",
+      "createDescription": "為您的資產建立新的自訂欄位",
+      "editDescription": "編輯現有的自訂欄位",
+      "name": "欄位名稱",
+      "type": "欄位類型",
+      "modelType": "資產類型",
+      "required": "必填",
+      "description": "描述",
+      "namePlaceholder": "輸入欄位名稱",
+      "nameDescription": "此自訂欄位的唯一名稱",
+      "descriptionPlaceholder": "輸入描述（選填）",
+      "descriptionHelp": "此欄位用途的簡要描述",
+      "selectType": "選擇欄位類型",
+      "selectModel": "選擇資產類型",
+      "requiredHelp": "建立或更新資產時需要此欄位有值",
+      "allModels": "所有資產類型",
+      "noFields": "未找到自訂欄位",
+      "createFirst": "建立您的第一個自訂欄位",
+      "infoTitle": "自訂欄位",
+      "infoDescription": "自訂欄位允許您為資產新增額外資訊。它們可以是文字、數字、日期或其他類型的資料。",
+      "errorLoading": "載入自訂欄位失敗",
+      "helpTitle": "自訂欄位說明",
+      "helpDescription": "了解如何有效使用自訂欄位",
+      "whatAre": "什麼是自訂欄位？",
+      "whatAreDescription": "自訂欄位是可以新增到資產中的額外資料欄位，用於追蹤符合您組織需求的資訊。",
+      "fieldTypes": "欄位類型",
+      "text": "文字",
+      "textDescription": "用於短條目的單行文字",
+      "textArea": "文字區域",
+      "textAreaDescription": "用於較長描述的多行文字",
+      "number": "數字",
+      "numberDescription": "用於數量、價格等的數值",
+      "date": "日期",
+      "dateDescription": "用於追蹤重要日期的日曆日期",
+      "boolean": "布林值",
+      "booleanDescription": "用於是/否問題的真/假值",
+      "select": "選擇",
+      "selectDescription": "從預定義選項中下拉選擇",
+      "bestPractices": "最佳實踐",
+      "practice1": "使用能清楚表明欄位用途的描述性名稱",
+      "practice2": "為要收集的資料選擇適當的欄位類型",
+      "practice3": "僅在必要時將欄位設為必填，以避免增加使用者負擔",
+      "practice4": "使用描述來提供填寫欄位的指導",
+      "practice5": "按資產類型分組相關的自訂欄位以更好地組織",
+      "practice6": "定期審查和清理未使用的自訂欄位",
+      "usage": "使用方法",
+      "usageDescription": "建立後，自訂欄位將出現在資產表單和表格中。您可以隨時編輯或刪除它們，但請注意刪除欄位將移除所有相關資料。",
+      "typeHelp": "不同的欄位類型允許您收集不同類型的資料",
+      "created": "自訂欄位建立成功",
+      "updated": "自訂欄位更新成功",
+      "deleted": "自訂欄位刪除成功",
+      "errorCreating": "建立自訂欄位失敗",
+      "errorUpdating": "更新自訂欄位失敗",
+      "errorDeleting": "刪除自訂欄位失敗"
     }
   }
 }
