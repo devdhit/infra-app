@@ -64,7 +64,6 @@ export function ExcelExportDialog({
       const response = await apiClient.get(`/assets/departments?assetType=${assetType}`)
       setDepartments(response.data.departments || [])
     } catch (error) {
-      console.error('Error fetching departments:', error)
       toast.error(t('assets.excel.export.deptFetchError', 'Failed to fetch departments from database'))
       setDepartments([])
     } finally {
@@ -149,10 +148,6 @@ export function ExcelExportDialog({
                 }
               }
 
-              console.log(`Fetching from URL: ${url} with timeout ${exportTimeout}ms`)
-              // Log the absolute URL for debugging
-              console.log('Absolute URL:', window.location.origin + url)
-            
               const response = await apiClient.get(url, config)
             
               // Check if the response is empty or invalid
@@ -165,7 +160,10 @@ export function ExcelExportDialog({
             
               completedDepts++
             } catch (deptError: any) {
-              console.error(`Export error for department ${dept}:`, deptError)
+              // Log error details for debugging (in development only)
+              if (process.env.NODE_ENV === 'development') {
+                console.error(`Export error for department ${dept}:`, deptError)
+              }
             
               // Handle different types of errors
               let errorMessage = ''
@@ -249,10 +247,6 @@ export function ExcelExportDialog({
                 }
               }
 
-              console.log(`Fetching from URL: ${url} with timeout ${exportTimeout}ms`)
-              // Log the absolute URL for debugging
-              console.log('Absolute URL:', window.location.origin + url)
-            
               const response = await apiClient.get(url, config)
             
               setExportStatus(t('assets.excel.export.downloading', 'Downloading file...'))
@@ -275,7 +269,10 @@ export function ExcelExportDialog({
             
               completedDepts++
             } catch (deptError: any) {
-              console.error(`Export error for department ${dept}:`, deptError)
+              // Log error details for debugging (in development only)
+              if (process.env.NODE_ENV === 'development') {
+                console.error(`Export error for department ${dept}:`, deptError)
+              }
             
               // Handle different types of errors
               let errorMessage = ''
@@ -335,11 +332,6 @@ export function ExcelExportDialog({
         // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
         const url = `/assets/excel/export?${params.toString()}`
 
-        // Log the URL for debugging
-        console.log('Export URL:', url)
-        // Log the absolute URL for debugging
-        console.log('Absolute URL:', window.location.origin + url)
-      
         setExportStatus(t('assets.excel.export.processing', 'Processing export...'))
         setExportProgress(50)
 
@@ -378,7 +370,10 @@ export function ExcelExportDialog({
             onClose()
           }, 1500)
         } catch (singleExportError: any) {
-          console.error('Single export error:', singleExportError)
+          // Log error details for debugging (in development only)
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Single export error:', singleExportError)
+          }
         
           // Handle different types of errors
           let message = ''
@@ -399,7 +394,10 @@ export function ExcelExportDialog({
         }
       }
     } catch (error: any) {
-      console.error('Export error:', error)
+      // Log error details for debugging (in development only)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Export error:', error)
+      }
       // Error is already handled in the inner catch blocks
     } finally {
       resetExport()
