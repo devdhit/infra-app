@@ -156,6 +156,24 @@ export function ExcelImportDialog({
     }
   }
 
+  const handleFileSelectClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+
+  const handleClose = useCallback(() => {
+    setSelectedFiles([])
+    setImportResult(null)
+    setShowColumnMapping(false)
+    setColumnMappings([])
+    setExcelColumns([])
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    onClose()
+  }, [onClose])
+
   const addColumnMapping = () => {
     setColumnMappings([...columnMappings, { excelColumn: '', databaseField: '' }])
   }
@@ -174,67 +192,106 @@ export function ExcelImportDialog({
     }
   }
 
-  const handleFileSelectClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click()
-    }
-  }
+  // Function to generate automatic mappings based on column name similarity
+  const generateAutomaticMappings = useCallback(() => {
+    if (excelColumns.length === 0 || databaseFields.length === 0) return;
+    
+    // Generate automatic mappings
+    const autoMappings: ColumnMapping[] = [];
+    
+    // Create a map of database fields to their lowercase versions for comparison
+    const dbFieldsLowerMap = new Map<string, string>();
+    databaseFields.forEach(field => {
+      dbFieldsLowerMap.set(field.toLowerCase().replace(/\s+/g, ''), field);
+    });
+    
+    // Try to match each Excel column to a database field
+    excelColumns.forEach(excelColumn => {
+      const cleanExcelColumn = excelColumn.toLowerCase().replace(/\s+/g, '');
+      let matchedField: string | null = null;
+      
+      // Direct match
+      if (dbFieldsLowerMap.has(cleanExcelColumn)) {
+        matchedField = dbFieldsLowerMap.get(cleanExcelColumn) || null;
+      } else {
+        // Fuzzy match - check if any database field contains the excel column name or vice versa
+        for (const [dbFieldLower, dbField] of dbFieldsLowerMap.entries()) {
+          if (cleanExcelColumn.includes(dbFieldLower) || dbFieldLower.includes(cleanExcelColumn)) {
+            matchedField = dbField;
+            break;
+          }
+        }
+      }
+      
+      // If we found a match, add it to the mappings
+      if (matchedField) {
+        autoMappings.push({
+          excelColumn: excelColumn,
+          databaseField: matchedField
+        });
+      }
+    });
+    
+    // Update the mappings state with the auto-generated mappings
+    setColumnMappings(autoMappings);
+    
+    toast.success(t('assets.excel.import.autoMapSuccess', 'Automatic mapping completed'));
+  }, [excelColumns, databaseFields, t]);
 
-  const handleClose = useCallback(() => {
-    setSelectedFiles([])
-    setImportResult(null)
-    setShowColumnMapping(false)
-    setColumnMappings([])
-    setExcelColumns([])
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+  // New function to handle just hiding the column mapping without resetting mappings
+  const handleToggleColumnMapping = useCallback(() => {
+    // If we're about to show the mapping section and there are no mappings yet,
+    // automatically generate mappings based on column name similarity
+    if (!showColumnMapping && columnMappings.length === 0 && excelColumns.length > 0 && databaseFields.length > 0) {
+      generateAutomaticMappings();
     }
-    onClose()
-  }, [onClose, setSelectedFiles, setImportResult, setShowColumnMapping, setColumnMappings, setExcelColumns])
+    
+    setShowColumnMapping(!showColumnMapping);
+  }, [showColumnMapping, setShowColumnMapping, columnMappings.length, excelColumns, databaseFields, generateAutomaticMappings]);
 
   const handleImport = useCallback(async () => {
     if (selectedFiles.length === 0) {
-      toast.error(t('assets.excel.import.noFileSelected', 'Please select at least one file to import'))
-      return
+      toast.error(t('assets.excel.import.noFileSelected', 'Please select at least one file to import'));
+      return;
     }
 
-    setIsImporting(true)
-    setImportResult(null)
+    setIsImporting(true);
+    setImportResult(null);
 
     try {
-      let totalCreatedCount = 0
-      const allErrors: string[] = []
+      let totalCreatedCount = 0;
+      const allErrors: string[] = [];
 
       // Process each selected file
       for (const file of selectedFiles) {
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('assetType', assetType)
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('assetType', assetType);
 
-        // Add column mapping if enabled
-        if (showColumnMapping && columnMappings.length > 0) {
-          const mappingObj: Record<string, string> = {}
+        // Add column mapping if mappings exist (regardless of UI visibility)
+        if (columnMappings.length > 0) {
+          const mappingObj: Record<string, string> = {};
           columnMappings.forEach(mapping => {
             if (mapping.excelColumn && mapping.databaseField) {
-              mappingObj[mapping.excelColumn] = mapping.databaseField
+              mappingObj[mapping.excelColumn] = mapping.databaseField;
             }
-          })
-          formData.append('columnMapping', JSON.stringify(mappingObj))
+          });
+          formData.append('columnMapping', JSON.stringify(mappingObj));
         }
 
         const response = await api.post<any>('/assets/excel/import', formData, {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'multipart/form-data',
           }
-        })
+        });
 
         if (response.success) {
-          totalCreatedCount += response.createdCount || 0
+          totalCreatedCount += response.createdCount || 0;
           if (response.errors && response.errors.length > 0) {
-            allErrors.push(...response.errors.map((error: string) => `${file.name}: ${error}`))
+            allErrors.push(...response.errors.map((error: string) => `${file.name}: ${error}`));
           }
         } else {
-          allErrors.push(`${file.name}: ${response.error || t('assets.excel.import.error', 'Failed to import assets')}`)
+          allErrors.push(`${file.name}: ${response.error || t('assets.excel.import.error', 'Failed to import assets')}`);
         }
       }
 
@@ -243,39 +300,39 @@ export function ExcelImportDialog({
         message: t('assets.excel.import.success', '{0} assets imported successfully', totalCreatedCount.toString()),
         createdCount: totalCreatedCount,
         errors: allErrors
-      })
+      });
       
       if (allErrors.length === 0) {
-        toast.success(t('assets.excel.import.success', '{0} assets imported successfully', totalCreatedCount.toString()))
+        toast.success(t('assets.excel.import.success', '{0} assets imported successfully', totalCreatedCount.toString()));
         // Close dialog automatically on success
         setTimeout(() => {
-          handleClose()
-          onImportSuccess()
-        }, 1500)
+          handleClose();
+          onImportSuccess();
+        }, 1500);
       } else if (totalCreatedCount > 0) {
-        toast.success(t('assets.excel.import.partialSuccess', '{0} assets imported with some errors', totalCreatedCount.toString()))
+        toast.success(t('assets.excel.import.partialSuccess', '{0} assets imported with some errors', totalCreatedCount.toString()));
         // Close dialog automatically on partial success
         setTimeout(() => {
-          handleClose()
-          onImportSuccess()
-        }, 1500)
+          handleClose();
+          onImportSuccess();
+        }, 1500);
       } else {
-        toast.error(t('assets.excel.import.error', 'Failed to import assets'))
+        toast.error(t('assets.excel.import.error', 'Failed to import assets'));
       }
       
       if (allErrors.length === 0 || totalCreatedCount > 0) {
-        onImportSuccess()
+        onImportSuccess();
       }
     } catch (error: any) {
-      console.error('Import error:', error)
-      const message = error.message || t('assets.excel.import.error', 'Failed to import assets')
+      console.error('Import error:', error);
+      const message = error.message || t('assets.excel.import.error', 'Failed to import assets');
       setImportResult({
         success: false,
         message
-      })
-      toast.error(message)
+      });
+      toast.error(message);
     } finally {
-      setIsImporting(false)
+      setIsImporting(false);
     }
   }, [selectedFiles, assetType, t, onImportSuccess, showColumnMapping, columnMappings, handleClose])
 
@@ -349,7 +406,7 @@ export function ExcelImportDialog({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowColumnMapping(!showColumnMapping)}
+                    onClick={handleToggleColumnMapping}
                   >
                     {showColumnMapping ? t('common.hide', 'Hide') : t('common.show', 'Show')}
                   </Button>
@@ -363,15 +420,25 @@ export function ExcelImportDialog({
                     <h4 className="font-medium">
                       {t('assets.excel.import.columnMappingTitle', 'Column Mapping')}
                     </h4>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addColumnMapping}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      {t('common.add', 'Add')}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={generateAutomaticMappings}
+                      >
+                        {t('assets.excel.import.autoMap', 'Auto Map')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addColumnMapping}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        {t('common.add', 'Add')}
+                      </Button>
+                    </div>
                   </div>
                   
                   {columnMappings.length === 0 ? (
