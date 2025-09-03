@@ -56,6 +56,8 @@ export default function ApplicationSettingsPage() {
     try {
       const updatedSettings = await updateApplicationSettings({ applicationName: appName })
       setAppName(updatedSettings.applicationName)
+      // Dispatch a custom event to notify other components of the change
+      window.dispatchEvent(new CustomEvent('applicationNameUpdated', { detail: updatedSettings }))
       // Show success message
       toast.success(t('settings.application.nameUpdated') || 'Application name updated successfully')
     } catch (error) {
@@ -70,6 +72,8 @@ export default function ApplicationSettingsPage() {
       setIsSaving(true)
       const updatedSettings = await resetApplicationSettings()
       setAppName(updatedSettings.applicationName)
+      // Dispatch a custom event to notify other components of the change
+      window.dispatchEvent(new CustomEvent('applicationNameUpdated', { detail: updatedSettings }))
       // Show success message
       toast.success(t('settings.application.resetSuccess') || 'Application name reset to default')
     } catch (error) {

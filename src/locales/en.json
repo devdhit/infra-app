@@ -30,7 +30,8 @@
     },
     "logout": {
       "success": "Logged out successfully",
-      "error": "Failed to logout"
+      "error": "Failed to logout",
+      "loggingOut": "Logging out..."
     },
     "forgotPassword": {
       "title": "Forgot Password?",
@@ -92,11 +93,20 @@
     "hide": "Hide",
     "all": "All",
     "deleting": "Deleting...",
+    "bulkDelete": "Bulk Delete",
+    "update": "Update",
+    "saving": "Saving...",
+    "create": "Create",
     "pagination": {
       "showing": "Showing {0} to {1} of {2} items",
       "previous": "Previous page",
       "next": "Next page"
     }
+  },
+  "bulkDelete": {
+    "confirmation": "Are you sure you want to delete {0} {1}? This action cannot be undone.",
+    "warning": "Important",
+    "warningDescription": "This action will permanently delete {0} {1} and cannot be undone. Please ensure you want to proceed."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -366,10 +376,14 @@
       "button": "Add User",
       "unauthorized": "You do not have permission to create users",
       "success": "User created successfully",
-      "error": "Failed to create user"
+      "error": "Failed to create user",
+      "title": "Create User",
+      "description": "Add a new user to the system"
     },
     "edit": {
-      "unauthorized": "You do not have permission to edit users"
+      "unauthorized": "You do not have permission to edit users",
+      "title": "Edit User",
+      "description": "Edit user details"
     },
     "update": {
       "unauthorized": "You do not have permission to update users",
@@ -390,6 +404,23 @@
     },
     "error": {
       "loading": "Failed to load users"
+    },
+    "form": {
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "Leave blank to keep current password",
+      "role": "Role",
+      "tenant": "Tenant",
+      "selectTenant": "Select a tenant",
+      "userRole": "User",
+      "adminRole": "Admin",
+      "nameRequired": "Name is required",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Email is invalid",
+      "passwordRequired": "Password is required",
+      "passwordMinLength": "Password must be at least 6 characters"
     }
   },
   "tenants": {
@@ -412,10 +443,14 @@
       "button": "Add Tenant",
       "unauthorized": "You do not have permission to create tenants",
       "success": "Tenant created successfully",
-      "error": "Failed to create tenant"
+      "error": "Failed to create tenant",
+      "title": "Create Tenant",
+      "description": "Add a new tenant organization"
     },
     "edit": {
-      "unauthorized": "You do not have permission to edit tenants"
+      "unauthorized": "You do not have permission to edit tenants",
+      "title": "Edit Tenant",
+      "description": "Edit tenant details"
     },
     "update": {
       "unauthorized": "You do not have permission to update tenants",
@@ -436,6 +471,11 @@
     },
     "error": {
       "loading": "Failed to load tenants"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "nameRequired": "Name is required"
     }
   },
   "settings": {

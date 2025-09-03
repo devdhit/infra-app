@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useLogout } from '@/hooks/useApi'
 import { toast } from 'sonner'
 import { useTranslation } from '@/hooks/use-translation'
@@ -24,7 +23,6 @@ interface LogoutDialogProps {
 export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const logoutMutation = useLogout()
-  const router = useRouter()
   const { t } = useTranslation()
 
   const handleLogout = async () => {
@@ -33,9 +31,8 @@ export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
       await logoutMutation.mutateAsync()
       // Clear token from localStorage and API client
       localStorage.removeItem('auth-token')
-      // Redirect to login page
-      router.push('/auth/login')
-      toast.success(t('auth.logout.success') || 'Successfully logged out')
+      // Force a page reload to ensure auth state is properly reset
+      window.location.href = '/auth/login'
     } catch (error: any) {
       console.error('Logout error:', error)
       let message = t('auth.logout.error') || 'Failed to logout'

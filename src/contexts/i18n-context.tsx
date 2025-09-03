@@ -33,6 +33,8 @@ export function I18nProvider({
         setTranslations(loadedTranslations)
       } catch (error) {
         console.error('Failed to load translations:', error)
+        // Fallback to empty translations
+        setTranslations({})
       } finally {
         setLoading(false)
       }

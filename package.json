@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:windows": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
