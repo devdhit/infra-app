@@ -247,7 +247,7 @@ export function ExcelImportDialog({
     }
     
     setShowColumnMapping(!showColumnMapping);
-  }, [showColumnMapping, setShowColumnMapping, columnMappings.length, excelColumns, databaseFields, generateAutomaticMappings]);
+  }, [showColumnMapping, setShowColumnMapping, excelColumns, databaseFields, generateAutomaticMappings]);
 
   const handleImport = useCallback(async () => {
     if (selectedFiles.length === 0) {
@@ -334,7 +334,7 @@ export function ExcelImportDialog({
     } finally {
       setIsImporting(false);
     }
-  }, [selectedFiles, assetType, t, onImportSuccess, showColumnMapping, columnMappings, handleClose])
+  }, [selectedFiles, assetType, t, onImportSuccess, columnMappings, handleClose])
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
