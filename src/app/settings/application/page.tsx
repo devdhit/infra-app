@@ -56,6 +56,10 @@ export default function ApplicationSettingsPage() {
     try {
       const updatedSettings = await updateApplicationSettings({ applicationName: appName })
       setAppName(updatedSettings.applicationName)
+      // Store in localStorage for persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('applicationName', updatedSettings.applicationName)
+      }
       // Dispatch a custom event to notify other components of the change
       window.dispatchEvent(new CustomEvent('applicationNameUpdated', { detail: updatedSettings }))
       // Show success message
@@ -72,6 +76,10 @@ export default function ApplicationSettingsPage() {
       setIsSaving(true)
       const updatedSettings = await resetApplicationSettings()
       setAppName(updatedSettings.applicationName)
+      // Store in localStorage for persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('applicationName', updatedSettings.applicationName)
+      }
       // Dispatch a custom event to notify other components of the change
       window.dispatchEvent(new CustomEvent('applicationNameUpdated', { detail: updatedSettings }))
       // Show success message

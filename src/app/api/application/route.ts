@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getApplicationName, setApplicationName } from '@/lib/i18n';
+import { getApplicationName } from '@/lib/i18n';
 
 // GET - Retrieve application settings
 export async function GET() {
@@ -33,10 +33,8 @@ export async function POST(request: Request) {
       );
     }
     
-    // Update application name
-    setApplicationName(applicationName);
-    
-    // Return updated settings
+    // Update application name (this will store it in localStorage on the client side)
+    // For server-side, we'll return the name and let the client handle localStorage
     const shortName = applicationName.split(' ').map(word => word.charAt(0)).join('').toUpperCase() || 'ITAMS';
     
     return NextResponse.json({
