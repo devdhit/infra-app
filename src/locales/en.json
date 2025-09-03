@@ -217,12 +217,14 @@
         "selectDept": "Select department",
         "info": {
           "all": "This will export all {0} data to an Excel file with proper formatting.",
-          "allDepts": "This will export all {0} data for the selected department to an Excel file with proper formatting.",
+          "allDepts": "This will export {0} data for all departments to separate Excel files with proper formatting.",
+          "allDeptsZip": "This will export {0} data for all departments packaged into a single ZIP file with separate Excel files for each department.",
           "singleDept": "This will export {0} data for the selected department ({1}) to an Excel file with proper formatting.",
           "eachDept": "This will export {0} data for each department to separate Excel files with proper formatting.",
           "selected": "This will export only the selected {0} items to an Excel file with proper formatting.",
           "noSelection": "No items selected for export."
         },
+        "allDeptsSelected": "All departments will be exported",
         "button": "Export Data",
         "exporting": "Exporting...",
         "starting": "Starting export...",
@@ -234,6 +236,7 @@
         "success": "{0} export completed",
         "successSingleDept": "{0} export completed for department {1}",
         "successAllDepts": "{0} export completed for all departments",
+        "successAllDeptsZip": "{0} export completed. ZIP file with all departments downloaded.",
         "error": "Failed to export assets",
         "timeout": "Export timed out. The data might be too large.",
         "unauthorized": "Unauthorized access. Please log in again.",

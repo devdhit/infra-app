@@ -216,12 +216,13 @@
         "selectDept": "選擇部門",
         "info": {
           "all": "這將把所有 {0} 資料匯出到格式正確的 Excel 檔案中。",
-          "allDepts": "這將把所選部門的所有 {0} 資料匯出到格式正確的 Excel 檔案中。",
+          "allDepts": "這將把所有部門的 {0} 資料分別匯出到格式正確的 Excel 檔案中。",
           "singleDept": "這將把所選部門（{1}）的 {0} 資料匯出到格式正確的 Excel 檔案中。",
           "eachDept": "這將把每個部門的 {0} 資料分別匯出到格式正確的 Excel 檔案中。",
           "selected": "這將把所選的 {0} 項目匯出到格式正確的 Excel 檔案中。",
           "noSelection": "未選擇任何項目進行匯出。"
         },
+        "allDeptsSelected": "所有部門都將被匯出",
         "button": "匯出資料",
         "exporting": "匯出中...",
         "starting": "開始匯出...",
