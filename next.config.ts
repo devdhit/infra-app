@@ -32,8 +32,8 @@ const nextConfig: NextConfig = {
   // Move serverComponentsExternalPackages to the root level
   serverExternalPackages: [],
   
-  // Remove webpack configuration to fully use Turbopack
-  // Turbopack is enabled by default with --turbopack flag
+  // Use Webpack instead of Turbopack to avoid the build error
+  // Remove the Turbopack-specific configuration
 };
 
 export default nextConfig;
