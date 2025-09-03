@@ -3,8 +3,12 @@ import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+// Use environment-specific JWT secret with fallback
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-for-development'
 const SALT_ROUNDS = 10
+
+// Token expiration based on environment
+const TOKEN_EXPIRATION = process.env.NODE_ENV === 'production' ? '24h' : '7d'
 
 export interface UserJwtPayload {
   id: string
@@ -26,7 +30,7 @@ export function generateToken(user: { id: string; email: string; tenantId: strin
       role: user.role,
     },
     JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: TOKEN_EXPIRATION }
   )
 }
 

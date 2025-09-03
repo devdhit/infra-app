@@ -19,14 +19,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLogout } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { useTranslation } from "@/hooks/use-translation";
-import { useApplicationName } from "@/hooks/use-application-name";
+import { getApplicationSettings } from '@/lib/api/application';
 
 // Define user roles
 type UserRole = 'admin' | 'user';
@@ -93,7 +93,35 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
   });
   const logoutMutation = useLogout();
   const { t } = useTranslation();
-  const { applicationName, shortName } = useApplicationName();
+  const [applicationName, setApplicationName] = useState('IT Asset Management');
+  const [shortName, setShortName] = useState('ITAMS');
+
+  // Load application name from API
+  useEffect(() => {
+    const loadApplicationName = async () => {
+      try {
+        const settings = await getApplicationSettings();
+        setApplicationName(settings.applicationName);
+        setShortName(settings.shortName);
+      } catch (error) {
+        console.error('Failed to load application name:', error);
+      }
+    };
+
+    loadApplicationName();
+
+    // Listen for application name updates
+    const handleApplicationNameUpdate = (event: CustomEvent) => {
+      setApplicationName(event.detail.applicationName);
+      setShortName(event.detail.shortName);
+    };
+
+    window.addEventListener('applicationNameUpdated', handleApplicationNameUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('applicationNameUpdated', handleApplicationNameUpdate as EventListener);
+    };
+  }, []);
 
   // Memoize filtered navigation items to prevent unnecessary re-renders
   const filteredNavigationItems = useMemo(() => {
@@ -105,12 +133,14 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
   const handleLogout = useCallback(async () => {
     try {
       await logoutMutation.mutateAsync();
-      router.push('/auth/login');
-      toast.success(t('auth.logout.success') || 'Logged out successfully');
+      // Clear token from localStorage
+      localStorage.removeItem('auth-token');
+      // Force a page reload to ensure auth state is properly reset
+      window.location.href = '/auth/login';
     } catch (error) {
       toast.error(t('auth.logout.error') || 'Failed to logout');
     }
-  }, [logoutMutation, router, t]);
+  }, [logoutMutation, t]);
 
   const isActive = useCallback((href: string) => {
     return pathname === href || pathname.startsWith(href);

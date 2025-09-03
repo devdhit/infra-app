@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useCurrentUser } from "@/hooks/useApi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,13 +19,38 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useApplicationName } from "@/hooks/use-application-name";
+import { getApplicationSettings } from '@/lib/api/application';
 
 export function Header() {
   const { t } = useTranslation();
   const { data: user } = useCurrentUser();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const { shortName } = useApplicationName();
+  const [shortName, setShortName] = useState('ITAMS');
+
+  // Load application name from API
+  useEffect(() => {
+    const loadApplicationName = async () => {
+      try {
+        const settings = await getApplicationSettings();
+        setShortName(settings.shortName);
+      } catch (error) {
+        console.error('Failed to load application name:', error);
+      }
+    };
+
+    loadApplicationName();
+
+    // Listen for application name updates
+    const handleApplicationNameUpdate = (event: CustomEvent) => {
+      setShortName(event.detail.shortName);
+    };
+
+    window.addEventListener('applicationNameUpdated', handleApplicationNameUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('applicationNameUpdated', handleApplicationNameUpdate as EventListener);
+    };
+  }, []);
   
   return (
     <>

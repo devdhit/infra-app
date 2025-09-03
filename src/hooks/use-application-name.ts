@@ -1,45 +1,35 @@
 import { useState, useEffect } from 'react';
-import { getApplicationName, setApplicationName as setAppName } from '@/lib/i18n';
+import { getApplicationSettings } from '@/lib/api/application';
 
 export function useApplicationName() {
   const [applicationName, setApplicationNameState] = useState('');
   const [shortName, setShortName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load application name from localStorage
+  // Load application name from API
   useEffect(() => {
-    const appName = getApplicationName();
-    setApplicationNameState(appName);
-    setShortName(appName.split(' ').map(word => word.charAt(0)).join('').toUpperCase() || 'ITAMS');
-    setIsLoading(false);
+    const loadApplicationName = async () => {
+      try {
+        setIsLoading(true);
+        const settings = await getApplicationSettings();
+        setApplicationNameState(settings.applicationName);
+        setShortName(settings.shortName);
+      } catch (error) {
+        console.error('Failed to load application name:', error);
+        // Fallback to default values
+        setApplicationNameState('IT Asset Management');
+        setShortName('ITAMS');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadApplicationName();
   }, []);
-
-  // Update application name
-  const updateApplicationName = (name: string) => {
-    if (!name.trim()) {
-      // If name is empty, reset to default
-      resetApplicationName();
-      return;
-    }
-    
-    setAppName(name);
-    setApplicationNameState(name);
-    setShortName(name.split(' ').map(word => word.charAt(0)).join('').toUpperCase() || 'ITAMS');
-  };
-
-  // Reset to default
-  const resetApplicationName = () => {
-    const defaultName = getApplicationName(); // This will return the default value
-    setAppName(defaultName);
-    setApplicationNameState(defaultName);
-    setShortName(defaultName.split(' ').map(word => word.charAt(0)).join('').toUpperCase() || 'ITAMS');
-  };
 
   return {
     applicationName,
     shortName,
     isLoading,
-    updateApplicationName,
-    resetApplicationName
   };
 }

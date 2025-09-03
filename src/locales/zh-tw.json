@@ -30,7 +30,8 @@
     },
     "logout": {
       "success": "登出成功",
-      "error": "登出失敗"
+      "error": "登出失敗",
+      "loggingOut": "登出中..."
     },
     "forgotPassword": {
       "title": "忘記密碼？",
@@ -92,11 +93,20 @@
     "hide": "隱藏",
     "all": "全部",
     "deleting": "刪除中...",
+    "bulkDelete": "批次刪除",
+    "update": "更新",
+    "saving": "儲存中...",
+    "create": "建立",
     "pagination": {
       "showing": "顯示第 {0} 到 {1} 項，共 {2} 項",
       "previous": "上一頁",
       "next": "下一頁"
     }
+  },
+  "bulkDelete": {
+    "confirmation": "您確定要刪除 {0} 個 {1} 嗎？此操作無法復原。",
+    "warning": "重要",
+    "warningDescription": "此操作將永久刪除 {0} 個 {1} 且無法復原。請確認您要繼續進行。"
   },
   "dashboard": {
     "title": "儀表板",
@@ -366,10 +376,14 @@
       "button": "新增使用者",
       "unauthorized": "您沒有權限建立使用者",
       "success": "使用者建立成功",
-      "error": "使用者建立失敗"
+      "error": "使用者建立失敗",
+      "title": "建立使用者",
+      "description": "新增使用者到系統"
     },
     "edit": {
-      "unauthorized": "您沒有權限編輯使用者"
+      "unauthorized": "您沒有權限編輯使用者",
+      "title": "編輯使用者",
+      "description": "編輯使用者詳細資訊"
     },
     "update": {
       "unauthorized": "您沒有權限更新使用者",
@@ -390,6 +404,23 @@
     },
     "error": {
       "loading": "載入使用者失敗"
+    },
+    "form": {
+      "name": "姓名",
+      "email": "電子郵件",
+      "password": "密碼",
+      "newPassword": "新密碼",
+      "newPasswordPlaceholder": "留空以保持目前密碼",
+      "role": "角色",
+      "tenant": "租戶",
+      "selectTenant": "選擇租戶",
+      "userRole": "使用者",
+      "adminRole": "管理員",
+      "nameRequired": "姓名為必填",
+      "emailRequired": "電子郵件為必填",
+      "emailInvalid": "電子郵件無效",
+      "passwordRequired": "密碼為必填",
+      "passwordMinLength": "密碼必須至少 6 個字元"
     }
   },
   "tenants": {
@@ -412,10 +443,14 @@
       "button": "新增租戶",
       "unauthorized": "您沒有權限建立租戶",
       "success": "租戶建立成功",
-      "error": "租戶建立失敗"
+      "error": "租戶建立失敗",
+      "title": "建立租戶",
+      "description": "新增租戶組織"
     },
     "edit": {
-      "unauthorized": "您沒有權限編輯租戶"
+      "unauthorized": "您沒有權限編輯租戶",
+      "title": "編輯租戶",
+      "description": "編輯租戶詳細資訊"
     },
     "update": {
       "unauthorized": "您沒有權限更新租戶",
@@ -436,6 +471,11 @@
     },
     "error": {
       "loading": "載入租戶失敗"
+    },
+    "form": {
+      "name": "名稱",
+      "description": "描述",
+      "nameRequired": "名稱為必填"
     }
   },
   "settings": {
