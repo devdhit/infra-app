@@ -57,13 +57,31 @@ Installs and configures the auto-deployment system.
 
 ## Installation
 
-1. Copy the scripts to your server:
+### Method 1: Using the Setup Script (Recommended)
+
+1. Navigate to the project directory:
    ```bash
-   # Navigate to your project directory
-   cd /path/to/itams
+   cd /opt/itams
+   ```
+
+2. Run the setup script:
+   ```bash
+   sudo ./scripts/setup-auto-deploy.sh
+   ```
+
+### Method 2: Manual Installation
+
+1. Copy the scripts to appropriate locations:
+   ```bash
+   # Navigate to the project directory
+   cd /opt/itams
    
-   # Copy scripts to appropriate locations
+   # Create necessary directories
    sudo mkdir -p /opt/itams/scripts
+   sudo mkdir -p /var/log
+   sudo mkdir -p /var/run
+   
+   # Copy scripts to the appropriate locations
    sudo cp scripts/auto-deploy.sh /opt/itams/scripts/
    sudo cp scripts/itams-auto-deploy.service /etc/systemd/system/
    sudo cp scripts/itams-auto-deploy.timer /etc/systemd/system/
@@ -80,11 +98,6 @@ Installs and configures the auto-deployment system.
    sudo systemctl enable itams-auto-deploy.timer
    sudo systemctl start itams-auto-deploy.timer
    ```
-
-Alternatively, you can use the setup script:
-```bash
-sudo ./scripts/setup-auto-deploy.sh
-```
 
 ## Configuration
 

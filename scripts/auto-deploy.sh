@@ -91,7 +91,7 @@ if [ ! -d "$LOCAL_REPO_DIR" ]; then
     
     # Start the application with PM2
     log "Starting application with PM2..."
-    pm2 start /opt/itams/ecosystem.config.js || error_exit "Failed to start application with PM2"
+    pm2 start $LOCAL_REPO_DIR/ecosystem.config.js || error_exit "Failed to start application with PM2"
     
     log "Initial deployment completed successfully!"
 else
