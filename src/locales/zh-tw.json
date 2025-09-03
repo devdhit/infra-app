@@ -258,6 +258,8 @@
         "selectDatabaseField": "選擇資料庫欄位",
         "mappingHelp": "對應 Excel 欄位名稱與資料庫欄位名稱以確保正確匯入資料。",
         "customFieldsHelp": "此資產類型的自訂欄位也可用於對應。",
+        "autoMap": "自動對應",
+        "autoMapSuccess": "自動對應完成",
         "button": "匯入資料",
         "importing": "匯入中...",
         "success": "{0} 個資產匯入成功",
