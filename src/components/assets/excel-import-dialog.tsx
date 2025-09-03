@@ -247,7 +247,7 @@ export function ExcelImportDialog({
     }
     
     setShowColumnMapping(!showColumnMapping);
-  }, [showColumnMapping, setShowColumnMapping, excelColumns, databaseFields, generateAutomaticMappings]);
+  }, [showColumnMapping, setShowColumnMapping, columnMappings.length, excelColumns, databaseFields, generateAutomaticMappings]);
 
   const handleImport = useCallback(async () => {
     if (selectedFiles.length === 0) {
