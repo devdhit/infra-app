@@ -192,6 +192,34 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
             worksheet.cell(row, col).value('');
           }
         }
+        
+        // Copy formatting from the template row (dataStartRow - 1) to all new data rows
+        const templateRow = dataStartRow - 1;
+        for (let i = 0; i < rowsToInsert; i++) {
+          const currentRow = dataStartRow + i;
+          // Get all style properties from the template cell and apply to the current cell
+          for (let col = 1; col <= 11; col++) {
+            try {
+              const templateCell = worksheet.cell(templateRow, col);
+              const currentCell = worksheet.cell(currentRow, col);
+              
+              // Get all available styles from template cell
+              const allStyles = templateCell.style([
+                "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
+                "horizontalAlignment", "verticalAlignment", "indent", "wrapText", "shrinkToFit",
+                "textDirection", "textRotation", "angleTextCounterclockwise", "angleTextClockwise",
+                "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
+                "borderStyle", "numberFormat"
+              ]);
+              
+              // Apply all styles to current cell
+              currentCell.style(allStyles);
+            } catch (styleError: any) {
+              // If there's an error with styles, just continue - we still want the data
+              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+            }
+          }
+        }
       }
       console.log(`Shifted footer by ${rowsToInsert} rows`);
       
@@ -333,6 +361,34 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
               worksheet.cell(row + 1, col).value(cellValue);
               // Clear the original cell
               worksheet.cell(row, col).value('');
+            }
+          }
+        }
+        
+        // Copy formatting from the template row (dataStartRow - 1) to all new data rows
+        const templateRow = dataStartRow - 1;
+        for (let i = 0; i < rowsToInsert; i++) {
+          const currentRow = dataStartRow + i;
+          // Get all style properties from the template cell and apply to the current cell
+          for (let col = 1; col <= 8; col++) {
+            try {
+              const templateCell = worksheet.cell(templateRow, col);
+              const currentCell = worksheet.cell(currentRow, col);
+              
+              // Get all available styles from template cell
+              const allStyles = templateCell.style([
+                "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
+                "horizontalAlignment", "verticalAlignment", "indent", "wrapText", "shrinkToFit",
+                "textDirection", "textRotation", "angleTextCounterclockwise", "angleTextClockwise",
+                "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
+                "borderStyle", "numberFormat"
+              ]);
+              
+              // Apply all styles to current cell
+              currentCell.style(allStyles);
+            } catch (styleError: any) {
+              // If there's an error with styles, just continue - we still want the data
+              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }
@@ -488,6 +544,34 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
             }
           }
         }
+        
+        // Copy formatting from the template row (dataStartRow - 1) to all new data rows
+        const templateRow = dataStartRow - 1;
+        for (let i = 0; i < rowsToInsert; i++) {
+          const currentRow = dataStartRow + i;
+          // Get all style properties from the template cell and apply to the current cell
+          for (let col = 1; col <= 9; col++) {
+            try {
+              const templateCell = worksheet.cell(templateRow, col);
+              const currentCell = worksheet.cell(currentRow, col);
+              
+              // Get all available styles from template cell
+              const allStyles = templateCell.style([
+                "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
+                "horizontalAlignment", "verticalAlignment", "indent", "wrapText", "shrinkToFit",
+                "textDirection", "textRotation", "angleTextCounterclockwise", "angleTextClockwise",
+                "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
+                "borderStyle", "numberFormat"
+              ]);
+              
+              // Apply all styles to current cell
+              currentCell.style(allStyles);
+            } catch (styleError: any) {
+              // If there's an error with styles, just continue - we still want the data
+              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+            }
+          }
+        }
       }
       
       // Add data rows
@@ -601,11 +685,39 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
         for (let i = 0; i < rowsToInsert; i++) {
           // Shift footer rows down by one
           for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
-            for (let col = 1; col <= 9; col++) { // Assuming 9 columns for Printer template
+            for (let col = 1; col <= 11; col++) { // Assuming 11 columns for License template
               const cellValue = worksheet.cell(row, col).value();
               worksheet.cell(row + 1, col).value(cellValue);
               // Clear the original cell
               worksheet.cell(row, col).value('');
+            }
+          }
+        }
+        
+        // Copy formatting from the template row (dataStartRow - 1) to all new data rows
+        const templateRow = dataStartRow - 1;
+        for (let i = 0; i < rowsToInsert; i++) {
+          const currentRow = dataStartRow + i;
+          // Get all style properties from the template cell and apply to the current cell
+          for (let col = 1; col <= 11; col++) {
+            try {
+              const templateCell = worksheet.cell(templateRow, col);
+              const currentCell = worksheet.cell(currentRow, col);
+              
+              // Get all available styles from template cell
+              const allStyles = templateCell.style([
+                "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
+                "horizontalAlignment", "verticalAlignment", "indent", "wrapText", "shrinkToFit",
+                "textDirection", "textRotation", "angleTextCounterclockwise", "angleTextClockwise",
+                "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
+                "borderStyle", "numberFormat"
+              ]);
+              
+              // Apply all styles to current cell
+              currentCell.style(allStyles);
+            } catch (styleError: any) {
+              // If there's an error with styles, just continue - we still want the data
+              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }
@@ -730,11 +842,39 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         for (let i = 0; i < rowsToInsert; i++) {
           // Shift footer rows down by one
           for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
-            for (let col = 1; col <= 9; col++) { // Assuming 9 columns for Printer template
+            for (let col = 1; col <= 8; col++) { // Assuming 8 columns for WarehouseIT template
               const cellValue = worksheet.cell(row, col).value();
               worksheet.cell(row + 1, col).value(cellValue);
               // Clear the original cell
               worksheet.cell(row, col).value('');
+            }
+          }
+        }
+        
+        // Copy formatting from the template row (dataStartRow - 1) to all new data rows
+        const templateRow = dataStartRow - 1;
+        for (let i = 0; i < rowsToInsert; i++) {
+          const currentRow = dataStartRow + i;
+          // Get all style properties from the template cell and apply to the current cell
+          for (let col = 1; col <= 8; col++) {
+            try {
+              const templateCell = worksheet.cell(templateRow, col);
+              const currentCell = worksheet.cell(currentRow, col);
+              
+              // Get all available styles from template cell
+              const allStyles = templateCell.style([
+                "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
+                "horizontalAlignment", "verticalAlignment", "indent", "wrapText", "shrinkToFit",
+                "textDirection", "textRotation", "angleTextCounterclockwise", "angleTextClockwise",
+                "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
+                "borderStyle", "numberFormat"
+              ]);
+              
+              // Apply all styles to current cell
+              currentCell.style(allStyles);
+            } catch (styleError: any) {
+              // If there's an error with styles, just continue - we still want the data
+              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }

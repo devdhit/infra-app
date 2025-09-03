@@ -217,12 +217,14 @@
         "selectDept": "Select department",
         "info": {
           "all": "This will export all {0} data to an Excel file with proper formatting.",
-          "allDepts": "This will export all {0} data for the selected department to an Excel file with proper formatting.",
+          "allDepts": "This will export {0} data for all departments to separate Excel files with proper formatting.",
+          "allDeptsZip": "This will export {0} data for all departments packaged into a single ZIP file with separate Excel files for each department.",
           "singleDept": "This will export {0} data for the selected department ({1}) to an Excel file with proper formatting.",
           "eachDept": "This will export {0} data for each department to separate Excel files with proper formatting.",
           "selected": "This will export only the selected {0} items to an Excel file with proper formatting.",
           "noSelection": "No items selected for export."
         },
+        "allDeptsSelected": "All departments will be exported",
         "button": "Export Data",
         "exporting": "Exporting...",
         "starting": "Starting export...",
@@ -234,6 +236,7 @@
         "success": "{0} export completed",
         "successSingleDept": "{0} export completed for department {1}",
         "successAllDepts": "{0} export completed for all departments",
+        "successAllDeptsZip": "{0} export completed. ZIP file with all departments downloaded.",
         "error": "Failed to export assets",
         "timeout": "Export timed out. The data might be too large.",
         "unauthorized": "Unauthorized access. Please log in again.",
@@ -505,6 +508,193 @@
       "resetSuccess": "Application name reset to default",
       "resetError": "Failed to reset application name"
     },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Customize the look and feel",
+      "theme": {
+        "title": "Theme",
+        "description": "Select the theme for the application",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "accentColor": "Accent Color",
+      "accentColorDescription": "Choose the accent color for the application",
+      "borderRadius": "Border Radius",
+      "borderRadiusDescription": "Adjust the roundness of corners",
+      "borderRadiusOptions": {
+        "none": "None",
+        "sm": "Small",
+        "md": "Medium",
+        "lg": "Large",
+        "xl": "Extra Large"
+      },
+      "reset": "Reset to Defaults",
+      "themeUpdated": "Theme updated successfully",
+      "borderRadiusUpdated": "Border radius updated",
+      "resetSuccess": "Settings reset to defaults"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Configure notification preferences",
+      "email": {
+        "title": "Email Notifications",
+        "description": "Configure email notification settings"
+      },
+      "inApp": {
+        "title": "In-App Notifications",
+        "description": "Configure in-app notification settings"
+      },
+      "push": {
+        "title": "Push Notifications",
+        "description": "Configure push notification settings"
+      },
+      "types": {
+        "assetUpdates": "Asset Updates",
+        "assetUpdatesDescription": "Get notified when assets are created, updated, or deleted",
+        "maintenanceReminders": "Maintenance Reminders",
+        "maintenanceRemindersDescription": "Get notified about upcoming maintenance schedules",
+        "licenseExpirations": "License Expirations",
+        "licenseExpirationsDescription": "Get notified when licenses are about to expire",
+        "userManagement": "User Management",
+        "userManagementDescription": "Get notified about user account changes",
+        "systemAlerts": "System Alerts",
+        "systemAlertsDescription": "Get notified about important system events"
+      },
+      "channels": {
+        "email": "Email",
+        "inApp": "In-App",
+        "push": "Push"
+      },
+      "saveSuccess": "Notification settings saved successfully",
+      "resetSuccess": "Notification settings reset to defaults"
+    },
+    "security": {
+      "title": "Security",
+      "description": "Manage security settings",
+      "authentication": {
+        "title": "Authentication",
+        "description": "Configure authentication settings"
+      },
+      "password": {
+        "title": "Password Requirements",
+        "minLength": "Minimum Length",
+        "requireUppercase": "Require Uppercase Letter",
+        "requireLowercase": "Require Lowercase Letter",
+        "requireNumbers": "Require Numbers",
+        "requireSpecial": "Require Special Characters"
+      },
+      "twoFactor": {
+        "title": "Two-Factor Authentication",
+        "enable": "Enable Two-Factor Authentication",
+        "description": "Add an extra layer of security to your account"
+      },
+      "sessions": {
+        "title": "Active Sessions",
+        "description": "Manage your active sessions across devices",
+        "device": "Device",
+        "location": "Location",
+        "lastActive": "Last Active",
+        "status": "Status",
+        "actions": "Actions",
+        "current": "Current",
+        "active": "Active",
+        "end": "End Session",
+        "endAll": "End All Other Sessions",
+        "ended": "Session ended successfully",
+        "endedAll": "All other sessions ended successfully"
+      },
+      "sessionTimeout": "Session Timeout (minutes)",
+      "save": "Save Settings",
+      "saveSuccess": "Security settings saved successfully",
+      "reset": "Reset to Defaults",
+      "resetSuccess": "Security settings reset to defaults"
+    },
+    "dataManagement": {
+      "title": "Data Management",
+      "description": "Manage data backup, retention, and export settings",
+      "backup": {
+        "title": "Backup Schedules",
+        "description": "Configure automated backup schedules for your data",
+        "name": "Name",
+        "frequency": "Frequency",
+        "time": "Time",
+        "status": "Status",
+        "actions": "Actions",
+        "frequencies": {
+          "daily": "Daily",
+          "weekly": "Weekly",
+          "monthly": "Monthly"
+        },
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "add": "Add Backup Schedule"
+      },
+      "retention": {
+        "title": "Data Retention",
+        "description": "Configure how long different types of data are kept",
+        "assetType": "Asset Type",
+        "period": "Retention Period (Days)",
+        "autoArchive": "Auto Archive"
+      },
+      "export": {
+        "title": "Data Export",
+        "description": "Export your data in various formats",
+        "json": "Export as JSON",
+        "csv": "Export as CSV",
+        "excel": "Export as Excel",
+        "options": "Export Options",
+        "includeAudit": "Include Audit Trail",
+        "includeCustom": "Include Custom Fields",
+        "includeHistory": "Include Change History"
+      },
+      "save": "Save Settings",
+      "reset": "Reset to Defaults",
+      "backupAdded": "Backup schedule added",
+      "saveSuccess": "Data management settings saved successfully",
+      "resetSuccess": "Data management settings reset to defaults"
+    },
+    "auditLogs": {
+      "title": "Audit Logs",
+      "description": "Configure audit logging and monitoring settings",
+      "loadError": "Failed to load audit logs settings",
+      "saveError": "Failed to save audit logs settings",
+      "save": "Save Settings",
+      "saving": "Saving...",
+      "reset": "Reset to Defaults",
+      "resetSuccess": "Audit log settings reset to defaults",
+      "saveSuccess": "Audit log settings saved successfully",
+      "general": {
+        "title": "General Settings",
+        "description": "Basic audit logging configuration",
+        "enabled": "Enable Audit Logs",
+        "enabledDescription": "Turn on audit logging for your organization",
+        "retentionPeriod": "Retention Period",
+        "days": "days",
+        "retentionDescription": "How long to keep audit logs before automatic deletion"
+      },
+      "events": {
+        "title": "Event Types",
+        "description": "Select which events to log",
+        "assetCreation": "Asset Creation",
+        "assetUpdates": "Asset Updates",
+        "assetDeletion": "Asset Deletion",
+        "userLogin": "User Login",
+        "userLogout": "User Logout",
+        "permissionChanges": "Permission Changes"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Configure how you receive audit log notifications",
+        "criticalEvents": "Notify on Critical Events",
+        "channels": "Notification Channels",
+        "email": "Email",
+        "slack": "Slack",
+        "emailAddress": "Notification Email",
+        "emailPlaceholder": "admin@example.com",
+        "emailDescription": "Email address to receive audit notifications"
+      }
+    },
     "customFields": {
       "title": "Custom Fields",
       "description": "Manage custom fields for your assets",
@@ -556,27 +746,13 @@
       "practice6": "Regularly review and clean up unused custom fields",
       "usage": "Usage",
       "usageDescription": "Once created, custom fields will appear in asset forms and tables. You can edit or delete them at any time, but be aware that deleting a field will remove all associated data.",
-      "typeHelp": "Different field types allow you to collect different kinds of data"
-    },
-    "appearance": {
-      "title": "Appearance",
-      "description": "Customize the look and feel"
-    },
-    "notifications": {
-      "title": "Notifications",
-      "description": "Configure notification preferences"
-    },
-    "security": {
-      "title": "Security",
-      "description": "Manage security settings"
-    },
-    "dataManagement": {
-      "title": "Data Management",
-      "description": "Manage data backup, retention, and export settings"
-    },
-    "auditLogs": {
-      "title": "Audit Logs",
-      "description": "Configure audit logging and monitoring settings"
+      "typeHelp": "Different field types allow you to collect different kinds of data",
+      "created": "Custom field created successfully",
+      "updated": "Custom field updated successfully",
+      "deleted": "Custom field deleted successfully",
+      "errorCreating": "Failed to create custom field",
+      "errorUpdating": "Failed to update custom field",
+      "errorDeleting": "Failed to delete custom field"
     }
   }
 }
