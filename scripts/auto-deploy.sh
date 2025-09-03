@@ -87,7 +87,13 @@ if [ ! -d "$LOCAL_REPO_DIR" ]; then
     
     # Build the application
     log "Building application..."
-    npm run build || error_exit "Failed to build application"
+    npm run build || {
+        log "Build failed. Trying to clear cache and rebuild..."
+        # Clear build cache and try again
+        rm -rf .next
+        npx prisma generate
+        npm run build || error_exit "Failed to build application after cache clear"
+    }
     
     # Start the application with PM2
     log "Starting application with PM2..."
@@ -153,7 +159,13 @@ else
         
         # Build the application
         log "Building application..."
-        npm run build || error_exit "Failed to build application"
+        npm run build || {
+            log "Build failed. Trying to clear cache and rebuild..."
+            # Clear build cache and try again
+            rm -rf .next
+            npx prisma generate
+            npm run build || error_exit "Failed to build application after cache clear"
+        }
         
         # Restart the application with PM2
         log "Restarting application with PM2..."

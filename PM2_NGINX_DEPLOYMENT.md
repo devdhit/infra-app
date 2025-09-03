@@ -178,6 +178,33 @@ npx prisma generate
 npm run build
 ```
 
+If you encounter a Turbopack build error, try these solutions:
+
+1. **Use Webpack instead of Turbopack**:
+   - Ensure the `next.config.ts` file doesn't have Turbopack-specific configurations
+   - Remove `--turbopack` flags from package.json scripts
+
+2. **Clear build cache**:
+   ```bash
+   # Remove Next.js build directory
+   rm -rf .next
+   
+   # Regenerate Prisma client
+   npx prisma generate
+   
+   # Try building again
+   npm run build
+   ```
+
+3. **Use the provided clear-build-cache script**:
+   ```bash
+   # On Linux/Unix systems
+   ./scripts/clear-build-cache.sh
+   
+   # On Windows systems
+   ./scripts/clear-build-cache.ps1
+   ```
+
 ### 6. Start Application with PM2
 
 ```bash
@@ -296,6 +323,19 @@ sudo tail -f /var/log/nginx/access.log
    
    # Check for syntax errors in nginx.conf
    ```
+
+### Build Issues
+
+1. **Turbopack Build Errors**:
+   - Ensure Turbopack-specific flags are removed from package.json scripts
+   - Check that next.config.ts doesn't contain Turbopack-specific configurations
+   - Clear the build cache with `rm -rf .next` and try again
+   - Regenerate the Prisma client with `npx prisma generate`
+
+2. **CSS Processing Issues**:
+   - Check for syntax errors in CSS files
+   - Ensure all imported CSS files exist and are properly formatted
+   - Verify PostCSS configuration in postcss.config.mjs
 
 ### Useful Debugging Commands
 
