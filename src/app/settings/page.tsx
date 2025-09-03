@@ -17,7 +17,6 @@ import {
 import Link from "next/link";
 import { useTranslation } from "@/hooks/use-translation";
 import { usePermissions } from "@/hooks/use-permissions";
-import { toast } from "sonner";
 
 interface SettingsSection {
   name: string;
@@ -31,7 +30,7 @@ interface SettingsSection {
 
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const { userRole, checkPermission } = usePermissions();
+  const { userRole } = usePermissions();
   
   // Check if user has admin permissions
   const isAdmin = userRole === 'admin';
