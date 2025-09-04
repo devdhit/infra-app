@@ -8,6 +8,7 @@ import {
   validationErrorResponse
 } from './api-utils'
 import { db } from '@/lib/db'
+import { emitAssetChange } from '@/lib/realtime'
 
 // Define the asset types based on the Prisma schema and route files
 interface PCAsset {
@@ -499,6 +500,13 @@ export class AssetApiHandler<T> {
         // Continue with the operation even if history creation fails
       }
 
+      // Emit real-time event
+      try {
+        emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'create', asset);
+      } catch (emitError) {
+        console.error('Failed to emit real-time event:', emitError);
+      }
+
       return successResponse(asset, 201)
     } catch (error: any) {
       console.error(`Error creating ${this.operations.modelName} asset:`, error)
@@ -719,6 +727,13 @@ export class AssetApiHandler<T> {
         }
       })
 
+      // Emit real-time event
+      try {
+        emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'update', asset);
+      } catch (emitError) {
+        console.error('Failed to emit real-time event:', emitError);
+      }
+
       return successResponse(asset)
     } catch (error: any) {
       if (error.code === 'P2025') {
@@ -776,6 +791,13 @@ export class AssetApiHandler<T> {
           tenantId: user.tenantId 
         }
       })
+
+      // Emit real-time event
+      try {
+        emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
+      } catch (emitError) {
+        console.error('Failed to emit real-time event:', emitError);
+      }
 
       return successResponse<null>(null, 204)
     } catch (error: any) {
@@ -858,6 +880,15 @@ export class AssetApiHandler<T> {
 
       // Log the number of deleted assets
       console.log(`Deleted ${totalDeleted} ${this.operations.modelName} assets in ${Math.ceil(ids.length/batchSize)} batches`)
+
+      // Emit real-time events for each deleted asset
+      try {
+        ids.forEach(id => {
+          emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
+        });
+      } catch (emitError) {
+        console.error('Failed to emit real-time events:', emitError);
+      }
 
       return successResponse<null>(null, 204)
     } catch (error: any) {
