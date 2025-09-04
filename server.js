@@ -1,7 +1,7 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
-const { join } = require('path');
+const { join, resolve } = require('path');
 
 // Helper function to get formatted timestamp
 function getTimestamp() {
@@ -11,9 +11,9 @@ function getTimestamp() {
 // Determine the correct path for the realtime module based on environment
 const distPath = process.env.NODE_ENV === 'production' 
   ? '/opt/itams/dist' 
-  : './dist';
+  : resolve(__dirname, 'dist');
 
-const { initializeSocketIO } = require(join(distPath, 'realtime'));
+const { initializeSocketIO } = require(join(distPath, 'lib', 'realtime'));
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });

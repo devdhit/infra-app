@@ -44,7 +44,6 @@ export function initializeSocketIO(httpServer: any) {
   // Set up PostgreSQL LISTEN/NOTIFY for real-time updates
   setupPostgresNotifications();
   
-  console.log(`[${getTimestamp()}] 🚀 Server ready at http://localhost:3000`);
   console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
   
   return io;
