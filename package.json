@@ -7,6 +7,7 @@
     "build": "next build",
     "build:windows": "next build --turbopack",
     "build:server": "tsc -p tsconfig.build.json",
+    "build:production": "npm run build && npm run build:server",
     "start": "node server.js",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",

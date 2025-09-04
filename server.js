@@ -2,6 +2,7 @@ const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { join, resolve } = require('path');
+const { existsSync } = require('fs');
 
 // Helper function to get formatted timestamp
 function getTimestamp() {
@@ -13,7 +14,22 @@ const distPath = process.env.NODE_ENV === 'production'
   ? '/opt/itams/dist' 
   : resolve(__dirname, 'dist');
 
-const { initializeSocketIO } = require(join(distPath, 'lib', 'realtime'));
+// Check if the dist directory exists, if not, try to build it
+const realtimeModulePath = join(distPath, 'lib', 'realtime');
+
+let initializeSocketIO;
+try {
+  // Try to load the realtime module
+  if (existsSync(realtimeModulePath + '.js') || existsSync(realtimeModulePath)) {
+    ({ initializeSocketIO } = require(realtimeModulePath));
+  } else {
+    console.warn(`[${getTimestamp()}] ⚠️  Realtime module not found at ${realtimeModulePath}, Socket.IO will not be available`);
+    initializeSocketIO = null;
+  }
+} catch (error) {
+  console.warn(`[${getTimestamp()}] ⚠️  Failed to load realtime module:`, error.message);
+  initializeSocketIO = null;
+}
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -31,12 +47,16 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  // Initialize Socket.IO with the HTTP server
-  try {
-    const io = initializeSocketIO(server);
-    console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
-  } catch (error) {
-    console.error(`[${getTimestamp()}] ❌ Failed to initialize Socket.IO:`, error);
+  // Initialize Socket.IO with the HTTP server if the module was loaded successfully
+  if (initializeSocketIO) {
+    try {
+      const io = initializeSocketIO(server);
+      console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
+    } catch (error) {
+      console.error(`[${getTimestamp()}] ❌ Failed to initialize Socket.IO:`, error);
+    }
+  } else {
+    console.log(`[${getTimestamp()}] ℹ️  Socket.IO not available (realtime module not loaded)`);
   }
 
   const port = process.env.PORT || 3000;
