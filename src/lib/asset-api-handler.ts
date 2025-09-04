@@ -80,6 +80,19 @@ interface WarehouseITAsset {
   customFields?: any
 }
 
+// Add the InternetAsset interface
+interface InternetAsset {
+  dept: string
+  manager?: string
+  userName?: string
+  email?: string
+  ipAddress?: string
+  internetAccess?: string
+  status: string
+  note?: string
+  customFields?: any
+}
+
 // Define the structure for asset operations
 interface AssetOperations<T> {
   modelName: string
@@ -103,7 +116,7 @@ export class AssetApiHandler<T> {
       };
       
       // Add status field for models that have it
-      if (modelName === 'PC' || modelName === 'Laptop' || modelName === 'WarehouseIT') {
+      if (modelName === 'PC' || modelName === 'Laptop' || modelName === 'WarehouseIT' || modelName === 'Internet') {
         return {
           ...defaultBaseFields,
           status: true,
@@ -212,6 +225,17 @@ export class AssetApiHandler<T> {
           note: true,
           customFields: true // Include custom fields
         };
+      case 'Internet':
+        return {
+          ...cleanBaseFields,
+          manager: true,
+          userName: true,
+          email: true,
+          ipAddress: true,
+          internetAccess: true,
+          note: true,
+          customFields: true // Include custom fields
+        };
       default:
         return {
           ...cleanBaseFields,
@@ -252,7 +276,8 @@ export class AssetApiHandler<T> {
             'Laptop': ['userName', 'dept', 'status', 'barcode'],
             'Printer': ['dept', 'barcode'],
             'License': ['userName', 'dept', 'updateStatus', 'productKey'],
-            'WarehouseIT': ['status', 'cpuBarcode']  // Removed 'dept' as WarehouseIT doesn't have this field
+            'WarehouseIT': ['status', 'cpuBarcode'],  // Removed 'dept' as WarehouseIT doesn't have this field
+            'Internet': ['userName', 'dept', 'status', 'ipAddress']  // Add indexed fields for Internet
           };
           
           // Get indexed fields for this model
@@ -692,7 +717,8 @@ export class AssetApiHandler<T> {
         'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'email', 'model', 'status', 'userName', 'customFields'],
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
-        'WarehouseIT': ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 'customFields']
+        'WarehouseIT': ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 'customFields'],
+        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
       }
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
@@ -941,4 +967,11 @@ export const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
   modelName: 'WarehouseIT',
   requiredFields: ['status'],
   searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note']
+})
+
+// Create handler for Internet assets
+export const internetHandler = new AssetApiHandler<InternetAsset>(db, {
+  modelName: 'Internet',
+  requiredFields: ['dept', 'status'],
+  searchFields: ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note']
 })

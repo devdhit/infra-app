@@ -7,6 +7,7 @@
     "printer": "印表機",
     "license": "授權",
     "warehouse": "倉儲IT",
+    "internet": "網路",
     "users": "使用者",
     "tenants": "租戶",
     "settings": "設定"
@@ -355,6 +356,16 @@
       "dept": "部門",
       "createdAt": "建立時間",
       "updatedAt": "更新時間",
+      "note": "備註"
+    },
+    "internet": {
+      "title": "網路",
+      "department": "部門",
+      "manager": "管理員",
+      "userName": "使用者名稱",
+      "ipAddress": "IP 位址",
+      "internetAccess": "網路存取",
+      "status": "狀態",
       "note": "備註"
     },
     "status": {

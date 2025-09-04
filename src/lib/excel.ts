@@ -66,6 +66,18 @@ export interface WarehouseITAsset {
   note?: string;
 }
 
+// Add InternetAsset interface
+export interface InternetAsset {
+  dept: string;
+  manager?: string;
+  userName?: string;
+  email?: string;
+  ipAddress?: string;
+  internetAccess?: string;
+  status: string;
+  note?: string;
+}
+
 /**
  * Read template file from the templates directory
  */
@@ -922,6 +934,157 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
 }
 
 /**
+ * Export Internet data to Excel file with template (header and data only)
+ */
+export async function exportInternetToExcel(data: InternetAsset[]): Promise<ArrayBuffer> {
+  try {
+    // Read the Internet template
+    const templateBuffer = await readTemplateFile('Internet_Template.xlsx')
+    const workbook = await XLSX.fromDataAsync(templateBuffer)
+    const worksheet = workbook.sheet(0)
+    
+    // Find the data start row
+    let dataStartRow = 2
+    // Add a safety check to prevent infinite loop
+    let safetyCounter = 0;
+    const MAX_ROWS = 1000; // Reasonable limit
+    while (dataStartRow < MAX_ROWS) {
+      try {
+        const cellValue = worksheet.cell(dataStartRow, 1).value();
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          break;
+        }
+      } catch (cellError) {
+        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        break;
+      }
+      dataStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        dataStartRow = 3;
+        break;
+      }
+    }
+    
+    // Find the footer row (look for a row after data that has content)
+    let footerStartRow = dataStartRow;
+    // Skip data rows - look for the first row with content after the data start row
+    safetyCounter = 0; // Reset safety counter
+    while (footerStartRow < MAX_ROWS) { // Reasonable limit
+      // Check if this row has content in any of the columns
+      let hasContent = false;
+      for (let col = 1; col <= 8; col++) { // Check columns 1-8 (our data columns)
+        try {
+          const cellValue = worksheet.cell(footerStartRow, col).value();
+          if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+            hasContent = true;
+            break;
+          }
+        } catch (cellError) {
+          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+        }
+      }
+      if (hasContent) break;
+      footerStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
+        break;
+      }
+    }
+    
+    // If we found a footer, we need to insert rows for our data
+    if (footerStartRow < MAX_ROWS) {
+      // Calculate how many rows we need to insert
+      const rowsToInsert = data.length;
+      
+      // Insert rows for our data (shift footer down)
+      if (rowsToInsert > 0) {
+        // For each row we need to insert, shift existing rows down
+        // We'll do this by iterating backwards from the footer to the data start row
+        for (let i = 0; i < rowsToInsert; i++) {
+          // Shift footer rows down by one
+          for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
+            for (let col = 1; col <= 8; col++) { // Assuming 8 columns for Internet template
+              const cellValue = worksheet.cell(row, col).value();
+              worksheet.cell(row + 1, col).value(cellValue);
+              // Clear the original cell
+              worksheet.cell(row, col).value('');
+            }
+          }
+        }
+        
+        // Copy formatting from the template row (dataStartRow - 1) to all new data rows
+        const templateRow = dataStartRow - 1;
+        for (let i = 0; i < rowsToInsert; i++) {
+          const currentRow = dataStartRow + i;
+          // Get all style properties from the template cell and apply to the current cell
+          for (let col = 1; col <= 8; col++) {
+            try {
+              const templateCell = worksheet.cell(templateRow, col);
+              const currentCell = worksheet.cell(currentRow, col);
+              
+              // Get all available styles from template cell
+              const allStyles = templateCell.style([
+                "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
+                "horizontalAlignment", "verticalAlignment", "indent", "wrapText", "shrinkToFit",
+                "textDirection", "textRotation", "angleTextCounterclockwise", "angleTextClockwise",
+                "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
+                "borderStyle", "numberFormat"
+              ]);
+              
+              // Apply all styles to current cell
+              currentCell.style(allStyles);
+            } catch (styleError: any) {
+              // If there's an error with styles, just continue - we still want the data
+              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+            }
+          }
+        }
+      }
+      
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.manager || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.userName || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.email || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.ipAddress || 'N/A')
+        worksheet.cell(currentRow, 6).value(row.internetAccess || 'N/A')
+        // Normalize status values to lowercase
+        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
+        worksheet.cell(currentRow, 7).value(normalizedStatus)
+        worksheet.cell(currentRow, 8).value(row.note || 'N/A')
+      });
+    } else {
+      // No footer found, just add data rows normally
+      data.forEach((row, rowIndex) => {
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.manager || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.userName || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.email || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.ipAddress || 'N/A')
+        worksheet.cell(currentRow, 6).value(row.internetAccess || 'N/A')
+        // Normalize status values to lowercase
+        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
+        worksheet.cell(currentRow, 7).value(normalizedStatus)
+        worksheet.cell(currentRow, 8).value(row.note || 'N/A')
+      });
+    }
+    
+    // Convert to buffer and return
+    return await workbook.outputAsync() as ArrayBuffer
+  } catch (error) {
+    console.error('Error exporting Internet to Excel:', error)
+    throw error
+  }
+}
+
+/**
  * Import data from Excel file with template structure and column mapping
  * @param file The Excel file to import
  * @param assetType The type of asset being imported
@@ -1158,6 +1321,22 @@ export function generateWarehouseITTemplate(): WarehouseITAsset[] {
     upsBarcode: '',
     upsSapBarcode: '',
     status: 'working',  // Changed from 'available' to 'working'
+    note: ''
+  }]
+}
+
+/**
+ * Generate template for Internet assets
+ */
+export function generateInternetTemplate(): InternetAsset[] {
+  return [{
+    dept: '',
+    manager: '',
+    userName: '',
+    email: '',
+    ipAddress: '',
+    internetAccess: '',
+    status: 'working',
     note: ''
   }]
 }

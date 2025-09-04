@@ -58,6 +58,7 @@ const navigationItems: NavigationItem[] = [
       { nameKey: "nav.printer", href: "/assets/printer", icon: Printer, roles: ['admin', 'user'] },
       { nameKey: "nav.license", href: "/assets/license", icon: Key, roles: ['admin', 'user'] },
       { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse, roles: ['admin', 'user'] },
+      { nameKey: "nav.internet", href: "/assets/internet", icon: Key, roles: ['admin', 'user'] },
     ]
   },
   { 

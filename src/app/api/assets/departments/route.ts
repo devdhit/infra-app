@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const assetType = searchParams.get('assetType')
 
     // Validate assetType if provided
-    const validAssetTypes = ['pc', 'laptop', 'printer', 'license']
+    const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'internet']
     if (assetType && !validAssetTypes.includes(assetType)) {
       return errorResponse('Invalid asset type', 400)
     }
@@ -88,6 +88,23 @@ export async function GET(request: NextRequest) {
         licenseDepartments
           .filter((license: { dept: string | null }) => license.dept && license.dept.trim() !== '')
           .map((license: { dept: string | null }) => license.dept as string)
+      )
+    }
+
+    if (!assetType || assetType === 'internet') {
+      const internetDepartments = await db.internet.findMany({
+        where: { 
+          tenantId: user.tenantId,
+          dept: { not: "" }
+        },
+        select: { dept: true },
+        distinct: ['dept']
+      })
+      
+      departments = departments.concat(
+        internetDepartments
+          .filter((internet: { dept: string }) => internet.dept && internet.dept.trim() !== '')
+          .map((internet: { dept: string }) => internet.dept)
       )
     }
 
