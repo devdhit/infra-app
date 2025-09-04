@@ -317,10 +317,55 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     columns.map(column => column.key)
   );
   
-  // Handle column order change
-  const handleColumnOrderChange = (newOrder: string[]) => {
+  // Save column visibility to localStorage whenever it changes
+  const saveColumnVisibility = useCallback((visibility: Record<string, boolean>) => {
+    try {
+      const key = `columnVisibility_${assetType}`;
+      localStorage.setItem(key, JSON.stringify(visibility));
+    } catch (e) {
+      console.warn('Failed to save column visibility to localStorage:', e);
+    }
+  }, [assetType]);
+  
+  // Load column visibility from localStorage
+  const loadColumnVisibility = useCallback(() => {
+    try {
+      const key = `columnVisibility_${assetType}`;
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.warn('Failed to load column visibility from localStorage:', e);
+      return null;
+    }
+  }, [assetType]);
+  
+  // Save column order to localStorage whenever it changes
+  const saveColumnOrder = useCallback((order: string[]) => {
+    try {
+      const key = `columnOrder_${assetType}`;
+      localStorage.setItem(key, JSON.stringify(order));
+    } catch (e) {
+      console.warn('Failed to save column order to localStorage:', e);
+    }
+  }, [assetType]);
+  
+  // Load column order from localStorage
+  const loadColumnOrder = useCallback(() => {
+    try {
+      const key = `columnOrder_${assetType}`;
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.warn('Failed to load column order from localStorage:', e);
+      return null;
+    }
+  }, [assetType]);
+  
+  // Override the handleColumnOrderChange to also save to localStorage
+  const handleColumnOrderChangeWithSave = useCallback((newOrder: string[]) => {
     setColumnOrder(newOrder);
-  };
+    saveColumnOrder(newOrder);
+  }, [saveColumnOrder]);
   
   // Fetch custom fields for this asset type
   const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(modelType);
@@ -359,31 +404,71 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
 
   // Initialize column visibility state with intelligent defaults
   useEffect(() => {
-    const initialVisibility: Record<string, boolean> = {};
-    allColumns.forEach(column => {
-      // Show columns by default, unless they're in the default hidden list OR have hide: true property
-      initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
-    });
-    setColumnVisibility(initialVisibility);
-  }, [allColumns, defaultHiddenColumns]);
+    // Try to load saved column visibility from localStorage
+    const savedVisibility = loadColumnVisibility();
+    
+    if (savedVisibility) {
+      // Use saved visibility if available
+      setColumnVisibility(savedVisibility);
+    } else {
+      // Fallback to default visibility logic
+      const initialVisibility: Record<string, boolean> = {};
+      allColumns.forEach(column => {
+        // Show columns by default, unless they're in the default hidden list OR have hide: true property
+        initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
+      });
+      setColumnVisibility(initialVisibility);
+      // Save the initial visibility to localStorage
+      saveColumnVisibility(initialVisibility);
+    }
+  }, [allColumns, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility]);
 
-  // Toggle column visibility
+  // Toggle column visibility and save to localStorage
   const toggleColumnVisibility = (columnKey: string) => {
-    setColumnVisibility(prev => ({
-      ...prev,
-      [columnKey]: !prev[columnKey]
-    }));
+    setColumnVisibility(prev => {
+      const newVisibility = {
+        ...prev,
+        [columnKey]: !prev[columnKey]
+      };
+      saveColumnVisibility(newVisibility);
+      return newVisibility;
+    });
   };
 
-  // Toggle all columns visibility
+  // Toggle all columns visibility and save to localStorage
   const toggleAllColumns = (visible: boolean) => {
     const newVisibility: Record<string, boolean> = {};
     allColumns.forEach(column => {
       newVisibility[column.key] = visible;
     });
     setColumnVisibility(newVisibility);
+    saveColumnVisibility(newVisibility);
   };
-
+  
+  // Initialize column order with localStorage persistence
+  useEffect(() => {
+    // Try to load saved column order from localStorage
+    const savedOrder = loadColumnOrder();
+    
+    if (savedOrder && Array.isArray(savedOrder)) {
+      // Validate that saved order contains all current columns
+      const currentColumnKeys = new Set(columns.map(column => column.key));
+      const validSavedOrder = savedOrder.filter(key => currentColumnKeys.has(key));
+      
+      // Only use saved order if it contains all current columns
+      if (validSavedOrder.length === columns.length) {
+        setColumnOrder(validSavedOrder);
+        return;
+      }
+    }
+    
+    // Fallback to default order
+    const defaultOrder = columns.map(column => column.key);
+    setColumnOrder(defaultOrder);
+    // Save the initial order to localStorage
+    saveColumnOrder(defaultOrder);
+  }, [columns, loadColumnOrder, saveColumnOrder]);
+  
   // Optimize memoization with proper dependencies
   const filteredColumns = useMemo(() => {
     // Create a more efficient filtering mechanism
@@ -1010,7 +1095,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               responsive={true}
               enableColumnResizing={true}
               enableColumnReordering={true} // Enable column reordering
-              onColumnOrderChange={handleColumnOrderChange} // Handle column order changes
+              onColumnOrderChange={handleColumnOrderChangeWithSave} // Handle column order changes
               enableVirtualization={assets.length > 50} // Enable virtualization for medium datasets
               virtualItemHeight={50}
             />

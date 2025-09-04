@@ -165,7 +165,34 @@ export function TenantsTable({
   const [selectedTenants, setSelectedTenants] = useState<string[]>([])
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
   const columns = useTenantColumns(t, onEdit, onDelete, isDeleting, deletingTenantId)
-
+  
+  // Load column visibility from localStorage
+  const loadColumnVisibility = useCallback(() => {
+    try {
+      const saved = localStorage.getItem('tenantsColumnVisibility');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.warn('Failed to load column visibility from localStorage:', e);
+      return null;
+    }
+  }, []);
+  
+  // Column visibility state
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+    const savedVisibility = loadColumnVisibility();
+    if (savedVisibility) {
+      return savedVisibility;
+    }
+    // Default visibility - show all columns except 'select' and 'actions' which are always visible
+    const defaultVisibility: Record<string, boolean> = {};
+    columns.forEach(column => {
+      if (column.id !== 'select' && column.id !== 'actions') {
+        defaultVisibility[column.id as string] = true;
+      }
+    });
+    return defaultVisibility;
+  });
+  
   // Filter tenants based on search term
   const filteredTenants = useMemo(() => {
     if (!search) return tenants
@@ -235,6 +262,9 @@ export function TenantsTable({
         responsive={true}
         // Enable column resizing
         enableColumnResizing={true}
+        // Pass column visibility state
+        columnVisibility={columnVisibility}
+        onColumnVisibilityChange={setColumnVisibility}
       />
 
       <BulkDeleteDialog

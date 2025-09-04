@@ -126,6 +126,26 @@ export async function POST(request: NextRequest) {
                 }
               }
             }
+            
+            // Also check for any remaining fields in pcRowData that might be custom fields
+            // but are not defined in the database yet (could be from Excel column mapping)
+            const pcModelFields = ['id', 'dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 
+              'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userName', 
+              'status', 'note', 'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+              
+            // Check if there are any fields in pcRowData that are not part of the PC model
+            // and treat them as custom fields
+            for (const [key, value] of Object.entries(pcRowData)) {
+              if (!pcModelFields.includes(key)) {
+                // Initialize pcCustomFields if not already done
+                if (!pcCustomFields) {
+                  pcCustomFields = {};
+                }
+                pcCustomFields[key] = value;
+                // Remove the field from pcRowData
+                delete pcRowData[key];
+              }
+            }
 
             // Create the PC record first
             const createdPC = await db.pC.create({
@@ -253,6 +273,25 @@ export async function POST(request: NextRequest) {
                 }
               }
             }
+            
+            // Also check for any remaining fields in laptopRowData that might be custom fields
+            // but are not defined in the database yet (could be from Excel column mapping)
+            const laptopModelFields = ['id', 'dept', 'barcode', 'sapBarcode', 'dateBuy', 
+              'userName', 'email', 'model', 'status', 'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+              
+            // Check if there are any fields in laptopRowData that are not part of the Laptop model
+            // and treat them as custom fields
+            for (const [key, value] of Object.entries(laptopRowData)) {
+              if (!laptopModelFields.includes(key)) {
+                // Initialize laptopCustomFields if not already done
+                if (!laptopCustomFields) {
+                  laptopCustomFields = {};
+                }
+                laptopCustomFields[key] = value;
+                // Remove the field from laptopRowData
+                delete laptopRowData[key];
+              }
+            }
 
             // Create the Laptop record first
             const createdLaptop = await db.laptop.create({
@@ -352,6 +391,25 @@ export async function POST(request: NextRequest) {
                   // Remove custom field from row data
                   delete printerRowData[customField.name];
                 }
+              }
+            }
+            
+            // Also check for any remaining fields in printerRowData that might be custom fields
+            // but are not defined in the database yet (could be from Excel column mapping)
+            const printerModelFields = ['id', 'dept', 'location', 'ip', 'model', 'color', 
+              'barcode', 'sapCode', 'date', 'note', 'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+              
+            // Check if there are any fields in printerRowData that are not part of the Printer model
+            // and treat them as custom fields
+            for (const [key, value] of Object.entries(printerRowData)) {
+              if (!printerModelFields.includes(key)) {
+                // Initialize printerCustomFields if not already done
+                if (!printerCustomFields) {
+                  printerCustomFields = {};
+                }
+                printerCustomFields[key] = value;
+                // Remove the field from printerRowData
+                delete printerRowData[key];
               }
             }
             
@@ -638,6 +696,26 @@ export async function POST(request: NextRequest) {
                 }
               }
             }
+            
+            // Also check for any remaining fields in licenseRowData that might be custom fields
+            // but are not defined in the database yet (could be from Excel column mapping)
+            const licenseModelFields = ['id', 'deviceName', 'userName', 'dept', 'productType', 
+              'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 
+              'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+              
+            // Check if there are any fields in licenseRowData that are not part of the License model
+            // and treat them as custom fields
+            for (const [key, value] of Object.entries(licenseRowData)) {
+              if (!licenseModelFields.includes(key)) {
+                // Initialize licenseCustomFields if not already done
+                if (!licenseCustomFields) {
+                  licenseCustomFields = {};
+                }
+                licenseCustomFields[key] = value;
+                // Remove the field from licenseRowData
+                delete licenseRowData[key];
+              }
+            }
 
             // Create the License record first
             const createdLicense = await db.license.create({
@@ -732,6 +810,26 @@ export async function POST(request: NextRequest) {
                   // Remove custom field from row data
                   delete warehouseRowData[customField.name];
                 }
+              }
+            }
+            
+            // Also check for any remaining fields in warehouseRowData that might be custom fields
+            // but are not defined in the database yet (could be from Excel column mapping)
+            const warehouseModelFields = ['id', 'dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 
+              'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 
+              'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+              
+            // Check if there are any fields in warehouseRowData that are not part of the WarehouseIT model
+            // and treat them as custom fields
+            for (const [key, value] of Object.entries(warehouseRowData)) {
+              if (!warehouseModelFields.includes(key)) {
+                // Initialize warehouseCustomFields if not already done
+                if (!warehouseCustomFields) {
+                  warehouseCustomFields = {};
+                }
+                warehouseCustomFields[key] = value;
+                // Remove the field from warehouseRowData
+                delete warehouseRowData[key];
               }
             }
 

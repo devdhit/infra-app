@@ -84,6 +84,9 @@ interface DataTableProps<TData, TValue> {
   enableColumnReordering?: boolean
   // Callback for when columns are reordered
   onColumnOrderChange?: (newOrder: string[]) => void
+  // Props for column visibility control
+  columnVisibility?: Record<string, boolean>
+  onColumnVisibilityChange?: (visibility: Record<string, boolean>) => void
 }
 
 // Draggable table header component
@@ -213,10 +216,15 @@ export function DataTable<TData, TValue>({
   virtualItemHeight = 50,
   enableColumnReordering = false,
   onColumnOrderChange,
+  columnVisibility, // Add this prop
+  onColumnVisibilityChange, // Add this prop
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  // Use the provided columnVisibility prop or fallback to internal state
+  const [internalColumnVisibility, setInternalColumnVisibility] = React.useState<VisibilityState>({})
+  const effectiveColumnVisibility = columnVisibility !== undefined ? columnVisibility : internalColumnVisibility
+  
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   // State for column resizing
   const [columnSizing, setColumnSizing] = React.useState<Record<string, number>>({})
@@ -283,12 +291,26 @@ export function DataTable<TData, TValue>({
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: (updater) => {
+      // If we have an external handler, use it, otherwise use internal state
+      if (onColumnVisibilityChange) {
+        // Convert updater to the expected format for external handler
+        if (typeof updater === 'function') {
+          const newState = updater(effectiveColumnVisibility);
+          onColumnVisibilityChange(newState);
+        } else {
+          onColumnVisibilityChange(updater);
+        }
+      } else {
+        // Use internal state management
+        setInternalColumnVisibility(updater);
+      }
+    },
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
-      columnVisibility,
+      columnVisibility: effectiveColumnVisibility,
       rowSelection,
       columnSizing,
       columnOrder: enableColumnReordering ? columnOrder : undefined,
