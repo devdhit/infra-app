@@ -1,10 +1,19 @@
 import { Server as SocketIOServer } from 'socket.io';
 
+// Helper function to get formatted timestamp
+function getTimestamp() {
+    return new Date().toISOString();
+}
+
 // Initialize Socket.IO server
 let io: SocketIOServer | null = null;
 
 export function initializeSocketIO(httpServer: any) {
-  if (io) return io;
+  // Check if already initialized to prevent multiple instances
+  if (io) {
+    console.log(`[${getTimestamp()}] ⚠️  Socket.IO already initialized, returning existing instance`);
+    return io;
+  }
 
   io = new SocketIOServer(httpServer, {
     cors: {
@@ -15,26 +24,29 @@ export function initializeSocketIO(httpServer: any) {
   });
 
   io.on('connection', (socket) => {
-    console.log('User connected to Socket.IO:', socket.id);
+    console.log(`[${getTimestamp()}] 🔌 Client connected: ${socket.id}`);
 
     // Join room based on tenant ID for multi-tenancy support
     socket.on('join-tenant', (tenantId: string) => {
       // Validate tenantId to prevent potential security issues
       if (tenantId && typeof tenantId === 'string') {
         socket.join(`tenant-${tenantId}`);
-        console.log(`Socket ${socket.id} joined tenant room: tenant-${tenantId}`);
+        console.log(`[${getTimestamp()}] 🏢 Client ${socket.id} joined tenant room: tenant-${tenantId}`);
       }
     });
 
     // Handle disconnection
     socket.on('disconnect', () => {
-      console.log('User disconnected from Socket.IO:', socket.id);
+      console.log(`[${getTimestamp()}] ❌ Client disconnected: ${socket.id}`);
     });
   });
 
   // Set up PostgreSQL LISTEN/NOTIFY for real-time updates
   setupPostgresNotifications();
-
+  
+  console.log(`[${getTimestamp()}] 🚀 Server ready at http://localhost:3000`);
+  console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
+  
   return io;
 }
 
@@ -47,22 +59,22 @@ async function setupPostgresNotifications() {
     // This is a simplified approach - in production, you might use a dedicated service
     // or direct PostgreSQL connection for LISTEN/NOTIFY
     
-    console.log('PostgreSQL notification system initialized');
+    console.log(`[${getTimestamp()}] 🗄️  PostgreSQL notification system initialized`);
   } catch (error) {
-    console.error('Error setting up PostgreSQL notifications:', error);
+    console.error(`[${getTimestamp()}] ❌ Error setting up PostgreSQL notifications:`, error);
   }
 }
 
 // Function to emit asset changes to connected clients
 export function emitAssetChange(tenantId: string, assetType: string, action: string, data: any) {
   if (!io) {
-    console.warn('Socket.IO not initialized');
+    console.warn(`[${getTimestamp()}] ⚠️  Socket.IO not initialized - cannot emit asset change`);
     return;
   }
 
   // Validate inputs
   if (!tenantId || !assetType || !action) {
-    console.warn('Invalid parameters for emitAssetChange');
+    console.warn(`[${getTimestamp()}] ⚠️  Invalid parameters for emitAssetChange`);
     return;
   }
 
@@ -73,7 +85,15 @@ export function emitAssetChange(tenantId: string, assetType: string, action: str
     data
   });
 
-  console.log(`Emitted asset change to tenant-${tenantId}: ${assetType} ${action}`);
+  // Log the database notification
+  console.log(`[${getTimestamp()}] 📢 DB notify: ${JSON.stringify({ 
+    tenantId, 
+    assetType, 
+    action, 
+    recordId: data?.id 
+  })}`);
+  
+  console.log(`[${getTimestamp()}] 📤 Emitted asset change to tenant-${tenantId}: ${assetType} ${action}`);
 }
 
 export function getIO() {

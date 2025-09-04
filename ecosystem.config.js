@@ -2,9 +2,9 @@ module.exports = {
   apps: [{
     name: 'itams',
     script: 'server.js',
-    cwd: '/opt/itams',
-    instances: 1, // Change to 1 to avoid port conflicts with Socket.IO
-    exec_mode: 'cluster',
+    cwd: '/opt/itams', // This will be the deployment path on Ubuntu
+    instances: 1,
+    exec_mode: 'fork',
     env: {
       NODE_ENV: 'production',
       PORT: 3000
