@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect, useCallback, memo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates'
+import { useCurrentUser } from '@/hooks/useApi'
 import {
   Button,
   Card,
@@ -311,6 +313,11 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   
   // Column visibility state
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  
+  // Real-time updates (using tenantId from auth context)
+  const { data: user } = useCurrentUser();
+  const tenantId = user?.tenantId || '';
+  const {} = useRealtimeUpdates(tenantId, assetType);
   
   // State for column order
   const [columnOrder, setColumnOrder] = useState<string[]>(() => 
