@@ -20,12 +20,29 @@ app.prepare().then(() => {
   });
 
   // Initialize Socket.IO with the HTTP server
-  const io = initializeSocketIO(server);
+  try {
+    const io = initializeSocketIO(server);
+    console.log('Socket.IO initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Socket.IO:', error);
+  }
 
   const port = process.env.PORT || 3000;
   
   server.listen(port, (err) => {
-    if (err) throw err;
+    if (err) {
+      console.error('Error starting server:', err);
+      process.exit(1);
+    }
     console.log(`> Ready on http://localhost:${port}`);
+  });
+  
+  // Handle uncaught exceptions and unhandled rejections
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   });
 });
