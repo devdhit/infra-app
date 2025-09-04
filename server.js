@@ -1,7 +1,19 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
-const { initializeSocketIO } = require('./dist/realtime');
+const { join } = require('path');
+
+// Helper function to get formatted timestamp
+function getTimestamp() {
+    return new Date().toISOString();
+}
+
+// Determine the correct path for the realtime module based on environment
+const distPath = process.env.NODE_ENV === 'production' 
+  ? '/opt/itams/dist' 
+  : './dist';
+
+const { initializeSocketIO } = require(join(distPath, 'realtime'));
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -22,27 +34,27 @@ app.prepare().then(() => {
   // Initialize Socket.IO with the HTTP server
   try {
     const io = initializeSocketIO(server);
-    console.log('Socket.IO initialized successfully');
+    console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
   } catch (error) {
-    console.error('Failed to initialize Socket.IO:', error);
+    console.error(`[${getTimestamp()}] ❌ Failed to initialize Socket.IO:`, error);
   }
 
   const port = process.env.PORT || 3000;
   
   server.listen(port, (err) => {
     if (err) {
-      console.error('Error starting server:', err);
+      console.error(`[${getTimestamp()}] ❌ Error starting server:`, err);
       process.exit(1);
     }
-    console.log(`> Ready on http://localhost:${port}`);
+    console.log(`[${getTimestamp()}] 🚀 Server ready at http://localhost:${port}`);
   });
   
   // Handle uncaught exceptions and unhandled rejections
   process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    console.error(`[${getTimestamp()}] ❌ Uncaught Exception:`, err);
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error(`[${getTimestamp()}] ❌ Unhandled Rejection at:`, promise, 'reason:', reason);
   });
 });
