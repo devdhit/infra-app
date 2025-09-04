@@ -171,7 +171,15 @@
     "summaryByUpsBarcode": "Summary by UPS Barcode",
     "summaryByUpsSap": "Summary by UPS SAP Barcode",
     "summaryByRam": "Summary by RAM",
-    "summaryByType": "Summary by Type"
+    "summaryByType": "Summary by Type",
+    "customFieldStatistics": "Custom Field Statistics",
+    "customFieldDistribution": "{total} records with this field",
+    "totalComponents": "Total Components",
+    "totalPcsDescription": "Total number of PCs in the system",
+    "totalCpusDescription": "Total number of CPUs in the system",
+    "totalMonitorsDescription": "Total number of monitors in the system",
+    "totalUpsDescription": "Total number of UPS devices in the system",
+    "totalWarehouseAssetsDescription": "Total number of warehouse assets in the system"
   },
   "assets": {
     "title": "Assets",

@@ -170,7 +170,15 @@
     "summaryByUpsBarcode": "按 UPS 條碼分類",
     "summaryByUpsSap": "按 UPS SAP 條碼分類",
     "summaryByRam": "按 RAM 分類",
-    "summaryByType": "按類型分類"
+    "summaryByType": "按類型分類",
+    "customFieldStatistics": "自訂欄位統計",
+    "customFieldDistribution": "{total} 筆記錄包含此欄位",
+    "totalComponents": "總組件數",
+    "totalPcsDescription": "系統中的電腦總數",
+    "totalCpusDescription": "系統中的 CPU 總數",
+    "totalMonitorsDescription": "系統中的監視器總數",
+    "totalUpsDescription": "系統中的 UPS 裝置總數",
+    "totalWarehouseAssetsDescription": "系統中的倉儲資產總數"
   },
   "assets": {
     "title": "資產",

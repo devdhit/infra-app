@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -342,7 +341,7 @@ export function ExcelImportDialog({
         handleClose()
       }
     }}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{t('assets.excel.import.title', 'Import {0}', title)}</DialogTitle>
           <DialogDescription>
@@ -350,225 +349,229 @@ export function ExcelImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-muted-foreground" />
-              <h3 className="font-medium">{t('assets.excel.import.data', 'Import Data')}</h3>
-            </div>
-            
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="excel-file">
-                  {t('assets.excel.import.fileLabel', 'Select Excel File(s)')}
-                </Label>
-                <div className="mt-1 flex gap-2">
-                  <Input
-                    id="excel-file"
-                    type="file"
-                    accept=".xlsx,.xls"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    multiple // Allow multiple file selection
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleFileSelectClick}
-                    disabled={isImporting}
-                    className="w-full"
-                  >
-                    {selectedFiles.length > 0 ? (
-                      <span className="truncate">
-                        {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
-                      </span>
-                    ) : (
-                      <>
-                        <FileText className="mr-2 h-4 w-4" />
-                        {t('assets.excel.import.selectFile', 'Choose File(s)')}
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t('assets.excel.import.fileHint', 'Supported formats: .xlsx, .xls')}
-                </p>
+        <div className="flex-1 overflow-hidden">
+          <div className="grid gap-6 py-4 h-full overflow-y-auto pr-2">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Upload className="h-5 w-5 text-muted-foreground" />
+                <h3 className="font-medium">{t('assets.excel.import.data', 'Import Data')}</h3>
               </div>
-
-              {/* Column Mapping Toggle */}
-              {selectedFiles.length > 0 && excelColumns.length > 0 && (
-                <div className="flex items-center justify-between">
-                  <Label>
-                    {t('assets.excel.import.columnMapping', 'Map Excel Columns')}
+              
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="excel-file">
+                    {t('assets.excel.import.fileLabel', 'Select Excel File(s)')}
                   </Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleToggleColumnMapping}
-                  >
-                    {showColumnMapping ? t('common.hide', 'Hide') : t('common.show', 'Show')}
-                  </Button>
+                  <div className="mt-1 flex gap-2">
+                    <Input
+                      id="excel-file"
+                      type="file"
+                      accept=".xlsx,.xls"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      multiple // Allow multiple file selection
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleFileSelectClick}
+                      disabled={isImporting}
+                      className="w-full"
+                    >
+                      {selectedFiles.length > 0 ? (
+                        <span className="truncate">
+                          {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
+                        </span>
+                      ) : (
+                        <>
+                          <FileText className="mr-2 h-4 w-4" />
+                          {t('assets.excel.import.selectFile', 'Choose File(s)')}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {t('assets.excel.import.fileHint', 'Supported formats: .xlsx, .xls')}
+                  </p>
                 </div>
-              )}
 
-              {/* Column Mapping UI */}
-              {showColumnMapping && selectedFiles.length > 0 && excelColumns.length > 0 && (
-                <div className="space-y-3 border rounded-md p-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium">
-                      {t('assets.excel.import.columnMappingTitle', 'Column Mapping')}
-                    </h4>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={generateAutomaticMappings}
-                      >
-                        {t('assets.excel.import.autoMap', 'Auto Map')}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addColumnMapping}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        {t('common.add', 'Add')}
-                      </Button>
+                {/* Column Mapping Toggle */}
+                {selectedFiles.length > 0 && excelColumns.length > 0 && (
+                  <div className="flex items-center justify-between">
+                    <Label>
+                      {t('assets.excel.import.columnMapping', 'Map Excel Columns')}
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleColumnMapping}
+                    >
+                      {showColumnMapping ? t('common.hide', 'Hide') : t('common.show', 'Show')}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Column Mapping UI - This section can scroll if it gets too tall */}
+                {showColumnMapping && selectedFiles.length > 0 && excelColumns.length > 0 && (
+                  <div className="space-y-3 border rounded-md p-4 max-h-[400px] overflow-y-auto">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-medium">
+                        {t('assets.excel.import.columnMappingTitle', 'Column Mapping')}
+                      </h4>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={generateAutomaticMappings}
+                        >
+                          {t('assets.excel.import.autoMap', 'Auto Map')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addColumnMapping}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          {t('common.add', 'Add')}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {columnMappings.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        {t('assets.excel.import.noMappings', 'No column mappings configured. Add a mapping to connect Excel columns to database fields.')}
+                      </p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('assets.excel.import.excelColumn', 'Excel Column')}</TableHead>
+                            <TableHead>{t('assets.excel.import.databaseField', 'Database Field')}</TableHead>
+                            <TableHead className="w-10"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {columnMappings.map((mapping, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <Select
+                                  value={mapping.excelColumn}
+                                  onValueChange={(value) => updateColumnMapping(index, 'excelColumn', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={t('assets.excel.import.selectExcelColumn', 'Select Excel Column')} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {excelColumns.map((column) => (
+                                      <SelectItem key={column} value={column}>
+                                        {column}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={mapping.databaseField}
+                                  onValueChange={(value) => updateColumnMapping(index, 'databaseField', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={t('assets.excel.import.selectDatabaseField', 'Select Database Field')} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {databaseFields.map((field) => (
+                                      <SelectItem key={field} value={field}>
+                                        {field}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeColumnMapping(index)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    
+                    <div className="text-sm text-muted-foreground">
+                      <p>{t('assets.excel.import.mappingHelp', 'Map Excel column names to database field names to ensure correct data import.')}</p>
+                      <p className="mt-1">{t('assets.excel.import.customFieldsHelp', 'Custom fields for this asset type are also available for mapping.')}</p>
                     </div>
                   </div>
-                  
-                  {columnMappings.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      {t('assets.excel.import.noMappings', 'No column mappings configured. Add a mapping to connect Excel columns to database fields.')}
-                    </p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t('assets.excel.import.excelColumn', 'Excel Column')}</TableHead>
-                          <TableHead>{t('assets.excel.import.databaseField', 'Database Field')}</TableHead>
-                          <TableHead className="w-10"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {columnMappings.map((mapping, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              <Select
-                                value={mapping.excelColumn}
-                                onValueChange={(value) => updateColumnMapping(index, 'excelColumn', value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder={t('assets.excel.import.selectExcelColumn', 'Select Excel Column')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {excelColumns.map((column) => (
-                                    <SelectItem key={column} value={column}>
-                                      {column}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={mapping.databaseField}
-                                onValueChange={(value) => updateColumnMapping(index, 'databaseField', value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder={t('assets.excel.import.selectDatabaseField', 'Select Database Field')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {databaseFields.map((field) => (
-                                    <SelectItem key={field} value={field}>
-                                      {field}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeColumnMapping(index)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                  
-                  <div className="text-sm text-muted-foreground">
-                    <p>{t('assets.excel.import.mappingHelp', 'Map Excel column names to database field names to ensure correct data import.')}</p>
-                    <p className="mt-1">{t('assets.excel.import.customFieldsHelp', 'Custom fields for this asset type are also available for mapping.')}</p>
-                  </div>
-                </div>
-              )}
-
-              {importResult && (
-                <Alert variant={importResult.success ? "default" : "destructive"}>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>
-                    {importResult.success 
-                      ? t('assets.excel.import.successTitle', 'Import Successful') 
-                      : t('assets.excel.import.errorTitle', 'Import Failed')}
-                  </AlertTitle>
-                  <AlertDescription>
-                    <p>{importResult.message}</p>
-                    {importResult.errors && importResult.errors.length > 0 && (
-                      <div className="mt-2">
-                        <p className="font-medium">{t('assets.excel.import.errors', 'Errors:')}</p>
-                        <ul className="mt-1 list-disc list-inside space-y-1">
-                          {importResult.errors.slice(0, 5).map((error, index) => (
-                            <li key={index} className="text-sm">{error}</li>
-                          ))}
-                          {importResult.errors.length > 5 && (
-                            <li className="text-sm">
-                              {t('assets.excel.import.moreErrors', 'And {0} more errors', (importResult.errors.length - 5).toString())}
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <Button
-                onClick={handleImport}
-                disabled={isImporting || selectedFiles.length === 0}
-                className="w-full"
-              >
-                {isImporting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('assets.excel.import.importing', 'Importing...')}
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    {t('assets.excel.import.button', 'Import Data')}
-                  </>
                 )}
-              </Button>
+
+                {importResult && (
+                  <Alert variant={importResult.success ? "default" : "destructive"}>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>
+                      {importResult.success 
+                        ? t('assets.excel.import.successTitle', 'Import Successful') 
+                        : t('assets.excel.import.errorTitle', 'Import Failed')}
+                    </AlertTitle>
+                    <AlertDescription>
+                      <p>{importResult.message}</p>
+                      {importResult.errors && importResult.errors.length > 0 && (
+                        <div className="mt-2">
+                          <p className="font-medium">{t('assets.excel.import.errors', 'Errors:')}</p>
+                          <ul className="mt-1 list-disc list-inside space-y-1">
+                            {importResult.errors.slice(0, 5).map((error, index) => (
+                              <li key={index} className="text-sm">{error}</li>
+                            ))}
+                            {importResult.errors.length > 5 && (
+                              <li className="text-sm">
+                                {t('assets.excel.import.moreErrors', 'And {0} more errors', (importResult.errors.length - 5).toString())}
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={handleClose}>
-            {t('common.close', 'Close')}
-          </Button>
-        </DialogFooter>
+        {/* Fixed footer with import and close buttons */}
+        <div className="border-t p-4">
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={handleImport}
+              disabled={isImporting || selectedFiles.length === 0}
+              className="w-full"
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('assets.excel.import.importing', 'Importing...')}
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t('assets.excel.import.button', 'Import Data')}
+                </>
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={handleClose} className="w-full">
+              {t('common.close', 'Close')}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )

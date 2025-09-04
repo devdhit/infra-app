@@ -9,17 +9,16 @@ import {
   Printer, 
   Key, 
   Warehouse,
-  Activity,
   Settings,
-  TrendingUp
+  TrendingUp,
+  Cpu,
+  Battery,
+  Server
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { useTranslation } from "@/hooks/use-translation";
 import { DashboardSummaryData } from "@/types/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 
 export default function DashboardSummaryPage() {
   const { t } = useTranslation();
@@ -49,7 +48,7 @@ export default function DashboardSummaryPage() {
   const assetTypeData = [
     { 
       name: 'PC', 
-      count: dashboardData?.pc?.reduce((sum, item) => sum + item._count, 0) || 0, 
+      count: dashboardData?.pc?.total || 0, 
       icon: Monitor, 
       color: 'bg-blue-500', 
       iconColor: 'text-blue-500' 
@@ -84,47 +83,53 @@ export default function DashboardSummaryPage() {
     },
   ];
 
-  // Prepare data for charts by asset type
-  const prepareChartData = (data: any[], groupByField: string, labelField?: string) => {
-    if (!data) return [];
+  // PC Component Data for new cards
+  const pcComponentData = [
+    { 
+      name: 'CPU', 
+      count: dashboardData?.pc?.totalCpus || 0, 
+      icon: Cpu, 
+      color: 'bg-blue-500', 
+      iconColor: 'text-blue-500' 
+    },
+    { 
+      name: 'Monitor', 
+      count: dashboardData?.pc?.totalMonitors || 0, 
+      icon: Monitor, 
+      color: 'bg-green-500', 
+      iconColor: 'text-green-500' 
+    },
+    { 
+      name: 'UPS', 
+      count: dashboardData?.pc?.totalUps || 0, 
+      icon: Battery, 
+      color: 'bg-yellow-500', 
+      iconColor: 'text-yellow-500' 
+    },
+  ];
+
+  // Prepare custom field statistics data for charts
+  const prepareCustomFieldChartData = (fieldName: string, assetType: string) => {
+    // Use the asset type prefixed key to avoid conflicts
+    const key = `${assetType}_${fieldName}`
+    if (!dashboardData?.customFieldStats?.[key]) return []
     
-    return data.map(item => ({
-      name: item[groupByField] || t('common.unknown'),
-      count: item._count,
-      label: labelField ? item[labelField] : undefined
-    }));
+    const stats = dashboardData.customFieldStats[key]
+    return Object.entries(stats.values)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10) // Show top 10 values
   };
 
-  // PC Charts Data
-  const pcCpuData = prepareChartData(dashboardData?.pc || [], 'cpuBarcode');
-  const pcMonitorData = prepareChartData(dashboardData?.pc || [], 'monitorBarcode');
-  const pcUpsData = prepareChartData(dashboardData?.pc || [], 'upsBarcode');
+  // Get custom fields for each asset type
+  const pcCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'PC') || [];
+  const laptopCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'Laptop') || [];
+  const printerCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'Printer') || [];
+  const licenseCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'License') || [];
+  const warehouseCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'WarehouseIT') || [];
 
-  // Laptop Charts Data
-  const laptopStatusData = prepareChartData(dashboardData?.laptop || [], 'status');
-  const laptopModelData = prepareChartData(dashboardData?.laptop || [], 'model');
-
-  // Printer Charts Data
-  const printerColorData = prepareChartData(dashboardData?.printer || [], 'color');
-  const printerModelData = prepareChartData(dashboardData?.printer || [], 'model');
-  const printerLocationData = prepareChartData(dashboardData?.printer || [], 'location');
-
-  // License Charts Data
-  const licenseProductTypeData = prepareChartData(dashboardData?.license || [], 'productType');
-  const licenseProductKeyData = prepareChartData(dashboardData?.license || [], 'productKey');
-
-  // WarehouseIT Charts Data
-  const warehouseCpuBarcodeData = prepareChartData(dashboardData?.warehouseIT || [], 'cpuBarcode');
-  const warehouseCpuSapData = prepareChartData(dashboardData?.warehouseIT || [], 'cpuSapBarcode');
-  const warehouseMonitorBarcodeData = prepareChartData(dashboardData?.warehouseIT || [], 'monitorBarcode');
-  const warehouseMonitorSapData = prepareChartData(dashboardData?.warehouseIT || [], 'monitorSapBarcode');
-  const warehouseUpsBarcodeData = prepareChartData(dashboardData?.warehouseIT || [], 'upsBarcode');
-  const warehouseUpsSapData = prepareChartData(dashboardData?.warehouseIT || [], 'upsSapBarcode');
-  const warehouseStatusData = prepareChartData(dashboardData?.warehouseIT || [], 'status');
-
-  // Get custom field types for display
-  const customFieldTypes = dashboardData?.customFields?.map(field => field.type) || [];
-  const uniqueCustomFieldTypes = Array.from(new Set(customFieldTypes));
+  // Colors for pie charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
 
   return (
     <div className="space-y-6">
@@ -161,835 +166,282 @@ export default function DashboardSummaryPage() {
         ))}
       </div>
 
-      {/* Asset Summary Charts by Type */}
-      <Tabs defaultValue="pc" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 bg-muted/50 dark:bg-muted/20">
-          <TabsTrigger value="pc" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
-            {t('assets.pc.title')}
-          </TabsTrigger>
-          <TabsTrigger value="laptop" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
-            {t('assets.laptop.title')}
-          </TabsTrigger>
-          <TabsTrigger value="printer" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
-            {t('assets.printer.title')}
-          </TabsTrigger>
-          <TabsTrigger value="license" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
-            {t('assets.license.title')}
-          </TabsTrigger>
-          <TabsTrigger value="warehouse" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background">
-            {t('assets.warehouse.title')}
-          </TabsTrigger>
-        </TabsList>
-        
-        {/* PC Charts */}
-        <TabsContent value="pc" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <ChartCard 
-              title={t('assets.pc.cpu')}
-              description={t('dashboard.summaryByCpu')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={pcCpuData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#3b82f6" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.pc.monitorBarcode')}
-              description={t('dashboard.summaryByMonitor')}
-              icon={Monitor}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={pcMonitorData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#10b981" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.pc.upsBarcode')}
-              description={t('dashboard.summaryByUps')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={pcUpsData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#f59e0b" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          </div>
-        </TabsContent>
-        
-        {/* Laptop Charts */}
-        <TabsContent value="laptop" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <ChartCard 
-              title={t('assets.laptop.status')}
-              description={t('dashboard.summaryByStatus')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={laptopStatusData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#3b82f6" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.laptop.model')}
-              description={t('dashboard.summaryByModel')}
-              icon={Laptop}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={laptopModelData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#10b981" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          </div>
-        </TabsContent>
-        
-        {/* Printer Charts */}
-        <TabsContent value="printer" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <ChartCard 
-              title={t('assets.printer.color')}
-              description={t('dashboard.summaryByColor')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={printerColorData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#3b82f6" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.printer.model')}
-              description={t('dashboard.summaryByModel')}
-              icon={Printer}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={printerModelData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#10b981" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.printer.location')}
-              description={t('dashboard.summaryByLocation')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={printerLocationData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#f59e0b" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          </div>
-        </TabsContent>
-        
-        {/* License Charts */}
-        <TabsContent value="license" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <ChartCard 
-              title={t('assets.license.productType')}
-              description={t('dashboard.summaryByProductType')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={licenseProductTypeData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#3b82f6" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.license.licenseKey')}
-              description={t('dashboard.summaryByLicenseKey')}
-              icon={Key}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={licenseProductKeyData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#10b981" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          </div>
-        </TabsContent>
-        
-        {/* WarehouseIT Charts */}
-        <TabsContent value="warehouse" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <ChartCard 
-              title={t('assets.warehouse.cpuBarcode')}
-              description={t('dashboard.summaryByCpuBarcode')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={warehouseCpuBarcodeData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#3b82f6" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.warehouse.cpuSapBarcode')}
-              description={t('dashboard.summaryByCpuSap')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={warehouseCpuSapData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#10b981" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.warehouse.monitorBarcode')}
-              description={t('dashboard.summaryByMonitorBarcode')}
-              icon={Monitor}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={warehouseMonitorBarcodeData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#f59e0b" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.warehouse.monitorSapBarcode')}
-              description={t('dashboard.summaryByMonitorSap')}
-              icon={Monitor}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={warehouseMonitorSapData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#ef4444" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.warehouse.upsBarcode')}
-              description={t('dashboard.summaryByUpsBarcode')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={warehouseUpsBarcodeData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#8b5cf6" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.warehouse.upsSapBarcode')}
-              description={t('dashboard.summaryByUpsSap')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={warehouseUpsSapData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#ec4899" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-            
-            <ChartCard 
-              title={t('assets.warehouse.status')}
-              description={t('dashboard.summaryByStatus')}
-              icon={Activity}
-            >
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={warehouseStatusData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#3b82f6" name={t('common.count')} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          </div>
-        </TabsContent>
-      </Tabs>
+      {/* PC Component Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {pcComponentData.map((component, index) => (
+          <SummaryCard 
+            key={index}
+            title={component.name}
+            value={component.count}
+            icon={component.icon}
+            color="blue"
+          />
+        ))}
+      </div>
 
-      {/* Custom Fields Section */}
-      {dashboardData?.customFields && dashboardData.customFields.length > 0 && (
-        <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Settings className="h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400" />
-              {t('settings.customFields.title')}
-            </CardTitle>
-            <CardDescription>
-              {t('settings.customFields.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <div className="text-sm">
-                <span className="font-medium">{dashboardData.customFields.length}</span> {t('settings.customFields.title').toLowerCase()} {t('common.distribution')}
-              </div>
-              <Separator orientation="vertical" className="h-5" />
-              {uniqueCustomFieldTypes.map((type) => (
-                <Badge key={type} variant="secondary">
-                  {type}
-                </Badge>
-              ))}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {dashboardData.customFields.map((field) => (
-                <Card key={field.id} className="shadow-sm hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center justify-between">
-                      <span>{field.name}</span>
-                      {field.required && (
-                        <Badge variant="default" className="text-xs">
-                          {t('common.required')}
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-center">
-                      <Badge variant="outline">{field.type}</Badge>
-                      {field.description && (
-                        <p className="text-xs text-muted-foreground mt-2 truncate">
-                          {field.description}
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Custom Field Statistics Charts for PC */}
+      {pcCustomFields.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.pc.title')}</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {pcCustomFields.map((field, index) => {
+              const chartData = prepareCustomFieldChartData(field.name, 'PC')
+              const key = `PC_${field.name}`
+              const total = dashboardData?.customFieldStats?.[key]?.count || 0
+              
+              return chartData.length > 0 ? (
+                <ChartCard 
+                  key={`pc-${index}`}
+                  title={field.name}
+                  description={t('dashboard.customFieldDistribution', undefined, total)}
+                  icon={Server}
+                >
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={true}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="count"
+                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
+                        >
+                          {chartData.map((_, i) => (
+                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [value, t('common.count')]}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            color: 'hsl(var(--foreground))'
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              ) : null
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Custom Field Statistics Charts for Laptop */}
+      {laptopCustomFields.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.laptop.title')}</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {laptopCustomFields.map((field, index) => {
+              const chartData = prepareCustomFieldChartData(field.name, 'Laptop')
+              const key = `Laptop_${field.name}`
+              const total = dashboardData?.customFieldStats?.[key]?.count || 0
+              
+              return chartData.length > 0 ? (
+                <ChartCard 
+                  key={`laptop-${index}`}
+                  title={field.name}
+                  description={t('dashboard.customFieldDistribution', undefined, total)}
+                  icon={Server}
+                >
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={true}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="count"
+                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
+                        >
+                          {chartData.map((_, i) => (
+                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [value, t('common.count')]}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            color: 'hsl(var(--foreground))'
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              ) : null
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Custom Field Statistics Charts for Printer */}
+      {printerCustomFields.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.printer.title')}</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {printerCustomFields.map((field, index) => {
+              const chartData = prepareCustomFieldChartData(field.name, 'Printer')
+              const key = `Printer_${field.name}`
+              const total = dashboardData?.customFieldStats?.[key]?.count || 0
+              
+              return chartData.length > 0 ? (
+                <ChartCard 
+                  key={`printer-${index}`}
+                  title={field.name}
+                  description={t('dashboard.customFieldDistribution', undefined, total)}
+                  icon={Server}
+                >
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={true}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="count"
+                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
+                        >
+                          {chartData.map((_, i) => (
+                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [value, t('common.count')]}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            color: 'hsl(var(--foreground))'
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              ) : null
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Custom Field Statistics Charts for License */}
+      {licenseCustomFields.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.license.title')}</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {licenseCustomFields.map((field, index) => {
+              const chartData = prepareCustomFieldChartData(field.name, 'License')
+              const key = `License_${field.name}`
+              const total = dashboardData?.customFieldStats?.[key]?.count || 0
+              
+              return chartData.length > 0 ? (
+                <ChartCard 
+                  key={`license-${index}`}
+                  title={field.name}
+                  description={t('dashboard.customFieldDistribution', undefined, total)}
+                  icon={Server}
+                >
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={true}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="count"
+                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
+                        >
+                          {chartData.map((_, i) => (
+                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [value, t('common.count')]}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            color: 'hsl(var(--foreground))'
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              ) : null
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Custom Field Statistics Charts for WarehouseIT */}
+      {warehouseCustomFields.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.warehouse.title')}</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {warehouseCustomFields.map((field, index) => {
+              const chartData = prepareCustomFieldChartData(field.name, 'WarehouseIT')
+              const key = `WarehouseIT_${field.name}`
+              const total = dashboardData?.customFieldStats?.[key]?.count || 0
+              
+              return chartData.length > 0 ? (
+                <ChartCard 
+                  key={`warehouse-${index}`}
+                  title={field.name}
+                  description={t('dashboard.customFieldDistribution', undefined, total)}
+                  icon={Server}
+                >
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={true}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="count"
+                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
+                        >
+                          {chartData.map((_, i) => (
+                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [value, t('common.count')]}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            color: 'hsl(var(--foreground))'
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              ) : null
+            })}
+          </div>
+        </div>
       )}
     </div>
   );

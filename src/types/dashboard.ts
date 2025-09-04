@@ -65,6 +65,14 @@ export interface PCSummary {
   _count: number;
 }
 
+export interface PCStats {
+  total: number;
+  totalCpus: number;
+  totalMonitors: number;
+  totalUps: number;
+  details: PCSummary[];
+}
+
 export interface LaptopSummary {
   status: string | null;
   model: string | null;
@@ -100,13 +108,19 @@ export interface WarehouseITSummary {
   _count: number;
 }
 
+export interface CustomFieldStat {
+  count: number;
+  values: Record<string, number>;
+}
+
 export interface DashboardSummaryData {
-  pc: PCSummary[];
+  pc: PCStats;
   laptop: LaptopSummary[];
   printer: PrinterSummary[];
   license: LicenseSummary[];
   warehouseIT: WarehouseITSummary[];
   customFields: CustomField[];
+  customFieldStats: Record<string, CustomFieldStat>;
 }
 
 export interface DashboardData {
