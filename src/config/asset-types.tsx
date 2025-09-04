@@ -625,5 +625,112 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         placeholder: t('assets.warehouse.note') || "Additional information about this asset"
       }
     ]
+  },
+  {
+    name: "Internet",
+    key: "internet",
+    columns: [
+      {
+        key: "dept",
+        label: t('assets.internet.department') || "Department"
+      },
+      {
+        key: "manager",
+        label: t('assets.internet.manager') || "Manager"
+      },
+      {
+        key: "userName",
+        label: t('assets.internet.userName') || "User Name"
+      },
+      {
+        key: "email",
+        label: t('auth.email') || "Email"
+      },
+      {
+        key: "ipAddress",
+        label: t('assets.internet.ipAddress') || "IP Address"
+      },
+      {
+        key: "internetAccess",
+        label: t('assets.internet.internetAccess') || "Internet Access"
+      },
+      {
+        key: "status",
+        label: t('assets.internet.status') || "Status",
+        render: (value: string) => {
+          const statusClass: Record<string, string> = {
+            working: "bg-green-100 text-green-800",
+            leave: "bg-blue-100 text-blue-800",
+            repair: "bg-yellow-100 text-yellow-800"
+          };
+          
+          return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass[value] || ""}`}>
+              {t(`assets.status.${value}`) || value}
+            </span>
+          );
+        }
+      },
+      {
+        key: "note",
+        label: t('assets.internet.note') || "Note"
+      }
+    ],
+    formFields: [
+      {
+        name: "dept",
+        label: t('assets.internet.department') || "Department",
+        type: "text",
+        required: true,
+        placeholder: t('assets.internet.department') || "IT Department"
+      },
+      {
+        name: "manager",
+        label: t('assets.internet.manager') || "Manager",
+        type: "text",
+        placeholder: t('assets.internet.manager') || "Manager Name"
+      },
+      {
+        name: "userName",
+        label: t('assets.internet.userName') || "User Name",
+        type: "text",
+        placeholder: t('assets.internet.userName') || "John Doe"
+      },
+      {
+        name: "email",
+        label: t('auth.email') || "Email",
+        type: "email",
+        placeholder: "user@example.com"
+      },
+      {
+        name: "ipAddress",
+        label: t('assets.internet.ipAddress') || "IP Address",
+        type: "text",
+        placeholder: "192.168.1.100"
+      },
+      {
+        name: "internetAccess",
+        label: t('assets.internet.internetAccess') || "Internet Access",
+        type: "text",
+        placeholder: t('assets.internet.internetAccess') || "Full Access"
+      },
+      { 
+        name: "status", 
+        label: t('assets.internet.status') || "Status", 
+        type: "select", 
+        required: true,
+        options: [
+          { label: t('assets.status.working') || "Working", value: "working" },
+          { label: t('assets.status.leave') || "Leave", value: "leave" },
+          { label: t('assets.status.repair') || "Repair", value: "repair" }
+        ]
+      },
+      {
+        name: "note",
+        label: t('assets.internet.note') || "Note",
+        type: "textarea",
+        placeholder: t('assets.internet.note') || "Additional information about this asset"
+      }
+    ]
   }
 ];

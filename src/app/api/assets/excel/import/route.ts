@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Remove the user and status fields from row data since we're handling them separately
-            const { user: laptopUserField, userName: laptopUserNameField, Status, status, dateBuy, ...laptopRowData } = row as any;
+            const { user: laptopUserField, userName: laptopUserNameField, Status: statusFieldUpper, status: statusFieldLower, dateBuy, ...laptopRowData } = row as any;
             
             // Extract custom fields from row data
             let laptopCustomFields: Record<string, any> | undefined;
@@ -848,6 +848,126 @@ export async function POST(request: NextRequest) {
                 action: 'create',
                 modelType: 'WarehouseIT',
                 recordId: createdWarehouseIT.id,
+                changes: JSON.stringify(row),
+                userId: user.id,
+                tenantId: user.tenantId
+              }
+            });
+            break
+
+          case 'internet':
+            // Validate required fields for Internet
+            // Check if fields exist and are not null or undefined (but allow 'N/A')
+            if (row.dept === null || row.dept === undefined) {
+              errors.push(`Row missing required field: Department`)
+              continue
+            }
+
+            // Handle user field mapping - if user field exists, store it as userName
+            let internetUserName = undefined;
+            // Check if user field exists and is not empty
+            if (row.user) {
+              internetUserName = String(row.user);
+            } else if (row.userName) {
+              internetUserName = String(row.userName);
+            }
+
+            // Handle case sensitivity for status field
+            let internetStatusValue = 'working'; // default value
+            if (row.status) {
+              internetStatusValue = String(row.status);
+            } else if (row.Status) {
+              internetStatusValue = String(row.Status);
+            }
+
+            // Remove the user and status fields from row data since we're handling them separately
+            const { user: internetUserField, userName: internetUserNameField, Status, status, ...internetRowData } = row as any;
+            
+            // Extract custom fields from row data
+            let internetCustomFields: Record<string, any> | undefined;
+            
+            // Get custom fields for this asset type and tenant
+            const internetCustomFieldsConfig = await db.customField.findMany({
+              where: {
+                tenantId: user.tenantId,
+                modelType: 'Internet'
+              }
+            });
+            
+            // Extract custom field values from row data
+            if (internetCustomFieldsConfig.length > 0) {
+              internetCustomFields = {};
+              for (const customField of internetCustomFieldsConfig) {
+                if (internetRowData[customField.name] !== undefined && internetRowData[customField.name] !== null) {
+                  // Handle different custom field types
+                  switch (customField.type) {
+                    case 'number':
+                      const numValue = Number(internetRowData[customField.name]);
+                      internetCustomFields[customField.name] = isNaN(numValue) ? internetRowData[customField.name] : numValue;
+                      break;
+                    case 'boolean':
+                      // Convert string values to boolean
+                      if (typeof internetRowData[customField.name] === 'string') {
+                        const strValue = (internetRowData[customField.name] as string).toLowerCase();
+                        internetCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                      } else {
+                        internetCustomFields[customField.name] = Boolean(internetRowData[customField.name]);
+                      }
+                      break;
+                    case 'date':
+                      // Try to parse date values
+                      if (typeof internetRowData[customField.name] === 'string') {
+                        const dateValue = new Date(internetRowData[customField.name]);
+                        internetCustomFields[customField.name] = isNaN(dateValue.getTime()) ? internetRowData[customField.name] : dateValue.toISOString();
+                      } else {
+                        internetCustomFields[customField.name] = internetRowData[customField.name];
+                      }
+                      break;
+                    default:
+                      internetCustomFields[customField.name] = internetRowData[customField.name];
+                  }
+                  // Remove custom field from row data
+                  delete internetRowData[customField.name];
+                }
+              }
+            }
+            
+            // Also check for any remaining fields in internetRowData that might be custom fields
+            // but are not defined in the database yet (could be from Excel column mapping)
+            const internetModelFields = ['id', 'dept', 'manager', 'userName', 'email', 'ipAddress', 
+              'internetAccess', 'status', 'note', 'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+              
+            // Check if there are any fields in internetRowData that are not part of the Internet model
+            // and treat them as custom fields
+            for (const [key, value] of Object.entries(internetRowData)) {
+              if (!internetModelFields.includes(key)) {
+                // Initialize internetCustomFields if not already done
+                if (!internetCustomFields) {
+                  internetCustomFields = {};
+                }
+                internetCustomFields[key] = value;
+                // Remove the field from internetRowData
+                delete internetRowData[key];
+              }
+            }
+
+            // Create the Internet record first
+            const createdInternet = await db.internet.create({
+              data: {
+                ...internetRowData,
+                userName: internetUserName, // Use userName instead of userId
+                status: internetStatusValue, // Use the properly cased status value
+                ...(internetCustomFields ? { customFields: internetCustomFields } : {}),
+                tenantId: user.tenantId
+              }
+            });
+
+            // Then create the history record separately
+            await db.history.create({
+              data: {
+                action: 'create',
+                modelType: 'Internet',
+                recordId: createdInternet.id,
                 changes: JSON.stringify(row),
                 userId: user.id,
                 tenantId: user.tenantId

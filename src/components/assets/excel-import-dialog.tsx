@@ -88,6 +88,9 @@ export function ExcelImportDialog({
         case 'warehouse':
           fields = ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note']
           break
+        case 'internet':
+          fields = ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note']
+          break
         default:
           fields = []
       }
@@ -193,7 +196,15 @@ export function ExcelImportDialog({
 
   // Function to generate automatic mappings based on column name similarity
   const generateAutomaticMappings = useCallback(() => {
-    if (excelColumns.length === 0 || databaseFields.length === 0) return;
+    console.log('generateAutomaticMappings called with:', {
+      excelColumns,
+      databaseFields
+    });
+    
+    if (excelColumns.length === 0 || databaseFields.length === 0) {
+      console.log('Skipping automatic mapping - no data');
+      return;
+    }
     
     // Generate automatic mappings
     const autoMappings: ColumnMapping[] = [];
@@ -213,9 +224,36 @@ export function ExcelImportDialog({
       if (dbFieldsLowerMap.has(cleanExcelColumn)) {
         matchedField = dbFieldsLowerMap.get(cleanExcelColumn) || null;
       } else {
-        // Fuzzy match - check if any database field contains the excel column name or vice versa
+        // Enhanced fuzzy matching logic
         for (const [dbFieldLower, dbField] of dbFieldsLowerMap.entries()) {
+          // Check for partial matches in both directions
           if (cleanExcelColumn.includes(dbFieldLower) || dbFieldLower.includes(cleanExcelColumn)) {
+            matchedField = dbField;
+            break;
+          }
+          
+          // Additional fuzzy matching for common variations
+          // Handle cases like "Department" vs "dept"
+          if (cleanExcelColumn.startsWith('department') && dbFieldLower === 'dept') {
+            matchedField = dbField;
+            break;
+          }
+          if (cleanExcelColumn === 'dept' && dbFieldLower.startsWith('department')) {
+            matchedField = dbField;
+            break;
+          }
+          
+          // Handle other common abbreviations
+          const abbreviations: Record<string, string> = {
+            'department': 'dept',
+            'user': 'userName',
+            'username': 'userName',
+            'ip': 'ipAddress',
+            'internet': 'internetAccess'
+          };
+          
+          if (abbreviations[cleanExcelColumn] === dbFieldLower || 
+              abbreviations[dbFieldLower] === cleanExcelColumn) {
             matchedField = dbField;
             break;
           }
@@ -231,11 +269,21 @@ export function ExcelImportDialog({
       }
     });
     
+    console.log('Generated automatic mappings:', autoMappings);
+    
     // Update the mappings state with the auto-generated mappings
     setColumnMappings(autoMappings);
     
     toast.success(t('assets.excel.import.autoMapSuccess', 'Automatic mapping completed'));
   }, [excelColumns, databaseFields, t]);
+
+  // Effect to automatically generate mappings when excelColumns and databaseFields are available
+  useEffect(() => {
+    // Only auto-generate if we have data and no mappings yet, and the dialog is open
+    if (isOpen && excelColumns.length > 0 && databaseFields.length > 0 && columnMappings.length === 0) {
+      generateAutomaticMappings();
+    }
+  }, [isOpen, excelColumns, databaseFields, columnMappings.length, generateAutomaticMappings]);
 
   // New function to handle just hiding the column mapping without resetting mappings
   const handleToggleColumnMapping = useCallback(() => {

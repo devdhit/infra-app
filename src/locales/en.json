@@ -7,6 +7,7 @@
     "printer": "Printer",
     "license": "License",
     "warehouse": "Warehouse IT",
+    "internet": "Internet",
     "users": "Users",
     "tenants": "Tenants",
     "settings": "Settings"
@@ -356,6 +357,16 @@
       "dept": "Department",
       "createdAt": "Created At",
       "updatedAt": "Updated At",
+      "note": "Note"
+    },
+    "internet": {
+      "title": "Internet",
+      "department": "Department",
+      "manager": "Manager",
+      "userName": "User Name",
+      "ipAddress": "IP Address",
+      "internetAccess": "Internet Access",
+      "status": "Status",
       "note": "Note"
     },
     "status": {

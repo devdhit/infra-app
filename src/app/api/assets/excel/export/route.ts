@@ -9,8 +9,11 @@ import {
   exportWarehouseITToExcel
 } from '@/lib/excel'
 
+// Add the Internet export function
+import { exportInternetToExcel } from '@/lib/excel'
+
 // Define types for our data
-type AssetType = 'pc' | 'laptop' | 'printer' | 'license' | 'warehouse'
+type AssetType = 'pc' | 'laptop' | 'printer' | 'license' | 'warehouse' | 'internet'
 
 // GET /api/assets/excel/export - Export assets to Excel
 export async function GET(request: NextRequest) {
@@ -332,6 +335,9 @@ export async function GET(request: NextRequest) {
             productKey: license.productKey ?? undefined,
             model: license.model ?? undefined,
             pc: license.pc ?? undefined,
+            mac: license.mac ?? undefined,
+            ip: license.ip ?? undefined,
+            date: license.date ? license.date.toISOString().split('T')[0] : undefined, // Only include date part
             // Normalize status values to lowercase to match standardized values
             updateStatus: license.updateStatus ? license.updateStatus.toLowerCase() : 'working',
             // Include custom fields
@@ -411,6 +417,75 @@ export async function GET(request: NextRequest) {
         } catch (exportError: any) {
           console.error('Error during Warehouse export:', exportError);
           throw new Error(`Warehouse export failed: ${exportError.message}`);
+        }
+        break
+
+      case 'internet':
+        console.log('Fetching Internet data with filters:', { 
+          tenantId: user.tenantId,
+          selectedIds: selectedIdArray,
+          department: department
+        })
+        const internetWhereClause = { 
+          tenantId: user.tenantId,
+          ...(selectedIdArray ? { id: { in: selectedIdArray } } : {}),
+          ...(department ? { dept: department } : {})
+        }
+        console.log('Internet where clause:', internetWhereClause)
+        // Use cursor-based pagination for better performance with large datasets
+        const internetData = await db.internet.findMany({
+          where: internetWhereClause,
+          select: {
+            id: true,
+            dept: true,
+            manager: true,
+            userName: true,
+            email: true,
+            ipAddress: true,
+            internetAccess: true,
+            status: true,
+            note: true,
+            customFields: true,
+            createdAt: true,
+            updatedAt: true
+          },
+          take: MAX_RECORDS, // Limit the number of records
+          orderBy: {
+            createdAt: 'asc'
+          }
+        })
+        console.log('Internet data fetched:', internetData.length, 'records')
+        console.log('Sample Internet data:', internetData.slice(0, 2))
+        
+        // Convert null values to undefined to match the InternetAsset interface
+        const formattedInternetData = internetData.map((internet: any) => {
+          // Extract custom fields and add them to the formatted data
+          const customFields = internet.customFields as Record<string, any> || {};
+          
+          return {
+            dept: internet.dept,
+            manager: internet.manager ?? undefined,
+            userName: internet.userName ?? undefined,
+            email: internet.email ?? undefined,
+            ipAddress: internet.ipAddress ?? undefined,
+            internetAccess: internet.internetAccess ?? undefined,
+            // Normalize status values to lowercase to match standardized values
+            status: internet.status ? internet.status.toLowerCase() : 'working',
+            note: internet.note ?? undefined,
+            // Include custom fields
+            ...customFields
+          };
+        })
+        
+        console.log('Starting Internet Excel export...');
+        const internetExportStart = Date.now();
+        
+        try {
+          buffer = await exportInternetToExcel(formattedInternetData)
+          console.log(`Internet Excel export completed in ${(Date.now() - internetExportStart) / 1000} seconds`);
+        } catch (exportError: any) {
+          console.error('Error during Internet export:', exportError);
+          throw new Error(`Internet export failed: ${exportError.message}`);
         }
         break
 

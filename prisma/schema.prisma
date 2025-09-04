@@ -22,6 +22,7 @@ model Tenant {
   printers           Printer[]
   users              User[]
   warehouseITs       WarehouseIT[]
+  internets          Internet[]
   auditLogsSettings  AuditLogsSettings?
 
   @@index([id])
@@ -160,6 +161,31 @@ model WarehouseIT {
 
   @@index([tenantId])
   @@index([status])
+  @@index([createdAt])
+}
+
+model Internet {
+  id             String    @id @default(uuid())
+  dept           String
+  manager        String?
+  userName       String?
+  email          String?
+  ipAddress      String?
+  internetAccess String?
+  status         String    @default("working")
+  note           String?
+  tenantId       String
+  customFields   Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([userName])
+  @@index([dept])
+  @@index([email])
+  @@index([ipAddress])
   @@index([createdAt])
 }
 
