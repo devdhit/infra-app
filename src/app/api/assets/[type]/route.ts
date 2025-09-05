@@ -13,7 +13,7 @@ const assetQuerySchema = z.object({
 });
 
 // Valid asset types
-const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse'] as const;
+const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet'] as const;
 type AssetType = typeof validAssetTypes[number];
 
 // Type guard for asset types
@@ -99,7 +99,8 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
         'barcode',
         'pcName',
         'userName',
-        'dept'
+        'dept',
+        'ip'
       ];
       
       // Create search conditions for indexed fields
@@ -136,7 +137,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
             where: whereClause,
             skip,
             take: limit,
-            orderBy: { updatedAt: 'desc' },
+            orderBy: { dept: 'asc' },
             // Select only necessary fields to reduce payload size
             select: {
               id: true,
@@ -158,7 +159,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
             where: whereClause,
             skip,
             take: limit,
-            orderBy: { updatedAt: 'desc' },
+            orderBy: { dept: 'asc' },
             // Select only necessary fields to reduce payload size
             select: {
               id: true,
@@ -179,13 +180,12 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
             where: whereClause,
             skip,
             take: limit,
-            orderBy: { updatedAt: 'desc' },
+            orderBy: { dept: 'asc' },
             // Select only necessary fields to reduce payload size
             select: {
               id: true,
               barcode: true,
               dept: true,
-              // Printer model doesn't have status field
               updatedAt: true,
               customFields: true // Include custom fields
             }
@@ -199,7 +199,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
             where: whereClause,
             skip,
             take: limit,
-            orderBy: { updatedAt: 'desc' },
+            orderBy: { dept: 'asc' },
             // Select only necessary fields to reduce payload size
             select: {
               id: true,
@@ -225,6 +225,30 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
             select: {
               id: true,
               // WarehouseIT model doesn't have status field
+              updatedAt: true,
+              customFields: true // Include custom fields
+            }
+          })
+        ]);
+        break;
+      case 'internet':
+        [totalCount, assets] = await Promise.all([
+          db.internet.count({ where: whereClause }),
+          db.internet.findMany({
+            where: whereClause,
+            skip,
+            take: limit,
+            orderBy: { updatedAt: 'desc' },
+            // Select only necessary fields to reduce payload size
+            select: {
+              id: true,
+              dept: true,
+              manager: true,
+              userName: true,
+              email: true,
+              ipAddress: true,
+              internetAccess: true,
+              status: true,
               updatedAt: true,
               customFields: true // Include custom fields
             }

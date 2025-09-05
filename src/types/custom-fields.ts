@@ -2,7 +2,7 @@ export interface CustomField {
   id: string;
   name: string;
   type: 'text' | 'textarea' | 'number' | 'date' | 'boolean' | 'select';
-  modelType: 'PC' | 'Laptop' | 'Printer' | 'License' | 'WarehouseIT';
+  modelType: 'PC' | 'Laptop' | 'Printer' | 'License' | 'WarehouseIT' | 'Internet';
   required: boolean;
   description?: string;
   createdAt: string;
@@ -12,13 +12,13 @@ export interface CustomField {
 export interface CustomFieldFormData {
   name: string;
   type: 'text' | 'textarea' | 'number' | 'date' | 'boolean' | 'select';
-  modelType: 'PC' | 'Laptop' | 'Printer' | 'License' | 'WarehouseIT';
+  modelType: 'PC' | 'Laptop' | 'Printer' | 'License' | 'WarehouseIT' | 'Internet';
   required: boolean;
   description?: string;
 }
 
 export interface ModelTypeOption {
-  value: 'PC' | 'Laptop' | 'Printer' | 'License' | 'WarehouseIT';
+  value: 'PC' | 'Laptop' | 'Printer' | 'License' | 'WarehouseIT' | 'Internet';
   label: string;
 }
 
