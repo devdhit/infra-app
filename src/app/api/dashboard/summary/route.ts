@@ -58,6 +58,13 @@ export async function GET(request: NextRequest) {
       _count: true
     })
 
+    // Get Internet summary data: total by department, manager, status
+    const internetSummary = await db.internet.groupBy({
+      by: ['dept', 'manager', 'status'],
+      where: { tenantId: user.tenantId },
+      _count: true
+    })
+
     // Get custom fields for all asset types
     const customFields = await db.customField.findMany({
       where: {
@@ -101,6 +108,14 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Get all Internet assets to calculate custom field statistics
+    const allInternetItems = await db.internet.findMany({
+      where: { tenantId: user.tenantId },
+      select: {
+        customFields: true
+      }
+    })
+
     // Calculate custom field statistics
     const customFieldStats: Record<string, { count: number, values: Record<string, number> }> = {}
     
@@ -110,6 +125,7 @@ export async function GET(request: NextRequest) {
     const printerCustomFields = customFields.filter(field => field.modelType === 'Printer')
     const licenseCustomFields = customFields.filter(field => field.modelType === 'License')
     const warehouseCustomFields = customFields.filter(field => field.modelType === 'WarehouseIT')
+    const internetCustomFields = customFields.filter(field => field.modelType === 'Internet')
     
     // Create a map to track which asset type each custom field belongs to
     const customFieldAssetMap: Record<string, string> = {}
@@ -133,6 +149,7 @@ export async function GET(request: NextRequest) {
     populateAssetMap(printerCustomFields, 'Printer')
     populateAssetMap(licenseCustomFields, 'License')
     populateAssetMap(warehouseCustomFields, 'WarehouseIT')
+    populateAssetMap(internetCustomFields, 'Internet')
     
     // Helper function to process custom fields for any asset type
     const processCustomFields = (assets: any[], customFieldsConfig: any[], assetType: string) => {
@@ -173,6 +190,7 @@ export async function GET(request: NextRequest) {
     processCustomFields(allPrinters, printerCustomFields, 'Printer')
     processCustomFields(allLicenses, licenseCustomFields, 'License')
     processCustomFields(allWarehouseItems, warehouseCustomFields, 'WarehouseIT')
+    processCustomFields(allInternetItems, internetCustomFields, 'Internet')
 
     return new Response(JSON.stringify({
       pc: {
@@ -186,6 +204,7 @@ export async function GET(request: NextRequest) {
       printer: printerSummary,
       license: licenseSummary,
       warehouseIT: warehouseITSummary,
+      internet: internetSummary,
       customFields,
       customFieldStats
     }), {

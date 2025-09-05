@@ -108,6 +108,13 @@ export interface WarehouseITSummary {
   _count: number;
 }
 
+export interface InternetSummary {
+  dept: string | null;
+  manager: string | null;
+  status: string | null;
+  _count: number;
+}
+
 export interface CustomFieldStat {
   count: number;
   values: Record<string, number>;
@@ -119,6 +126,7 @@ export interface DashboardSummaryData {
   printer: PrinterSummary[];
   license: LicenseSummary[];
   warehouseIT: WarehouseITSummary[];
+  internet: InternetSummary[];
   customFields: CustomField[];
   customFieldStats: Record<string, CustomFieldStat>;
 }

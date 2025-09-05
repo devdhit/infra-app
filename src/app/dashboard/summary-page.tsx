@@ -13,9 +13,10 @@ import {
   TrendingUp,
   Cpu,
   Battery,
-  Server
+  Server,
+  Globe
 } from "lucide-react";
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useTranslation } from "@/hooks/use-translation";
 import { DashboardSummaryData } from "@/types/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
@@ -81,6 +82,13 @@ export default function DashboardSummaryPage() {
       color: 'bg-purple-500', 
       iconColor: 'text-purple-500' 
     },
+    { 
+      name: 'internet', 
+      count: dashboardData?.internet?.reduce((sum, item) => sum + item._count, 0) || 0, 
+      icon: Globe, 
+      color: 'bg-indigo-500', 
+      iconColor: 'text-indigo-500' 
+    },
   ];
 
   // PC Component Data for new cards
@@ -127,6 +135,7 @@ export default function DashboardSummaryPage() {
   const printerCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'Printer') || [];
   const licenseCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'License') || [];
   const warehouseCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'WarehouseIT') || [];
+  const internetCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'Internet') || [];
 
   // Colors for pie charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
@@ -198,21 +207,19 @@ export default function DashboardSummaryPage() {
                 >
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={true}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="count"
-                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
-                        >
-                          {chartData.map((_, i) => (
-                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                          ))}
-                        </Pie>
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={100}
+                          tick={{ fontSize: 12 }}
+                        />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
                           contentStyle={{ 
@@ -222,7 +229,16 @@ export default function DashboardSummaryPage() {
                             color: 'hsl(var(--foreground))'
                           }}
                         />
-                      </PieChart>
+                        <Bar 
+                          dataKey="count" 
+                          fill="#8884d8"
+                          name={t('common.count')}
+                        >
+                          {chartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </ChartCard>
@@ -251,21 +267,19 @@ export default function DashboardSummaryPage() {
                 >
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={true}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="count"
-                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
-                        >
-                          {chartData.map((_, i) => (
-                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                          ))}
-                        </Pie>
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={100}
+                          tick={{ fontSize: 12 }}
+                        />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
                           contentStyle={{ 
@@ -275,7 +289,16 @@ export default function DashboardSummaryPage() {
                             color: 'hsl(var(--foreground))'
                           }}
                         />
-                      </PieChart>
+                        <Bar 
+                          dataKey="count" 
+                          fill="#8884d8"
+                          name={t('common.count')}
+                        >
+                          {chartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </ChartCard>
@@ -304,21 +327,19 @@ export default function DashboardSummaryPage() {
                 >
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={true}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="count"
-                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
-                        >
-                          {chartData.map((_, i) => (
-                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                          ))}
-                        </Pie>
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={100}
+                          tick={{ fontSize: 12 }}
+                        />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
                           contentStyle={{ 
@@ -328,7 +349,16 @@ export default function DashboardSummaryPage() {
                             color: 'hsl(var(--foreground))'
                           }}
                         />
-                      </PieChart>
+                        <Bar 
+                          dataKey="count" 
+                          fill="#8884d8"
+                          name={t('common.count')}
+                        >
+                          {chartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </ChartCard>
@@ -357,21 +387,19 @@ export default function DashboardSummaryPage() {
                 >
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={true}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="count"
-                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
-                        >
-                          {chartData.map((_, i) => (
-                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                          ))}
-                        </Pie>
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={100}
+                          tick={{ fontSize: 12 }}
+                        />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
                           contentStyle={{ 
@@ -381,7 +409,16 @@ export default function DashboardSummaryPage() {
                             color: 'hsl(var(--foreground))'
                           }}
                         />
-                      </PieChart>
+                        <Bar 
+                          dataKey="count" 
+                          fill="#8884d8"
+                          name={t('common.count')}
+                        >
+                          {chartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </ChartCard>
@@ -410,21 +447,19 @@ export default function DashboardSummaryPage() {
                 >
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={true}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="count"
-                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
-                        >
-                          {chartData.map((_, i) => (
-                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                          ))}
-                        </Pie>
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={100}
+                          tick={{ fontSize: 12 }}
+                        />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
                           contentStyle={{ 
@@ -434,7 +469,76 @@ export default function DashboardSummaryPage() {
                             color: 'hsl(var(--foreground))'
                           }}
                         />
-                      </PieChart>
+                        <Bar 
+                          dataKey="count" 
+                          fill="#8884d8"
+                          name={t('common.count')}
+                        >
+                          {chartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              ) : null
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Custom Field Statistics Charts for Internet */}
+      {internetCustomFields.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.internet.title')}</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {internetCustomFields.map((field, index) => {
+              const chartData = prepareCustomFieldChartData(field.name, 'Internet')
+              const key = `Internet_${field.name}`
+              const total = dashboardData?.customFieldStats?.[key]?.count || 0
+              
+              return chartData.length > 0 ? (
+                <ChartCard 
+                  key={`internet-${index}`}
+                  title={field.name}
+                  description={t('dashboard.customFieldDistribution', undefined, total)}
+                  icon={Server}
+                >
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={100}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => [value, t('common.count')]}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            color: 'hsl(var(--foreground))'
+                          }}
+                        />
+                        <Bar 
+                          dataKey="count" 
+                          fill="#8884d8"
+                          name={t('common.count')}
+                        >
+                          {chartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </ChartCard>
