@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
       _count: true
     })
 
-    // Get WarehouseIT summary data: total CPU Barcode CPU SAP Barcode Monitor Barcode Monitor SAPBarcode UPSBarcode UPS SAPBarcode Status custom-fields (Model,RAM,CPU,TYPE)
+    // Get WarehouseIT summary data: total by barcode, sapCode, status
     const warehouseITSummary = await db.warehouseIT.groupBy({
-      by: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status'],
+      by: ['barcode', 'sapCode', 'status'],
       where: { tenantId: user.tenantId },
       _count: true
     })

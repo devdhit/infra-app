@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../generated/prisma'
 import { 
   successResponse, 
   errorResponse, 
@@ -67,12 +67,8 @@ interface LicenseAsset {
 }
 
 interface WarehouseITAsset {
-  cpuBarcode?: string
-  cpuSapBarcode?: string
-  monitorBarcode?: string
-  monitorSapBarcode?: string
-  upsBarcode?: string
-  upsSapBarcode?: string
+  barcode?: string
+  sapCode?: string
   status: string
   note?: string
   createdAt?: string
@@ -142,12 +138,8 @@ export class AssetApiHandler<T> {
 
       return {
         ...baseFields,
-        cpuBarcode: true,
-        cpuSapBarcode: true,
-        monitorBarcode: true,
-        monitorSapBarcode: true,
-        upsBarcode: true,
-        upsSapBarcode: true,
+        barcode: true,
+        sapCode: true,
         note: true,
         customFields: true // Include custom fields
       };
@@ -734,7 +726,7 @@ export class AssetApiHandler<T> {
         'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'email', 'model', 'status', 'userName', 'customFields'],
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
-        'WarehouseIT': ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 'customFields'],
+        'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
         'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
       }
 
@@ -997,7 +989,7 @@ export const licenseHandler = new AssetApiHandler<LicenseAsset>(db, {
 export const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
   modelName: 'WarehouseIT',
   requiredFields: ['status'],
-  searchFields: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note']
+  searchFields: ['barcode', 'sapCode', 'status', 'note']
 })
 
 // Create handler for Internet assets

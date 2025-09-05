@@ -280,7 +280,8 @@ const getAssetColumns = (
     size: 70, // Set a fixed width for the actions column
   };
 
-  return [selectionColumn, ...dataColumns, actionsColumn];
+  // Return columns with actions column at the beginning (after selection column)
+  return [selectionColumn, actionsColumn, ...dataColumns];
 };
 
 // extractDepartments function removed - was unused
@@ -411,24 +412,28 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
 
   // Initialize column visibility state with intelligent defaults
   useEffect(() => {
-    // Try to load saved column visibility from localStorage
-    const savedVisibility = loadColumnVisibility();
-    
-    if (savedVisibility) {
-      // Use saved visibility if available
-      setColumnVisibility(savedVisibility);
-    } else {
-      // Fallback to default visibility logic
-      const initialVisibility: Record<string, boolean> = {};
-      allColumns.forEach(column => {
-        // Show columns by default, unless they're in the default hidden list OR have hide: true property
-        initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
-      });
-      setColumnVisibility(initialVisibility);
-      // Save the initial visibility to localStorage
-      saveColumnVisibility(initialVisibility);
+    // Only initialize column visibility when we have all the columns (including custom fields)
+    // and custom fields data has been loaded (not undefined)
+    if (allColumns.length > 0 && customFieldsData !== undefined) {
+      // Try to load saved column visibility from localStorage
+      const savedVisibility = loadColumnVisibility();
+      
+      if (savedVisibility) {
+        // Use saved visibility if available
+        setColumnVisibility(savedVisibility);
+      } else {
+        // Fallback to default visibility logic
+        const initialVisibility: Record<string, boolean> = {};
+        allColumns.forEach(column => {
+          // Show columns by default, unless they're in the default hidden list OR have hide: true property
+          initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
+        });
+        setColumnVisibility(initialVisibility);
+        // Save the initial visibility to localStorage
+        saveColumnVisibility(initialVisibility);
+      }
     }
-  }, [allColumns, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility]);
+  }, [allColumns, customFieldsData, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility]);
 
   // Toggle column visibility and save to localStorage
   const toggleColumnVisibility = (columnKey: string) => {
@@ -454,34 +459,39 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   
   // Initialize column order with localStorage persistence
   useEffect(() => {
-    // Try to load saved column order from localStorage
-    const savedOrder = loadColumnOrder();
-    
-    if (savedOrder && Array.isArray(savedOrder)) {
-      // Validate that saved order contains all current columns
-      const currentColumnKeys = new Set(columns.map(column => column.key));
-      const validSavedOrder = savedOrder.filter(key => currentColumnKeys.has(key));
+    // Only initialize column order when we have all the columns (including custom fields)
+    // and custom fields data has been loaded (not undefined)
+    if (allColumns.length > 0 && customFieldsData !== undefined) {
+      // Try to load saved column order from localStorage
+      const savedOrder = loadColumnOrder();
       
-      // Only use saved order if it contains all current columns
-      if (validSavedOrder.length === columns.length) {
-        setColumnOrder(validSavedOrder);
-        return;
+      if (savedOrder && Array.isArray(savedOrder)) {
+        // Validate that saved order contains all current columns
+        const currentColumnKeys = new Set(allColumns.map(column => column.key));
+        const validSavedOrder = savedOrder.filter(key => currentColumnKeys.has(key));
+        
+        // Only use saved order if it contains all current columns
+        if (validSavedOrder.length === allColumns.length) {
+          setColumnOrder(validSavedOrder);
+          return;
+        }
       }
+      
+      // Fallback to default order
+      const defaultOrder = allColumns.map(column => column.key);
+      setColumnOrder(defaultOrder);
+      // Save the initial order to localStorage
+      saveColumnOrder(defaultOrder);
     }
-    
-    // Fallback to default order
-    const defaultOrder = columns.map(column => column.key);
-    setColumnOrder(defaultOrder);
-    // Save the initial order to localStorage
-    saveColumnOrder(defaultOrder);
-  }, [columns, loadColumnOrder, saveColumnOrder]);
+  }, [allColumns, customFieldsData, loadColumnOrder, saveColumnOrder]);
   
   // Optimize memoization with proper dependencies
   const filteredColumns = useMemo(() => {
     // Create a more efficient filtering mechanism
     return allColumns.filter(column => {
       // Only show columns that are explicitly set to visible
-      return columnVisibility[column.key] === true;
+      // If columnVisibility is empty, show all columns by default
+      return Object.keys(columnVisibility).length === 0 || columnVisibility[column.key] === true;
     });
   }, [allColumns, columnVisibility]);
 
@@ -532,6 +542,55 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
   useEffect(() => {
     refetchCustomFields();
   }, [assetType, refetchCustomFields]);
+  
+  // Re-initialize column visibility and order when custom fields data becomes available
+  useEffect(() => {
+    // Only re-initialize when custom fields data is loaded (not undefined) and we have all columns
+    if (customFieldsData !== undefined && allColumns.length > 0) {
+      // Re-initialize column visibility if not already set or if it's empty
+      if (Object.keys(columnVisibility).length === 0) {
+        const savedVisibility = loadColumnVisibility();
+        
+        if (savedVisibility) {
+          // Use saved visibility if available
+          setColumnVisibility(savedVisibility);
+        } else {
+          // Fallback to default visibility logic
+          const initialVisibility: Record<string, boolean> = {};
+          allColumns.forEach(column => {
+            // Show columns by default, unless they're in the default hidden list OR have hide: true property
+            initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
+          });
+          setColumnVisibility(initialVisibility);
+          // Save the initial visibility to localStorage
+          saveColumnVisibility(initialVisibility);
+        }
+      }
+      
+      // Re-initialize column order if not already set or if it's empty
+      if (columnOrder.length === 0 || Object.keys(columnVisibility).length === 0) {
+        const savedOrder = loadColumnOrder();
+        
+        if (savedOrder && Array.isArray(savedOrder)) {
+          // Validate that saved order contains all current columns
+          const currentColumnKeys = new Set(allColumns.map(column => column.key));
+          const validSavedOrder = savedOrder.filter(key => currentColumnKeys.has(key));
+          
+          // Only use saved order if it contains all current columns
+          if (validSavedOrder.length === allColumns.length) {
+            setColumnOrder(validSavedOrder);
+            return;
+          }
+        }
+        
+        // Fallback to default order
+        const defaultOrder = allColumns.map(column => column.key);
+        setColumnOrder(defaultOrder);
+        // Save the initial order to localStorage
+        saveColumnOrder(defaultOrder);
+      }
+    }
+  }, [customFieldsData, allColumns, columnVisibility, columnOrder, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility, loadColumnOrder, saveColumnOrder]);
   
   // Dialog states
   const [viewAsset, setViewAsset] = useState<Asset | null>(null);
@@ -1126,6 +1185,8 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               onColumnOrderChange={handleColumnOrderChangeWithSave} // Handle column order changes
               enableVirtualization={assets.length > 50} // Enable virtualization for medium datasets
               virtualItemHeight={50}
+              columnVisibility={columnVisibility} // Pass column visibility state
+              onColumnVisibilityChange={setColumnVisibility} // Handle column visibility changes
             />
           </div>
 

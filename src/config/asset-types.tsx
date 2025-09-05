@@ -509,33 +509,13 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
     name: "WarehouseIT",
     key: "warehouse",
     columns: [
-      // {
-      //   key: "dept",
-      //   label: t('assets.warehouse.dept') || "Department"
-      // },
       {
-        key: "cpuBarcode",
-        label: t('assets.warehouse.cpuBarcode') || "CPU Barcode"
+        key: "barcode",
+        label: t('assets.warehouse.barcode') || "Barcode"
       },
       {
-        key: "cpuSapBarcode",
-        label: t('assets.warehouse.cpuSapBarcode') || "CPU SAP Barcode"
-      },
-      {
-        key: "monitorBarcode",
-        label: t('assets.warehouse.monitorBarcode') || "Monitor Barcode"
-      },
-      {
-        key: "monitorSapBarcode",
-        label: t('assets.warehouse.monitorSapBarcode') || "Monitor SAP Barcode"
-      },
-      {
-        key: "upsBarcode",
-        label: t('assets.warehouse.upsBarcode') || "UPS Barcode"
-      },
-      {
-        key: "upsSapBarcode",
-        label: t('assets.warehouse.upsSapBarcode') || "UPS SAP Barcode"
+        key: "sapCode",
+        label: t('assets.warehouse.sapCode') || "SAP Code"
       },
       {
         key: "status",
@@ -567,46 +547,16 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
     ],
     formFields: [
       {
-        name: "dept",
-        label: t('assets.warehouse.dept') || "Department",
+        name: "barcode",
+        label: t('assets.warehouse.barcode') || "Barcode",
         type: "text",
-        placeholder: t('assets.warehouse.dept') || "IT Department"
+        placeholder: t('assets.warehouse.barcode') || "WH123456"
       },
       {
-        name: "cpuBarcode",
-        label: t('assets.warehouse.cpuBarcode') || "CPU Barcode",
+        name: "sapCode",
+        label: t('assets.warehouse.sapCode') || "SAP Code",
         type: "text",
-        placeholder: t('assets.warehouse.cpuBarcode') || "CPU123456"
-      },
-      {
-        name: "cpuSapBarcode",
-        label: t('assets.warehouse.cpuSapBarcode') || "CPU SAP Barcode",
-        type: "text",
-        placeholder: t('assets.warehouse.cpuSapBarcode') || "SAP-CPU123456"
-      },
-      {
-        name: "monitorBarcode",
-        label: t('assets.warehouse.monitorBarcode') || "Monitor Barcode",
-        type: "text",
-        placeholder: t('assets.warehouse.monitorBarcode') || "MON123456"
-      },
-      {
-        name: "monitorSapBarcode",
-        label: t('assets.warehouse.monitorSapBarcode') || "Monitor SAP Barcode",
-        type: "text",
-        placeholder: t('assets.warehouse.monitorSapBarcode') || "SAP-MON123456"
-      },
-      {
-        name: "upsBarcode",
-        label: t('assets.warehouse.upsBarcode') || "UPS Barcode",
-        type: "text",
-        placeholder: t('assets.warehouse.upsBarcode') || "UPS123456"
-      },
-      {
-        name: "upsSapBarcode",
-        label: t('assets.warehouse.upsSapBarcode') || "UPS SAP Barcode",
-        type: "text",
-        placeholder: t('assets.warehouse.upsSapBarcode') || "SAP-UPS123456"
+        placeholder: t('assets.warehouse.sapCode') || "SAP-WH123456"
       },
       { 
         name: "status", 

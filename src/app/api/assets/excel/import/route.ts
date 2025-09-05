@@ -745,27 +745,19 @@ export async function POST(request: NextRequest) {
             let warehouseCustomFields: Record<string, any> | undefined;
             
             // Destructure to only keep valid WarehouseIT fields
+            // Note: Only extract actual WarehouseIT model fields, everything else will be treated as custom fields
             const { 
-              Dept: warehouseDeptField, 
-              Model: warehouseModelField, 
-              PC: warehousePCField, 
-              MAC: warehouseMACField, 
-              IP: warehouseIPField, 
-              DeviceName: warehouseDeviceNameField,
-              ProductType: warehouseProductTypeField,
-              ProductKey: warehouseProductKeyField,
-              Date: warehouseDateField,
-              updateStatus: warehouseUpdateStatusField,
               barcode: warehouseBarcodeField,
-              sapBarcode: warehouseSapBarcodeField,
-              dateBuy: warehouseDateBuyField,
-              userId: warehouseUserIdField,
-              email: warehouseEmailField,
-              location: warehouseLocationField,
-              color: warehouseColorField,
               sapCode: warehouseSapCodeField,
+              status: warehouseStatusField,
+              note: warehouseNoteField,
               ...warehouseRowData 
             } = row as any;
+            
+            // If status was not provided in the row data, use a default value
+            if (!warehouseStatusField) {
+              (warehouseRowData as any).status = 'working';
+            }
             
             // Get custom fields for this asset type and tenant
             const warehouseCustomFieldsConfig = await db.customField.findMany({
@@ -815,8 +807,7 @@ export async function POST(request: NextRequest) {
             
             // Also check for any remaining fields in warehouseRowData that might be custom fields
             // but are not defined in the database yet (could be from Excel column mapping)
-            const warehouseModelFields = ['id', 'dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 
-              'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note', 
+            const warehouseModelFields = ['id', 'barcode', 'sapCode', 'status', 'note', 
               'tenantId', 'customFields', 'createdAt', 'updatedAt'];
               
             // Check if there are any fields in warehouseRowData that are not part of the WarehouseIT model

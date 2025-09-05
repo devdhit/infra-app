@@ -15,38 +15,57 @@ export function initializeSocketIO(httpServer: any) {
     return io;
   }
 
-  io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: process.env.NODE_ENV === 'development' ? '*' : process.env.NEXT_PUBLIC_APP_URL,
-      methods: ['GET', 'POST'],
-      credentials: true
-    }
-  });
-
-  io.on('connection', (socket) => {
-    console.log(`[${getTimestamp()}] 🔌 Client connected: ${socket.id}`);
-
-    // Join room based on tenant ID for multi-tenancy support
-    socket.on('join-tenant', (tenantId: string) => {
-      // Validate tenantId to prevent potential security issues
-      if (tenantId && typeof tenantId === 'string') {
-        socket.join(`tenant-${tenantId}`);
-        console.log(`[${getTimestamp()}] 🏢 Client ${socket.id} joined tenant room: tenant-${tenantId}`);
-      }
+  try {
+    io = new SocketIOServer(httpServer, {
+      cors: {
+        origin: process.env.NODE_ENV === 'development' ? '*' : process.env.NEXT_PUBLIC_APP_URL,
+        methods: ['GET', 'POST'],
+        credentials: true
+      },
+      path: '/socket.io/',
+      serveClient: false,
+      // Better connection handling
+      pingInterval: 25000,
+      pingTimeout: 20000,
+      upgradeTimeout: 30000,
+      transports: ['websocket', 'polling'],
+      allowUpgrades: true,
+      cookie: false
     });
 
-    // Handle disconnection
-    socket.on('disconnect', () => {
-      console.log(`[${getTimestamp()}] ❌ Client disconnected: ${socket.id}`);
-    });
-  });
+    io.on('connection', (socket) => {
+      console.log(`[${getTimestamp()}] 🔌 Client connected: ${socket.id}`);
 
-  // Set up PostgreSQL LISTEN/NOTIFY for real-time updates
-  setupPostgresNotifications();
-  
-  console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
-  
-  return io;
+      // Join room based on tenant ID for multi-tenancy support
+      socket.on('join-tenant', (tenantId: string) => {
+        // Validate tenantId to prevent potential security issues
+        if (tenantId && typeof tenantId === 'string') {
+          socket.join(`tenant-${tenantId}`);
+          console.log(`[${getTimestamp()}] 🏢 Client ${socket.id} joined tenant room: tenant-${tenantId}`);
+        }
+      });
+
+      // Handle disconnection
+      socket.on('disconnect', (reason) => {
+        console.log(`[${getTimestamp()}] ❌ Client disconnected: ${socket.id}, Reason: ${reason}`);
+      });
+      
+      // Handle errors
+      socket.on('error', (error) => {
+        console.error(`[${getTimestamp()}] ❌ Socket error for client ${socket.id}:`, error);
+      });
+    });
+
+    // Set up PostgreSQL LISTEN/NOTIFY for real-time updates
+    setupPostgresNotifications();
+    
+    console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
+    
+    return io;
+  } catch (error) {
+    console.error(`[${getTimestamp()}] ❌ Failed to initialize Socket.IO:`, error);
+    return null;
+  }
 }
 
 // Set up PostgreSQL LISTEN/NOTIFY for real-time updates

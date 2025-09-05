@@ -144,20 +144,16 @@ model License {
 }
 
 model WarehouseIT {
-  id                String    @id @default(uuid())
-  cpuBarcode        String?
-  cpuSapBarcode     String?
-  monitorBarcode    String?
-  monitorSapBarcode String?
-  upsBarcode        String?
-  upsSapBarcode     String?
-  status            String    @default("working")
-  note              String?
-  tenantId          String
-  customFields      Json?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  id           String    @id @default(uuid())
+  barcode      String?
+  sapCode      String?
+  status       String    @default("working")
+  note         String?
+  tenantId     String
+  customFields Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([status])

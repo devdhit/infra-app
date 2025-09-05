@@ -86,7 +86,7 @@ export function ExcelImportDialog({
           fields = ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus']
           break
         case 'warehouse':
-          fields = ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'status', 'note']
+          fields = ['barcode', 'sapCode', 'status', 'note']
           break
         case 'internet':
           fields = ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note']

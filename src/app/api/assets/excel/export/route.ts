@@ -368,12 +368,8 @@ export async function GET(request: NextRequest) {
           where: warehouseWhereClause,
           select: {
             id: true,
-            cpuBarcode: true,
-            cpuSapBarcode: true,
-            monitorBarcode: true,
-            monitorSapBarcode: true,
-            upsBarcode: true,
-            upsSapBarcode: true,
+            barcode: true,
+            sapCode: true,
             status: true,
             note: true,
             customFields: true,
@@ -394,12 +390,8 @@ export async function GET(request: NextRequest) {
           const customFields = warehouse.customFields as Record<string, any> || {};
           
           return {
-            cpuBarcode: warehouse.cpuBarcode,
-            cpuSapBarcode: warehouse.cpuSapBarcode ?? undefined,
-            monitorBarcode: warehouse.monitorBarcode ?? undefined,
-            monitorSapBarcode: warehouse.monitorSapBarcode ?? undefined,
-            upsBarcode: warehouse.upsBarcode ?? undefined,
-            upsSapBarcode: warehouse.upsSapBarcode ?? undefined,
+            barcode: warehouse.barcode ?? undefined,
+            sapCode: warehouse.sapCode ?? undefined,
             note: warehouse.note ?? undefined,
             // Normalize status values to lowercase to match standardized values
             status: warehouse.status ? warehouse.status.toLowerCase() : 'working',

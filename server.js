@@ -52,6 +52,16 @@ app.prepare().then(() => {
     try {
       const io = initializeSocketIO(server);
       console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
+      
+      // Add error handling for the Socket.IO server
+      server.on('error', (error) => {
+        console.error(`[${getTimestamp()}] ❌ Server error:`, error);
+      });
+      
+      server.on('clientError', (error, socket) => {
+        console.error(`[${getTimestamp()}] ❌ Client error:`, error);
+        socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+      });
     } catch (error) {
       console.error(`[${getTimestamp()}] ❌ Failed to initialize Socket.IO:`, error);
     }
@@ -76,5 +86,22 @@ app.prepare().then(() => {
 
   process.on('unhandledRejection', (reason, promise) => {
     console.error(`[${getTimestamp()}] ❌ Unhandled Rejection at:`, promise, 'reason:', reason);
+  });
+  
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log(`[${getTimestamp()}] 🛑 SIGTERM received, shutting down gracefully`);
+    server.close(() => {
+      console.log(`[${getTimestamp()}] 🔌 Server closed`);
+      process.exit(0);
+    });
+  });
+  
+  process.on('SIGINT', () => {
+    console.log(`[${getTimestamp()}] 🛑 SIGINT received, shutting down gracefully`);
+    server.close(() => {
+      console.log(`[${getTimestamp()}] 🔌 Server closed`);
+      process.exit(0);
+    });
   });
 });
