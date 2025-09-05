@@ -289,16 +289,21 @@ export class AssetApiHandler<T> {
         // Use indexed fields for better performance
         const indexedSearchFields = this.operations.searchFields.filter(modelAppropriateSearchFields);
         
-        if (indexedSearchFields.length > 0) {
-          where.OR = indexedSearchFields.map((field: any) => ({
-            [field]: { contains: search, mode: 'insensitive' }
-          }));
-        } else {
-          // Fallback to original search if no indexed fields
-          where.OR = this.operations.searchFields.map((field: any) => ({
-            [field]: { contains: search, mode: 'insensitive' }
-          }));
-        }
+        // Create search conditions for standard fields
+        const standardFieldConditions = indexedSearchFields.map((field: any) => ({
+          [field]: { contains: search, mode: 'insensitive' }
+        }));
+        
+        // Create search condition for custom fields
+        const customFieldCondition = {
+          customFields: {
+            path: [],
+            string_contains: search
+          }
+        };
+        
+        // Combine all search conditions
+        where.OR = [...standardFieldConditions, customFieldCondition];
       }
 
       // Add status filter based on model-specific status fields

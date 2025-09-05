@@ -92,14 +92,28 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       tenantId: user.tenantId
     };
 
-    // Add search condition if provided
+    // Add search condition if provided with optimized indexing
     if (search) {
-      whereClause.OR = [
-        { barcode: { contains: search, mode: 'insensitive' } },
-        { pcName: { contains: search, mode: 'insensitive' } },
-        { userName: { contains: search, mode: 'insensitive' } },
-        { dept: { contains: search, mode: 'insensitive' } }
+      // Use indexed fields for better performance
+      const searchFields = [
+        'barcode',
+        'pcName',
+        'userName',
+        'dept'
       ];
+      
+      // Create search conditions for indexed fields
+      whereClause.OR = searchFields.map(field => ({
+        [field]: { contains: search, mode: 'insensitive' }
+      }));
+      
+      // Also search in custom fields
+      whereClause.OR.push({
+        customFields: {
+          path: [],
+          string_contains: search
+        }
+      });
     }
 
     // Add status filter if provided
