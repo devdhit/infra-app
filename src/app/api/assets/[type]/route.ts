@@ -224,7 +224,9 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
             // Select only necessary fields to reduce payload size
             select: {
               id: true,
-              // WarehouseIT model doesn't have status field
+              barcode: true,
+              sapCode: true,
+              status: true,
               updatedAt: true,
               customFields: true // Include custom fields
             }

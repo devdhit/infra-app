@@ -55,13 +55,8 @@ export interface LicenseAsset {
 }
 
 export interface WarehouseITAsset {
-  dept?: string;
-  cpuBarcode?: string;
-  cpuSapBarcode?: string;
-  monitorBarcode?: string;
-  monitorSapBarcode?: string;
-  upsBarcode?: string;
-  upsSapBarcode?: string;
+  barcode?: string;
+  sapCode?: string;
   status: string;
   note?: string;
 }
@@ -895,33 +890,23 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
       // Add data rows
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex
-        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
-        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A')
-        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A')
-        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A')
-        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 1).value(row.barcode || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.sapCode || 'N/A')
         // Normalize status values to lowercase
         const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 8).value(normalizedStatus)
-        worksheet.cell(currentRow, 9).value(row.note || 'N/A')
+        worksheet.cell(currentRow, 3).value(normalizedStatus)
+        worksheet.cell(currentRow, 4).value(row.note || 'N/A')
       });
     } else {
       // No footer found, just add data rows normally
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex
-        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
-        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A')
-        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A')
-        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A')
-        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A')
-        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 1).value(row.barcode || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.sapCode || 'N/A')
         // Normalize status values to lowercase
         const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 8).value(normalizedStatus)
-        worksheet.cell(currentRow, 9).value(row.note || 'N/A')
+        worksheet.cell(currentRow, 3).value(normalizedStatus)
+        worksheet.cell(currentRow, 4).value(row.note || 'N/A')
       });
     }
     
@@ -1314,12 +1299,8 @@ export function generateLicenseTemplate(): LicenseAsset[] {
  */
 export function generateWarehouseITTemplate(): WarehouseITAsset[] {
   return [{
-    cpuBarcode: '',
-    cpuSapBarcode: '',
-    monitorBarcode: '',
-    monitorSapBarcode: '',
-    upsBarcode: '',
-    upsSapBarcode: '',
+    barcode: '',
+    sapCode: '',
     status: 'working',  // Changed from 'available' to 'working'
     note: ''
   }]

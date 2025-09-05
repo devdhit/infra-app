@@ -94,17 +94,9 @@ export interface LicenseSummary {
 }
 
 export interface WarehouseITSummary {
-  cpuBarcode: string | null;
-  cpuSapBarcode: string | null;
-  monitorBarcode: string | null;
-  monitorSapBarcode: string | null;
-  upsBarcode: string | null;
-  upsSapBarcode: string | null;
+  barcode: string | null;
+  sapCode: string | null;
   status: string | null;
-  model: string | null;
-  ram: string | null;
-  cpu: string | null;
-  type: string | null;
   _count: number;
 }
 

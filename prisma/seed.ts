@@ -168,8 +168,8 @@ async function main() {
   await Promise.all([
     prisma.warehouseIT.create({
       data: {
-        cpuBarcode: 'CPU001',
-        cpuSapBarcode: 'SAPCPU001',
+        barcode: 'WH001',
+        sapCode: 'SAPWH001',
         status: 'working',
         note: 'New in stock',
         tenantId: tenant.id
@@ -177,7 +177,7 @@ async function main() {
     }),
     prisma.warehouseIT.create({
       data: {
-        cpuBarcode: 'CPU002',
+        barcode: 'WH002',
         status: 'leave',
         note: 'Reserved for IT department',
         tenantId: tenant.id

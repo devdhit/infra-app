@@ -8,11 +8,22 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
 
   useEffect(() => {
     // Initialize socket connection with proper configuration
-    const socket = io({
+    // Use the full URL in production, relative path in development
+    const socketUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+      : '';
+      
+    const socket = io(socketUrl, {
       path: '/socket.io/',
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      randomizationFactor: 0.5,
+      transports: ['websocket', 'polling'],
+      upgrade: true,
+      rememberUpgrade: false,
+      timeout: 20000,
     });
 
     socket.on('connect', () => {
@@ -25,13 +36,25 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
       }
     });
     
-    socket.on('disconnect', () => {
-      console.log('Disconnected from Socket.IO server');
+    socket.on('disconnect', (reason) => {
+      console.log('Disconnected from Socket.IO server. Reason:', reason);
       setIsConnected(false);
+      
+      // Handle specific disconnection reasons
+      if (reason === 'io server disconnect') {
+        // The disconnection was initiated by the server, you need to reconnect manually
+        socket.connect();
+      }
     });
     
     socket.on('connect_error', (error) => {
       console.error('Socket.IO connection error:', error);
+      
+      // Handle specific connection errors
+      if (error.message.includes('xhr poll error')) {
+        console.log('XHR poll error detected. Will attempt to reconnect...');
+        // Socket.IO will automatically try to reconnect based on our reconnection settings
+      }
     });
 
     // Listen for asset changes
