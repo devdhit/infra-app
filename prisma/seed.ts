@@ -51,10 +51,8 @@ async function main() {
     }
   })
 
-  console.log('Created regular user:', regularUser)
-
   // Create sample PC assets
-  const pcAssets = await Promise.all([
+  await Promise.all([
     prisma.pC.create({
       data: {
         dept: 'IT',
@@ -91,10 +89,8 @@ async function main() {
     })
   ])
 
-  console.log('Created PC assets:', pcAssets)
-
   // Create sample Laptop assets
-  const laptopAssets = await Promise.all([
+  await Promise.all([
     prisma.laptop.create({
       data: {
         dept: 'Sales',
@@ -119,10 +115,8 @@ async function main() {
     })
   ])
 
-  console.log('Created Laptop assets:', laptopAssets)
-
   // Create sample Printer assets
-  const printerAssets = await Promise.all([
+  await Promise.all([
     prisma.printer.create({
       data: {
         dept: 'IT',
@@ -146,10 +140,8 @@ async function main() {
     })
   ])
 
-  console.log('Created Printer assets:', printerAssets)
-
   // Create sample License assets
-  const licenseAssets = await Promise.all([
+  await Promise.all([
     prisma.license.create({
       data: {
         productType: 'Microsoft Office 365',
@@ -172,10 +164,8 @@ async function main() {
     })
   ])
 
-  console.log('Created License assets:', licenseAssets)
-
   // Create sample Warehouse IT assets
-  const warehouseAssets = await Promise.all([
+  await Promise.all([
     prisma.warehouseIT.create({
       data: {
         cpuBarcode: 'CPU001',
@@ -195,14 +185,10 @@ async function main() {
     })
   ])
 
-  console.log('Created Warehouse IT assets:', warehouseAssets)
-
-  console.log('Seeding completed successfully!')
 }
 
 main()
-  .catch((e) => {
-    console.error(e)
+  .catch((_) => {
     process.exit(1)
   })
   .finally(async () => {

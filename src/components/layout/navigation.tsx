@@ -15,7 +15,8 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
-  Home
+  Home,
+  Wifi
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -58,7 +59,7 @@ const navigationItems: NavigationItem[] = [
       { nameKey: "nav.printer", href: "/assets/printer", icon: Printer, roles: ['admin', 'user'] },
       { nameKey: "nav.license", href: "/assets/license", icon: Key, roles: ['admin', 'user'] },
       { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse, roles: ['admin', 'user'] },
-      { nameKey: "nav.internet", href: "/assets/internet", icon: Key, roles: ['admin', 'user'] },
+      { nameKey: "nav.internet", href: "/assets/internet", icon: Wifi, roles: ['admin', 'user'] },
     ]
   },
   { 

@@ -13,20 +13,20 @@ async function main() {
       ORDER BY ordinal_position;
     `;
     
-    console.log('Internet table columns:');
-    console.table(result);
+    // Display Internet table columns
+    // console.table(result);
     
     // Check if there are any records
     const count = await prisma.internet.count();
-    console.log(`Total Internet records: ${count}`);
+    // console.log(`Total Internet records: ${count}`);
     
-    if (count > 0) {
-      const sample = await prisma.internet.findFirst();
-      console.log('Sample record:');
-      console.log(sample);
-    }
+    // if (count > 0) {
+    //   const sample = await prisma.internet.findFirst();
+    //   console.log('Sample record:');
+    //   console.log(sample);
+    // }
   } catch (error) {
-    console.error('Error:', error);
+    // Error handling without console output
   } finally {
     await prisma.$disconnect();
   }

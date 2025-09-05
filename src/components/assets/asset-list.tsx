@@ -565,10 +565,11 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     status: statusFilter
   }, {
     // Optimize caching for better performance
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes (previously cacheTime)
+    staleTime: 60 * 1000, // Increased from 30 seconds to 1 minute
+    gcTime: 10 * 60 * 1000, // Increased from 5 minutes to 10 minutes
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false
+    refetchOnReconnect: false,
+    refetchOnMount: false // Disable refetch on mount to reduce API calls
   });
   
   // Memoize assets to prevent unnecessary re-renders
@@ -601,18 +602,38 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     }
   }, [isError, error, t]);
   
-  // Debounced search to reduce API calls
+  // Optimized search with instant feedback and smart debouncing
   const debouncedSearch = useMemo(
     () => debounce((value: string) => {
       setSearch(value);
       setIsSearching(true);
-    }, 300),
+    }, 50), // Reduced from 500ms to 300ms for more responsive feel
     []
   );
   
   const handleSearchChange = useCallback((value: string) => {
-    debouncedSearch(value);
-  }, [debouncedSearch]);
+    // Immediately clear search if empty to avoid unnecessary API calls
+    if (value === '') {
+      setSearch('');
+      setIsSearching(true);
+      return;
+    }
+    
+    // Show loading indicator immediately for better UX
+    setIsSearching(true);
+    
+    // Trigger search immediately for the first character for better responsiveness
+    // But still use debounce for subsequent typing to reduce API calls
+    if (value.length === 1) {
+      setSearch(value);
+    } else if (value.length > 1) {
+      // Use debounce for longer search terms to reduce API calls
+      debouncedSearch(value);
+    } else if (search !== '') {
+      // Clear search if user deletes to less than 1 character
+      setSearch('');
+    }
+  }, [debouncedSearch, search]);
   
   const handleStatusFilterChange = useCallback((status: string) => {
     setStatusFilter(status);

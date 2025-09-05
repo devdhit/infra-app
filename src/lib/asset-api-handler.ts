@@ -289,16 +289,21 @@ export class AssetApiHandler<T> {
         // Use indexed fields for better performance
         const indexedSearchFields = this.operations.searchFields.filter(modelAppropriateSearchFields);
         
-        if (indexedSearchFields.length > 0) {
-          where.OR = indexedSearchFields.map((field: any) => ({
-            [field]: { contains: search, mode: 'insensitive' }
-          }));
-        } else {
-          // Fallback to original search if no indexed fields
-          where.OR = this.operations.searchFields.map((field: any) => ({
-            [field]: { contains: search, mode: 'insensitive' }
-          }));
-        }
+        // Create search conditions for standard fields
+        const standardFieldConditions = indexedSearchFields.map((field: any) => ({
+          [field]: { contains: search, mode: 'insensitive' }
+        }));
+        
+        // Create search condition for custom fields
+        const customFieldCondition = {
+          customFields: {
+            path: [],
+            string_contains: search
+          }
+        };
+        
+        // Combine all search conditions
+        where.OR = [...standardFieldConditions, customFieldCondition];
       }
 
       // Add status filter based on model-specific status fields
@@ -534,7 +539,9 @@ export class AssetApiHandler<T> {
 
       return successResponse(asset, 201)
     } catch (error: any) {
-      console.error(`Error creating ${this.operations.modelName} asset:`, error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error creating ${this.operations.modelName} asset:`, error);
+      }
       
       // Handle Prisma-specific errors
       if (error.code === 'P2002') {
@@ -549,7 +556,9 @@ export class AssetApiHandler<T> {
   // Update an existing asset
   async update(user: { id: string; tenantId: string }, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
     try {
-      console.log(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
+      }
       
       // Check if asset exists and belongs to user's tenant
       const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
@@ -560,7 +569,9 @@ export class AssetApiHandler<T> {
       })
 
       if (!existingAsset) {
-        console.log(`Asset ${id} not found for tenant ${user.tenantId}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Asset ${id} not found for tenant ${user.tenantId}`);
+        }
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
 
@@ -647,7 +658,9 @@ export class AssetApiHandler<T> {
 
       // Return validation errors if any
       if (Object.keys(validationErrors).length > 0) {
-        console.log("Validation errors:", validationErrors);
+        if (process.env.NODE_ENV === 'development') {
+          console.log("Validation errors:", validationErrors);
+        }
         return validationErrorResponse(validationErrors)
       }
 
@@ -674,7 +687,9 @@ export class AssetApiHandler<T> {
         }
 
         if (existingAssetWithUniqueField) {
-          console.log(`Asset with ${String(this.operations.uniqueField)} ${body[this.operations.uniqueField]} already exists`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Asset with ${String(this.operations.uniqueField)} ${body[this.operations.uniqueField]} already exists`);
+          }
           return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`);
         }
       }
@@ -705,7 +720,9 @@ export class AssetApiHandler<T> {
             }
           })
         } catch (historyError) {
-          console.error(`Failed to create history record for ${this.operations.modelName}:`, historyError)
+          if (process.env.NODE_ENV === 'development') {
+            console.error(`Failed to create history record for ${this.operations.modelName}:`, historyError);
+          }
           // Continue with the operation even if history creation fails
         }
       }
@@ -722,7 +739,9 @@ export class AssetApiHandler<T> {
       }
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
-      console.log(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
+      }
 
       const updateData = Object.keys(body || {}).reduce((acc, key) => {
         // Only include valid fields for this model and non-undefined values
@@ -730,7 +749,9 @@ export class AssetApiHandler<T> {
         if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof T] !== undefined) {
           (acc as any)[key] = body[key as keyof T];
         } else {
-          console.log(`Skipping field ${key} - not valid or undefined`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Skipping field ${key} - not valid or undefined`);
+          }
         }
         return acc;
       }, {} as Partial<T>);
@@ -831,7 +852,9 @@ export class AssetApiHandler<T> {
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
       
-      console.error(`Error deleting ${this.operations.modelName} asset:`, error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error deleting ${this.operations.modelName} asset:`, error);
+      }
       return errorResponse('Failed to delete asset. Please try again later.')
     }
   }
@@ -885,7 +908,9 @@ export class AssetApiHandler<T> {
               tenantId: user.tenantId
             }
           }).catch((historyError: any) => {
-            console.error(`Failed to create history record for asset ${asset.id}:`, historyError)
+            if (process.env.NODE_ENV === 'development') {
+              console.error(`Failed to create history record for asset ${asset.id}:`, historyError);
+            }
             // Continue with deletion even if history creation fails
           })
         );
@@ -905,7 +930,9 @@ export class AssetApiHandler<T> {
       }
 
       // Log the number of deleted assets
-      console.log(`Deleted ${totalDeleted} ${this.operations.modelName} assets in ${Math.ceil(ids.length/batchSize)} batches`)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Deleted ${totalDeleted} ${this.operations.modelName} assets in ${Math.ceil(ids.length/batchSize)} batches`);
+      }
 
       // Emit real-time events for each deleted asset
       try {
@@ -913,12 +940,16 @@ export class AssetApiHandler<T> {
           emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
         });
       } catch (emitError) {
-        console.error('Failed to emit real-time events:', emitError);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to emit real-time events:', emitError);
+        }
       }
 
       return successResponse<null>(null, 204)
     } catch (error: any) {
-      console.error(`Error bulk deleting ${this.operations.modelName} assets:`, error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error bulk deleting ${this.operations.modelName} assets:`, error);
+      }
       
       // Handle Prisma-specific errors
       if (error.code === 'P2025') {

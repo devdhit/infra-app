@@ -17,18 +17,28 @@ export function successResponse<T>(data: T, status = 200) {
 }
 
 export function errorResponse(message: string, status = 500, options?: { quiet?: boolean, details?: any }) {
-  if (!options?.quiet) {
+  if (!options?.quiet && process.env.NODE_ENV === 'development') {
     console.error(`API Error [${status}]: ${message}`, options?.details || '');
   }
   
-  return new Response(JSON.stringify({ 
+  // Check if we're in a Next.js environment where Response is available
+  if (typeof Response !== 'undefined') {
+    return new Response(JSON.stringify({ 
+      error: message,
+      status,
+      ...(options?.details && { details: options.details })
+    }), {
+      status,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  // Fallback for Node.js environments (like tests)
+  return {
     error: message,
     status,
     ...(options?.details && { details: options.details })
-  }), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  })
+  } as any;
 }
 
 export function notFoundResponse(message = 'Resource not found') {

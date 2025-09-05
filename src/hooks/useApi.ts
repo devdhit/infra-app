@@ -14,11 +14,12 @@ export function useApiQuery<T>(key: string[], url: string, options: ApiQueryOpti
       const response = await api.get<T>(url)
       return response
     },
-    // Implement staleTime for better caching
-    staleTime: 5 * 60 * 1000, // 5 minutes by default
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    // Implement optimized caching strategy
+    staleTime: 10 * 60 * 1000, // 10 minutes by default
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
     refetchOnWindowFocus: false, // Reduce unnecessary refetches
     refetchOnReconnect: false, // Reduce unnecessary refetches
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
     ...options
   })
 }
@@ -96,10 +97,11 @@ export function useAssets<T>(assetType: string, params: Record<string, any> = {}
   
   return useApiQuery<T>(['assets', assetType, paramsKey], url, {
     // Asset data can be cached longer since it doesn't change frequently
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 20 * 60 * 1000, // 20 minutes garbage collection time
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
     ...options
   })
 }
@@ -107,8 +109,9 @@ export function useAssets<T>(assetType: string, params: Record<string, any> = {}
 export function useAsset<T>(assetType: string, id: string) {
   return useApiQuery<T>(['assets', assetType, id], `/assets/${assetType}/${id}`, {
     // Individual asset data can be cached for a moderate time
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
@@ -122,13 +125,19 @@ export function useCreateAsset<T, V>(assetType: string) {
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
       },
       onError: (error: ApiError) => {
-        console.error(`Error creating ${assetType}:`, error)
+        // Error creating asset
         let message = `Failed to create ${assetType}`
         
         if (error instanceof ValidationError) {
           message = 'Validation failed. Please check the form for errors.'
         } else if (error.status === 409) {
           message = 'An asset with this identifier already exists.'
+        } else if (error.status === 403) {
+          message = 'Access denied. You do not have permission to create this asset.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
         } else if (error.message) {
           message = error.message
         }
@@ -176,13 +185,21 @@ export function useUpdateAsset<T, V>(assetType: string, id: string) {
         }, 100);
       },
       onError: (error: ApiError) => {
-        console.error(`Error updating ${assetType} with id ${id}:`, error)
+        // Error updating asset
         let message = `Failed to update ${assetType}`
         
         if (error instanceof ValidationError) {
           message = 'Validation failed. Please check the form for errors.'
         } else if (error.status === 409) {
           message = 'An asset with this identifier already exists.'
+        } else if (error.status === 403) {
+          message = 'Access denied. You do not have permission to update this asset.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 404) {
+          message = 'Asset not found. It may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
         } else if (error.message) {
           message = error.message
         }
@@ -203,10 +220,16 @@ export function useDeleteAsset<T>(assetType: string) {
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
       },
       onError: (error: ApiError) => {
-        console.error(`Error deleting ${assetType}:`, error)
+        // Error deleting asset
         let message = `Failed to delete ${assetType}`
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to delete this asset.'
+        } else if (error.status === 404) {
+          message = 'Asset not found. It may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
@@ -230,10 +253,16 @@ export function useBulkDeleteAssets<T>(assetType: string) {
         await queryClient.refetchQueries({ queryKey: ['assets', assetType] });
       },
       onError: (error: ApiError) => {
-        console.error(`Error bulk deleting ${assetType}:`, error)
+        // Error bulk deleting assets
         let message = `Failed to delete ${assetType} assets`
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to delete these assets.'
+        } else if (error.status === 400) {
+          message = 'Bad request. No assets selected for deletion.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
@@ -275,13 +304,17 @@ export function useLogin() {
       queryClient.invalidateQueries()
     },
     onError: (error: ApiError) => {
-      console.error('Login error:', error)
+      // Login error
       let message = 'Login failed'
       
       if (error.status === 401) {
         message = 'Invalid email or password'
       } else if (error.status === 429) {
         message = 'Too many login attempts. Please try again later.'
+      } else if (error.status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if (error.status === 503) {
+        message = 'Service unavailable. Please try again later.'
       } else if (error.message) {
         message = error.message
       }
@@ -303,10 +336,12 @@ export function useLogout() {
       // Redirect to login (this should be handled in the component)
     },
     onError: (error: ApiError) => {
-      console.error('Logout error:', error)
+      // Logout error
       let message = 'Logout failed'
       
-      if (error.message) {
+      if (error.status === 500) {
+        message = 'Server error during logout. Please try again.'
+      } else if (error.message) {
         message = error.message
       }
       
@@ -333,15 +368,17 @@ export interface UserCreateUpdate extends User {
 
 export function useUsers() {
   return useApiQuery<User[]>(['users'], '/users', {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
 export function useUser(id: string) {
   return useApiQuery<User>(['users', id], `/users/${id}`, {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
@@ -355,13 +392,19 @@ export function useCreateUser() {
         queryClient.invalidateQueries({ queryKey: ['users'] })
       },
       onError: (error: ApiError) => {
-        console.error('Error creating user:', error)
+        // Error creating user
         let message = 'Failed to create user'
         
         if (error instanceof ValidationError) {
           message = 'Validation failed. Please check the form for errors.'
         } else if (error.status === 409) {
           message = 'A user with this email already exists.'
+        } else if (error.status === 403) {
+          message = 'Access denied. You do not have permission to create users.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
         } else if (error.message) {
           message = error.message
         }
@@ -383,13 +426,21 @@ export function useUpdateUser(id: string) {
         queryClient.invalidateQueries({ queryKey: ['users', id] })
       },
       onError: (error: ApiError) => {
-        console.error(`Error updating user with id ${id}:`, error)
+        // Error updating user
         let message = 'Failed to update user'
         
         if (error instanceof ValidationError) {
           message = 'Validation failed. Please check the form for errors.'
         } else if (error.status === 409) {
           message = 'A user with this email already exists.'
+        } else if (error.status === 403) {
+          message = 'Access denied. You do not have permission to update this user.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 404) {
+          message = 'User not found. They may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
         } else if (error.message) {
           message = error.message
         }
@@ -400,7 +451,7 @@ export function useUpdateUser(id: string) {
   )
 }
 
-export function useDeleteUser(id: string) {
+export function useDeleteUser(_id: string) {
   const queryClient = useQueryClient()
   
   return useApiDeleteWithId<void>(
@@ -410,10 +461,16 @@ export function useDeleteUser(id: string) {
         queryClient.invalidateQueries({ queryKey: ['users'] })
       },
       onError: (error: ApiError) => {
-        console.error(`Error deleting user with id ${id}:`, error)
+        // Error deleting user
         let message = 'Failed to delete user'
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to delete this user.'
+        } else if (error.status === 404) {
+          message = 'User not found. They may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
@@ -434,10 +491,16 @@ export function useBulkDeleteUsers() {
         queryClient.invalidateQueries({ queryKey: ['users'] })
       },
       onError: (error: ApiError) => {
-        console.error('Error bulk deleting users:', error)
+        // Error bulk deleting users
         let message = 'Failed to delete users'
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to delete these users.'
+        } else if (error.status === 400) {
+          message = 'Bad request. No users selected for deletion.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
@@ -465,15 +528,17 @@ export interface Tenant {
 
 export function useTenants() {
   return useApiQuery<Tenant[]>(['tenants'], '/tenants', {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
 export function useTenant(id: string) {
   return useApiQuery<Tenant>(['tenants', id], `/tenants/${id}`, {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
@@ -487,13 +552,19 @@ export function useCreateTenant() {
         queryClient.invalidateQueries({ queryKey: ['tenants'] })
       },
       onError: (error: ApiError) => {
-        console.error('Error creating tenant:', error)
+        // Error creating tenant
         let message = 'Failed to create tenant'
         
         if (error instanceof ValidationError) {
           message = 'Validation failed. Please check the form for errors.'
         } else if (error.status === 409) {
           message = 'A tenant with this name already exists.'
+        } else if (error.status === 403) {
+          message = 'Access denied. You do not have permission to create tenants.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
         } else if (error.message) {
           message = error.message
         }
@@ -515,13 +586,21 @@ export function useUpdateTenant(id: string) {
         queryClient.invalidateQueries({ queryKey: ['tenants', id] })
       },
       onError: (error: ApiError) => {
-        console.error(`Error updating tenant with id ${id}:`, error)
+        // Error updating tenant
         let message = 'Failed to update tenant'
         
         if (error instanceof ValidationError) {
           message = 'Validation failed. Please check the form for errors.'
         } else if (error.status === 409) {
           message = 'A tenant with this name already exists.'
+        } else if (error.status === 403) {
+          message = 'Access denied. You do not have permission to update this tenant.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 404) {
+          message = 'Tenant not found. It may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
         } else if (error.message) {
           message = error.message
         }
@@ -532,7 +611,7 @@ export function useUpdateTenant(id: string) {
   )
 }
 
-export function useDeleteTenant(id: string) {
+export function useDeleteTenant(_id: string) {
   const queryClient = useQueryClient()
   
   return useApiDeleteWithId<void>(
@@ -542,10 +621,16 @@ export function useDeleteTenant(id: string) {
         queryClient.invalidateQueries({ queryKey: ['tenants'] })
       },
       onError: (error: ApiError) => {
-        console.error(`Error deleting tenant with id ${id}:`, error)
+        // Error deleting tenant
         let message = 'Failed to delete tenant'
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to delete this tenant.'
+        } else if (error.status === 404) {
+          message = 'Tenant not found. It may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
@@ -566,10 +651,16 @@ export function useBulkDeleteTenants() {
         queryClient.invalidateQueries({ queryKey: ['tenants'] })
       },
       onError: (error: ApiError) => {
-        console.error('Error bulk deleting tenants:', error)
+        // Error bulk deleting tenants
         let message = 'Failed to delete tenants'
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to delete these tenants.'
+        } else if (error.status === 400) {
+          message = 'Bad request. No tenants selected for deletion.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
@@ -606,8 +697,9 @@ export interface DashboardData {
 
 export function useDashboard<T = DashboardData>() {
   return useApiQuery<T>(['dashboard'], '/dashboard', {
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes garbage collection time
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
@@ -654,8 +746,9 @@ export interface DashboardSummaryData {
 
 export function useDashboardSummary<T = DashboardSummaryData>() {
   return useApiQuery<T>(['dashboard-summary'], '/dashboard/summary', {
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes garbage collection time
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
@@ -667,8 +760,9 @@ export function useCurrentUser() {
   
   return useApiQuery<User>(['currentUser'], '/auth/me', {
     retry: false, // Don't retry on failure to avoid infinite loops
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
     enabled: !!hasToken, // Only run the query if we have a token
   })
 }
@@ -698,8 +792,9 @@ export function useCustomFields(modelType?: string) {
   const mappedModelType = modelType ? getModelType(modelType) : undefined;
   const queryString = mappedModelType ? `?modelType=${mappedModelType}` : ''
   return useApiQuery<CustomField[]>(['custom-fields', mappedModelType || 'all'], `/custom-fields${queryString}`, {
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 20 * 60 * 1000, // 20 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
@@ -713,11 +808,17 @@ export function useCreateCustomField() {
         queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
       },
       onError: (error: ApiError) => {
-        console.error('Error creating custom field:', error)
+        // Error creating custom field
         let message = 'Failed to create custom field'
         
         if (error instanceof ValidationError) {
           message = 'Validation failed. Please check the form for errors.'
+        } else if (error.status === 403) {
+          message = 'Access denied. You do not have permission to create custom fields.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
         } else if (error.message) {
           message = error.message
         }
@@ -738,11 +839,19 @@ export function useUpdateCustomField(id: string) {
         queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
       },
       onError: (error: ApiError) => {
-        console.error(`Error updating custom field with id ${id}:`, error)
+        // Error updating custom field
         let message = 'Failed to update custom field'
         
         if (error instanceof ValidationError) {
           message = 'Validation failed. Please check the form for errors.'
+        } else if (error.status === 403) {
+          message = 'Access denied. You do not have permission to update this custom field.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 404) {
+          message = 'Custom field not found. It may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
         } else if (error.message) {
           message = error.message
         }
@@ -763,10 +872,16 @@ export function useDeleteCustomField(id: string) {
         queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
       },
       onError: (error: ApiError) => {
-        console.error(`Error deleting custom field with id ${id}:`, error)
+        // Error deleting custom field
         let message = 'Failed to delete custom field'
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to delete this custom field.'
+        } else if (error.status === 404) {
+          message = 'Custom field not found. It may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
@@ -779,8 +894,9 @@ export function useDeleteCustomField(id: string) {
 // Asset Custom Fields hooks
 export function useAssetCustomFields(assetType: string, id: string) {
   return useApiQuery<any>(['asset-custom-fields', assetType, id], `/assets/custom-fields/${id}?assetType=${assetType}`, {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
@@ -825,10 +941,18 @@ export function useUpdateAssetCustomFields(assetType: string, id: string) {
         }, 100);
       },
       onError: (error: ApiError) => {
-        console.error(`Error updating asset custom fields for ${assetType} with id ${id}:`, error)
+        // Error updating asset custom fields
         let message = 'Failed to update asset custom fields'
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to update these custom fields.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 404) {
+          message = 'Asset not found. It may have been deleted.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
@@ -859,8 +983,9 @@ export interface AuditLogsSettings {
 
 export function useAuditLogsSettings() {
   return useApiQuery<AuditLogsSettings>(['audit-logs-settings'], '/settings/audit-logs', {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
+    refetchOnMount: 'always', // Always refetch on mount for fresh data
   })
 }
 
@@ -874,10 +999,16 @@ export function useUpdateAuditLogsSettings() {
         queryClient.invalidateQueries({ queryKey: ['audit-logs-settings'] })
       },
       onError: (error: ApiError) => {
-        console.error('Error updating audit logs settings:', error)
+        // Error updating audit logs settings
         let message = 'Failed to update audit logs settings'
         
-        if (error.message) {
+        if (error.status === 403) {
+          message = 'Access denied. You do not have permission to update audit logs settings.'
+        } else if (error.status === 400) {
+          message = 'Bad request. Please check the form data.'
+        } else if (error.status === 500) {
+          message = 'Server error. Please try again later.'
+        } else if (error.message) {
           message = error.message
         }
         
