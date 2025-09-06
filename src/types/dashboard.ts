@@ -89,7 +89,7 @@ export interface PrinterSummary {
 export interface LicenseSummary {
   softwareName: string | null;
   productType: string | null;
-  licenseKey: string | null;
+  productKey: string | null;
   _count: number;
 }
 

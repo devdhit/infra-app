@@ -1,5 +1,9 @@
-import { User, Tenant } from "@/hooks/useApi";
+import { User, Tenant, UsersTableProps as UsersTablePropsBase, UserFormProps as UserFormPropsBase, UsersPageProps as UsersPagePropsBase } from "@/types/users";
 
+// Re-export the imported types
+export type { User, Tenant };
+
+// Export the locally defined interfaces
 export interface UserFormValues {
   id?: string;
   email: string;
@@ -9,24 +13,9 @@ export interface UserFormValues {
   tenantId?: string;
 }
 
-export interface UsersTableProps {
-  users: User[];
-  tenants: Tenant[];
-  onEdit: (user: User | null) => void;
-  onDelete: (id: string) => void;
-  isDeleting: boolean;
-  deletingUserId: string | null;
-}
+// If we need to extend the base interfaces, we can do so here
+export interface UsersTableProps extends UsersTablePropsBase {}
 
-export interface UserFormProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  editingUser: User | null;
-  tenants: Tenant[];
-  onSubmit: (data: UserFormValues) => void;
-  isSubmitting: boolean;
-}
+export interface UserFormProps extends UserFormPropsBase {}
 
-export interface UsersPageProps {
-  // Add any props that might be needed for the page component
-}
+export interface UsersPageProps extends UsersPagePropsBase {}

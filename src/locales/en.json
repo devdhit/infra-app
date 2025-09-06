@@ -10,7 +10,9 @@
     "internet": "Internet",
     "users": "Users",
     "tenants": "Tenants",
-    "settings": "Settings"
+    "settings": "Settings",
+    "management": "Management",
+    "roles": "Roles"
   },
   "auth": {
     "email": "Email",
@@ -180,7 +182,9 @@
     "totalCpusDescription": "Total number of CPUs in the system",
     "totalMonitorsDescription": "Total number of monitors in the system",
     "totalUpsDescription": "Total number of UPS devices in the system",
-    "totalWarehouseAssetsDescription": "Total number of warehouse assets in the system"
+    "totalWarehouseAssetsDescription": "Total number of warehouse assets in the system",
+    "licenseProductTypeDistribution": "Distribution of license product types",
+    "licenseKeyDistribution": "Distribution of license keys"
   },
   "assets": {
     "title": "Assets",
@@ -380,8 +384,11 @@
       "name": "Name",
       "email": "Email",
       "role": "Role",
-      "tenant": "Tenant"
+      "tenant": "Tenant",
+      "createdAt": "Created At",
+      "actions": "Actions"
     },
+    "button": "Add User",
     "list": {
       "title": "User List",
       "description": "A list of all users in the system"
@@ -763,6 +770,115 @@
       "errorCreating": "Failed to create custom field",
       "errorUpdating": "Failed to update custom field",
       "errorDeleting": "Failed to delete custom field"
+    }
+  },
+  "roles": {
+    "title": "Roles",
+    "description": "Manage system roles and permissions",
+    "search": {
+      "placeholder": "Search roles..."
+    },
+    "table": {
+      "name": "Name",
+      "description": "Description",
+      "permissions": "Permissions",
+      "users": "Users",
+      "createdAt": "Created At",
+      "createdAt": "Created At"
+    },
+    "list": {
+      "title": "Role List",
+      "description": "A list of all roles in the system"
+    },
+    "create": {
+      "button": "Add Role",
+      "unauthorized": "You do not have permission to create roles",
+      "success": "Role created successfully",
+      "error": "Failed to create role",
+      "title": "Create Role",
+      "description": "Add a new role to the system"
+    },
+    "button": "Add Role",
+    "edit": {
+      "unauthorized": "You do not have permission to edit roles",
+      "title": "Edit Role",
+      "description": "Edit role details and permissions"
+    },
+    "update": {
+      "unauthorized": "You do not have permission to update roles",
+      "success": "Role updated successfully",
+      "error": "Failed to update role"
+    },
+    "delete": {
+      "unauthorized": "You do not have permission to delete roles",
+      "confirm": "Are you sure you want to delete this role? This action cannot be undone.",
+      "success": "Role deleted successfully",
+      "error": "Failed to delete role"
+    },
+    "bulkDelete": {
+      "unauthorized": "You do not have permission to bulk delete roles",
+      "confirm": "Are you sure you want to delete {0} roles?",
+      "success": "{0} roles deleted successfully",
+      "error": "Failed to delete roles"
+    },
+    "error": {
+      "loading": "Failed to load roles"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "permissions": "Permissions",
+      "nameRequired": "Name is required",
+      "descriptionPlaceholder": "Enter role description (optional)",
+      "permissionsHelp": "Select the permissions this role should have"
+    },
+    "permissions": {
+      "users": {
+        "label": "Users",
+        "view": "View users",
+        "create": "Create users",
+        "edit": "Edit users",
+        "delete": "Delete users",
+        "bulkDelete": "Bulk delete users"
+      },
+      "tenants": {
+        "label": "Tenants",
+        "view": "View tenants",
+        "create": "Create tenants",
+        "edit": "Edit tenants",
+        "delete": "Delete tenants",
+        "bulkDelete": "Bulk delete tenants"
+      },
+      "assets": {
+        "label": "Assets",
+        "view": "View assets",
+        "create": "Create assets",
+        "edit": "Edit assets",
+        "delete": "Delete assets",
+        "bulkDelete": "Bulk delete assets",
+        "assetSpecific": "Asset-specific permissions",
+        "assetSpecific": "Asset-specific permissions"
+      },
+      "settings": {
+        "label": "Settings",
+        "view": "View settings",
+        "edit": "Edit settings",
+        "create": "Create settings",
+        "delete": "Delete settings",
+        "bulkDelete": "Bulk delete settings",
+        "create": "Create settings",
+        "delete": "Delete settings",
+        "bulkDelete": "Bulk delete settings"
+      },
+      "roles": {
+        "label": "Roles",
+        "view": "View roles",
+        "create": "Create roles",
+        "edit": "Edit roles",
+        "delete": "Delete roles",
+        "bulkDelete": "Bulk delete roles",
+        "bulkDelete": "Bulk delete roles"
+      }
     }
   }
 }

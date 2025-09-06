@@ -116,6 +116,24 @@ export default function DashboardSummaryPage() {
     },
   ];
 
+  // License Statistics Data
+  const licenseStatisticsData = [
+    { 
+      name: 'Product Types', 
+      count: dashboardData?.license?.filter(item => item.productType).length || 0, 
+      icon: Key, 
+      color: 'bg-red-500', 
+      iconColor: 'text-red-500' 
+    },
+    { 
+      name: 'Product Keys', 
+      count: dashboardData?.license?.filter(item => item.productKey).length || 0, 
+      icon: Key, 
+      color: 'bg-purple-500', 
+      iconColor: 'text-purple-500' 
+    },
+  ];
+
   // Prepare custom field statistics data for charts
   const prepareCustomFieldChartData = (fieldName: string, assetType: string) => {
     // Use the asset type prefixed key to avoid conflicts
@@ -139,6 +157,27 @@ export default function DashboardSummaryPage() {
 
   // Colors for pie charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
+
+  // Prepare license product type data for charts
+  const prepareProductTypeData = () => {
+    if (!dashboardData?.license) return []
+    
+    const productTypeMap: Record<string, number> = {}
+    
+    dashboardData.license.forEach(item => {
+      if (item.productType) {
+        productTypeMap[item.productType] = (productTypeMap[item.productType] || 0) + item._count
+      }
+    })
+    
+    return Object.entries(productTypeMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10) // Show top 10 values
+  };
+
+  // Get product type and key data
+  const productTypeData = prepareProductTypeData()
 
   return (
     <div className="space-y-6">
@@ -188,6 +227,64 @@ export default function DashboardSummaryPage() {
         ))}
       </div>
 
+      {/* License Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {licenseStatisticsData.map((stat, index) => (
+          <SummaryCard 
+            key={`license-stat-${index}`}
+            title={stat.name}
+            value={stat.count}
+            icon={stat.icon}
+            color="blue"
+          />
+        ))}
+      </div>
+
+      {/* License Product Type Chart */}
+      {productTypeData.length > 0 && (
+        <ChartCard 
+          title={t('assets.license.productType') || 'Product Type'}
+          description={t('dashboard.licenseProductTypeDistribution') || 'Distribution of license product types'}
+          icon={Key}
+        >
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={productTypeData}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis 
+                  type="category" 
+                  dataKey="name" 
+                  width={100}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip 
+                  formatter={(value) => [value, t('common.count')]}
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--background))',
+                    borderColor: 'hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                    color: 'hsl(var(--foreground))'
+                  }}
+                />
+                <Bar 
+                  dataKey="count" 
+                  fill="#8884d8"
+                  name={t('common.count')}
+                >
+                  {productTypeData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      )}
       {/* Custom Field Statistics Charts for PC */}
       {pcCustomFields.length > 0 && (
         <div className="space-y-4">

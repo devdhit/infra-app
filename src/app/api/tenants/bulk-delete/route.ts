@@ -8,7 +8,9 @@ import { createHistoryRecord } from '@/lib/history'
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
-    if (!user || user.role !== 'admin') {
+    // Get role name from the related Role object, default to 'user'
+    const roleName = user?.role?.name || 'user';
+    if (!user || roleName !== 'admin') {
       return unauthorizedResponse()
     }
 

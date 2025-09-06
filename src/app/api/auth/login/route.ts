@@ -93,7 +93,8 @@ export async function POST(request: NextRequest) {
 
     // Find user by email
     const user = await db.user.findUnique({
-      where: { email }
+      where: { email },
+      include: { role: true }
     })
 
     // Check if user exists
@@ -112,12 +113,15 @@ export async function POST(request: NextRequest) {
     // Reset rate limiter on successful login
     rateLimiter.delete(ip)
 
+    // Get role name from the related Role object, default to 'user'
+    const roleName = user.role?.name || 'user'
+
     // Generate JWT token
     const token = generateToken({
       id: user.id,
       email: user.email,
       tenantId: user.tenantId,
-      role: user.role
+      role: roleName
     })
 
     // Return success response with token and user data
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role,
+        role: roleName,
         tenantId: user.tenantId
       }
     })

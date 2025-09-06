@@ -9,22 +9,25 @@ function getTimestamp() {
     return new Date().toISOString();
 }
 
-// Determine the correct path for the realtime module based on environment
-const distPath = process.env.NODE_ENV === 'production' 
-  ? '/opt/itams/dist' 
-  : resolve(__dirname, 'dist');
-
-// Check if the dist directory exists, if not, try to build it
-const realtimeModulePath = join(distPath, 'lib', 'realtime');
-
 let initializeSocketIO;
 try {
-  // Try to load the realtime module
-  if (existsSync(realtimeModulePath + '.js') || existsSync(realtimeModulePath)) {
-    ({ initializeSocketIO } = require(realtimeModulePath));
+  // Try to load the realtime module from dist first, then fallback to src
+  const distPath = process.env.NODE_ENV === 'production' 
+    ? '/opt/itams/dist' 
+    : resolve(__dirname, 'dist');
+  const distModulePath = join(distPath, 'lib', 'realtime');
+  
+  if (existsSync(distModulePath + '.js') || existsSync(distModulePath)) {
+    ({ initializeSocketIO } = require(distModulePath));
   } else {
-    console.warn(`[${getTimestamp()}] ⚠️  Realtime module not found at ${realtimeModulePath}, Socket.IO will not be available`);
-    initializeSocketIO = null;
+    // Fallback to src directory
+    const srcModulePath = join(__dirname, 'src', 'lib', 'realtime');
+    if (existsSync(srcModulePath + '.ts') || existsSync(srcModulePath)) {
+      ({ initializeSocketIO } = require(srcModulePath));
+    } else {
+      console.warn(`[${getTimestamp()}] ⚠️  Realtime module not found at ${distModulePath} or ${srcModulePath}, Socket.IO will not be available`);
+      initializeSocketIO = null;
+    }
   }
 } catch (error) {
   console.warn(`[${getTimestamp()}] ⚠️  Failed to load realtime module:`, error.message);
@@ -69,7 +72,7 @@ app.prepare().then(() => {
     console.log(`[${getTimestamp()}] ℹ️  Socket.IO not available (realtime module not loaded)`);
   }
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3001;
   
   server.listen(port, (err) => {
     if (err) {

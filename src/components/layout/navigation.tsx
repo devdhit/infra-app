@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ChevronRight,
   Home,
-  Wifi
+  Wifi,
+  Shield
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,9 +29,7 @@ import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { useTranslation } from "@/hooks/use-translation";
 import { getApplicationSettings } from '@/lib/api/application';
-
-// Define user roles
-type UserRole = 'admin' | 'user';
+import { UserRole } from '@/types/users';
 
 // Define navigation item structure
 interface NavigationItem {
@@ -63,22 +62,21 @@ const navigationItems: NavigationItem[] = [
     ]
   },
   { 
-    nameKey: "nav.users", 
-    href: "/users", 
+    nameKey: "nav.management", 
+    href: "/management", 
     icon: Users,
-    roles: ['admin'] // Only admins can access users
-  },
-  { 
-    nameKey: "nav.tenants", 
-    href: "/tenants", 
-    icon: Building,
-    roles: ['admin'] // Only admins can access tenants
+    roles: ['admin'], // Only admins can access management sections
+    children: [
+      { nameKey: "nav.users", href: "/users", icon: Users, roles: ['admin'] },
+      { nameKey: "nav.tenants", href: "/tenants", icon: Building, roles: ['admin'] },
+      { nameKey: "nav.roles", href: "/settings/roles", icon: Shield, roles: ['admin'] },
+    ]
   },
   { 
     nameKey: "nav.settings", 
     href: "/settings", 
     icon: Settings,
-    roles: ['admin', 'user'] // Both roles can access settings
+    roles: ['admin', 'user'], // Both roles can access settings
   },
 ];
 

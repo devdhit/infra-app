@@ -15,7 +15,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const resolvedParams = await params;
     // Non-admin users can only access their own tenant
-    if (user.role !== 'admin' && user.tenantId !== resolvedParams.id) {
+    // Get role name from the related Role object, default to 'user'
+    const roleName = user.role?.name || 'user';
+    if (roleName !== 'admin' && user.tenantId !== resolvedParams.id) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
@@ -55,7 +57,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser(request)
-    if (!user || user.role !== 'admin') {
+    // Get role name from the related Role object, default to 'user'
+    const roleName = user?.role?.name || 'user';
+    if (!user || roleName !== 'admin') {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
@@ -112,7 +116,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser(request)
-    if (!user || user.role !== 'admin') {
+    // Get role name from the related Role object, default to 'user'
+    const roleName = user?.role?.name || 'user';
+    if (!user || roleName !== 'admin') {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }

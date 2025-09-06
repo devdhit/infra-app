@@ -105,9 +105,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total counts for Monitors, and UPSs across all assets
-    const totalMonitorCount = pcDepartmentStats.reduce((sum, dept) => sum + (dept._count.monitorBarcode || 0), 0);
+    const totalMonitorCount = pcDepartmentStats.reduce((sum: number, dept: any) => sum + (dept._count.monitorBarcode || 0), 0);
     
-    const totalUpsCount = pcDepartmentStats.reduce((sum, dept) => sum + (dept._count.upsBarcode || 0), 0);
+    const totalUpsCount = pcDepartmentStats.reduce((sum: number, dept: any) => sum + (dept._count.upsBarcode || 0), 0);
 
     // Get total department count
     const totalDepartmentCount = new Set([

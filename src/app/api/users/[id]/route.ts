@@ -13,6 +13,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
 
+    // Get role name from the related Role object, default to 'user'
+    const currentRoleName = currentUser.role?.name || 'user';
+
     const resolvedParams = await params;
     const user = await db.user.findUnique({
       where: { id: resolvedParams.id },
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Check if user belongs to the same tenant (unless admin)
-    if (currentUser.role !== 'admin' && currentUser.tenantId !== user.tenantId) {
+    if (currentRoleName !== 'admin' && currentUser.tenantId !== user.tenantId) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
@@ -66,6 +69,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
 
+    // Get role name from the related Role object, default to 'user'
+    const currentRoleName = currentUser.role?.name || 'user';
+
     const body = await request.json()
     const resolvedParams = await params;
     
@@ -90,7 +96,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Check permissions
-    if (currentUser.role !== 'admin' && currentUser.tenantId !== existingUser.tenantId) {
+    if (currentRoleName !== 'admin' && currentUser.tenantId !== existingUser.tenantId) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
@@ -111,12 +117,27 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           headers: { 'Content-Type': 'application/json' }
         })
       }
-      if (currentUser.role === 'admin') {
-        updateData.role = body.role
+      if (currentRoleName === 'admin') {
+        // Find the role by name within the same tenant
+        const role = await db.role.findFirst({
+          where: {
+            name: body.role,
+            tenantId: currentUser.tenantId
+          }
+        })
+
+        if (!role) {
+          return new Response(JSON.stringify({ error: 'Role not found' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        updateData.roleId = role.id
       }
     }
 
-    if (currentUser.role === 'admin' && body.tenantId !== undefined) {
+    if (currentRoleName === 'admin' && body.tenantId !== undefined) {
       updateData.tenantId = body.tenantId
     }
 
@@ -134,18 +155,19 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const user = await db.user.update({
       where: { id: resolvedParams.id },
       data: updateData,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        tenantId: true,
-        createdAt: true,
-        updatedAt: true
+      include: {
+        role: true
       }
     })
 
-    return new Response(JSON.stringify(user), {
+    // Remove password from response
+    const { password, roleId, ...userWithoutPassword } = user
+    const userWithRole = {
+      ...userWithoutPassword,
+      role: user.role
+    }
+
+    return new Response(JSON.stringify(userWithRole), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     })
@@ -183,6 +205,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       })
     }
 
+    // Get role name from the related Role object, default to 'user'
+    const currentRoleName = currentUser.role?.name || 'user';
+
     const resolvedParams = await params;
     // Check if user exists
     const existingUser = await db.user.findUnique({
@@ -197,7 +222,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // Check permissions
-    if (currentUser.role !== 'admin' && currentUser.tenantId !== existingUser.tenantId) {
+    if (currentRoleName !== 'admin' && currentUser.tenantId !== existingUser.tenantId) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }

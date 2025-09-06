@@ -1,4 +1,5 @@
 import { PrismaClient } from '../src/generated/prisma'
+import { getDefaultPermissions } from '../src/lib/permissions'
 
 
 const prisma = new PrismaClient()
@@ -14,26 +15,48 @@ async function main() {
   await prisma.pC.deleteMany({})
   await prisma.customField.deleteMany({})
   await prisma.user.deleteMany({})
+  await prisma.role.deleteMany({})
   await prisma.tenant.deleteMany({})
   console.log('Existing data cleared.')
 
   // Create a sample tenant
   const tenant = await prisma.tenant.create({
     data: {
-      name: 'Demo Company',
-      description: 'A sample company for demonstration purposes'
+      name: 'Dahua Company',
+      description: 'DaiHoa Company',
     }
   })
 
   console.log('Created tenant:', tenant)
 
+  // Create default roles
+  const adminRole = await prisma.role.create({
+    data: {
+      name: 'admin',
+      description: 'Administrator role with full access',
+      permissions: getDefaultPermissions('admin'),
+      tenantId: tenant.id
+    }
+  })
+
+  const userRole = await prisma.role.create({
+    data: {
+      name: 'user',
+      description: 'Regular user role with limited access',
+      permissions: getDefaultPermissions('user'),
+      tenantId: tenant.id
+    }
+  })
+
+  console.log('Created roles:', { adminRole, userRole })
+
   // Create a sample admin user
   const adminUser = await prisma.user.create({
     data: {
-      email: 'admin@demo.com',
+      email: 'adminit@localhost.com',
       password: '$2b$10$SXMN6FYOO9U48sT1b8Bif.RPAJqyJWLWaL79QsWDIvNtYTUSzdiFe', // bcrypt hash for "password"
-      name: 'Admin User',
-      role: 'admin',
+      name: 'Admin Infra',
+      roleId: adminRole.id,
       tenantId: tenant.id
     }
   })
@@ -43,10 +66,10 @@ async function main() {
   // Create a sample regular user
   const regularUser = await prisma.user.create({
     data: {
-      email: 'user@demo.com',
+      email: 'dhit@localhost.com',
       password: '$2b$10$SXMN6FYOO9U48sT1b8Bif.RPAJqyJWLWaL79QsWDIvNtYTUSzdiFe', // bcrypt hash for "password"
-      name: 'Regular User',
-      role: 'user',
+      name: 'DH-IT',
+      roleId: userRole.id,
       tenantId: tenant.id
     }
   })
