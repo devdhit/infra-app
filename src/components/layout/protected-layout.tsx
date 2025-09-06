@@ -7,7 +7,7 @@ import { Header } from './header'
 import { useEffect } from 'react'
 import { navigationMonitor } from '@/lib/navigation-performance'
 
-import type { UserRole } from '@/lib/permissions'
+import type { UserRole } from '@/types/users'
 
 interface ProtectedLayoutProps {
   children: React.ReactNode
@@ -57,7 +57,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   // If authenticated, show the protected layout with fixed positioning
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      <Navigation userRole={(user?.role as UserRole) || 'user'} />
+      <Navigation userRole={(user?.role?.name as UserRole) || 'user'} />
       <div className="flex flex-col flex-1 md:ml-64 relative">
         <Header />
         <main className="flex-1 overflow-auto p-4 md:p-6">

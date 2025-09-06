@@ -1,266 +1,155 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState } from 'react'
 import { Button } from "@/components/ui/button"
-import { DataTable } from "@/components/ui/data-table"
-import { ColumnDef } from '@tanstack/react-table'
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"
-import { Search, MoreHorizontal, Edit, Trash } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
-import { User, Tenant } from "@/hooks/useApi"
-import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"
-
-// Define the interface directly in this file to avoid import issues
-interface UsersTableProps {
-  users: User[];
-  tenants: Tenant[];
-  onEdit?: (user: User | null) => void;
-  onDelete?: (id: string) => void;
-  isDeleting: boolean;
-  deletingUserId: string | null;
-}
-
-// Define columns for the DataTable
-const useUserColumns = (t: (key: string, fallback?: string) => string, onEdit: ((user: User) => void) | undefined, onDelete: ((id: string) => void) | undefined, isDeleting: boolean, deletingUserId: string | null, tenants: Tenant[]): ColumnDef<User>[] => {
-  return useMemo(() => [
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <div className="w-12">
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
-        </div>
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: 'name',
-      header: t('users.table.name', 'Name'),
-    },
-    {
-      accessorKey: 'email',
-      header: t('users.table.email', 'Email'),
-    },
-    {
-      accessorKey: 'role',
-      header: t('users.table.role', 'Role'),
-      cell: ({ row }) => {
-        const role = row.original.role;
-        return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            role === 'admin' 
-              ? 'bg-purple-100 text-purple-800' 
-              : 'bg-blue-100 text-blue-800'
-          }`}>
-            {role}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: 'tenant',
-      header: t('users.table.tenant', 'Tenant'),
-      cell: ({ row }) => {
-        const user = row.original;
-        return tenants.find((t: Tenant) => t.id === user.tenantId)?.name || '-';
-      },
-    },
-    {
-      id: 'actions',
-      header: () => <div className="text-right">{t('common.actions', 'Actions')}</div>,
-      cell: ({ row }) => {
-        const user = row.original;
-        
-        // If no action handlers are provided, don't show actions
-        if (!onEdit && !onDelete) {
-          return null;
-        }
-        
-        return (
-          <div className="text-right">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">{t('common.openMenu', 'Open menu')}</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {onEdit && (
-                  <DropdownMenuItem onClick={() => onEdit(user)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    {t('common.edit', 'Edit')}
-                  </DropdownMenuItem>
-                )}
-                {onDelete && (
-                  <DropdownMenuItem 
-                    onClick={() => onDelete(user.id)}
-                    disabled={isDeleting && deletingUserId === user.id}
-                  >
-                    {isDeleting && deletingUserId === user.id ? (
-                      <div className="flex items-center">
-                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                        {t('common.deleting', 'Deleting...')}
-                      </div>
-                    ) : (
-                      <>
-                        <Trash className="mr-2 h-4 w-4" />
-                        {t('common.delete', 'Delete')}
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        );
-      },
-    },
-  ], [t, onEdit, onDelete, isDeleting, deletingUserId, tenants]);
-};
+import { UsersTableProps } from "@/types/users"
 
 export function UsersTable({ 
   users, 
-  tenants,
-  onEdit, 
+  tenants, 
+  onEdit,
   onDelete,
   isDeleting,
   deletingUserId
 }: UsersTableProps) {
   const { t } = useTranslation()
-  const [search, setSearch] = useState('')
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
-  const columns = useUserColumns(t, onEdit, onDelete, isDeleting, deletingUserId, tenants)
-  
-  // Load column visibility from localStorage
-  const loadColumnVisibility = useCallback(() => {
-    try {
-      const saved = localStorage.getItem('usersColumnVisibility');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      console.warn('Failed to load column visibility from localStorage:', e);
-      return null;
-    }
-  }, []);
-  
-  // Column visibility state
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
-    const savedVisibility = loadColumnVisibility();
-    if (savedVisibility) {
-      return savedVisibility;
-    }
-    // Default visibility - show all columns except 'select' and 'actions' which are always visible
-    const defaultVisibility: Record<string, boolean> = {};
-    columns.forEach(column => {
-      if (column.id !== 'select' && column.id !== 'actions') {
-        defaultVisibility[column.id as string] = true;
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUsers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(userId)) {
+        newSet.delete(userId)
+      } else {
+        newSet.add(userId)
       }
-    });
-    return defaultVisibility;
-  });
-  
-  // Filter users based on search term
-  const filteredUsers = useMemo(() => {
-    if (!search) return users
-    const term = search.toLowerCase()
-    return users.filter((user: User) => 
-      user.name.toLowerCase().includes(term) || 
-      user.email.toLowerCase().includes(term) ||
-      user.role.toLowerCase().includes(term)
-    )
-  }, [users, search])
+      return newSet
+    })
+  }
 
-  // Handle bulk delete
-  const handleBulkDelete = useCallback(() => {
-    if (selectedUsers.length === 0 || !onDelete) {
-      // Show error message or do nothing
-      return
+  const handleSelectAll = () => {
+    if (selectedUsers.size === users.length) {
+      setSelectedUsers(new Set())
+    } else {
+      setSelectedUsers(new Set(users.map(user => user.id)))
     }
-    setIsBulkDeleteDialogOpen(true)
-  }, [selectedUsers.length, onDelete])
+  }
 
-  // Confirm bulk delete
-  const confirmBulkDelete = useCallback(() => {
-    if (!onDelete) return;
-    // This will be handled by the parent component
-    onDelete(selectedUsers.join(',')) // Pass selected IDs as a comma-separated string
-    setIsBulkDeleteDialogOpen(false)
-    setSelectedUsers([])
-  }, [onDelete, selectedUsers])
+  const getTenantName = (tenantId: string) => {
+    const tenant = tenants.find(t => t.id === tenantId)
+    return tenant ? tenant.name : 'Unknown'
+  }
 
-  // Handle row selection
-  const handleRowSelection = useCallback((rows: Record<string, boolean>) => {
-    const selectedIds = Object.keys(rows).filter(id => rows[id])
-    setSelectedUsers(selectedIds)
-  }, [])
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString()
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t('users.search.placeholder') || "Search users..."}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[50px]">
+              <input
+                type="checkbox"
+                checked={selectedUsers.size === users.length && users.length > 0}
+                onChange={handleSelectAll}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+            </TableHead>
+            <TableHead>{t('users.table.name') || 'Name'}</TableHead>
+            <TableHead>{t('users.table.email') || 'Email'}</TableHead>
+            <TableHead>{t('users.table.role') || 'Role'}</TableHead>
+            <TableHead>{t('users.table.tenant') || 'Tenant'}</TableHead>
+            <TableHead>{t('users.table.createdAt') || 'Created'}</TableHead>
+            <TableHead className="text-right">{t('users.table.actions') || 'Actions'}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.map((user) => (
+            <TableRow key={user.id} className="hover:bg-muted/50">
+              <TableCell>
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.has(user.id)}
+                  onChange={() => handleSelectUser(user.id)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+              </TableCell>
+              <TableCell className="font-medium">{user.name}</TableCell>
+              <TableCell>{user.email}</TableCell>
+              <TableCell>
+                <Badge variant={user.role?.name === 'admin' ? 'default' : 'secondary'}>
+                  {user.role?.name === 'admin' ? 'Admin' : 'User'}
+                </Badge>
+              </TableCell>
+              <TableCell>{getTenantName(user.tenantId)}</TableCell>
+              <TableCell>{formatDate(user.createdAt)}</TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {onEdit && (
+                      <DropdownMenuItem onClick={() => onEdit(user)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {t('common.edit') || 'Edit'}
+                      </DropdownMenuItem>
+                    )}
+                    {onDelete && (
+                      <DropdownMenuItem 
+                        onClick={() => onDelete(user.id)}
+                        disabled={isDeleting && deletingUserId === user.id}
+                        className="text-red-600 focus:text-red-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t('common.delete') || 'Delete'}
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {selectedUsers.size > 0 && onDelete && (
+        <div className="border-t p-4 flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {t('users.table.selected', '{0} users selected', selectedUsers.size.toString()) || 
+             `${selectedUsers.size} users selected`}
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onDelete(Array.from(selectedUsers).join(','))}
+            disabled={isDeleting}
+          >
+            {t('users.table.deleteSelected') || 'Delete Selected'}
+          </Button>
         </div>
-        <div className="flex gap-2">
-          {selectedUsers.length > 0 && onDelete && (
-            <Button variant="destructive" onClick={handleBulkDelete}>
-              <Trash className="h-4 w-4 mr-2" />
-              {t('common.delete', 'Delete')} ({selectedUsers.length})
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={filteredUsers}
-        searchable={false} // We're handling search outside the DataTable
-        filterable={false} // We're handling filtering outside the DataTable
-        sortable={true}
-        pagination={true}
-        pageSize={10}
-        onRowSelectionChange={handleRowSelection}
-        // Enable responsive features
-        responsive={true}
-        // Enable column resizing
-        enableColumnResizing={true}
-        // Pass column visibility state
-        columnVisibility={columnVisibility}
-        onColumnVisibilityChange={setColumnVisibility}
-      />
-
-      <BulkDeleteDialog
-        title={t('users.title', 'Users')}
-        count={selectedUsers.length}
-        isOpen={isBulkDeleteDialogOpen}
-        isDeleting={isDeleting}
-        onClose={() => setIsBulkDeleteDialogOpen(false)}
-        onConfirm={confirmBulkDelete}
-      />
+      )}
     </div>
   )
 }

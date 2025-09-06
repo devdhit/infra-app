@@ -6,7 +6,9 @@ import { getCurrentUser } from '@/lib/auth'
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
-    if (!user || user.role !== 'admin') {
+    // Get role name from the related Role object, default to 'user'
+    const roleName = user?.role?.name || 'user';
+    if (!user || roleName !== 'admin') {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
@@ -38,7 +40,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
-    if (!user || user.role !== 'admin') {
+    // Get role name from the related Role object, default to 'user'
+    const roleName = user?.role?.name || 'user';
+    if (!user || roleName !== 'admin') {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }

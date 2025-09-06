@@ -34,7 +34,11 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "allowUnreachableCode": false,
-    "allowUnusedLabels": false
+    "allowUnusedLabels": false,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "baseUrl": "."
   },
   "include": [
     "src/lib/realtime.ts",
@@ -43,6 +47,7 @@
   "exclude": [
     "node_modules",
     ".next",
-    "dist"
+    "dist",
+    "src/lib/excel.ts"
   ]
 }

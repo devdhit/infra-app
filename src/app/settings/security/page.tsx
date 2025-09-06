@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { SettingsLayout } from "@/components/settings/settings-layout"
+import { usePermissions } from "@/hooks/use-permissions"
 
 interface SecuritySettings {
   twoFactorEnabled: boolean
@@ -39,6 +40,31 @@ interface ActiveSession {
 
 export default function SecuritySettingsPage() {
   const { t } = useTranslation()
+  const { canViewSettings, canEditSettings } = usePermissions()
+  
+  const [canView, setCanView] = useState<boolean>(true) // Default to true to avoid blocking access
+  const [canEdit, setCanEdit] = useState<boolean>(true) // Default to true to avoid blocking access
+  
+  // Check permissions
+  useEffect(() => {
+    const checkPermissions = async () => {
+      try {
+        // Only check permissions if the hook is ready
+        if (typeof window !== 'undefined') {
+          setCanView(await canViewSettings())
+          setCanEdit(await canEditSettings())
+        }
+      } catch (error) {
+        console.error('Error checking permissions:', error)
+        // Default to allowing access if there's an error
+        setCanView(true)
+        setCanEdit(true)
+      }
+    }
+    
+    checkPermissions()
+  }, [canViewSettings, canEditSettings])
+  
   const [settings, setSettings] = useState<SecuritySettings>({
     twoFactorEnabled: false,
     passwordMinLength: 8,
@@ -109,6 +135,18 @@ export default function SecuritySettingsPage() {
     setActiveSessions(prev => prev.filter(session => session.current))
     toast.success(t('settings.security.allSessionsEnded') || 'All sessions ended except current')
   }
+  
+  // If user doesn't have view permission, show unauthorized message
+  // But allow access by default to avoid blocking legitimate users
+  if (!canView && typeof window !== 'undefined') {
+    return (
+      <div className="flex items-center justify-center h-52">
+        <div className="text-center">
+          <p className="text-red-500">{t('common.unauthorized') || 'You do not have permission to view this page'}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <SettingsLayout
@@ -137,6 +175,7 @@ export default function SecuritySettingsPage() {
               id="two-factor"
               checked={settings.twoFactorEnabled}
               onCheckedChange={() => handleToggle('twoFactorEnabled')}
+              disabled={!canEdit}
             />
           </div>
           
@@ -154,8 +193,8 @@ export default function SecuritySettingsPage() {
                 </div>
               </div>
               <div className="mt-4 flex space-x-2">
-                <Input placeholder={t('settings.security.twoFactor.codePlaceholder') || "Enter 6-digit code"} />
-                <Button>{t('settings.security.twoFactor.verify') || 'Verify'}</Button>
+                <Input placeholder={t('settings.security.twoFactor.codePlaceholder') || "Enter 6-digit code"} disabled={!canEdit} />
+                <Button disabled={!canEdit}>{t('settings.security.twoFactor.verify') || 'Verify'}</Button>
               </div>
             </div>
           )}
@@ -182,6 +221,7 @@ export default function SecuritySettingsPage() {
               value={settings.passwordMinLength}
               onChange={(e) => handleInputChange('passwordMinLength', parseInt(e.target.value) || 8)}
               className="w-32"
+              disabled={!canEdit}
             />
           </div>
           
@@ -193,6 +233,7 @@ export default function SecuritySettingsPage() {
               id="require-uppercase"
               checked={settings.passwordRequireUppercase}
               onCheckedChange={() => handleToggle('passwordRequireUppercase')}
+              disabled={!canEdit}
             />
           </div>
           
@@ -204,6 +245,7 @@ export default function SecuritySettingsPage() {
               id="require-lowercase"
               checked={settings.passwordRequireLowercase}
               onCheckedChange={() => handleToggle('passwordRequireLowercase')}
+              disabled={!canEdit}
             />
           </div>
           
@@ -215,6 +257,7 @@ export default function SecuritySettingsPage() {
               id="require-numbers"
               checked={settings.passwordRequireNumbers}
               onCheckedChange={() => handleToggle('passwordRequireNumbers')}
+              disabled={!canEdit}
             />
           </div>
           
@@ -226,6 +269,7 @@ export default function SecuritySettingsPage() {
               id="require-special"
               checked={settings.passwordRequireSpecial}
               onCheckedChange={() => handleToggle('passwordRequireSpecial')}
+              disabled={!canEdit}
             />
           </div>
         </CardContent>
@@ -268,6 +312,7 @@ export default function SecuritySettingsPage() {
                         variant="destructive" 
                         size="sm"
                         onClick={() => endSession(session.id)}
+                        disabled={!canEdit}
                       >
                         {t('settings.security.sessions.end') || 'End Session'}
                       </Button>
@@ -279,7 +324,7 @@ export default function SecuritySettingsPage() {
           </Table>
           
           <div className="mt-4 flex justify-end">
-            <Button variant="destructive" onClick={endAllSessions}>
+            <Button variant="destructive" onClick={endAllSessions} disabled={!canEdit}>
               {t('settings.security.sessions.endAll') || 'End All Other Sessions'}
             </Button>
           </div>
@@ -287,10 +332,10 @@ export default function SecuritySettingsPage() {
       </Card>
 
       <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={resetToDefaults}>
+        <Button variant="outline" onClick={resetToDefaults} disabled={!canEdit}>
           {t('settings.security.reset') || 'Reset to Defaults'}
         </Button>
-        <Button onClick={saveSettings}>
+        <Button onClick={saveSettings} disabled={!canEdit}>
           {t('settings.security.save') || 'Save Settings'}
         </Button>
       </div>

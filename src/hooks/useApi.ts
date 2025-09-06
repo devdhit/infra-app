@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOpti
 import { api, ApiError, ValidationError } from '@/lib/api'
 import { toast } from 'sonner'
 import { getModelType } from '@/lib/custom-fields'
+import { User, UserCreateUpdate } from '@/types/users'
 
 // Define more specific types for useApiQuery
 type ApiQueryOptions<T> = Omit<UseQueryOptions<T, ApiError, T, string[]>, 'queryKey' | 'queryFn'>
@@ -351,20 +352,7 @@ export function useLogout() {
 }
 
 // User hooks
-export interface User {
-  id: string
-  email: string
-  name: string
-  role: string
-  tenantId: string
-  createdAt: string
-  updatedAt: string
-}
-
-// Interface for user creation/update (includes password)
-export interface UserCreateUpdate extends User {
-  password?: string
-}
+export type { User, UserCreateUpdate } from '@/types/users'
 
 export function useUsers() {
   return useApiQuery<User[]>(['users'], '/users', {

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // Find user by email
     const user = await db.user.findUnique({
       where: { email: body.email },
-      include: { tenant: true }
+      include: { tenant: true, role: true }
     })
 
     if (!user) {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       id: user.id,
       email: user.email,
       tenantId: user.tenantId,
-      role: user.role
+      role: user.role?.name || 'user' // Use role name from the related Role object, default to 'user'
     })
 
     // Set token in cookie
@@ -57,10 +57,13 @@ export async function POST(request: NextRequest) {
     })
 
     // Return user data (without password)
-    const { password, ...userWithoutPassword } = user
+    const { password, role, ...userWithoutPassword } = user
 
     return new Response(JSON.stringify({
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        role: user.role?.name || 'user' // Include role name in the response
+      },
       token
     }), {
       status: 200,

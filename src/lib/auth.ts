@@ -1,7 +1,16 @@
-import { db } from '@/lib/db'
+// Only import and use PrismaClient on the server side
+let db: any;
+
+if (typeof window === 'undefined') {
+  // Server-side only
+  const { db: serverDb } = require('@/lib/db');
+  db = serverDb;
+}
+
 import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import { UserJwtPayload } from '@/types/users'
 
 // Use environment-specific JWT secret with fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-for-development'
@@ -9,14 +18,6 @@ const SALT_ROUNDS = 10
 
 // Token expiration based on environment
 const TOKEN_EXPIRATION = process.env.NODE_ENV === 'production' ? '24h' : '7d'
-
-export interface UserJwtPayload {
-  id: string
-  email: string
-  tenantId: string
-  role: string
-  exp: number
-}
 
 /**
  * Generate a JWT token for a user
@@ -49,6 +50,11 @@ export function verifyToken(token: string): UserJwtPayload | null {
  * Get the current user from the request
  */
 export async function getCurrentUser(request: NextRequest) {
+  // Prevent running on the browser
+  if (typeof window !== 'undefined' || !db) {
+    return null;
+  }
+  
   try {
     // First check for token in Authorization header (Bearer token)
     const authHeader = request.headers.get('authorization')
@@ -73,7 +79,7 @@ export async function getCurrentUser(request: NextRequest) {
     // Fetch user from database
     const user = await db.user.findUnique({
       where: { id: payload.id },
-      include: { tenant: true }
+      include: { tenant: true, role: true }
     })
 
     return user
@@ -87,6 +93,11 @@ export async function getCurrentUser(request: NextRequest) {
  * Hash a password using bcrypt
  */
 export async function hashPassword(password: string): Promise<string> {
+  // Prevent running on the browser
+  if (typeof window !== 'undefined') {
+    throw new Error('This function can only be called on the server side');
+  }
+  
   return await bcrypt.hash(password, SALT_ROUNDS)
 }
 
@@ -94,5 +105,10 @@ export async function hashPassword(password: string): Promise<string> {
  * Verify a password using bcrypt
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  // Prevent running on the browser
+  if (typeof window !== 'undefined') {
+    throw new Error('This function can only be called on the server side');
+  }
+  
   return await bcrypt.compare(password, hash)
 }

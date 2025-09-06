@@ -24,8 +24,24 @@ model Tenant {
   warehouseITs       WarehouseIT[]
   internets          Internet[]
   auditLogsSettings  AuditLogsSettings?
+  roles              Role[]
 
   @@index([id])
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  permissions Json     @default("{}")
+  tenantId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  users       User[]
+
+  @@index([tenantId])
+  @@unique([name, tenantId])
 }
 
 model User {
@@ -33,14 +49,16 @@ model User {
   email     String    @unique
   password  String
   name      String
-  role      String    @default("user")
+  roleId    String?
   tenantId  String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   histories History[]
   tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  role      Role?     @relation(fields: [roleId], references: [id])
 
   @@index([tenantId])
+  @@index([roleId])
 }
 
 model PC {

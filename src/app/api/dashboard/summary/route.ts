@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
     })
     
     // Count only non-null and non-'N/A' values
-    const totalCpus = pcSummary.filter(pc => pc.cpuBarcode && pc.cpuBarcode !== 'N/A').length
-    const totalMonitors = pcSummary.filter(pc => pc.monitorBarcode && pc.monitorBarcode !== 'N/A').length
-    const totalUps = pcSummary.filter(pc => pc.upsBarcode && pc.upsBarcode !== 'N/A').length
+    const totalCpus = pcSummary.filter((pc: any) => pc.cpuBarcode && pc.cpuBarcode !== 'N/A').length
+    const totalMonitors = pcSummary.filter((pc: any) => pc.monitorBarcode && pc.monitorBarcode !== 'N/A').length
+    const totalUps = pcSummary.filter((pc: any) => pc.upsBarcode && pc.upsBarcode !== 'N/A').length
 
     // Get Laptop summary data: total by status, by model, and custom-fields fields
     const laptopSummary = await db.laptop.groupBy({
@@ -119,13 +119,13 @@ export async function GET(request: NextRequest) {
     // Calculate custom field statistics
     const customFieldStats: Record<string, { count: number, values: Record<string, number> }> = {}
     
-    // Get custom fields for each asset type
-    const pcCustomFields = customFields.filter(field => field.modelType === 'PC')
-    const laptopCustomFields = customFields.filter(field => field.modelType === 'Laptop')
-    const printerCustomFields = customFields.filter(field => field.modelType === 'Printer')
-    const licenseCustomFields = customFields.filter(field => field.modelType === 'License')
-    const warehouseCustomFields = customFields.filter(field => field.modelType === 'WarehouseIT')
-    const internetCustomFields = customFields.filter(field => field.modelType === 'Internet')
+    // Get custom fields for each asset type (type assertion to match our interface)
+    const pcCustomFields = customFields.filter((field: any) => field.modelType === 'PC')
+    const laptopCustomFields = customFields.filter((field: any) => field.modelType === 'Laptop')
+    const printerCustomFields = customFields.filter((field: any) => field.modelType === 'Printer')
+    const licenseCustomFields = customFields.filter((field: any) => field.modelType === 'License')
+    const warehouseCustomFields = customFields.filter((field: any) => field.modelType === 'WarehouseIT')
+    const internetCustomFields = customFields.filter((field: any) => field.modelType === 'Internet')
     
     // Create a map to track which asset type each custom field belongs to
     const customFieldAssetMap: Record<string, string> = {}
