@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser, hashPassword } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 
 // GET /api/users/[id] - Get a specific user
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,10 +14,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
 
+    // Await params before using
+    const resolvedParams = await params;
+
+    // Check if user has permission to view users
+    const hasViewPermission = await hasPermission(
+      currentUser.role?.id || '',
+      currentUser.tenantId,
+      'users',
+      'view'
+    )
+
+    if (!hasViewPermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     // Get role name from the related Role object, default to 'user'
     const currentRoleName = currentUser.role?.name || 'user';
 
-    const resolvedParams = await params;
     const user = await db.user.findUnique({
       where: { id: resolvedParams.id },
       select: {
@@ -58,7 +76,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-// PUT /api/users/[id] - Update a user
+// PUT /api/users/[id] - Update a user (requires edit permission)
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const currentUser = await getCurrentUser(request)
@@ -69,11 +87,28 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
 
+    // Await params before using
+    const resolvedParams = await params;
+
+    // Check if user has permission to edit users
+    const hasEditPermission = await hasPermission(
+      currentUser.role?.id || '',
+      currentUser.tenantId,
+      'users',
+      'edit'
+    )
+
+    if (!hasEditPermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     // Get role name from the related Role object, default to 'user'
     const currentRoleName = currentUser.role?.name || 'user';
 
     const body = await request.json()
-    const resolvedParams = await params;
     
     // Validate input
     if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
@@ -194,7 +229,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-// DELETE /api/users/[id] - Delete a user
+// DELETE /api/users/[id] - Delete a user (requires delete permission)
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const currentUser = await getCurrentUser(request)
@@ -205,10 +240,27 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       })
     }
 
+    // Await params before using
+    const resolvedParams = await params;
+
+    // Check if user has permission to delete users
+    const hasDeletePermission = await hasPermission(
+      currentUser.role?.id || '',
+      currentUser.tenantId,
+      'users',
+      'delete'
+    )
+
+    if (!hasDeletePermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     // Get role name from the related Role object, default to 'user'
     const currentRoleName = currentUser.role?.name || 'user';
 
-    const resolvedParams = await params;
     // Check if user exists
     const existingUser = await db.user.findUnique({
       where: { id: resolvedParams.id }

@@ -19,6 +19,7 @@ interface InternetAsset {
   internetAccess?: string
   status: string
   note?: string
+  customFields?: any
 }
 
 // GET /api/assets/internet - Get all Internet assets for the user's tenant

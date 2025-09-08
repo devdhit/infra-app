@@ -1,14 +1,17 @@
 import { PrismaClient } from '../generated/prisma'
+import { db } from '@/lib/db'
 import { 
   successResponse, 
   errorResponse, 
   notFoundResponse, 
   badRequestResponse,
   conflictResponse,
-  validationErrorResponse
+  validationErrorResponse,
+  errorResponse as apiErrorResponse
 } from './api-utils'
-import { db } from '@/lib/db'
 import { emitAssetChange } from '@/lib/realtime'
+import { hasPermission, ResourceType, PermissionAction } from './permissions'
+import { User } from '@/types/users'
 
 // Define the asset types based on the Prisma schema and route files
 interface PCAsset {
@@ -100,7 +103,21 @@ interface AssetOperations<T> {
 
 // Generic asset API handler
 export class AssetApiHandler<T> {
-  constructor(private db: PrismaClient, private operations: AssetOperations<T>) {}
+  private resourceType: ResourceType;
+
+  constructor(private db: PrismaClient, private operations: AssetOperations<T>) {
+    // Map model names to resource types for permission checking
+    const modelToResourceMap: Record<string, ResourceType> = {
+      'PC': 'pc',
+      'Laptop': 'laptop',
+      'Printer': 'printer',
+      'License': 'license',
+      'WarehouseIT': 'warehouse',
+      'Internet': 'internet'
+    };
+    
+    this.resourceType = modelToResourceMap[this.operations.modelName] || 'assets';
+  }
 
   // Helper method to get optimized select fields based on asset type
   private getSelectFieldsForAssetType() {
@@ -236,12 +253,33 @@ export class AssetApiHandler<T> {
     }
   }
 
+  // Check if user has permission for an action
+  private async checkPermission(user: User, action: PermissionAction) {
+    // Handle case where role is null
+    if (!user.role?.id) {
+      return false;
+    }
+    
+    return await hasPermission(
+      user.role.id,
+      user.tenantId,
+      this.resourceType,
+      action
+    );
+  }
+
   // Get all assets with pagination and filtering
   async getAll(
-    user: { tenantId: string }, 
+    user: User, 
     queryParams: { page: number; limit: number; search: string; status: string }
   ) {
     try {
+      // Check permissions
+      const hasViewPermission = await this.checkPermission(user, 'view');
+      if (!hasViewPermission) {
+        return apiErrorResponse('Forbidden: Insufficient permissions to view assets', 403);
+      }
+
       const { page, limit, search, status } = queryParams
 
       const where: any = {
@@ -345,8 +383,14 @@ export class AssetApiHandler<T> {
   }
 
   // Get a specific asset by ID
-  async getById(user: { tenantId: string }, id: string) {
+  async getById(user: User, id: string) {
     try {
+      // Check permissions
+      const hasViewPermission = await this.checkPermission(user, 'view');
+      if (!hasViewPermission) {
+        return apiErrorResponse('Forbidden: Insufficient permissions to view asset', 403);
+      }
+
       // Get select fields for this asset type
       const selectFields = {
         id: true,
@@ -377,8 +421,14 @@ export class AssetApiHandler<T> {
   }
 
   // Create a new asset
-  async create(user: { id: string; tenantId: string }, body: T & { customFields?: Record<string, any> }) {
+  async create(user: User, body: T & { customFields?: Record<string, any> }) {
     try {
+      // Check permissions
+      const hasCreatePermission = await this.checkPermission(user, 'create');
+      if (!hasCreatePermission) {
+        return apiErrorResponse('Forbidden: Insufficient permissions to create asset', 403);
+      }
+
       // Validate required fields
       const validationErrors: Record<string, string> = {}
       
@@ -546,12 +596,18 @@ export class AssetApiHandler<T> {
   }
 
   // Update an existing asset
-  async update(user: { id: string; tenantId: string }, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
+  async update(user: User, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
     try {
       if (process.env.NODE_ENV === 'development') {
         console.log(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
       }
       
+      // Check permissions
+      const hasEditPermission = await this.checkPermission(user, 'edit');
+      if (!hasEditPermission) {
+        return apiErrorResponse('Forbidden: Insufficient permissions to edit asset', 403);
+      }
+
       // Check if asset exists and belongs to user's tenant
       const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
         where: { 
@@ -793,8 +849,14 @@ export class AssetApiHandler<T> {
   }
 
   // Delete an asset
-  async delete(user: { id: string; tenantId: string }, id: string) {
+  async delete(user: User, id: string) {
     try {
+      // Check permissions
+      const hasDeletePermission = await this.checkPermission(user, 'delete');
+      if (!hasDeletePermission) {
+        return apiErrorResponse('Forbidden: Insufficient permissions to delete asset', 403);
+      }
+
       // Check if asset exists and belongs to user's tenant
       const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
         where: { 
@@ -852,8 +914,14 @@ export class AssetApiHandler<T> {
   }
 
   // Bulk delete assets with optimized batch processing
-  async bulkDelete(user: { id: string; tenantId: string }, ids: string[]) {
+  async bulkDelete(user: User, ids: string[]) {
     try {
+      // Check permissions
+      const hasBulkDeletePermission = await this.checkPermission(user, 'bulkDelete');
+      if (!hasBulkDeletePermission) {
+        return apiErrorResponse('Forbidden: Insufficient permissions to bulk delete assets', 403);
+      }
+
       // Validate input
       if (!ids || ids.length === 0) {
         return badRequestResponse('No asset IDs provided')

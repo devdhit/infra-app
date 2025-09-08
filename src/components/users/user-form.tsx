@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { useTranslation } from "@/hooks/use-translation"
 import { UserFormProps, UserFormValues } from "@/types/users"
+import { useRoles } from '@/hooks/useRoles'
 
 const DEFAULT_ROLE = 'user'
 
@@ -33,11 +34,13 @@ export function UserForm({
   isSubmitting 
 }: UserFormProps) {
   const { t } = useTranslation()
+  const { data: roles = [] } = useRoles()
+  
   const [formData, setFormData] = useState<UserFormValues>({
     email: editingUser?.email || '',
     name: editingUser?.name || '',
     password: '',
-    role: (editingUser?.role?.name as 'admin' | 'user') || DEFAULT_ROLE,
+    role: editingUser?.role?.name || DEFAULT_ROLE,
     tenantId: editingUser?.tenantId || '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -49,7 +52,7 @@ export function UserForm({
         email: editingUser.email || '',
         name: editingUser.name || '',
         password: '',
-        role: (editingUser.role?.name as 'admin' | 'user') || DEFAULT_ROLE,
+        role: editingUser.role?.name || DEFAULT_ROLE,
         tenantId: editingUser.tenantId || '',
       })
     } else {
@@ -85,6 +88,10 @@ export function UserForm({
     
     if (!formData.tenantId) {
       newErrors.tenantId = t('users.form.tenantRequired') || 'Tenant is required'
+    }
+    
+    if (!formData.role) {
+      newErrors.role = t('users.form.roleRequired') || 'Role is required'
     }
     
     setErrors(newErrors)
@@ -225,17 +232,21 @@ export function UserForm({
               <div className="col-span-3">
                 <Select 
                   value={formData.role} 
-                  onValueChange={(value) => handleInputChange('role', value as 'admin' | 'user')}
+                  onValueChange={(value) => handleInputChange('role', value)}
                   disabled={isSubmitting}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">{t('users.form.userRole') || 'User'}</SelectItem>
-                    <SelectItem value="admin">{t('users.form.adminRole') || 'Admin'}</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.name}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {errors.role && <p className="text-sm text-red-500 mt-1">{errors.role}</p>}
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -252,7 +263,7 @@ export function UserForm({
                     <SelectValue placeholder={t('users.form.selectTenant') || 'Select a tenant'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {tenants.map((tenant) => (
+                    {tenants.map((tenant: any) => (
                       <SelectItem key={tenant.id} value={tenant.id}>
                         {tenant.name}
                       </SelectItem>

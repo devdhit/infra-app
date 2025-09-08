@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 
 // GET /api/tenants/[id] - Get a specific tenant
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,11 +14,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
 
+    // Await params before using
     const resolvedParams = await params;
-    // Non-admin users can only access their own tenant
-    // Get role name from the related Role object, default to 'user'
-    const roleName = user.role?.name || 'user';
-    if (roleName !== 'admin' && user.tenantId !== resolvedParams.id) {
+
+    // Check if user has permission to view tenants
+    const hasViewPermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'tenants',
+      'view'
+    )
+    
+    if (!hasViewPermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    
+    // Regular users can only access their own tenant
+    // Admins can access any tenant
+    const userRoleName = user.role?.name || 'user';
+    if (userRoleName !== 'admin' && user.tenantId !== resolvedParams.id) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
@@ -53,21 +71,36 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-// PUT /api/tenants/[id] - Update a tenant (admin only)
+// PUT /api/tenants/[id] - Update a tenant (requires edit permission)
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser(request)
-    // Get role name from the related Role object, default to 'user'
-    const roleName = user?.role?.name || 'user';
-    if (!user || roleName !== 'admin') {
+    if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
-    const body = await request.json()
+    // Await params before using
     const resolvedParams = await params;
+
+    // Check if user has permission to edit tenants
+    const hasEditPermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'tenants',
+      'edit'
+    )
+    
+    if (!hasEditPermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    const body = await request.json()
     
     // Validate input
     if (body.name !== undefined && (!body.name || body.name.trim().length === 0)) {
@@ -112,20 +145,35 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-// DELETE /api/tenants/[id] - Delete a tenant (admin only)
+// DELETE /api/tenants/[id] - Delete a tenant (requires delete permission)
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser(request)
-    // Get role name from the related Role object, default to 'user'
-    const roleName = user?.role?.name || 'user';
-    if (!user || roleName !== 'admin') {
+    if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
+    // Check if user has permission to delete tenants
+    const hasDeletePermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'tenants',
+      'delete'
+    )
+    
+    if (!hasDeletePermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     // Check if tenant has any associated data
     const tenant = await db.tenant.findUnique({
       where: { id: resolvedParams.id },

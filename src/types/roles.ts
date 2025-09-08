@@ -1,9 +1,36 @@
-// Define the resource types and permission actions
-export const RESOURCE_TYPES = ['users', 'tenants', 'assets', 'settings', 'roles', 'pc', 'laptop', 'printer', 'license', 'warehouse', 'internet'] as const
-export type ResourceType = typeof RESOURCE_TYPES[number]
+// Define the resource types and permission actions with more flexible typing
+export type ResourceType = string;  // Changed from literal types to string for flexibility
+export type PermissionAction = string;  // Changed from literal types to string for flexibility
 
-export const PERMISSION_ACTIONS = ['view', 'create', 'edit', 'delete', 'bulkDelete'] as const
-export type PermissionAction = typeof PERMISSION_ACTIONS[number]
+// Define common resource types for type safety where needed
+export const COMMON_RESOURCE_TYPES = [
+  'users', 
+  'tenants', 
+  'assets', 
+  'settings', 
+  'roles', 
+  'pc', 
+  'laptop', 
+  'printer', 
+  'license', 
+  'warehouse', 
+  'internet'
+] as const;
+
+// Define common permission actions for type safety where needed
+export const COMMON_PERMISSION_ACTIONS = [
+  'view', 
+  'create', 
+  'edit', 
+  'delete', 
+  'bulkDelete'
+] as const;
+
+// Define a type for common resource types
+export type CommonResourceType = typeof COMMON_RESOURCE_TYPES[number];
+
+// Define a type for common permission actions
+export type CommonPermissionAction = typeof COMMON_PERMISSION_ACTIONS[number];
 
 // Define the Role interface
 export interface Role {

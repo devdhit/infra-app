@@ -264,7 +264,7 @@ export default function SettingsPage() {
     {
       name: t('roles.title') || "Roles",
       icon: Shield,
-      href: "/settings/roles",
+      href: "/roles",
       description: t('roles.description') || "Manage system roles and permissions",
       color: "bg-indigo-100 text-indigo-700",
       gradient: "from-indigo-500 to-indigo-600",

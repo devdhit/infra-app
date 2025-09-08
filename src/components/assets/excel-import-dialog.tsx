@@ -63,6 +63,7 @@ export function ExcelImportDialog({
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([])
   const [excelColumns, setExcelColumns] = useState<string[]>([])
   const [databaseFields, setDatabaseFields] = useState<string[]>([])
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null) // Add progress state
   
   // Fetch custom fields for this asset type
   const modelType = getModelType(assetType)
@@ -304,6 +305,7 @@ export function ExcelImportDialog({
 
     setIsImporting(true);
     setImportResult(null);
+    setImportProgress(null); // Reset progress
 
     try {
       let totalCreatedCount = 0;
@@ -326,7 +328,7 @@ export function ExcelImportDialog({
           formData.append('columnMapping', JSON.stringify(mappingObj));
         }
 
-        const response = await api.post<any>('/assets/excel/import', formData, {
+        const response = await api.postExcelImport<any>('/assets/excel/import', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           }
@@ -340,6 +342,11 @@ export function ExcelImportDialog({
         } else {
           allErrors.push(`${file.name}: ${response.error || t('assets.excel.import.error', 'Failed to import assets')}`);
         }
+        
+        // Update progress if available
+        if (response.totalRows) {
+          setImportProgress({ current: totalCreatedCount, total: response.totalRows });
+        }
       }
 
       setImportResult({
@@ -349,22 +356,21 @@ export function ExcelImportDialog({
         errors: allErrors
       });
       
+      setImportProgress(null); // Clear progress when done
+      
       if (allErrors.length === 0) {
         toast.success(t('assets.excel.import.success', '{0} assets imported successfully', totalCreatedCount.toString()));
-        // Close dialog automatically on success
+        // Close dialog automatically on success after 4 seconds to allow user to see the message
         setTimeout(() => {
           handleClose();
           onImportSuccess();
-        }, 1500);
+        }, 4000);
       } else if (totalCreatedCount > 0) {
         toast.success(t('assets.excel.import.partialSuccess', '{0} assets imported with some errors', totalCreatedCount.toString()));
-        // Close dialog automatically on partial success
-        setTimeout(() => {
-          handleClose();
-          onImportSuccess();
-        }, 1500);
+        // Don't close dialog automatically on partial success - let user see errors
       } else {
         toast.error(t('assets.excel.import.error', 'Failed to import assets'));
+        // Don't close dialog automatically on failure - let user see errors
       }
       
       if (allErrors.length === 0 || totalCreatedCount > 0) {
@@ -377,7 +383,9 @@ export function ExcelImportDialog({
         success: false,
         message
       });
+      setImportProgress(null); // Clear progress on error
       toast.error(message);
+      // Don't close dialog automatically on exception - let user see errors
     } finally {
       setIsImporting(false);
     }
@@ -442,6 +450,11 @@ export function ExcelImportDialog({
                   <p className="mt-2 text-sm text-muted-foreground">
                     {t('assets.excel.import.fileHint', 'Supported formats: .xlsx, .xls')}
                   </p>
+                  {isImporting && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {t('assets.excel.import.processing', 'Processing large files may take a few minutes. Please be patient.')}
+                    </p>
+                  )}
                 </div>
 
                 {/* Column Mapping Toggle */}
@@ -589,6 +602,23 @@ export function ExcelImportDialog({
                       )}
                     </AlertDescription>
                   </Alert>
+                )}
+                
+                {/* Progress indicator */}
+                {isImporting && importProgress && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      {t('assets.excel.import.progress', 'Importing... {0} of {1}', 
+                        importProgress.current.toString(), 
+                        importProgress.total.toString())}
+                    </p>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

@@ -11,8 +11,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Return user information without sensitive data
-    const { password, ...userWithoutPassword } = user;
-    return successResponse(userWithoutPassword);
+    // Note: User type doesn't include password field, so no need to exclude it
+    const userWithoutSensitiveData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role ? {
+        id: user.role.id,
+        name: user.role.name,
+        description: user.role.description,
+        permissions: user.role.permissions,
+        tenantId: user.role.tenantId,
+        createdAt: user.role.createdAt,
+        updatedAt: user.role.updatedAt
+      } : null,
+      tenantId: user.tenantId,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+    
+    return successResponse(userWithoutSensitiveData);
   } catch (error) {
     console.error('Error fetching user data:', error)
     return errorResponse('Internal server error');

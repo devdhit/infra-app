@@ -1,4 +1,3 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { 
@@ -7,7 +6,7 @@ import {
   parseRequestBody,
   errorResponse
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
+import { laptopHandler } from '@/lib/asset-api-handler'
 
 // Define the Laptop asset type
 interface LaptopAsset {
@@ -19,15 +18,8 @@ interface LaptopAsset {
   email?: string
   model?: string
   status: string
+  customFields?: any
 }
-
-// Create handler for Laptop assets
-const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
-  modelName: 'Laptop',
-  requiredFields: ['dept', 'barcode', 'status'],
-  uniqueField: 'barcode',
-  searchFields: ['barcode', 'dept', 'model']
-})
 
 // GET /api/assets/laptop - Get all Laptop assets for the user's tenant
 export async function GET(request: NextRequest) {
@@ -58,5 +50,27 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in Laptop POST route:', error)
     return errorResponse('Internal server error')
+  }
+}
+
+// DELETE /api/assets/laptop - Bulk delete Laptop assets
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return unauthorizedResponse()
+    }
+
+    const body = await parseRequestBody<{ ids: string[] }>(request)
+    return await laptopHandler.bulkDelete(user, body.ids)
+  } catch (error: any) {
+    console.error('Error in Laptop bulk DELETE route:', error)
+    
+    // Handle JSON parsing errors
+    if (error.message && error.message.includes('Invalid JSON')) {
+      return errorResponse('Invalid request body. Please ensure the request is valid JSON.', 400)
+    }
+    
+    return errorResponse('Failed to delete Laptop assets. Please try again later.')
   }
 }

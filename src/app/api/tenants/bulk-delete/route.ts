@@ -3,14 +3,25 @@ import { getCurrentUser } from '@/lib/auth'
 import { unauthorizedResponse, errorResponse, successResponse } from '@/lib/api-utils'
 import { db } from '@/lib/db'
 import { createHistoryRecord } from '@/lib/history'
+import { hasPermission } from '@/lib/permissions'
 
 // POST /api/tenants/bulk-delete - Bulk delete tenants
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
-    // Get role name from the related Role object, default to 'user'
-    const roleName = user?.role?.name || 'user';
-    if (!user || roleName !== 'admin') {
+    if (!user) {
+      return unauthorizedResponse()
+    }
+
+    // Check if user has permission to bulk delete tenants
+    const hasBulkDeletePermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'tenants',
+      'bulkDelete'
+    )
+    
+    if (!hasBulkDeletePermission) {
       return unauthorizedResponse()
     }
 

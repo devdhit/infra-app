@@ -65,11 +65,11 @@ const navigationItems: NavigationItem[] = [
     nameKey: "nav.management", 
     href: "/management", 
     icon: Users,
-    roles: ['admin'], // Only admins can access management sections
+    roles: ['admin', 'user'], // Both admin and user roles can access management sections
     children: [
-      { nameKey: "nav.users", href: "/users", icon: Users, roles: ['admin'] },
-      { nameKey: "nav.tenants", href: "/tenants", icon: Building, roles: ['admin'] },
-      { nameKey: "nav.roles", href: "/settings/roles", icon: Shield, roles: ['admin'] },
+      { nameKey: "nav.users", href: "/users", icon: Users, roles: ['admin', 'user'] },
+      { nameKey: "nav.tenants", href: "/tenants", icon: Building, roles: ['admin', 'user'] },
+      { nameKey: "nav.roles", href: "/roles", icon: Shield, roles: ['admin', 'user'] }, // User role can view roles
     ]
   },
   { 
@@ -104,7 +104,10 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
         setApplicationName(settings.applicationName);
         setShortName(settings.shortName);
       } catch (error) {
-        console.error('Failed to load application name:', error);
+        // Log errors only in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to load application name:', error);
+        }
       }
     };
 
@@ -125,9 +128,18 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
 
   // Memoize filtered navigation items to prevent unnecessary re-renders
   const filteredNavigationItems = useMemo(() => {
-    return navigationItems.filter(item => 
-      !item.roles || item.roles.includes(userRole)
-    );
+    return navigationItems.filter(item => {
+      // If no roles are specified, item is accessible to all
+      if (!item.roles) return true;
+      
+      // Check if user's role is in the allowed roles (case-insensitive)
+      const isAllowed = item.roles.some(role => role.toLowerCase() === userRole.toLowerCase());
+      // For debugging in development only
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Navigation item ${item.nameKey} allowed for role ${userRole}:`, isAllowed);
+      }
+      return isAllowed;
+    });
   }, [userRole]);
 
   const handleLogout = useCallback(async () => {
@@ -196,7 +208,18 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
         {item.children && expandedItems[item.nameKey] && (
           <div className="ml-9 mt-1 space-y-1">
             {item.children
-              .filter(child => !child.roles || child.roles.includes(userRole))
+              .filter(child => {
+                // If no roles are specified, item is accessible to all
+                if (!child.roles) return true;
+                
+                // Check if user's role is in the allowed roles (case-insensitive)
+                const isAllowed = child.roles.some(role => role.toLowerCase() === userRole.toLowerCase());
+                // For debugging in development only
+                if (process.env.NODE_ENV === 'development') {
+                  console.log(`Child navigation item ${child.nameKey} allowed for role ${userRole}:`, isAllowed);
+                }
+                return isAllowed;
+              })
               .map((child) => (
                 <Link
                   key={child.nameKey}

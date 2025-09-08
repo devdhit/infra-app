@@ -1,16 +1,30 @@
 import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 
-// GET /api/tenants - Get all tenants (admin only)
+// GET /api/tenants - Get all tenants (requires view permission)
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
-    // Get role name from the related Role object, default to 'user'
-    const roleName = user?.role?.name || 'user';
-    if (!user || roleName !== 'admin') {
+    if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Check if user has permission to view tenants
+    const hasViewPermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'tenants',
+      'view'
+    )
+    
+    if (!hasViewPermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' }
       })
     }
@@ -36,15 +50,28 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/tenants - Create a new tenant (admin only)
+// POST /api/tenants - Create a new tenant (requires create permission)
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
-    // Get role name from the related Role object, default to 'user'
-    const roleName = user?.role?.name || 'user';
-    if (!user || roleName !== 'admin') {
+    if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Check if user has permission to create tenants
+    const hasCreatePermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'tenants',
+      'create'
+    )
+    
+    if (!hasCreatePermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' }
       })
     }

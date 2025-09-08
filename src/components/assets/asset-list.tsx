@@ -90,6 +90,12 @@ interface AssetListProps {
   title: string;
   columns: AssetColumn[];
   formFields: AssetFormField[];
+  // Permission props
+  canView?: boolean | null;
+  canCreate?: boolean | null;
+  canEdit?: boolean | null;
+  canDelete?: boolean | null;
+  canBulkDelete?: boolean | null;
 }
 
 // Define columns for the DataTable
@@ -108,6 +114,10 @@ const getAssetColumns = (
   search: string,
   statusFilter: string,
   refetch: () => void, // Add refetch function as parameter
+  // Permission props
+  canView: boolean | null = true,
+  canEdit: boolean | null = true,
+  canDelete: boolean | null = true
 ): ColumnDef<Asset>[] => {
   // Create the selection column
   const selectionColumn: ColumnDef<Asset> = {
@@ -250,6 +260,16 @@ const getAssetColumns = (
     cell: ({ row }) => {
       const asset = row.original;
       
+      // If no permissions are provided, show all actions
+      const canViewAsset = canView !== false;
+      const canEditAsset = canEdit !== false;
+      const canDeleteAsset = canDelete !== false;
+      
+      // If no permissions are granted, don't show the actions column
+      if (!canViewAsset && !canEditAsset && !canDeleteAsset) {
+        return <div className="text-center">-</div>;
+      }
+      
       return (
         <div className="text-center">
           <DropdownMenu>
@@ -260,18 +280,24 @@ const getAssetColumns = (
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleView(asset)}>
-                <Eye className="mr-2 h-4 w-4" />
-                {t('common.view', 'View')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEdit(asset)}>
-                <Edit className="mr-2 h-4 w-4" />
-                {t('common.edit', 'Edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDelete(asset.id)}>
-                <Trash className="mr-2 h-4 w-4" />
-                {t('common.delete', 'Delete')}
-              </DropdownMenuItem>
+              {canViewAsset && (
+                <DropdownMenuItem onClick={() => handleView(asset)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  {t('common.view', 'View')}
+                </DropdownMenuItem>
+              )}
+              {canEditAsset && (
+                <DropdownMenuItem onClick={() => handleEdit(asset)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  {t('common.edit', 'Edit')}
+                </DropdownMenuItem>
+              )}
+              {canDeleteAsset && (
+                <DropdownMenuItem onClick={() => handleDelete(asset.id)}>
+                  <Trash className="mr-2 h-4 w-4" />
+                  {t('common.delete', 'Delete')}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -286,7 +312,17 @@ const getAssetColumns = (
 
 // extractDepartments function removed - was unused
 
-export function AssetList({ assetType, title, columns, formFields }: AssetListProps) {
+export function AssetList({ 
+  assetType, 
+  title, 
+  columns, 
+  formFields,
+  canView = true,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
+  canBulkDelete = true
+}: AssetListProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -852,6 +888,9 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
       search,
       statusFilter,
       refetch, // Pass refetch function
+      canView, // Pass permission props
+      canEdit,
+      canDelete
     );
     
     // Apply column order if reordering is enabled
@@ -879,7 +918,10 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
     search,
     statusFilter,
     columnOrder,
-    refetch // Add refetch to dependencies
+    refetch, // Add refetch to dependencies
+    canView, // Add permission props to dependencies
+    canEdit,
+    canDelete
   ]);
 
   // Handle row selection change from DataTable
@@ -1006,6 +1048,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               size="sm" 
               className="hidden sm:flex"
               onClick={() => setIsExportDialogOpen(true)}
+              disabled={canView === false}
             >
               <Download className="h-4 w-4 mr-2" />
               {t('common.export', "Export")}
@@ -1015,6 +1058,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               size="sm" 
               className="hidden sm:flex"
               onClick={() => setIsImportDialogOpen(true)}
+              disabled={canCreate === false}
             >
               <Upload className="h-4 w-4 mr-2" />
               {t('common.import', "Import")}
@@ -1024,6 +1068,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               size="icon" 
               className="sm:hidden"
               onClick={() => setIsExportDialogOpen(true)}
+              disabled={canView === false}
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -1032,11 +1077,12 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               size="icon" 
               className="sm:hidden"
               onClick={() => setIsImportDialogOpen(true)}
+              disabled={canCreate === false}
             >
               <Upload className="h-4 w-4" />
             </Button>
           </div>
-          {selectedAssets.length > 0 && (
+          {selectedAssets.length > 0 && canBulkDelete && (
             <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
               <Trash className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">{t('common.delete', "Delete")}</span> 
@@ -1044,11 +1090,13 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
               <span className="hidden sm:inline"> ({selectedAssets.length})</span>
             </Button>
           )}
-          <Button size="sm" onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">{t('common.create', "Create")} {t(`assets.${assetType}.title`, title)}</span>
-            <span className="sm:hidden">{t('common.create', "Create")}</span>
-          </Button>
+          {canCreate && (
+            <Button size="sm" onClick={handleCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">{t('common.create', "Create")} {t(`assets.${assetType}.title`, title)}</span>
+              <span className="sm:hidden">{t('common.create', "Create")}</span>
+            </Button>
+          )}
         </div>
       </div>
       
@@ -1080,12 +1128,13 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                   value={search}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
                   className="pl-8 w-full sm:w-64"
+                  disabled={canView === false}
                 />
               </div>
               <div className="flex gap-2 w-full sm:w-auto justify-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto" disabled={canView === false}>
                       {statusFilter 
                         ? t(`assets.status.${statusFilter}`, statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1))
                         : t('common.filter', "Filter")}
@@ -1111,7 +1160,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                 {/* Moved column visibility control to card header for better accessibility */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto" disabled={canView === false}>
                       <EyeIcon className="h-4 w-4 mr-2" />
                       {t('common.columns', "Columns")}
                     </Button>
@@ -1133,6 +1182,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                             size="sm" 
                             onClick={() => toggleAllColumns(true)}
                             className="h-8 px-2"
+                            disabled={canView === false}
                           >
                             {t('common.show', "Show")}
                           </Button>
@@ -1141,6 +1191,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                             size="sm" 
                             onClick={() => toggleAllColumns(false)}
                             className="h-8 px-2"
+                            disabled={canView === false}
                           >
                             {t('common.hide', "Hide")}
                           </Button>
@@ -1151,6 +1202,7 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
                             <Checkbox
                               checked={columnVisibility[column.key]}
                               onCheckedChange={() => toggleColumnVisibility(column.key)}
+                              disabled={canView === false}
                             />
                           </div>
                         ))}
@@ -1205,56 +1257,66 @@ export function AssetList({ assetType, title, columns, formFields }: AssetListPr
         assetType={assetType}
       />
       
-      {/* Form Dialog */}
-      <MemoizedAssetFormDialog
-        assetType={assetType}
-        title={title}
-        fields={allFormFields}
-        initialData={editingAsset}
-        isOpen={isFormDialogOpen}
-        onClose={() => setIsFormDialogOpen(false)}
-        onSuccess={handleFormSuccess}
-      />
+      {/* Form Dialog - Only show if user has create or edit permissions */}
+      {(canCreate || canEdit) && (
+        <MemoizedAssetFormDialog
+          assetType={assetType}
+          title={title}
+          fields={allFormFields}
+          initialData={editingAsset}
+          isOpen={isFormDialogOpen}
+          onClose={() => setIsFormDialogOpen(false)}
+          onSuccess={handleFormSuccess}
+        />
+      )}
       
-      {/* Delete Confirmation Dialog */}
-      <MemoizedDeleteConfirmDialog
-        title={t('assets.delete.confirmTitle', `Delete {0}`, title)}
-        description={t('assets.delete.confirmDescription', `Are you sure you want to delete this {0}? This action cannot be undone.`, title.toLowerCase())}
-        isOpen={isDeleteDialogOpen}
-        isDeleting={deleteMutation.isPending}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={confirmDelete}
-        error={deleteMutation.error ? (deleteMutation.error as ApiError).message : undefined}
-      />
+      {/* Delete Confirmation Dialog - Only show if user has delete permissions */}
+      {canDelete && (
+        <MemoizedDeleteConfirmDialog
+          title={t('assets.delete.confirmTitle', `Delete {0}`, title)}
+          description={t('assets.delete.confirmDescription', `Are you sure you want to delete this {0}? This action cannot be undone.`, title.toLowerCase())}
+          isOpen={isDeleteDialogOpen}
+          isDeleting={deleteMutation.isPending}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onConfirm={confirmDelete}
+          error={deleteMutation.error ? (deleteMutation.error as ApiError).message : undefined}
+        />
+      )}
       
-      {/* Bulk Delete Confirmation Dialog */}
-      <MemoizedBulkDeleteDialog
-        title={title}
-        count={selectedAssets.length}
-        isOpen={isBulkDeleteDialogOpen}
-        isDeleting={bulkDeleteMutation.isPending}
-        onClose={() => setIsBulkDeleteDialogOpen(false)}
-        onConfirm={confirmBulkDelete}
-        error={bulkDeleteMutation.error ? (bulkDeleteMutation.error as ApiError).message : undefined}
-      />
+      {/* Bulk Delete Confirmation Dialog - Only show if user has bulk delete permissions */}
+      {canBulkDelete && (
+        <MemoizedBulkDeleteDialog
+          title={title}
+          count={selectedAssets.length}
+          isOpen={isBulkDeleteDialogOpen}
+          isDeleting={bulkDeleteMutation.isPending}
+          onClose={() => setIsBulkDeleteDialogOpen(false)}
+          onConfirm={confirmBulkDelete}
+          error={bulkDeleteMutation.error ? (bulkDeleteMutation.error as ApiError).message : undefined}
+        />
+      )}
       
-      {/* Import Dialog */}
-      <MemoizedExcelImportDialog
-        assetType={assetType}
-        title={title}
-        isOpen={isImportDialogOpen}
-        onClose={() => setIsImportDialogOpen(false)}
-        onImportSuccess={handleImportSuccess}
-      />
+      {/* Import Dialog - Only show if user has create permissions */}
+      {canCreate && (
+        <MemoizedExcelImportDialog
+          assetType={assetType}
+          title={title}
+          isOpen={isImportDialogOpen}
+          onClose={() => setIsImportDialogOpen(false)}
+          onImportSuccess={handleImportSuccess}
+        />
+      )}
       
-      {/* Export Dialog */}
-      <MemoizedExcelExportDialog
-        assetType={assetType}
-        title={title}
-        isOpen={isExportDialogOpen}
-        onClose={() => setIsExportDialogOpen(false)}
-        selectedAssetIds={selectedAssets}
-      />
+      {/* Export Dialog - Only show if user has view permissions */}
+      {canView && (
+        <MemoizedExcelExportDialog
+          assetType={assetType}
+          title={title}
+          isOpen={isExportDialogOpen}
+          onClose={() => setIsExportDialogOpen(false)}
+          selectedAssetIds={selectedAssets}
+        />
+      )}
     </div>
   );
 }

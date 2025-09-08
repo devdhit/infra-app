@@ -1,4 +1,3 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { 
@@ -6,29 +5,8 @@ import {
   parseRequestBody,
   errorResponse
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
+import { printerHandler } from '@/lib/asset-api-handler'
 
-// Define the Printer asset type
-interface PrinterAsset {
-  dept: string
-  location?: string
-  ip?: string
-  model?: string
-  color: boolean
-  barcode: string
-  sapCode?: string
-  date?: string
-  note?: string
-}
-
-// Create handler for Printer assets
-const printerHandler = new AssetApiHandler<PrinterAsset>(db, {
-  modelName: 'Printer',
-  requiredFields: ['dept', 'barcode', 'color'],
-  uniqueField: 'barcode',
-  searchFields: ['barcode', 'dept', 'model', 'ip', 'note'],
-  include: {}
-})
 
 // POST /api/assets/printer/bulk-delete - Bulk delete Printer assets
 export async function POST(request: NextRequest) {

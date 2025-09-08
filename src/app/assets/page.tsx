@@ -17,7 +17,16 @@ import Link from "next/link";
 import { useTranslation } from "@/hooks/use-translation";
 import { useMemo } from "react";
 
-const assetTypes = [
+// Define the structure for asset types with proper TypeScript typing
+interface AssetType {
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  description: string;
+  color: string;
+}
+
+const assetTypes: AssetType[] = [
   {
     name: "PC",
     icon: Monitor,
@@ -67,7 +76,7 @@ export default function AssetsPage() {
           <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full border-t-4 border-t-transparent hover:border-t-4 hover:border-t-blue-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {assetType.name}
+                {t(`nav.${assetType.name.toLowerCase()}`) || assetType.name}
               </CardTitle>
               <div className={`p-2 rounded-full ${assetType.color}`}>
                 <Icon className="h-4 w-4" />
@@ -96,7 +105,7 @@ export default function AssetsPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             <HomeIcon className="h-8 w-8 mr-3 text-blue-500" />
-            Assets
+            {t('nav.assets') || 'Assets'}
           </h1>
           <p className="text-muted-foreground">{t('assets.description') || 'Manage all your IT assets in one place'}</p>
         </div>
@@ -132,22 +141,22 @@ export default function AssetsPage() {
             <div className="flex flex-col items-center justify-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
               <Monitor className="h-8 w-8 text-blue-500 mb-2" />
               <div className="text-2xl font-bold">0</div>
-              <div className="text-sm text-muted-foreground">{t('assets.pc.title') || 'Total PCs'}</div>
+              <div className="text-sm text-muted-foreground">{t('nav.pc') || 'Total PCs'}</div>
             </div>
             <div className="flex flex-col items-center justify-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
               <Laptop className="h-8 w-8 text-green-500 mb-2" />
               <div className="text-2xl font-bold">0</div>
-              <div className="text-sm text-muted-foreground">{t('assets.laptop.title') || 'Total Laptops'}</div>
+              <div className="text-sm text-muted-foreground">{t('nav.laptop') || 'Total Laptops'}</div>
             </div>
             <div className="flex flex-col items-center justify-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
               <Printer className="h-8 w-8 text-purple-500 mb-2" />
               <div className="text-2xl font-bold">0</div>
-              <div className="text-sm text-muted-foreground">{t('assets.printer.title') || 'Total Printers'}</div>
+              <div className="text-sm text-muted-foreground">{t('nav.printer') || 'Total Printers'}</div>
             </div>
             <div className="flex flex-col items-center justify-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
               <Key className="h-8 w-8 text-yellow-500 mb-2" />
               <div className="text-2xl font-bold">0</div>
-              <div className="text-sm text-muted-foreground">{t('assets.license.title') || 'Total Licenses'}</div>
+              <div className="text-sm text-muted-foreground">{t('nav.license') || 'Total Licenses'}</div>
             </div>
           </div>
         </CardContent>

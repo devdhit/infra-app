@@ -91,11 +91,17 @@ export async function POST(request: NextRequest) {
       return badRequestResponse('Email and password are required')
     }
 
-    // Find user by email
-    const user = await db.user.findUnique({
-      where: { email },
-      include: { role: true }
-    })
+    // Find user by email with proper error handling
+    let user;
+    try {
+      user = await db.user.findUnique({
+        where: { email },
+        include: { role: true }
+      })
+    } catch (dbError) {
+      console.error('Database error during user lookup:', dbError)
+      return errorResponse('Service temporarily unavailable. Please try again later.', 503)
+    }
 
     // Check if user exists
     if (!user) {
@@ -103,8 +109,15 @@ export async function POST(request: NextRequest) {
       return errorResponse('Invalid email or password', 401)
     }
 
-    // Verify password
-    const isValidPassword = await verifyPassword(password, user.password)
+    // Verify password with proper error handling
+    let isValidPassword;
+    try {
+      isValidPassword = await verifyPassword(password, user.password)
+    } catch (passwordError) {
+      console.error('Password verification error:', passwordError)
+      return errorResponse('Service temporarily unavailable. Please try again later.', 503)
+    }
+    
     if (!isValidPassword) {
       recordFailedAttempt(ip)
       return errorResponse('Invalid email or password', 401)
@@ -131,7 +144,10 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: roleName,
+        role: {
+          id: user.role?.id,
+          name: user.role?.name || 'user'
+        },
         tenantId: user.tenantId
       }
     })

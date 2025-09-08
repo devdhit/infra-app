@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 
 // GET /api/dashboard - Get dashboard statistics
 export async function GET(request: NextRequest) {
@@ -9,6 +10,21 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Check if user has permission to view assets dashboard
+    const hasViewPermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'assets',
+      'view'
+    )
+    
+    if (!hasViewPermission) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' }
       })
     }

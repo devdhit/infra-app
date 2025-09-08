@@ -17,8 +17,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
+    // Await params before using
+    const resolvedParams = await params;
+
     const body = await request.json()
-    const resolvedParams = await params
     
     // Extract the asset type from the request headers or query params
     const assetType = request.headers.get('x-asset-type') || 
@@ -111,8 +113,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!user) {
       return unauthorizedResponse()
     }
-
-    const resolvedParams = await params
+    
+    // Await params before using
+    const resolvedParams = await params;
     
     // Extract the asset type from the request headers or query params
     const assetType = request.headers.get('x-asset-type') || 

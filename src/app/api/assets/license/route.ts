@@ -1,4 +1,3 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { 
@@ -7,7 +6,7 @@ import {
   parseRequestBody,
   errorResponse
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
+import { licenseHandler } from '@/lib/asset-api-handler'
 
 // Define the License asset type
 interface LicenseAsset {
@@ -22,15 +21,8 @@ interface LicenseAsset {
   ip?: string
   date?: string
   updateStatus?: string
+  customFields?: any
 }
-
-// Create handler for License assets
-const licenseHandler = new AssetApiHandler<LicenseAsset>(db, {
-  modelName: 'License',
-  requiredFields: ['productKey'],
-  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'updateStatus'],
-  include: {}
-})
 
 // GET /api/assets/license - Get all License assets for the user's tenant
 export async function GET(request: NextRequest) {
@@ -61,5 +53,27 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in License POST route:', error)
     return errorResponse('Internal server error')
+  }
+}
+
+// DELETE /api/assets/license - Bulk delete License assets
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return unauthorizedResponse()
+    }
+
+    const body = await parseRequestBody<{ ids: string[] }>(request)
+    return await licenseHandler.bulkDelete(user, body.ids)
+  } catch (error: any) {
+    console.error('Error in License bulk DELETE route:', error)
+    
+    // Handle JSON parsing errors
+    if (error.message && error.message.includes('Invalid JSON')) {
+      return errorResponse('Invalid request body. Please ensure the request is valid JSON.', 400)
+    }
+    
+    return errorResponse('Failed to delete License assets. Please try again later.')
   }
 }

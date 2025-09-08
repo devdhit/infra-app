@@ -152,6 +152,45 @@ export function useDeleteRole(id: string, options: RolesMutationOptions<void, vo
   })
 }
 
+// Bulk delete roles hook
+export function useBulkDeleteRoles(options: RolesMutationOptions<void, { ids: string[] }> = {}) {
+  const queryClient = useQueryClient()
+  
+  return useMutation<void, ApiError, { ids: string[] }>({
+    mutationFn: async ({ ids }: { ids: string[] }) => {
+      const response = await api.post<void, { ids: string[] }>('/roles/bulk-delete', { ids })
+      return response
+    },
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      if (options.onSuccess) {
+        options.onSuccess(data, variables, context)
+      }
+    },
+    onError: (error, variables, context) => {
+      // Handle error
+      let message = 'Failed to delete roles'
+      
+      if (error.status === 403) {
+        message = 'Access denied. You do not have permission to delete these roles'
+      } else if (error.status === 400) {
+        message = 'Bad request. No roles selected for deletion'
+      } else if (error.status === 500) {
+        message = 'Server error. Please try again later'
+      } else if (error.message) {
+        message = error.message
+      }
+      
+      toast.error(message)
+      
+      if (options.onError) {
+        options.onError(error, variables, context)
+      }
+    },
+    ...options
+  })
+}
+
 // Get a specific role
 export function useRole(id: string) {
   return useQuery<Role, ApiError, Role, string[]>({

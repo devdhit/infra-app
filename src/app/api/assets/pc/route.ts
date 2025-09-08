@@ -1,4 +1,3 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { 
@@ -7,7 +6,7 @@ import {
   parseRequestBody,
   errorResponse
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
+import { pcHandler } from '@/lib/asset-api-handler'
 
 // Define the PC asset type based on the Prisma schema
 interface PCAsset {
@@ -22,15 +21,8 @@ interface PCAsset {
   userName?: string
   status: string
   note?: string
+  customFields?: any
 }
-
-// Create handler for PC assets
-const pcHandler = new AssetApiHandler<PCAsset>(db, {
-  modelName: 'PC',
-  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
-  uniqueField: 'cpuBarcode',
-  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note', 'userName']
-})
 
 // GET /api/assets/pc - Get all PC assets for the user's tenant
 export async function GET(request: NextRequest) {
