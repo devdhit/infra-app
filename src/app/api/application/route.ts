@@ -81,8 +81,10 @@ export async function POST(request: Request) {
       );
     }
     
-    // Update application name (this will store it in localStorage on the client side)
-    // For server-side, we'll return the name and let the client handle localStorage
+    // Update application name
+    setApplicationName(applicationName);
+    
+    // Return updated settings
     const shortName = applicationName.split(' ').map(word => word.charAt(0)).join('').toUpperCase() || 'ITAMS';
     
     return NextResponse.json({
