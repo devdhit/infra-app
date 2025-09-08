@@ -1,16 +1,10 @@
 // Only import and use PrismaClient on the server side
-let db: any;
-
-if (typeof window === 'undefined') {
-  // Server-side only
-  const { db: serverDb } = require('@/lib/db');
-  db = serverDb;
-}
+import { db } from './db';
 
 import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
-import { UserJwtPayload } from '@/types/users'
+import { UserJwtPayload, User } from '@/types/users'
 
 // Use environment-specific JWT secret with fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-for-development'
@@ -49,9 +43,9 @@ export function verifyToken(token: string): UserJwtPayload | null {
 /**
  * Get the current user from the request
  */
-export async function getCurrentUser(request: NextRequest) {
+export async function getCurrentUser(request: NextRequest): Promise<User | null> {
   // Prevent running on the browser
-  if (typeof window !== 'undefined' || !db) {
+  if (typeof window !== 'undefined') {
     return null;
   }
   
@@ -76,13 +70,48 @@ export async function getCurrentUser(request: NextRequest) {
     // Check if token is expired
     if (payload.exp * 1000 < Date.now()) return null
 
-    // Fetch user from database
+    // Fetch user from database with role relation
     const user = await db.user.findUnique({
       where: { id: payload.id },
       include: { tenant: true, role: true }
     })
 
-    return user
+    // If user exists, convert the role permissions from JsonValue to Record<string, string[]>
+    // and convert Date objects to strings
+    if (user && user.role) {
+      return {
+        ...user,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+        role: {
+          ...user.role,
+          createdAt: user.role.createdAt.toISOString(),
+          updatedAt: user.role.updatedAt.toISOString(),
+          permissions: user.role.permissions as Record<string, string[]>
+        },
+        tenant: user.tenant ? {
+          ...user.tenant,
+          createdAt: user.tenant.createdAt.toISOString(),
+          updatedAt: user.tenant.updatedAt.toISOString()
+        } : null
+      } as User;
+    }
+
+    // Convert Date objects to strings for users without roles
+    if (user) {
+      return {
+        ...user,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+        tenant: user.tenant ? {
+          ...user.tenant,
+          createdAt: user.tenant.createdAt.toISOString(),
+          updatedAt: user.tenant.updatedAt.toISOString()
+        } : null
+      } as User;
+    }
+
+    return user as User | null;
   } catch (error) {
     console.error('Error getting current user:', error)
     return null
@@ -111,4 +140,17 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   }
   
   return await bcrypt.compare(password, hash)
+}
+
+// Cleanup function to disconnect the database when needed
+export async function cleanupAuth() {
+  if (typeof window === 'undefined') {
+    // Server-side only
+    try {
+      // Don't disconnect the shared db instance here as it's managed in db.ts
+      // This prevents connection churn which can lead to "too many clients" errors
+    } catch (error) {
+      console.error('Error in auth cleanup:', error);
+    }
+  }
 }

@@ -43,11 +43,8 @@ export function RolesTable({
   }
 
   const handleSelectAll = () => {
-    if (selectedRoles.size === roles.length) {
-      setSelectedRoles(new Set())
-    } else {
-      setSelectedRoles(new Set(roles.map(role => role.id)))
-    }
+    const newSet: Set<string> = selectedRoles.size === roles.length ? new Set() : new Set(roles.map(role => role.id));
+    setSelectedRoles(newSet);
   }
 
   const formatDate = (dateString: string) => {
@@ -128,9 +125,7 @@ export function RolesTable({
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => {
-              // Handle bulk delete if needed
-            }}
+            onClick={() => onDelete(Array.from(selectedRoles).join(','))}
             disabled={isDeleting}
           >
             {t('common.delete') || 'Delete'}

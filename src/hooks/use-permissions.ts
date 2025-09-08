@@ -1,14 +1,23 @@
 import { useCurrentUser } from './useApi';
 import { ResourceType, PermissionAction } from '@/lib/permissions';
 import { api } from '@/lib/api';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
+import { User } from '@/types/users';
 
 /**
  * Hook to check user permissions
  * @returns Object with permission checking functions
  */
 export function usePermissions() {
-  const { data: user, isLoading: isUserLoading } = useCurrentUser();
+  const { data: user, isLoading: isUserLoading } = useCurrentUser() as { data: User | undefined; isLoading: boolean };
+  const isMountedRef = useRef(true);
+
+  // Clean up ref on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   /**
    * Check if the current user has permission to perform an action on a resource
@@ -16,34 +25,66 @@ export function usePermissions() {
   const checkPermission = useCallback(async (
     resource: ResourceType,
     action: PermissionAction
-  ) => {
+  ): Promise<boolean> => {
     // Prevent running on the server or when user data is not available
-    if (typeof window === 'undefined' || !user || !user.role?.id || !user.tenantId || isUserLoading) {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    
+    if (!user) {
+      return false;
+    }
+    
+    if (!user.role?.id) {
+      return false;
+    }
+    
+    if (!user.tenantId) {
       return false;
     }
     
     try {
+      // For debugging in development only
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Sending permission check request:', {
+          url: "/permissions/check",
+          data: {
+            resource,
+            action
+          }
+        });
+      }
+      
       // Make API call to check permissions using the authenticated API client
+      // The API will use the current user's role and tenant ID
       const response = await api.post<{
         hasPermission: boolean;
       }, {
-        roleId: string;
-        tenantId: string;
         resource: ResourceType;
         action: PermissionAction;
       }>(`/permissions/check`, {
-        roleId: user.role.id, // Use role ID, not role name
-        tenantId: user.tenantId,
         resource,
         action
       });
       
+      // For debugging in development only
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Permission check response:', {
+          resource,
+          action,
+          hasPermission: response.hasPermission
+        });
+      }
+      
       return response.hasPermission;
     } catch (error) {
-      console.error('Error checking permissions:', error);
+      // Log errors only in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error checking permissions:', error);
+      }
       return false;
     }
-  }, [user, isUserLoading]);
+  }, [user]); // FIX: Remove isUserLoading from dependencies as it's not used in the function
 
   /**
    * Check if the current user has any of the specified permissions
@@ -51,9 +92,9 @@ export function usePermissions() {
   const checkAnyPermission = useCallback(async (
     resource: ResourceType,
     actions: PermissionAction[]
-  ) => {
+  ): Promise<boolean> => {
     // Prevent running on the server or when user data is not available
-    if (typeof window === 'undefined' || !user || !user.role?.id || !user.tenantId || isUserLoading) {
+    if (typeof window === 'undefined' || !user || !user.role?.id || !user.tenantId) {
       return false;
     }
     
@@ -63,369 +104,93 @@ export function usePermissions() {
       }
     }
     return false;
-  }, [user, isUserLoading, checkPermission]);
+  }, [user, checkPermission]);
 
   // Get user role name, defaulting to 'user' if not available
   const userRole = user?.role?.name || 'user';
 
-  // Memoize all permission checking functions with additional guards
-  const canViewUsers = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('users', 'view');
+  // Create a factory function for permission checkers that can be used with useCallback
+  const createPermissionChecker = useCallback((resource: ResourceType, action: PermissionAction) => {
+    return async (): Promise<boolean> => {
+      // If still loading user data, return false to prevent unauthorized access
+      if (isUserLoading) {
+        return false;
+      }
+      
+      // If user data is not available, return false
+      if (!user || !user.role?.id || !user.tenantId) {
+        return false;
+      }
+      
+      // Check actual permission
+      return await checkPermission(resource, action);
+    };
   }, [user, isUserLoading, checkPermission]);
+
+  // Create permission checking functions using useMemo to avoid recreating them on every render
+  const canViewUsers = useMemo(() => createPermissionChecker('users', 'view'), [createPermissionChecker]);
+  const canCreateUsers = useMemo(() => createPermissionChecker('users', 'create'), [createPermissionChecker]);
+  const canEditUsers = useMemo(() => createPermissionChecker('users', 'edit'), [createPermissionChecker]);
+  const canDeleteUsers = useMemo(() => createPermissionChecker('users', 'delete'), [createPermissionChecker]);
+  const canBulkDeleteUsers = useMemo(() => createPermissionChecker('users', 'bulkDelete'), [createPermissionChecker]);
   
-  const canCreateUsers = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('users', 'create');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewTenants = useMemo(() => createPermissionChecker('tenants', 'view'), [createPermissionChecker]);
+  const canCreateTenants = useMemo(() => createPermissionChecker('tenants', 'create'), [createPermissionChecker]);
+  const canEditTenants = useMemo(() => createPermissionChecker('tenants', 'edit'), [createPermissionChecker]);
+  const canDeleteTenants = useMemo(() => createPermissionChecker('tenants', 'delete'), [createPermissionChecker]);
+  const canBulkDeleteTenants = useMemo(() => createPermissionChecker('tenants', 'bulkDelete'), [createPermissionChecker]);
   
-  const canEditUsers = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('users', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeleteUsers = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('users', 'delete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canBulkDeleteUsers = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('users', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canViewTenants = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('tenants', 'view');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canCreateTenants = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('tenants', 'create');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canEditTenants = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('tenants', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeleteTenants = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('tenants', 'delete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canBulkDeleteTenants = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('tenants', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canViewAssets = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('assets', 'view');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canCreateAssets = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('assets', 'create');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canEditAssets = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('assets', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeleteAssets = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('assets', 'delete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canBulkDeleteAssets = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('assets', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewAssets = useMemo(() => createPermissionChecker('assets', 'view'), [createPermissionChecker]);
+  const canCreateAssets = useMemo(() => createPermissionChecker('assets', 'create'), [createPermissionChecker]);
+  const canEditAssets = useMemo(() => createPermissionChecker('assets', 'edit'), [createPermissionChecker]);
+  const canDeleteAssets = useMemo(() => createPermissionChecker('assets', 'delete'), [createPermissionChecker]);
+  const canBulkDeleteAssets = useMemo(() => createPermissionChecker('assets', 'bulkDelete'), [createPermissionChecker]);
   
   // Asset-specific permissions
-  const canViewPC = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('pc', 'view');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewPC = useMemo(() => createPermissionChecker('pc', 'view'), [createPermissionChecker]);
+  const canCreatePC = useMemo(() => createPermissionChecker('pc', 'create'), [createPermissionChecker]);
+  const canEditPC = useMemo(() => createPermissionChecker('pc', 'edit'), [createPermissionChecker]);
+  const canDeletePC = useMemo(() => createPermissionChecker('pc', 'delete'), [createPermissionChecker]);
+  const canBulkDeletePC = useMemo(() => createPermissionChecker('pc', 'bulkDelete'), [createPermissionChecker]);
   
-  const canCreatePC = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('pc', 'create');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewLaptop = useMemo(() => createPermissionChecker('laptop', 'view'), [createPermissionChecker]);
+  const canCreateLaptop = useMemo(() => createPermissionChecker('laptop', 'create'), [createPermissionChecker]);
+  const canEditLaptop = useMemo(() => createPermissionChecker('laptop', 'edit'), [createPermissionChecker]);
+  const canDeleteLaptop = useMemo(() => createPermissionChecker('laptop', 'delete'), [createPermissionChecker]);
+  const canBulkDeleteLaptop = useMemo(() => createPermissionChecker('laptop', 'bulkDelete'), [createPermissionChecker]);
   
-  const canEditPC = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('pc', 'edit');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewPrinter = useMemo(() => createPermissionChecker('printer', 'view'), [createPermissionChecker]);
+  const canCreatePrinter = useMemo(() => createPermissionChecker('printer', 'create'), [createPermissionChecker]);
+  const canEditPrinter = useMemo(() => createPermissionChecker('printer', 'edit'), [createPermissionChecker]);
+  const canDeletePrinter = useMemo(() => createPermissionChecker('printer', 'delete'), [createPermissionChecker]);
+  const canBulkDeletePrinter = useMemo(() => createPermissionChecker('printer', 'bulkDelete'), [createPermissionChecker]);
   
-  const canDeletePC = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('pc', 'delete');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewLicense = useMemo(() => createPermissionChecker('license', 'view'), [createPermissionChecker]);
+  const canCreateLicense = useMemo(() => createPermissionChecker('license', 'create'), [createPermissionChecker]);
+  const canEditLicense = useMemo(() => createPermissionChecker('license', 'edit'), [createPermissionChecker]);
+  const canDeleteLicense = useMemo(() => createPermissionChecker('license', 'delete'), [createPermissionChecker]);
+  const canBulkDeleteLicense = useMemo(() => createPermissionChecker('license', 'bulkDelete'), [createPermissionChecker]);
   
-  const canBulkDeletePC = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('pc', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewWarehouse = useMemo(() => createPermissionChecker('warehouse', 'view'), [createPermissionChecker]);
+  const canCreateWarehouse = useMemo(() => createPermissionChecker('warehouse', 'create'), [createPermissionChecker]);
+  const canEditWarehouse = useMemo(() => createPermissionChecker('warehouse', 'edit'), [createPermissionChecker]);
+  const canDeleteWarehouse = useMemo(() => createPermissionChecker('warehouse', 'delete'), [createPermissionChecker]);
+  const canBulkDeleteWarehouse = useMemo(() => createPermissionChecker('warehouse', 'bulkDelete'), [createPermissionChecker]);
   
-  const canViewLaptop = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('laptop', 'view');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewInternet = useMemo(() => createPermissionChecker('internet', 'view'), [createPermissionChecker]);
+  const canCreateInternet = useMemo(() => createPermissionChecker('internet', 'create'), [createPermissionChecker]);
+  const canEditInternet = useMemo(() => createPermissionChecker('internet', 'edit'), [createPermissionChecker]);
+  const canDeleteInternet = useMemo(() => createPermissionChecker('internet', 'delete'), [createPermissionChecker]);
+  const canBulkDeleteInternet = useMemo(() => createPermissionChecker('internet', 'bulkDelete'), [createPermissionChecker]);
   
-  const canCreateLaptop = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('laptop', 'create');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewSettings = useMemo(() => createPermissionChecker('settings', 'view'), [createPermissionChecker]);
+  const canEditSettings = useMemo(() => createPermissionChecker('settings', 'edit'), [createPermissionChecker]);
   
-  const canEditLaptop = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('laptop', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeleteLaptop = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('laptop', 'delete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canBulkDeleteLaptop = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('laptop', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canViewPrinter = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('printer', 'view');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canCreatePrinter = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('printer', 'create');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canEditPrinter = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('printer', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeletePrinter = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('printer', 'delete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canBulkDeletePrinter = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('printer', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canViewLicense = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('license', 'view');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canCreateLicense = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('license', 'create');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canEditLicense = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('license', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeleteLicense = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('license', 'delete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canBulkDeleteLicense = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('license', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canViewWarehouse = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('warehouse', 'view');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canCreateWarehouse = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('warehouse', 'create');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canEditWarehouse = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('warehouse', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeleteWarehouse = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('warehouse', 'delete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canBulkDeleteWarehouse = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('warehouse', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canViewInternet = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('internet', 'view');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canCreateInternet = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('internet', 'create');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canEditInternet = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('internet', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeleteInternet = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('internet', 'delete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canBulkDeleteInternet = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('internet', 'bulkDelete');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canViewSettings = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('settings', 'view');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canEditSettings = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('settings', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canViewRoles = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('roles', 'view');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canCreateRoles = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('roles', 'create');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canEditRoles = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('roles', 'edit');
-  }, [user, isUserLoading, checkPermission]);
-  
-  const canDeleteRoles = useCallback(() => {
-    if (isUserLoading || !user || !user.role?.id || !user.tenantId) {
-      return Promise.resolve(false);
-    }
-    return checkPermission('roles', 'delete');
-  }, [user, isUserLoading, checkPermission]);
+  const canViewRoles = useMemo(() => createPermissionChecker('roles', 'view'), [createPermissionChecker]);
+  const canCreateRoles = useMemo(() => createPermissionChecker('roles', 'create'), [createPermissionChecker]);
+  const canEditRoles = useMemo(() => createPermissionChecker('roles', 'edit'), [createPermissionChecker]);
+  const canDeleteRoles = useMemo(() => createPermissionChecker('roles', 'delete'), [createPermissionChecker]);
+  const canBulkDeleteRoles = useMemo(() => createPermissionChecker('roles', 'bulkDelete'), [createPermissionChecker]);
 
   return {
     userRole,
@@ -494,5 +259,6 @@ export function usePermissions() {
     canCreateRoles,
     canEditRoles,
     canDeleteRoles,
+    canBulkDeleteRoles,
   };
 }

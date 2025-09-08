@@ -27,6 +27,12 @@ export function Header() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [shortName, setShortName] = useState('ITAMS');
 
+  // Get user role for display
+  const userRole = user?.role?.name || 'user';
+  
+  // Get user initials for avatar
+  const userInitials = user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+
   // Load application name from API
   useEffect(() => {
     const loadApplicationName = async () => {
@@ -83,7 +89,7 @@ export function Header() {
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-muted">
                   <Avatar className="h-8 w-8 border border-muted">
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {user?.name?.charAt(0) || <User className="h-4 w-4" />}
+                      {userInitials || <User className="h-4 w-4" />}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -95,6 +101,9 @@ export function Header() {
                     <p className="text-xs leading-none text-muted-foreground">
                       {user?.email}
                     </p>
+                    <Badge variant={userRole === 'admin' ? 'default' : 'secondary'} className="w-fit mt-1">
+                      {userRole === 'admin' ? t('users.form.adminRole') || 'Admin' : t('users.form.userRole') || 'User'}
+                    </Badge>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

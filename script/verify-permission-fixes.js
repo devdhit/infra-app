@@ -12,7 +12,7 @@ console.log('3. The condition checks for both window availability and userRole b
 
 console.log('Pages fixed:');
 console.log('- Users page (src/app/users/page.tsx)');
-console.log('- Roles page (src/app/settings/roles/page.tsx)');
+console.log('- Roles page (src/app/roles/page.tsx)');
 console.log('- Settings page (src/app/settings/page.tsx)');
 console.log('- Tenants page (src/app/tenants/page.tsx)\n');
 

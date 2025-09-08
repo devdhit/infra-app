@@ -13,7 +13,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     const customField = await db.customField.findUnique({
       where: { 
         id: resolvedParams.id,
@@ -52,8 +54,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
 
-    const body = await request.json()
+    // Await params before using
     const resolvedParams = await params;
+
+    const body = await request.json()
     
     // Check if custom field exists and belongs to user's tenant
     const existingCustomField = await db.customField.findUnique({
@@ -161,7 +165,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       })
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     // Check if custom field exists and belongs to user's tenant
     const existingCustomField = await db.customField.findUnique({
       where: { 

@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server'
+import { internetHandler } from '@/lib/asset-api-handler'
 import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
-  parseRequestBody,
-  errorResponse,
-  badRequestResponse
+  errorResponse, 
+  badRequestResponse,
+  parseRequestBody
 } from '@/lib/api-utils'
-import { internetHandler } from '@/lib/asset-api-handler'
 
 // Define the Internet asset type based on the Prisma schema
 interface InternetAsset {
@@ -18,6 +18,7 @@ interface InternetAsset {
   internetAccess?: string
   status: string
   note?: string
+  customFields?: any
 }
 
 // GET /api/assets/internet/[id] - Get a specific Internet asset by ID
@@ -28,7 +29,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     return await internetHandler.getById(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in Internet GET by ID route:', error)
@@ -44,8 +47,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
-    const body = await parseRequestBody<Partial<InternetAsset>>(request)
+    // Await params before using
     const resolvedParams = await params;
+
+    const body = await parseRequestBody<Partial<InternetAsset>>(request)
     return await internetHandler.update(user, resolvedParams.id, body)
   } catch (error: any) {
     console.error('Error in Internet PUT route:', error)
@@ -67,7 +72,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return unauthorizedResponse()
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     return await internetHandler.delete(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in Internet DELETE route:', error)

@@ -14,32 +14,78 @@ export async function POST(request: NextRequest) {
     // Safely parse request body
     let body;
     try {
-      body = await request.json()
-    } catch (parseError) {
-      console.warn('Invalid JSON in request body:', parseError)
+      const text = await request.text();
+      
+      // Check if body is empty
+      if (!text || text.trim() === '') {
+        return errorResponse('Missing request body', 400)
+      }
+      
+      body = JSON.parse(text)
+    } catch (parseError: any) {
+      // Check if it's an abort error
+      if (parseError.name === 'AbortError' || parseError.code === 'ECONNRESET') {
+        return errorResponse('Request aborted', 499)
+      }
+      
       return errorResponse('Invalid JSON in request body', 400)
     }
 
     // Check if body is empty or undefined
     if (!body || Object.keys(body).length === 0) {
-      console.warn('Missing request body or empty body')
       return errorResponse('Missing request body', 400)
     }
 
-    const { roleId, tenantId, resource, action } = body
+    const { resource, action } = body
 
     // Validate input
-    if (!roleId || !tenantId || !resource || !action) {
-      console.warn('Missing required parameters:', { roleId, tenantId, resource, action })
+    if (!resource || !action) {
       return errorResponse('Missing required parameters', 400)
     }
 
-    // Check if user has permission
-    const hasPerm = await hasPermission(roleId, tenantId, resource, action)
+    // For debugging in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Permission check request:', {
+        userId: currentUser.id,
+        userEmail: currentUser.email,
+        userRoleId: currentUser.role?.id,
+        userRoleName: currentUser.role?.name,
+        tenantId: currentUser.tenantId,
+        resource,
+        action
+      });
+    }
 
-    return successResponse({ hasPermission: hasPerm })
-  } catch (error) {
-    console.error('Error checking permissions:', error)
-    return errorResponse('Internal server error')
+    // Use current user's role ID and tenant ID for security
+    const roleId = currentUser.role?.id || '';
+    const tenantId = currentUser.tenantId || '';
+
+    // Check if user has permission
+    const hasPerm = await hasPermission(roleId, tenantId, resource, action);
+    
+    // For debugging in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Permission check result:', {
+        roleId,
+        tenantId,
+        resource,
+        action,
+        hasPermission: hasPerm
+      });
+    }
+
+    return successResponse({ hasPermission: hasPerm });
+  } catch (error: any) {
+    // Log errors only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error checking permissions:', error);
+    }
+    
+    // Handle abort errors specifically
+    if (error.name === 'AbortError' || error.code === 'ECONNRESET') {
+      return errorResponse('Request aborted', 499);
+    }
+    
+    return errorResponse('Internal server error');
   }
 }

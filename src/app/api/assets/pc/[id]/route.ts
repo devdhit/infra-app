@@ -1,15 +1,14 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
+import { pcHandler } from '@/lib/asset-api-handler'
 import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
-  parseRequestBody,
-  errorResponse,
-  badRequestResponse
+  errorResponse, 
+  badRequestResponse,
+  parseRequestBody
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
 
-// Define the PC asset type (matching the model in route.ts)
+// Define the PC asset type based on the Prisma schema
 interface PCAsset {
   dept: string
   cpuBarcode: string
@@ -22,18 +21,8 @@ interface PCAsset {
   userName?: string
   status: string
   note?: string
+  customFields?: any
 }
-
-// Create handler for PC assets
-const pcHandler = new AssetApiHandler<PCAsset>(db, {
-  modelName: 'PC',
-  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
-  uniqueField: 'cpuBarcode',
-  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note'],
-  include: {
-    customFields: true // Include custom fields in responses
-  }
-})
 
 // GET /api/assets/pc/[id] - Get a specific PC asset
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -43,7 +32,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
+    // Await params before using
     const resolvedParams = await params;
+    
     return await pcHandler.getById(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in PC GET by ID route:', error)
@@ -59,6 +50,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
+    // Await params before using
+    const resolvedParams = await params;
+
     let body: Partial<PCAsset>
     try {
       body = await parseRequestBody<Partial<PCAsset>>(request)
@@ -66,7 +60,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return badRequestResponse(parseError.message)
     }
     
-    const resolvedParams = await params;
     return await pcHandler.update(user, resolvedParams.id, body)
   } catch (error) {
     console.error('Error in PC PUT route:', error)
@@ -82,7 +75,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return unauthorizedResponse()
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     return await pcHandler.delete(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in PC DELETE route:', error)

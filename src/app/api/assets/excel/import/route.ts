@@ -41,9 +41,48 @@ export async function POST(request: NextRequest) {
 
     let createdCount = 0
     const errors: string[] = []
+    const totalRows = jsonData.length
 
-    // Process each row based on asset type
-    for (const row of jsonData) {
+    // Process data in batches to avoid "Maximum call stack size exceeded" error
+    const batchSize = 50; // Reduce batch size to prevent connection pool exhaustion
+    for (let i = 0; i < jsonData.length; i += batchSize) {
+      // Get a batch of rows
+      const batch = jsonData.slice(i, i + batchSize);
+      
+      // Fetch custom fields once per batch for each asset type to optimize database queries
+      let pcCustomFieldsConfig: any[] = [];
+      let laptopCustomFieldsConfig: any[] = [];
+      let printerCustomFieldsConfig: any[] = [];
+      let licenseCustomFieldsConfig: any[] = [];
+      let warehouseCustomFieldsConfig: any[] = [];
+      let internetCustomFieldsConfig: any[] = [];
+      
+      // Use a single transaction for fetching all custom fields to reduce connection usage
+      if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet'].includes(assetType)) {
+        const customFieldModelType = assetType === 'pc' ? 'PC' : 
+                                    assetType === 'laptop' ? 'Laptop' : 
+                                    assetType === 'printer' ? 'Printer' : 
+                                    assetType === 'license' ? 'License' : 
+                                    assetType === 'warehouse' ? 'WarehouseIT' : 'Internet';
+        
+        const customFields = await db.customField.findMany({
+          where: {
+            tenantId: user.tenantId,
+            modelType: customFieldModelType
+          }
+        });
+        
+        // Assign to the appropriate variable based on asset type
+        if (assetType === 'pc') pcCustomFieldsConfig = customFields;
+        else if (assetType === 'laptop') laptopCustomFieldsConfig = customFields;
+        else if (assetType === 'printer') printerCustomFieldsConfig = customFields;
+        else if (assetType === 'license') licenseCustomFieldsConfig = customFields;
+        else if (assetType === 'warehouse') warehouseCustomFieldsConfig = customFields;
+        else if (assetType === 'internet') internetCustomFieldsConfig = customFields;
+      }
+      
+      // Process each row in the batch
+      for (const row of batch) {
       try {
         switch (assetType) {
           case 'pc':
@@ -78,18 +117,9 @@ export async function POST(request: NextRequest) {
             // Remove the user field from row data since it's not a direct field in the database
             const { user: userField, userName: pcUserNameField, ...pcRowData } = row as any;
             
-            // Extract custom fields from row data
+            // Extract custom fields from row data using pre-fetched config
             let pcCustomFields: Record<string, any> | undefined;
             
-            // Get custom fields for this asset type and tenant
-            const pcCustomFieldsConfig = await db.customField.findMany({
-              where: {
-                tenantId: user.tenantId,
-                modelType: 'PC'
-              }
-            });
-            
-            // Extract custom field values from row data
             if (pcCustomFieldsConfig.length > 0) {
               pcCustomFields = {};
               for (const customField of pcCustomFieldsConfig) {
@@ -225,18 +255,9 @@ export async function POST(request: NextRequest) {
             // Remove the user and status fields from row data since we're handling them separately
             const { user: laptopUserField, userName: laptopUserNameField, Status: statusFieldUpper, status: statusFieldLower, dateBuy, ...laptopRowData } = row as any;
             
-            // Extract custom fields from row data
+            // Extract custom fields from row data using pre-fetched config
             let laptopCustomFields: Record<string, any> | undefined;
             
-            // Get custom fields for this asset type and tenant
-            const laptopCustomFieldsConfig = await db.customField.findMany({
-              where: {
-                tenantId: user.tenantId,
-                modelType: 'Laptop'
-              }
-            });
-            
-            // Extract custom field values from row data
             if (laptopCustomFieldsConfig.length > 0) {
               laptopCustomFields = {};
               for (const customField of laptopCustomFieldsConfig) {
@@ -345,18 +366,9 @@ export async function POST(request: NextRequest) {
             // Remove date from row data to handle it separately
             const { date: printerDate, ...printerRowData } = row as any;
             
-            // Extract custom fields from row data
+            // Extract custom fields from row data using pre-fetched config
             let printerCustomFields: Record<string, any> | undefined;
             
-            // Get custom fields for this asset type and tenant
-            const printerCustomFieldsConfig = await db.customField.findMany({
-              where: {
-                tenantId: user.tenantId,
-                modelType: 'Printer'
-              }
-            });
-            
-            // Extract custom field values from row data
             if (printerCustomFieldsConfig.length > 0) {
               printerCustomFields = {};
               for (const customField of printerCustomFieldsConfig) {
@@ -648,18 +660,9 @@ export async function POST(request: NextRequest) {
               ...licenseRowData 
             } = row as any;
             
-            // Extract custom fields from row data
+            // Extract custom fields from row data using pre-fetched config
             let licenseCustomFields: Record<string, any> | undefined;
             
-            // Get custom fields for this asset type and tenant
-            const licenseCustomFieldsConfig = await db.customField.findMany({
-              where: {
-                tenantId: user.tenantId,
-                modelType: 'License'
-              }
-            });
-            
-            // Extract custom field values from row data
             if (licenseCustomFieldsConfig.length > 0) {
               licenseCustomFields = {};
               for (const customField of licenseCustomFieldsConfig) {
@@ -741,7 +744,7 @@ export async function POST(request: NextRequest) {
             break
 
           case 'warehouse':
-            // Extract custom fields from row data
+            // Extract custom fields from row data using pre-fetched config
             let warehouseCustomFields: Record<string, any> | undefined;
             
             // Destructure to only keep valid WarehouseIT fields
@@ -759,15 +762,7 @@ export async function POST(request: NextRequest) {
               (warehouseRowData as any).status = 'working';
             }
             
-            // Get custom fields for this asset type and tenant
-            const warehouseCustomFieldsConfig = await db.customField.findMany({
-              where: {
-                tenantId: user.tenantId,
-                modelType: 'WarehouseIT'
-              }
-            });
-            
-            // Extract custom field values from row data
+            // Use pre-fetched custom fields config
             if (warehouseCustomFieldsConfig.length > 0) {
               warehouseCustomFields = {};
               for (const customField of warehouseCustomFieldsConfig) {
@@ -877,15 +872,7 @@ export async function POST(request: NextRequest) {
             // Extract custom fields from row data
             let internetCustomFields: Record<string, any> | undefined;
             
-            // Get custom fields for this asset type and tenant
-            const internetCustomFieldsConfig = await db.customField.findMany({
-              where: {
-                tenantId: user.tenantId,
-                modelType: 'Internet'
-              }
-            });
-            
-            // Extract custom field values from row data
+            // Use pre-fetched custom fields config
             if (internetCustomFieldsConfig.length > 0) {
               internetCustomFields = {};
               for (const customField of internetCustomFieldsConfig) {
@@ -976,20 +963,27 @@ export async function POST(request: NextRequest) {
         errors.push(`Error processing row: ${error.message}`)
       }
     }
+    
+    // Add a small delay between batches to prevent overwhelming the server and database connection pool
+    if (i + batchSize < jsonData.length) {
+      await new Promise(resolve => setTimeout(resolve, 10)); // Increased delay to 10ms
+    }
+  }
 
-    return new Response(JSON.stringify({
-      success: true,
-      createdCount,
-      errors
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error: any) {
-    console.error('Error importing Excel file:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+  return new Response(JSON.stringify({
+    success: true,
+    createdCount,
+    errors,
+    totalRows // Include total rows for progress tracking
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  })
+} catch (error: any) {
+  console.error('Error importing Excel file:', error)
+  return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    status: 500,
+    headers: { 'Content-Type': 'application/json' }
+  })
   }
 }

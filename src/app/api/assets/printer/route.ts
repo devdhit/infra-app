@@ -1,4 +1,3 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { 
@@ -7,7 +6,7 @@ import {
   parseRequestBody,
   errorResponse
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
+import { printerHandler } from '@/lib/asset-api-handler'
 
 // Define the Printer asset type
 interface PrinterAsset {
@@ -20,16 +19,8 @@ interface PrinterAsset {
   sapCode?: string
   date?: string
   note?: string
+  customFields?: any
 }
-
-// Create handler for Printer assets
-const printerHandler = new AssetApiHandler<PrinterAsset>(db, {
-  modelName: 'Printer',
-  requiredFields: ['dept', 'barcode', 'color'],
-  uniqueField: 'barcode',
-  searchFields: ['barcode', 'dept', 'model', 'ip', 'note'],
-  include: {}
-})
 
 // GET /api/assets/printer - Get all Printer assets for the user's tenant
 export async function GET(request: NextRequest) {
@@ -60,5 +51,27 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in Printer POST route:', error)
     return errorResponse('Internal server error')
+  }
+}
+
+// DELETE /api/assets/printer - Bulk delete Printer assets
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return unauthorizedResponse()
+    }
+
+    const body = await parseRequestBody<{ ids: string[] }>(request)
+    return await printerHandler.bulkDelete(user, body.ids)
+  } catch (error: any) {
+    console.error('Error in Printer bulk DELETE route:', error)
+    
+    // Handle JSON parsing errors
+    if (error.message && error.message.includes('Invalid JSON')) {
+      return errorResponse('Invalid request body. Please ensure the request is valid JSON.', 400)
+    }
+    
+    return errorResponse('Failed to delete Printer assets. Please try again later.')
   }
 }

@@ -1,13 +1,12 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
+import { printerHandler } from '@/lib/asset-api-handler'
 import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
-  parseRequestBody,
-  errorResponse,
-  badRequestResponse
+  errorResponse, 
+  badRequestResponse,
+  parseRequestBody
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
 
 // Define the Printer asset type
 interface PrinterAsset {
@@ -15,20 +14,13 @@ interface PrinterAsset {
   location?: string
   ip?: string
   model?: string
-  color: boolean
+  color: string
   barcode: string
   sapCode?: string
   date?: string
   note?: string
+  customFields?: any
 }
-
-// Create handler for Printer assets
-const printerHandler = new AssetApiHandler<PrinterAsset>(db, {
-  modelName: 'Printer',
-  requiredFields: ['dept', 'barcode', 'color'],
-  uniqueField: 'barcode',
-  searchFields: ['barcode', 'dept', 'model', 'ip', 'note']
-})
 
 // GET /api/assets/printer/[id] - Get a specific Printer asset
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +30,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     return await printerHandler.getById(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in Printer GET by ID route:', error)
@@ -54,6 +48,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
+    // Await params before using
+    const resolvedParams = await params;
+
     let body: Partial<PrinterAsset>
     try {
       body = await parseRequestBody<Partial<PrinterAsset>>(request)
@@ -61,7 +58,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return badRequestResponse(parseError.message)
     }
     
-    const resolvedParams = await params;
     return await printerHandler.update(user, resolvedParams.id, body)
   } catch (error) {
     console.error('Error in Printer PUT route:', error)
@@ -77,7 +73,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return unauthorizedResponse()
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     return await printerHandler.delete(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in Printer DELETE route:', error)

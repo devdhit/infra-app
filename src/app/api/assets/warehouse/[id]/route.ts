@@ -1,13 +1,12 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
+import { warehouseHandler } from '@/lib/asset-api-handler'
 import { getCurrentUser } from '@/lib/auth'
 import { 
   unauthorizedResponse, 
-  parseRequestBody,
-  errorResponse,
-  badRequestResponse
+  errorResponse, 
+  badRequestResponse,
+  parseRequestBody
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
 
 // Define the WarehouseIT asset type
 interface WarehouseITAsset {
@@ -17,15 +16,8 @@ interface WarehouseITAsset {
   note?: string
   createdAt?: string
   updatedAt?: string
+  customFields?: any
 }
-
-// Create handler for WarehouseIT assets
-const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
-  modelName: 'WarehouseIT',
-  requiredFields: ['status'],
-  searchFields: ['barcode', 'sapCode', 'status', 'note']
-  // Remove the include option as customFields is a scalar field, not a relation
-})
 
 // GET /api/assets/warehouse/[id] - Get a specific WarehouseIT asset
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +27,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     return await warehouseHandler.getById(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in WarehouseIT GET by ID route:', error)
@@ -51,6 +45,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return unauthorizedResponse()
     }
 
+    // Await params before using
+    const resolvedParams = await params;
+
     let body: Partial<WarehouseITAsset>
     try {
       body = await parseRequestBody<Partial<WarehouseITAsset>>(request)
@@ -58,7 +55,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return badRequestResponse(parseError.message)
     }
     
-    const resolvedParams = await params;
     return await warehouseHandler.update(user, resolvedParams.id, body)
   } catch (error) {
     console.error('Error in WarehouseIT PUT route:', error)
@@ -74,7 +70,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return unauthorizedResponse()
     }
 
+    // Await params before using
     const resolvedParams = await params;
+
     return await warehouseHandler.delete(user, resolvedParams.id)
   } catch (error) {
     console.error('Error in WarehouseIT DELETE route:', error)

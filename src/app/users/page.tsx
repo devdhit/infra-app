@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -9,16 +9,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useUsers, useCreateUser, useDeleteUser, useTenants, useBulkDeleteUsers } from "@/hooks/useApi"
+// FIX: Remove unused imports
+import { useUsers, useCreateUser, useTenants, useBulkDeleteUsers } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { UsersTable } from "@/components/users/users-table"
 import { UserForm } from "@/components/users/user-form"
-import { UserFormValues, User, UserRole } from "@/types/users"
-import { api } from "@/lib/api"
+import { UserFormValues, User } from "@/types/users"
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, Users as UsersIcon } from "lucide-react"
+import { Plus} from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
 
 export default function UsersPage() {
@@ -35,64 +35,116 @@ export default function UsersPage() {
   const { data: currentUser, isLoading: isUserLoading } = useCurrentUser()
   
   const queryClient = useQueryClient()
-  const { data: users = [], isLoading, isError, error, refetch } = useUsers()
+  const { data: users = [], refetch } = useUsers()
   const { data: tenants = [] } = useTenants()
   const createUserMutation = useCreateUser()
-  // Manage the ID for delete operations in state
-  const [deleteUserId, setDeleteUserId] = useState<string | null>(null)
-  // Create the delete mutation with a placeholder ID
-  const deleteMutation = useDeleteUser(deleteUserId || 'placeholder')
-  const bulkDeleteMutation = useBulkDeleteUsers()
-  
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   
+  // Manage the ID for delete operations in state
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null)
+  const bulkDeleteMutation = useBulkDeleteUsers()
+  
+  // State for update user ID
+  const [updateUserId, setUpdateUserId] = useState<string | null>(null)
+  
   // Permission states
-  const [canView, setCanView] = useState<boolean>(false)
-  const [canCreate, setCanCreate] = useState<boolean>(false)
-  const [canEdit, setCanEdit] = useState<boolean>(false)
-  const [canDelete, setCanDelete] = useState<boolean>(false)
-  const [canBulkDelete, setCanBulkDelete] = useState<boolean>(false)
+  const [canView, setCanView] = useState<boolean | null>(null) // null means still checking
+  const [canCreate, setCanCreate] = useState<boolean | null>(null)
+  const [canEdit, setCanEdit] = useState<boolean | null>(null)
+  const [canDelete, setCanDelete] = useState<boolean | null>(null)
+  const [canBulkDelete, setCanBulkDelete] = useState<boolean | null>(null)
+  
+  // Ref to track if permission check is in progress
+  const isCheckingPermissions = useRef(false)
 
   // Check permissions
   useEffect(() => {
+    const isCancelledRef = { current: false };
+    
     const checkPermissions = async () => {
-      try {
-        // Only check permissions if the hook is ready and user data is fully loaded
-        if (typeof window !== 'undefined' && userRole && !isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          const viewPermission = await canViewUsers()
-          const createPermission = await canCreateUsers()
-          const editPermission = await canEditUsers()
-          const deletePermission = await canDeleteUsers()
-          const bulkDeletePermission = await canBulkDeleteUsers()
-          
-          setCanView(viewPermission)
-          setCanCreate(createPermission)
-          setCanEdit(editPermission)
-          setCanDelete(deletePermission)
-          setCanBulkDelete(bulkDeletePermission)
-        } else {
-          // If user data is not ready, use default values
-          setCanView(true) // Allow viewing by default
-          setCanCreate(false)
-          setCanEdit(false)
-          setCanDelete(false)
-          setCanBulkDelete(false)
-        }
-      } catch (error) {
-        console.error('Error checking permissions:', error)
-        // Default to denying access if there's an error
-        setCanView(false)
+      // Prevent multiple simultaneous permission checks
+      if (isCheckingPermissions.current) {
+        return;
       }
-    }
+      
+      try {
+        isCheckingPermissions.current = true;
+        
+        // Only check permissions if user data is fully loaded
+        if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
+          // Check all permissions in parallel for better performance
+          const [
+            viewPermission,
+            createPermission,
+            editPermission,
+            deletePermission,
+            bulkDeletePermission
+          ] = await Promise.all([
+            canViewUsers(),
+            canCreateUsers(),
+            canEditUsers(),
+            canDeleteUsers(),
+            canBulkDeleteUsers()
+          ]);
+          
+          // Only update state if component is still mounted
+          if (!isCancelledRef.current) {
+            setCanView(viewPermission);
+            setCanCreate(createPermission);
+            setCanEdit(editPermission);
+            setCanDelete(deletePermission);
+            setCanBulkDelete(bulkDeletePermission);
+          }
+        } else if (!isUserLoading && (!currentUser || !currentUser.role?.id || !currentUser.tenantId)) {
+          // User data loaded but incomplete
+          if (!isCancelledRef.current) {
+            setCanView(false);
+            setCanCreate(false);
+            setCanEdit(false);
+            setCanDelete(false);
+            setCanBulkDelete(false);
+          }
+        }
+        // If still loading, do nothing
+      } catch (error) {
+        // Log errors only in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error checking permissions:', error);
+        }
+        // Deny access if there's an error
+        if (!isCancelledRef.current) {
+          setCanView(false);
+          setCanCreate(false);
+          setCanEdit(false);
+          setCanDelete(false);
+          setCanBulkDelete(false);
+        }
+      } finally {
+        isCheckingPermissions.current = false;
+      }
+    };
     
-    // Add a small delay to ensure user data is fully loaded
-    const timer = setTimeout(() => {
-      checkPermissions()
-    }, 150)
+    // Check permissions when dependencies change
+    checkPermissions();
     
-    return () => clearTimeout(timer)
-  }, [userRole, canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers, currentUser, isUserLoading])
+    return () => {
+      isCancelledRef.current = true;
+      // Reset the permission checking flag when component unmounts
+      isCheckingPermissions.current = false;
+    };
+  }, [userRole, canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers, currentUser, isUserLoading]);
+
+  // Show loading state while checking permissions
+  if (canView === null || isUserLoading) {
+    return (
+      <div className="flex items-center justify-center h-52">
+        <div className="text-center">
+          <p>Loading permissions...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If user doesn't have view permission, show unauthorized message
   if (!canView) {
@@ -124,7 +176,10 @@ export default function UsersPage() {
       setEditingUser(user)
       setIsDialogOpen(true)
     } catch (error) {
-      console.error('Error checking edit permissions:', error)
+      // Log errors only in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error checking edit permissions:', error)
+      }
       // Allow the action by default if there's an error
       setEditingUser(user)
       setIsDialogOpen(true)
@@ -166,7 +221,18 @@ export default function UsersPage() {
           setDeleteUserId(id)
           if (window.confirm(t('users.delete.confirm') || 'Are you sure you want to delete this user?')) {
             try {
-              await deleteMutation.mutateAsync(deleteUserId || '')
+              // Instead of calling the hook directly, we'll use the API client directly
+              const response = await fetch(`/api/users/${id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                }
+              });
+              
+              if (!response.ok) {
+                throw new Error('Failed to delete user');
+              }
+              
               toast.success(t('users.delete.success') || 'User deleted successfully')
               refetch()
             } catch (error: any) {
@@ -174,32 +240,13 @@ export default function UsersPage() {
             }
           }
         }
-      } else {
-        // If user data is not ready, allow the action by default
-        setDeleteUserId(id)
-        if (window.confirm(t('users.delete.confirm') || 'Are you sure you want to delete this user?')) {
-          try {
-            await deleteMutation.mutateAsync(deleteUserId || '')
-            toast.success(t('users.delete.success') || 'User deleted successfully')
-            refetch()
-          } catch (error: any) {
-            toast.error(error.message || t('users.delete.error') || 'Failed to delete user')
-          }
-        }
       }
     } catch (error) {
-      console.error('Error checking delete permissions:', error)
-      // Allow the action by default if there's an error
-      setDeleteUserId(id)
-      if (window.confirm(t('users.delete.confirm') || 'Are you sure you want to delete this user?')) {
-        try {
-          await deleteMutation.mutateAsync(deleteUserId || '')
-          toast.success(t('users.delete.success') || 'User deleted successfully')
-          refetch()
-        } catch (error: any) {
-          toast.error(error.message || t('users.delete.error') || 'Failed to delete user')
-        }
+      // Log errors only in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error checking delete permissions:', error)
       }
+      toast.error(t('common.error') || 'An error occurred while checking permissions')
     }
   }
 
@@ -214,24 +261,34 @@ export default function UsersPage() {
             return
           }
         }
-        // Update existing user
+        // Update existing user using mutation
         try {
-          // Use the API client directly to make the PUT request with proper authentication
-          await api.put<User, Partial<UserFormValues>>(`/users/${editingUser.id}`, {
-            email: data.email,
-            name: data.name,
-            role: data.role,
-            tenantId: data.tenantId,
-            ...(data.password ? { password: data.password } : {})
+          setUpdateUserId(editingUser.id)
+          // Instead of calling the hook directly, we'll use the API client directly
+          const response = await fetch(`/api/users/${editingUser.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: data.email,
+              name: data.name,
+              role: data.role,
+              tenantId: data.tenantId,
+              ...(data.password ? { password: data.password } : {})
+            })
           });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to update user');
+          }
           
           toast.success(t('users.update.success') || 'User updated successfully')
           setIsDialogOpen(false)
           setEditingUser(null) // Clear the editing user state
-          // Invalidate the users query to force a refresh
-          await queryClient.invalidateQueries({ queryKey: ['users'] })
-          // Also invalidate the specific user query
-          await queryClient.invalidateQueries({ queryKey: ['users', editingUser.id] })
+          setUpdateUserId(null) // Clear the update user ID
+          refetch(); // Refresh the user list
         } catch (error: any) {
           toast.error(error.message || t('users.update.error') || 'Failed to update user')
         }
@@ -250,7 +307,7 @@ export default function UsersPage() {
             email: data.email,
             name: data.name,
             password: data.password || '',
-            role: data.role as UserRole, // Cast to UserRole type
+            role: data.role,
             tenantId: data.tenantId
           })
           toast.success(t('users.create.success') || 'User created successfully')
@@ -275,76 +332,54 @@ export default function UsersPage() {
       setEditingUser(null)
       // Reset the delete user ID when closing the dialog
       setDeleteUserId(null)
+      // Reset the update user ID when closing the dialog
+      setUpdateUserId(null)
     }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    )
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <div className="text-center">
-          <p className="text-red-500">{error?.message || t('users.error.loading') || 'Failed to load users'}</p>
-          <Button onClick={() => refetch()} className="mt-4">
-            {t('common.retry') || 'Retry'}
-          </Button>
-        </div>
-      </div>
-    )
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          <UsersIcon className="h-8 w-8 mr-3 text-blue-500" />
-          {t('users.title') || 'Users'}
-        </h1>
-        <p className="text-muted-foreground">{t('users.description') || 'Manage system users'}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{t('nav.users')}</h1>
+          <p className="text-muted-foreground">
+            {t('users.description') || 'Manage user accounts and permissions'}
+          </p>
+        </div>
+        {(canCreate || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId)) && (
+          <Button onClick={() => handleEdit(null)} disabled={isUserLoading}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('users.button.add') || 'Add User'}
+          </Button>
+        )}
       </div>
 
-      <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
+      <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle>{t('users.list.title') || 'User List'}</CardTitle>
-              <CardDescription>
-                {t('users.list.description') || 'A list of all users in the system'}
-              </CardDescription>
-            </div>
-            {canCreate && (
-              <Button onClick={() => handleEdit(null)} className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700">
-                <Plus className="h-4 w-4 mr-2" />
-                {t('users.button') || 'Add User'}
-              </Button>
-            )}
-          </div>
+          <CardTitle>{t('users.title') || 'Users'}</CardTitle>
+          <CardDescription>
+            {t('users.subtitle') || 'View and manage user accounts'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <UsersTable 
-            users={users} 
+          <UsersTable
+            users={users}
             tenants={tenants}
-            onEdit={canEdit ? handleEdit : undefined}
-            onDelete={canDelete || canBulkDelete ? handleDelete : undefined}
-            isDeleting={deleteMutation.isPending}
+            onEdit={canEdit || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) ? handleEdit : undefined}
+            onDelete={canDelete || canBulkDelete || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) ? handleDelete : undefined}
+            isDeleting={false}
             deletingUserId={deleteUserId}
           />
         </CardContent>
       </Card>
 
-      <UserForm 
+      <UserForm
         open={isDialogOpen}
         onOpenChange={handleDialogOpenChange}
         editingUser={editingUser}
         tenants={tenants}
         onSubmit={handleSubmit}
-        isSubmitting={createUserMutation.isPending || (editingUser ? false : false /* update mutation */)}
+        isSubmitting={createUserMutation.isPending || (editingUser && updateUserId ? true : false)}
       />
     </div>
   )

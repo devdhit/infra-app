@@ -1,4 +1,3 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { 
@@ -7,7 +6,7 @@ import {
   parseRequestBody,
   errorResponse
 } from '@/lib/api-utils'
-import { AssetApiHandler } from '@/lib/asset-api-handler'
+import { warehouseHandler } from '@/lib/asset-api-handler'
 
 // Define the WarehouseIT asset type
 interface WarehouseITAsset {
@@ -17,15 +16,8 @@ interface WarehouseITAsset {
   note?: string
   createdAt?: string
   updatedAt?: string
+  customFields?: any
 }
-
-// Create handler for WarehouseIT assets
-const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
-  modelName: 'WarehouseIT',
-  requiredFields: ['status'],
-  searchFields: ['barcode', 'sapCode', 'status', 'note'],
-  include: {}
-})
 
 // GET /api/assets/warehouse - Get all WarehouseIT assets for the user's tenant
 export async function GET(request: NextRequest) {
@@ -56,5 +48,27 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in WarehouseIT POST route:', error)
     return errorResponse('Internal server error')
+  }
+}
+
+// DELETE /api/assets/warehouse - Bulk delete WarehouseIT assets
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return unauthorizedResponse()
+    }
+
+    const body = await parseRequestBody<{ ids: string[] }>(request)
+    return await warehouseHandler.bulkDelete(user, body.ids)
+  } catch (error: any) {
+    console.error('Error in WarehouseIT bulk DELETE route:', error)
+    
+    // Handle JSON parsing errors
+    if (error.message && error.message.includes('Invalid JSON')) {
+      return errorResponse('Invalid request body. Please ensure the request is valid JSON.', 400)
+    }
+    
+    return errorResponse('Failed to delete WarehouseIT assets. Please try again later.')
   }
 }

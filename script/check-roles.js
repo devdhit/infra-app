@@ -1,11 +1,13 @@
-const { db } = require('../src/lib/db');
+const { PrismaClient } = require('../src/generated/prisma');
 
 async function checkRoles() {
+  const prisma = new PrismaClient();
+  
   try {
     console.log('Checking roles in the database...\n');
     
     // Get all roles
-    const roles = await db.role.findMany({
+    const roles = await prisma.role.findMany({
       include: {
         users: true
       }
@@ -24,7 +26,7 @@ async function checkRoles() {
     
     // Get all users with their roles
     console.log('\nUsers and their roles:');
-    const users = await db.user.findMany({
+    const users = await prisma.user.findMany({
       include: {
         role: true,
         tenant: true
@@ -42,7 +44,7 @@ async function checkRoles() {
   } catch (error) {
     console.error('Error checking roles:', error);
   } finally {
-    await db.$disconnect();
+    await prisma.$disconnect();
   }
 }
 

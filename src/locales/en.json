@@ -12,7 +12,11 @@
     "tenants": "Tenants",
     "settings": "Settings",
     "management": "Management",
-    "roles": "Roles"
+    "roles": "Roles",
+    "test_roles": "Test Roles"
+  },
+  "management": {
+    "description": "Manage your system organizations and users"
   },
   "auth": {
     "email": "Email",
@@ -105,7 +109,8 @@
       "showing": "Showing {0} to {1} of {2} items",
       "previous": "Previous page",
       "next": "Next page"
-    }
+    },
+    "selectedCount": "{0} items selected"
   },
   "bulkDelete": {
     "confirmation": "Are you sure you want to delete {0} {1}? This action cannot be undone.",
@@ -275,6 +280,8 @@
         "selectDatabaseField": "Select Database Field",
         "mappingHelp": "Map Excel column names to database field names to ensure correct data import.",
         "customFieldsHelp": "Custom fields for this asset type are also available for mapping.",
+        "autoMap": "Auto Map",
+        "autoMapSuccess": "Automatic mapping completed",
         "button": "Import Data",
         "importing": "Importing...",
         "success": "{0} assets imported successfully",
@@ -386,9 +393,13 @@
       "role": "Role",
       "tenant": "Tenant",
       "createdAt": "Created At",
-      "actions": "Actions"
+      "actions": "Actions",
+      "selected": "{0} users selected",
+      "deleteSelected": "Delete Selected"
     },
-    "button": "Add User",
+    "button": {
+      "add": "Add User"
+    },
     "list": {
       "title": "User List",
       "description": "A list of all users in the system"
@@ -783,7 +794,6 @@
       "description": "Description",
       "permissions": "Permissions",
       "users": "Users",
-      "createdAt": "Created At",
       "createdAt": "Created At"
     },
     "list": {
@@ -830,7 +840,10 @@
       "permissions": "Permissions",
       "nameRequired": "Name is required",
       "descriptionPlaceholder": "Enter role description (optional)",
-      "permissionsHelp": "Select the permissions this role should have"
+      "permissionsHelp": "Select the permissions this role should have",
+      "nameHelp": "Enter a unique name for this role",
+      "descriptionHelp": "Describe the purpose of this role",
+      "selectAll": "Select all"
     },
     "permissions": {
       "users": {
@@ -857,16 +870,13 @@
         "delete": "Delete assets",
         "bulkDelete": "Bulk delete assets",
         "assetSpecific": "Asset-specific permissions",
-        "assetSpecific": "Asset-specific permissions"
+        "assetSpecificDescription": "Configure permissions for specific asset types"
       },
       "settings": {
         "label": "Settings",
         "view": "View settings",
+        "create": "Create settings",
         "edit": "Edit settings",
-        "create": "Create settings",
-        "delete": "Delete settings",
-        "bulkDelete": "Bulk delete settings",
-        "create": "Create settings",
         "delete": "Delete settings",
         "bulkDelete": "Bulk delete settings"
       },
@@ -876,8 +886,49 @@
         "create": "Create roles",
         "edit": "Edit roles",
         "delete": "Delete roles",
-        "bulkDelete": "Bulk delete roles",
         "bulkDelete": "Bulk delete roles"
+      },
+      "pc": {
+        "view": "View assets",
+        "create": "Create assets",
+        "edit": "Edit assets",
+        "delete": "Delete assets",
+        "bulkDelete": "Bulk delete assets"
+      },
+      "laptop": {
+        "view": "View assets",
+        "create": "Create assets",
+        "edit": "Edit assets",
+        "delete": "Delete assets",
+        "bulkDelete": "Bulk delete assets"
+      },
+      "printer": {
+        "view": "View assets",
+        "create": "Create assets",
+        "edit": "Edit assets",
+        "delete": "Delete assets",
+        "bulkDelete": "Bulk delete assets"
+      },
+      "license": {
+        "view": "View assets",
+        "create": "Create assets",
+        "edit": "Edit assets",
+        "delete": "Delete assets",
+        "bulkDelete": "Bulk delete assets"
+      },
+      "warehouse": {
+        "view": "View assets",
+        "create": "Create assets",
+        "edit": "Edit assets",
+        "delete": "Delete assets",
+        "bulkDelete": "Bulk delete assets"
+      },
+      "internet": {
+        "view": "View assets",
+        "create": "Create assets",
+        "edit": "Edit assets",
+        "delete": "Delete assets",
+        "bulkDelete": "Bulk delete assets"
       }
     }
   }
