@@ -19,11 +19,13 @@ try {
   
   if (existsSync(distModulePath + '.js') || existsSync(distModulePath)) {
     ({ initializeSocketIO } = require(distModulePath));
+    console.log(`[${getTimestamp()}] 📦 Loaded realtime module from dist: ${distModulePath}`);
   } else {
     // Fallback to src directory
     const srcModulePath = join(__dirname, 'src', 'lib', 'realtime');
     if (existsSync(srcModulePath + '.ts') || existsSync(srcModulePath)) {
       ({ initializeSocketIO } = require(srcModulePath));
+      console.log(`[${getTimestamp()}] 📦 Loaded realtime module from src: ${srcModulePath}`);
     } else {
       console.warn(`[${getTimestamp()}] ⚠️  Realtime module not found at ${distModulePath} or ${srcModulePath}, Socket.IO will not be available`);
       initializeSocketIO = null;
