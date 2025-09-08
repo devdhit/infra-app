@@ -84,7 +84,7 @@ export function usePermissions() {
       }
       return false;
     }
-  }, [user]); // FIX: Remove isUserLoading from dependencies as it's not used in the function
+  }, [user]);
 
   /**
    * Check if the current user has any of the specified permissions

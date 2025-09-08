@@ -211,7 +211,7 @@ export function RoleForm({
         resetForm()
       }
     }}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[60vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingRole 

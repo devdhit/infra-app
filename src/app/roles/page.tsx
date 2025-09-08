@@ -226,6 +226,12 @@ export default function RolesPage() {
         }
       }
       setEditingRole(role)
+      // Set the update role ID when editing an existing role
+      if (role) {
+        setUpdateRoleId(role.id)
+      } else {
+        setUpdateRoleId(null)
+      }
       setIsDialogOpen(true)
     } catch (error) {
       // Log errors only in development
@@ -234,6 +240,12 @@ export default function RolesPage() {
       }
       // Allow the action by default if there's an error
       setEditingRole(role)
+      // Set the update role ID when editing an existing role
+      if (role) {
+        setUpdateRoleId(role.id)
+      } else {
+        setUpdateRoleId(null)
+      }
       setIsDialogOpen(true)
     }
   }
@@ -335,13 +347,16 @@ export default function RolesPage() {
         }
         
         try {
-          // Set the update role ID
-          setUpdateRoleId(editingRole.id)
+          // Ensure the update role ID is set correctly
+          if (!updateRoleId) {
+            setUpdateRoleId(editingRole.id)
+          }
           // Trigger the update mutation
           await updateRoleMutation.mutateAsync(data)
           toast.success(t('roles.update.success') || 'Role updated successfully')
           setIsDialogOpen(false)
           setEditingRole(null)
+          setUpdateRoleId(null)
         } catch (error: any) {
           // Log errors only in development
           if (process.env.NODE_ENV === 'development') {

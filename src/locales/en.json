@@ -514,6 +514,12 @@
     "title": "Settings",
     "configure": "Configure",
     "description": "Manage your system preferences",
+    "groups": {
+      "general": "General",
+      "security": "Security",
+      "management": "Management",
+      "customization": "Customization"
+    },
     "application": {
       "title": "Application Settings",
       "description": "Customize the application name and branding",
@@ -889,6 +895,7 @@
         "bulkDelete": "Bulk delete roles"
       },
       "pc": {
+        "label": "PCs",
         "view": "View assets",
         "create": "Create assets",
         "edit": "Edit assets",
@@ -896,6 +903,7 @@
         "bulkDelete": "Bulk delete assets"
       },
       "laptop": {
+        "label": "Laptops",
         "view": "View assets",
         "create": "Create assets",
         "edit": "Edit assets",
@@ -903,6 +911,7 @@
         "bulkDelete": "Bulk delete assets"
       },
       "printer": {
+        "label": "Printers",
         "view": "View assets",
         "create": "Create assets",
         "edit": "Edit assets",
@@ -910,6 +919,7 @@
         "bulkDelete": "Bulk delete assets"
       },
       "license": {
+        "label": "Licenses",
         "view": "View assets",
         "create": "Create assets",
         "edit": "Edit assets",
@@ -917,6 +927,7 @@
         "bulkDelete": "Bulk delete assets"
       },
       "warehouse": {
+        "label": "Warehouse IT",
         "view": "View assets",
         "create": "Create assets",
         "edit": "Edit assets",
@@ -924,6 +935,7 @@
         "bulkDelete": "Bulk delete assets"
       },
       "internet": {
+        "label": "Internet",
         "view": "View assets",
         "create": "Create assets",
         "edit": "Edit assets",

@@ -65,11 +65,11 @@ const navigationItems: NavigationItem[] = [
     nameKey: "nav.management", 
     href: "/management", 
     icon: Users,
-    roles: ['admin', 'user'], // Both admin and user roles can access management sections
+    roles: ['admin'], // Only admin can access management sections
     children: [
-      { nameKey: "nav.users", href: "/users", icon: Users, roles: ['admin', 'user'] },
-      { nameKey: "nav.tenants", href: "/tenants", icon: Building, roles: ['admin', 'user'] },
-      { nameKey: "nav.roles", href: "/roles", icon: Shield, roles: ['admin', 'user'] }, // User role can view roles
+      { nameKey: "nav.users", href: "/users", icon: Users, roles: ['admin'] },
+      { nameKey: "nav.tenants", href: "/tenants", icon: Building, roles: ['admin'] },
+      { nameKey: "nav.roles", href: "/roles", icon: Shield, roles: ['admin'] },
     ]
   },
   { 
