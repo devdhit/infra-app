@@ -146,12 +146,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Validate role if provided
     if (body.role) {
-      if (!['admin', 'user'].includes(body.role)) {
-        return new Response(JSON.stringify({ error: 'Invalid role' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      }
       if (currentRoleName === 'admin') {
         // Find the role by name within the same tenant
         const role = await db.role.findFirst({
@@ -170,6 +164,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         updateData.roleId = role.id
       }
+      // For non-admin users, we don't allow role changes, so we skip this
     }
 
     if (currentRoleName === 'admin' && body.tenantId !== undefined) {

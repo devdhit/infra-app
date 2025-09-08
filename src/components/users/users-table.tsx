@@ -45,7 +45,7 @@ export function UsersTable({
   }
 
   const handleSelectAll = () => {
-    if (selectedUsers.size === users.length) {
+    if (selectedUsers.size === users.length && users.length > 0) {
       setSelectedUsers(new Set())
     } else {
       setSelectedUsers(new Set(users.map(user => user.id)))
@@ -96,8 +96,8 @@ export function UsersTable({
               <TableCell className="font-medium">{user.name}</TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell>
-                <Badge variant={user.role?.name === 'admin' ? 'default' : 'secondary'}>
-                  {user.role?.name === 'admin' ? 'Admin' : 'User'}
+                <Badge variant="secondary">
+                  {user.role?.name || 'N/A'}
                 </Badge>
               </TableCell>
               <TableCell>{getTenantName(user.tenantId)}</TableCell>

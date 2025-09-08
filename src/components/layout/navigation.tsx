@@ -29,14 +29,14 @@ import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { useTranslation } from "@/hooks/use-translation";
 import { getApplicationSettings } from '@/lib/api/application';
-import { UserRole } from '@/types/users';
+import { usePermissions } from "@/hooks/use-permissions";
 
 // Define navigation item structure
 interface NavigationItem {
   nameKey: string;
   href: string;
   icon: React.ComponentType<any>;
-  roles?: UserRole[]; // Roles that can access this item
+  requiredPermission?: { resource: string; action: string }; // Permission required to access this item
   children?: NavigationItem[];
 }
 
@@ -45,46 +45,45 @@ const navigationItems: NavigationItem[] = [
     nameKey: "nav.dashboard", 
     href: "/dashboard", 
     icon: LayoutDashboard,
-    roles: ['admin', 'user']
+    requiredPermission: { resource: 'assets', action: 'view' }
   },
   { 
     nameKey: "nav.assets", 
     href: "/assets", 
     icon: Home,
-    roles: ['admin', 'user'],
+    requiredPermission: { resource: 'assets', action: 'view' },
     children: [
-      { nameKey: "nav.pc", href: "/assets/pc", icon: Monitor, roles: ['admin', 'user'] },
-      { nameKey: "nav.laptop", href: "/assets/laptop", icon: Laptop, roles: ['admin', 'user'] },
-      { nameKey: "nav.printer", href: "/assets/printer", icon: Printer, roles: ['admin', 'user'] },
-      { nameKey: "nav.license", href: "/assets/license", icon: Key, roles: ['admin', 'user'] },
-      { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse, roles: ['admin', 'user'] },
-      { nameKey: "nav.internet", href: "/assets/internet", icon: Wifi, roles: ['admin', 'user'] },
+      { nameKey: "nav.pc", href: "/assets/pc", icon: Monitor, requiredPermission: { resource: 'pc', action: 'view' } },
+      { nameKey: "nav.laptop", href: "/assets/laptop", icon: Laptop, requiredPermission: { resource: 'laptop', action: 'view' } },
+      { nameKey: "nav.printer", href: "/assets/printer", icon: Printer, requiredPermission: { resource: 'printer', action: 'view' } },
+      { nameKey: "nav.license", href: "/assets/license", icon: Key, requiredPermission: { resource: 'license', action: 'view' } },
+      { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse, requiredPermission: { resource: 'warehouse', action: 'view' } },
+      { nameKey: "nav.internet", href: "/assets/internet", icon: Wifi, requiredPermission: { resource: 'internet', action: 'view' } },
     ]
   },
   { 
     nameKey: "nav.management", 
     href: "/management", 
     icon: Users,
-    roles: ['admin'], // Only admin can access management sections
+    requiredPermission: { resource: 'users', action: 'view' }, // Require at least user view permission for management access
     children: [
-      { nameKey: "nav.users", href: "/users", icon: Users, roles: ['admin'] },
-      { nameKey: "nav.tenants", href: "/tenants", icon: Building, roles: ['admin'] },
-      { nameKey: "nav.roles", href: "/roles", icon: Shield, roles: ['admin'] },
+      { nameKey: "nav.users", href: "/users", icon: Users, requiredPermission: { resource: 'users', action: 'view' } },
+      { nameKey: "nav.tenants", href: "/tenants", icon: Building, requiredPermission: { resource: 'tenants', action: 'view' } },
+      { nameKey: "nav.roles", href: "/roles", icon: Shield, requiredPermission: { resource: 'roles', action: 'view' } },
     ]
   },
   { 
     nameKey: "nav.settings", 
     href: "/settings", 
     icon: Settings,
-    roles: ['admin', 'user'], // Both roles can access settings
+    requiredPermission: { resource: 'settings', action: 'view' },
   },
 ];
 
 interface NavigationProps {
-  userRole?: UserRole;
 }
 
-export function Navigation({ userRole = 'user' }: NavigationProps) {
+export function Navigation({}: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -95,6 +94,21 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
   const { t } = useTranslation();
   const [applicationName, setApplicationName] = useState('IT Asset Management');
   const [shortName, setShortName] = useState('ITAMS');
+  
+  // Use permission hooks to check permissions
+  const { 
+    canViewUsers,
+    canViewTenants,
+    canViewRoles,
+    canViewSettings,
+    canViewAssets,
+    canViewPC,
+    canViewLaptop,
+    canViewPrinter,
+    canViewLicense,
+    canViewWarehouse,
+    canViewInternet
+  } = usePermissions();
 
   // Load application name from API
   useEffect(() => {
@@ -126,21 +140,88 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
     };
   }, []);
 
-  // Memoize filtered navigation items to prevent unnecessary re-renders
-  const filteredNavigationItems = useMemo(() => {
-    return navigationItems.filter(item => {
-      // If no roles are specified, item is accessible to all
-      if (!item.roles) return true;
-      
-      // Check if user's role is in the allowed roles (case-insensitive)
-      const isAllowed = item.roles.some(role => role.toLowerCase() === userRole.toLowerCase());
-      // For debugging in development only
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`Navigation item ${item.nameKey} allowed for role ${userRole}:`, isAllowed);
+  // Check if user has permission for a navigation item
+  const hasPermission = useCallback((item: NavigationItem) => {
+    // If no permission is required, allow access
+    if (!item.requiredPermission) return Promise.resolve(true);
+    
+    // Check specific permissions based on resource
+    switch (item.requiredPermission.resource) {
+      case 'users':
+        return canViewUsers();
+      case 'tenants':
+        return canViewTenants();
+      case 'roles':
+        return canViewRoles();
+      case 'settings':
+        return canViewSettings();
+      case 'assets':
+        return canViewAssets();
+      case 'pc':
+        return canViewPC();
+      case 'laptop':
+        return canViewLaptop();
+      case 'printer':
+        return canViewPrinter();
+      case 'license':
+        return canViewLicense();
+      case 'warehouse':
+        return canViewWarehouse();
+      case 'internet':
+        return canViewInternet();
+      default:
+        return Promise.resolve(false);
+    }
+  }, [canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet]);
+
+  // Filter navigation items based on user permissions
+  const [filteredNavigationItems, setFilteredNavigationItems] = useState<NavigationItem[]>([]);
+
+  // Effect to filter navigation items when permissions change
+  useEffect(() => {
+    let isMounted = true;
+    
+    const filterNavigationItems = async () => {
+      const filterItems = async (items: NavigationItem[]): Promise<NavigationItem[]> => {
+        const filteredItems: NavigationItem[] = [];
+        
+        for (const item of items) {
+          // Check if user has permission for this item
+          const hasPerm = await hasPermission(item);
+          
+          if (hasPerm) {
+            // If item has children, filter them recursively
+            if (item.children) {
+              const filteredChildren = await filterItems(item.children);
+              // Only include the parent item if it has children or it's a direct link
+              if (filteredChildren.length > 0) {
+                filteredItems.push({
+                  ...item,
+                  children: filteredChildren
+                });
+              }
+            } else {
+              // Include items without children directly
+              filteredItems.push(item);
+            }
+          }
+        }
+        
+        return filteredItems;
+      };
+
+      const filtered = await filterItems(navigationItems);
+      if (isMounted) {
+        setFilteredNavigationItems(filtered);
       }
-      return isAllowed;
-    });
-  }, [userRole]);
+    };
+
+    filterNavigationItems();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, hasPermission]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -165,7 +246,7 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
     }));
   }, []);
 
-  // Memoize the navigation items rendering to prevent unnecessary re-renders
+  // Render navigation items
   const renderNavigationItems = useMemo(() => {
     return filteredNavigationItems.map((item) => (
       <div key={item.nameKey}>
@@ -207,44 +288,31 @@ export function Navigation({ userRole = 'user' }: NavigationProps) {
         </Link>
         {item.children && expandedItems[item.nameKey] && (
           <div className="ml-9 mt-1 space-y-1">
-            {item.children
-              .filter(child => {
-                // If no roles are specified, item is accessible to all
-                if (!child.roles) return true;
-                
-                // Check if user's role is in the allowed roles (case-insensitive)
-                const isAllowed = child.roles.some(role => role.toLowerCase() === userRole.toLowerCase());
-                // For debugging in development only
-                if (process.env.NODE_ENV === 'development') {
-                  console.log(`Child navigation item ${child.nameKey} allowed for role ${userRole}:`, isAllowed);
-                }
-                return isAllowed;
-              })
-              .map((child) => (
-                <Link
-                  key={child.nameKey}
-                  href={child.href}
-                  className={`flex items-center px-3 py-2 rounded-lg text-sm ${
-                    isActive(child.href)
-                      ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
-                      : "text-foreground hover:bg-muted"
-                  }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setSidebarOpen(false);
-                    // Use router for navigation to enable prefetching
-                    router.push(child.href);
-                  }}
-                >
-                  <child.icon className="h-4 w-4 mr-3" />
-                  {t(child.nameKey)}
-                </Link>
-              ))}
+            {item.children.map((child) => (
+              <Link
+                key={child.nameKey}
+                href={child.href}
+                className={`flex items-center px-3 py-2 rounded-lg text-sm ${
+                  isActive(child.href)
+                    ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+                    : "text-foreground hover:bg-muted"
+                }`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSidebarOpen(false);
+                  // Use router for navigation to enable prefetching
+                  router.push(child.href);
+                }}
+              >
+                <child.icon className="h-4 w-4 mr-3" />
+                {t(child.nameKey)}
+              </Link>
+            ))}
           </div>
         )}
       </div>
     ));
-  }, [filteredNavigationItems, isActive, expandedItems, toggleExpand, router, t, userRole]);
+  }, [filteredNavigationItems, isActive, expandedItems, toggleExpand, router, t]);
 
   return (
     <>

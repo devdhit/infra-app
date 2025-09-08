@@ -38,7 +38,9 @@
     "logout": {
       "success": "登出成功",
       "error": "登出失敗",
-      "loggingOut": "登出中..."
+      "loggingOut": "登出中...",
+      "confirmTitle": "確認登出",
+      "confirmDescription": "您確定要登出嗎？"
     },
     "forgotPassword": {
       "title": "忘記密碼？",
@@ -384,6 +386,7 @@
   "users": {
     "title": "使用者",
     "description": "管理系統使用者",
+    "subtitle": "查看和管理使用者帳戶",
     "search": {
       "placeholder": "搜尋使用者..."
     },
