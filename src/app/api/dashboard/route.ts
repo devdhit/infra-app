@@ -53,15 +53,52 @@ export async function GET(request: NextRequest) {
     })
 
     // Get department-based statistics for PC assets
-    const pcDepartmentStats = await db.pC.groupBy({
-      by: ['dept'],
+    const pcAssets = await db.pC.findMany({
       where: { tenantId: user.tenantId },
-      _count: {
-        _all: true,
+      select: {
+        dept: true,
         monitorBarcode: true,
         upsBarcode: true
       }
     })
+
+    // Group PC assets by department and count monitors and UPSs (excluding 'N/A' values)
+    const pcDepartmentStatsMap: Record<string, { count: number; monitorCount: number; upsCount: number }> = {}
+    
+    pcAssets.forEach(pc => {
+      if (!pcDepartmentStatsMap[pc.dept]) {
+        pcDepartmentStatsMap[pc.dept] = {
+          count: 0,
+          monitorCount: 0,
+          upsCount: 0
+        }
+      }
+      
+      // Ensure the department entry exists before accessing it
+      const deptStats = pcDepartmentStatsMap[pc.dept];
+      if (deptStats) {
+        deptStats.count += 1;
+        
+        // Count monitors and UPSs only if they exist and are not 'N/A'
+        if (pc.monitorBarcode && pc.monitorBarcode !== 'N/A' && String(pc.monitorBarcode).trim() !== '') {
+          deptStats.monitorCount += 1;
+        }
+        
+        if (pc.upsBarcode && pc.upsBarcode !== 'N/A' && String(pc.upsBarcode).trim() !== '') {
+          deptStats.upsCount += 1;
+        }
+      }
+    })
+    
+    // Convert to array format
+    const pcDepartmentStats = Object.entries(pcDepartmentStatsMap).map(([dept, stats]) => ({
+      dept,
+      _count: {
+        _all: stats.count,
+        monitorBarcode: stats.monitorCount,
+        upsBarcode: stats.upsCount
+      }
+    }))
 
     // Transform department stats to include counts for PCs, Monitors, and UPSs
     const departmentAssetStats = pcDepartmentStats.map((deptStat: any) => ({
@@ -120,10 +157,9 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    // Get total counts for Monitors, and UPSs across all assets
-    const totalMonitorCount = pcDepartmentStats.reduce((sum: number, dept: any) => sum + (dept._count.monitorBarcode || 0), 0);
-    
-    const totalUpsCount = pcDepartmentStats.reduce((sum: number, dept: any) => sum + (dept._count.upsBarcode || 0), 0);
+    // Get total counts for Monitors, and UPSs across all assets (excluding 'N/A' values)
+    const totalMonitorCount = Object.values(pcDepartmentStatsMap).reduce((sum, dept) => sum + dept.monitorCount, 0)
+    const totalUpsCount = Object.values(pcDepartmentStatsMap).reduce((sum, dept) => sum + dept.upsCount, 0)
 
     // Get total department count
     const totalDepartmentCount = new Set([

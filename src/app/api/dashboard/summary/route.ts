@@ -42,9 +42,23 @@ export async function GET(request: NextRequest) {
     })
     
     // Count only non-null and non-'N/A' values
-    const totalCpus = pcSummary.filter((pc: any) => pc.cpuBarcode && pc.cpuBarcode !== 'N/A').length
-    const totalMonitors = pcSummary.filter((pc: any) => pc.monitorBarcode && pc.monitorBarcode !== 'N/A').length
-    const totalUps = pcSummary.filter((pc: any) => pc.upsBarcode && pc.upsBarcode !== 'N/A').length
+    const totalCpus = pcSummary.filter((pc: any) => 
+      pc.cpuBarcode && 
+      pc.cpuBarcode !== 'N/A' && 
+      String(pc.cpuBarcode).trim() !== ''
+    ).length
+    
+    const totalMonitors = pcSummary.filter((pc: any) => 
+      pc.monitorBarcode && 
+      pc.monitorBarcode !== 'N/A' && 
+      String(pc.monitorBarcode).trim() !== ''
+    ).length
+    
+    const totalUps = pcSummary.filter((pc: any) => 
+      pc.upsBarcode && 
+      pc.upsBarcode !== 'N/A' && 
+      String(pc.upsBarcode).trim() !== ''
+    ).length
 
     // Get Laptop summary data: total by status, by model, and custom-fields fields
     const laptopSummary = await db.laptop.groupBy({

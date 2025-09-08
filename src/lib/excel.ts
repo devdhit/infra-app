@@ -1137,8 +1137,20 @@ export async function importFromExcelWithTemplate(
         else if (header === 'pcName' && (value === null || value === undefined || value === '')) {
           value = 'N/A'
         }
-        // Handle required fields for PC assets
-        else if (assetType === 'pc' && (header === 'cpuBarcode' || header === 'dept' || header === 'pcName') && (value === null || value === undefined || value === '')) {
+        // Handle PC barcode fields - convert empty values to 'N/A' instead of null
+        else if (assetType === 'pc' && (
+          header === 'cpuBarcode' || 
+          header === 'cpuSapBarcode' || 
+          header === 'monitorBarcode' || 
+          header === 'monitorSapBarcode' || 
+          header === 'upsBarcode' || 
+          header === 'upsSapBarcode'
+        ) && (value === null || value === undefined || value === '')) {
+          // For PC barcode assets, we need to allow empty values and convert them to 'N/A'
+          value = 'N/A';
+        }
+        // Handle required fields for PC assets (dept and pcName only)
+        else if (assetType === 'pc' && (header === 'dept' || header === 'pcName') && (value === null || value === undefined || value === '')) {
           // For PC assets, we need to allow empty values for required fields during import
           // The validation will be handled in the API route
           value = null; // Keep as null for proper validation in the API
