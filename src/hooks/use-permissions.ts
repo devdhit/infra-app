@@ -11,7 +11,27 @@ import { User } from '@/types/users';
 export function usePermissions() {
   const { data: user, isLoading: isUserLoading } = useCurrentUser() as { data: User | undefined; isLoading: boolean };
   const isMountedRef = useRef(true);
-
+  
+  // Cache for permission results to avoid redundant API calls
+  const permissionCache = useRef<Record<string, boolean>>({});
+  
+  // Timestamp for cache invalidation (5 minutes)
+  const cacheTimestamp = useRef<number>(Date.now());
+  
+  // Reset cache every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isMountedRef.current) {
+        cacheTimestamp.current = Date.now();
+        permissionCache.current = {};
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+  
   // Clean up ref on unmount
   useEffect(() => {
     return () => {
@@ -43,18 +63,15 @@ export function usePermissions() {
       return false;
     }
     
+    // Create cache key
+    const cacheKey = `${user.role.id}-${user.tenantId}-${resource}-${action}`;
+    
+    // Check if result is cached and not expired
+    if (permissionCache.current[cacheKey] !== undefined) {
+      return permissionCache.current[cacheKey];
+    }
+    
     try {
-      // For debugging in development only
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Sending permission check request:', {
-          url: "/permissions/check",
-          data: {
-            resource,
-            action
-          }
-        });
-      }
-      
       // Make API call to check permissions using the authenticated API client
       // The API will use the current user's role and tenant ID
       const response = await api.post<{
@@ -67,13 +84,9 @@ export function usePermissions() {
         action
       });
       
-      // For debugging in development only
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Permission check response:', {
-          resource,
-          action,
-          hasPermission: response.hasPermission
-        });
+      // Cache the result
+      if (isMountedRef.current) {
+        permissionCache.current[cacheKey] = response.hasPermission;
       }
       
       return response.hasPermission;
@@ -96,6 +109,14 @@ export function usePermissions() {
     // Prevent running on the server or when user data is not available
     if (typeof window === 'undefined' || !user || !user.role?.id || !user.tenantId) {
       return false;
+    }
+    
+    // Check cache for any of the permissions
+    for (const action of actions) {
+      const cacheKey = `${user.role.id}-${user.tenantId}-${resource}-${action}`;
+      if (permissionCache.current[cacheKey] === true) {
+        return true;
+      }
     }
     
     for (const action of actions) {

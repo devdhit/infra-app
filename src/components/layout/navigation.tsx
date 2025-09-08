@@ -140,38 +140,21 @@ export function Navigation({}: NavigationProps) {
     };
   }, []);
 
-  // Check if user has permission for a navigation item
-  const hasPermission = useCallback((item: NavigationItem) => {
-    // If no permission is required, allow access
-    if (!item.requiredPermission) return Promise.resolve(true);
-    
-    // Check specific permissions based on resource
-    switch (item.requiredPermission.resource) {
-      case 'users':
-        return canViewUsers();
-      case 'tenants':
-        return canViewTenants();
-      case 'roles':
-        return canViewRoles();
-      case 'settings':
-        return canViewSettings();
-      case 'assets':
-        return canViewAssets();
-      case 'pc':
-        return canViewPC();
-      case 'laptop':
-        return canViewLaptop();
-      case 'printer':
-        return canViewPrinter();
-      case 'license':
-        return canViewLicense();
-      case 'warehouse':
-        return canViewWarehouse();
-      case 'internet':
-        return canViewInternet();
-      default:
-        return Promise.resolve(false);
-    }
+  // Create a map of permission checkers for efficient lookup
+  const permissionCheckers = useMemo(() => {
+    return {
+      'users': canViewUsers,
+      'tenants': canViewTenants,
+      'roles': canViewRoles,
+      'settings': canViewSettings,
+      'assets': canViewAssets,
+      'pc': canViewPC,
+      'laptop': canViewLaptop,
+      'printer': canViewPrinter,
+      'license': canViewLicense,
+      'warehouse': canViewWarehouse,
+      'internet': canViewInternet
+    } as const;
   }, [canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet]);
 
   // Filter navigation items based on user permissions
@@ -182,35 +165,76 @@ export function Navigation({}: NavigationProps) {
     let isMounted = true;
     
     const filterNavigationItems = async () => {
-      const filterItems = async (items: NavigationItem[]): Promise<NavigationItem[]> => {
-        const filteredItems: NavigationItem[] = [];
-        
+      // Create a set of all required permissions to check
+      const permissionsToCheck = new Set<string>();
+      
+      // Collect all unique permissions needed
+      const collectPermissions = (items: NavigationItem[]) => {
         for (const item of items) {
-          // Check if user has permission for this item
-          const hasPerm = await hasPermission(item);
-          
-          if (hasPerm) {
-            // If item has children, filter them recursively
-            if (item.children) {
-              const filteredChildren = await filterItems(item.children);
-              // Only include the parent item if it has children or it's a direct link
-              if (filteredChildren.length > 0) {
-                filteredItems.push({
-                  ...item,
-                  children: filteredChildren
-                });
-              }
-            } else {
-              // Include items without children directly
-              filteredItems.push(item);
-            }
+          if (item.requiredPermission) {
+            permissionsToCheck.add(item.requiredPermission.resource);
+          }
+          if (item.children) {
+            collectPermissions(item.children);
           }
         }
-        
-        return filteredItems;
+      };
+      
+      collectPermissions(navigationItems);
+      
+      // Check all permissions in parallel for better performance
+      const permissionResults: Record<string, boolean> = {};
+      const permissionPromises: Promise<void>[] = [];
+      
+      permissionsToCheck.forEach(resource => {
+        const checker = permissionCheckers[resource as keyof typeof permissionCheckers];
+        if (checker) {
+          permissionPromises.push(
+            checker().then((result: boolean) => {
+              permissionResults[resource] = result;
+            }).catch(() => {
+              permissionResults[resource] = false;
+            })
+          );
+        } else {
+          permissionResults[resource] = false;
+        }
+      });
+      
+      // Wait for all permission checks to complete
+      await Promise.all(permissionPromises);
+      
+      // Filter items based on permission results
+      const filterItems = (items: NavigationItem[]): NavigationItem[] => {
+        return items.filter(item => {
+          // If no permission required, include the item
+          if (!item.requiredPermission) return true;
+          
+          // Check if user has permission for this item
+          return permissionResults[item.requiredPermission.resource] || false;
+        }).map(item => {
+          // If item has children, filter them recursively
+          if (item.children) {
+            const filteredChildren = filterItems(item.children);
+            // Only include the parent item if it has children or it's a direct link
+            if (filteredChildren.length > 0) {
+              return {
+                ...item,
+                children: filteredChildren
+              };
+            } else if (!item.requiredPermission) {
+              // Include parent items without required permissions even if they have no children
+              return item;
+            }
+            // Exclude parent items with required permissions if they have no accessible children
+            return null;
+          }
+          // Include items without children directly
+          return item;
+        }).filter((item): item is NavigationItem => item !== null);
       };
 
-      const filtered = await filterItems(navigationItems);
+      const filtered = filterItems(navigationItems);
       if (isMounted) {
         setFilteredNavigationItems(filtered);
       }
@@ -221,7 +245,7 @@ export function Navigation({}: NavigationProps) {
     return () => {
       isMounted = false;
     };
-  }, [canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, hasPermission]);
+  }, [permissionCheckers]);
 
   const handleLogout = useCallback(async () => {
     try {

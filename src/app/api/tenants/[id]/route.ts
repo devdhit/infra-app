@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       where: { id: resolvedParams.id },
       include: {
         _count: {
-          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true }
+          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true, warehouseITs: true, internets: true }
         }
       }
     })
@@ -179,7 +179,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       where: { id: resolvedParams.id },
       include: {
         _count: {
-          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true }
+          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true, warehouseITs: true, internets: true }
         }
       }
     })
@@ -193,7 +193,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     // Prevent deletion if tenant has associated data
     if (tenant._count.users > 0 || tenant._count.pcs > 0 || tenant._count.laptops > 0 || 
-        tenant._count.printers > 0 || tenant._count.licenses > 0) {
+        tenant._count.printers > 0 || tenant._count.licenses > 0 || 
+        tenant._count.warehouseITs > 0 || tenant._count.internets > 0) {
       return new Response(JSON.stringify({ error: 'Cannot delete tenant with associated data' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }

@@ -80,6 +80,12 @@ const useTenantColumns = (t: (key: string, fallback?: string) => string, onEdit:
             <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
               License: {count.licenses}
             </span>
+            <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded">
+              Warehouse IT: {count.warehouseITs}
+            </span>
+            <span className="bg-cyan-100 text-cyan-800 text-xs px-2 py-1 rounded">
+              Internet: {count.internets}
+            </span>
           </div>
         );
       },
@@ -127,7 +133,9 @@ const useTenantColumns = (t: (key: string, fallback?: string) => string, onEdit:
                         tenant._count.pcs > 0 || 
                         tenant._count.laptops > 0 || 
                         tenant._count.printers > 0 || 
-                        tenant._count.licenses > 0)) ||
+                        tenant._count.licenses > 0 ||
+                        tenant._count.warehouseITs > 0 ||
+                        tenant._count.internets > 0)) ||
                       (isDeleting && deletingTenantId === tenant.id)
                     }
                   >
