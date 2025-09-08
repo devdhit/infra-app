@@ -514,6 +514,12 @@
     "title": "設定",
     "configure": "設定",
     "description": "管理您的系統偏好設定",
+    "groups": {
+      "general": "一般",
+      "security": "安全性",
+      "management": "管理",
+      "customization": "自訂"
+    },
     "application": {
       "title": "應用程式設定",
       "description": "自訂應用程式名稱和品牌",
@@ -942,6 +948,7 @@
         "bulkDelete": "批次刪除角色"
       },
       "pc": {
+        "label": "電腦",
         "view": "查看資產",
         "create": "建立資產",
         "edit": "編輯資產",
@@ -949,6 +956,7 @@
         "bulkDelete": "批次刪除資產"
       },
       "laptop": {
+        "label": "筆電",
         "view": "查看資產",
         "create": "建立資產",
         "edit": "編輯資產",
@@ -956,6 +964,7 @@
         "bulkDelete": "批次刪除資產"
       },
       "printer": {
+        "label": "印表機",
         "view": "查看資產",
         "create": "建立資產",
         "edit": "編輯資產",
@@ -963,6 +972,7 @@
         "bulkDelete": "批次刪除資產"
       },
       "license": {
+        "label": "授權",
         "view": "查看資產",
         "create": "建立資產",
         "edit": "編輯資產",
@@ -970,6 +980,7 @@
         "bulkDelete": "批次刪除資產"
       },
       "warehouse": {
+        "label": "倉儲IT",
         "view": "查看資產",
         "create": "建立資產",
         "edit": "編輯資產",
@@ -977,6 +988,7 @@
         "bulkDelete": "批次刪除資產"
       },
       "internet": {
+        "label": "網路",
         "view": "查看資產",
         "create": "建立資產",
         "edit": "編輯資產",

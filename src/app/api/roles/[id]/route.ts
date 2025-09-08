@@ -2,20 +2,15 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
+import { successResponse, errorResponse, badRequestResponse, conflictResponse } from '@/lib/api-utils'
 
 // GET /api/roles/[id] - Get a specific role
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const currentUser = await getCurrentUser(request)
     if (!currentUser) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }, null, 2), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Unauthorized', 401)
     }
-
-    // Await the params to get the id
-    const resolvedParams = await params;
 
     // Check if user has permission to view roles
     const hasViewPermission = await hasPermission(
@@ -26,56 +21,38 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     )
     
     if (!hasViewPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }, null, 2), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
     // Get the role
     const role = await db.role.findUnique({
       where: {
-        id: resolvedParams.id,
+        id: params.id,
         tenantId: currentUser.tenantId
       }
     })
 
     if (!role) {
-      return new Response(JSON.stringify({ error: 'Role not found' }, null, 2), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Role not found', 404)
     }
 
-    return new Response(JSON.stringify(role, null, 2), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error) {
+    return successResponse(role)
+  } catch (error: any) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
       console.error('Error fetching role:', error)
     }
-    return new Response(JSON.stringify({ error: 'Internal server error' }, null, 2), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }
 
 // PUT /api/roles/[id] - Update a role
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const currentUser = await getCurrentUser(request)
     if (!currentUser) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }, null, 2), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Unauthorized', 401)
     }
-
-    // Await the params to get the id
-    const resolvedParams = await params;
 
     // Check if user has permission to edit roles
     const hasEditPermission = await hasPermission(
@@ -86,95 +63,83 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     )
     
     if (!hasEditPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }, null, 2), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-    
-    const body = await request.json()
-
-    // Validate required fields
-    if (!body.name) {
-      return new Response(JSON.stringify({ error: 'Role name is required' }, null, 2), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
-    // Normalize the role name for comparison (trim whitespace)
-    const normalizedName = body.name.trim();
+    let body
+    try {
+      body = await request.json()
+    } catch (error) {
+      return badRequestResponse('Invalid JSON in request body')
+    }
 
-    // Check if another role with the same name already exists (excluding the current role being updated)
-    const existingRole = await db.role.findFirst({
-      where: {
-        name: {
-          equals: normalizedName,
-          mode: 'insensitive'
-        },
-        tenantId: currentUser.tenantId,
-        NOT: {
-          id: resolvedParams.id
-        }
+    const roleId = params.id
+
+    // Validate role exists
+    const existingRole = await db.role.findUnique({
+      where: { 
+        id: roleId,
+        tenantId: currentUser.tenantId
       }
     })
 
-    if (existingRole) {
-      return new Response(JSON.stringify({ error: 'A role with this name already exists' }, null, 2), {
-        status: 409,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    if (!existingRole) {
+      return errorResponse('Role not found', 404)
     }
 
-    // Update the role with the normalized name
+    // Prepare update data
+    const updateData: any = {
+      description: body.description !== undefined ? body.description : existingRole.description,
+      permissions: body.permissions || existingRole.permissions
+    }
+
+    // Check if name is being changed
+    if (body.name && body.name !== existingRole.name) {
+      const normalizedName = body.name.trim()
+      updateData.name = normalizedName
+      
+      // Validate permissions structure if provided
+      if (body.permissions && typeof body.permissions !== 'object') {
+        return badRequestResponse('Invalid permissions structure')
+      }
+    } else {
+      // Validate permissions structure if provided
+      if (body.permissions && typeof body.permissions !== 'object') {
+        return badRequestResponse('Invalid permissions structure')
+      }
+    }
+
+    // Update the role
     const role = await db.role.update({
-      where: {
-        id: resolvedParams.id,
+      where: { 
+        id: roleId,
         tenantId: currentUser.tenantId
       },
-      data: {
-        name: normalizedName,
-        description: body.description,
-        permissions: body.permissions
-      }
+      data: updateData
     })
 
-    return new Response(JSON.stringify(role, null, 2), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return successResponse(role)
   } catch (error: any) {
-    if (error.code === 'P2025') {
-      return new Response(JSON.stringify({ error: 'Role not found' }, null, 2), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    // Handle unique constraint violation
+    if (error.code === 'P2002') {
+      return conflictResponse('A role with this name already exists')
     }
     
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
       console.error('Error updating role:', error)
     }
-    return new Response(JSON.stringify({ error: 'Internal server error' }, null, 2), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }
 
 // DELETE /api/roles/[id] - Delete a role
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const currentUser = await getCurrentUser(request)
     if (!currentUser) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }, null, 2), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Unauthorized', 401)
     }
-
-    // Await the params to get the id
-    const resolvedParams = await params;
 
     // Check if user has permission to delete roles
     const hasDeletePermission = await hasPermission(
@@ -185,53 +150,48 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     )
     
     if (!hasDeletePermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }, null, 2), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
-    // Check if role is being used by any users
+    const roleId = params.id
+
+    // Validate role exists
+    const existingRole = await db.role.findUnique({
+      where: { 
+        id: roleId,
+        tenantId: currentUser.tenantId
+      }
+    })
+
+    if (!existingRole) {
+      return errorResponse('Role not found', 404)
+    }
+
+    // Check if role is assigned to any users
     const usersWithRole = await db.user.findFirst({
       where: {
-        roleId: resolvedParams.id,
-        tenantId: currentUser.tenantId
+        roleId: roleId
       }
     })
 
     if (usersWithRole) {
-      return new Response(JSON.stringify({ error: 'Cannot delete role that is assigned to users' }, null, 2), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return badRequestResponse('Cannot delete role that is assigned to users')
     }
 
     // Delete the role
     await db.role.delete({
-      where: {
-        id: resolvedParams.id,
+      where: { 
+        id: roleId,
         tenantId: currentUser.tenantId
       }
     })
 
-    return new Response(null, {
-      status: 204
-    })
+    return successResponse(null, 204)
   } catch (error: any) {
-    if (error.code === 'P2025') {
-      return new Response(JSON.stringify({ error: 'Role not found' }, null, 2), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-    
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
       console.error('Error deleting role:', error)
     }
-    return new Response(JSON.stringify({ error: 'Internal server error' }, null, 2), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }

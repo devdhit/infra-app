@@ -23,8 +23,6 @@ import { useTranslation } from "@/hooks/use-translation"
 import { UserFormProps, UserFormValues } from "@/types/users"
 import { useRoles } from '@/hooks/useRoles'
 
-const DEFAULT_ROLE = 'user'
-
 export function UserForm({ 
   open, 
   onOpenChange, 
@@ -35,6 +33,9 @@ export function UserForm({
 }: UserFormProps) {
   const { t } = useTranslation()
   const { data: roles = [] } = useRoles()
+  
+  // Use the first available role as default, or 'user' if none available
+  const DEFAULT_ROLE = (roles && roles.length > 0 && roles[0]) ? roles[0].name : 'user'
   
   const [formData, setFormData] = useState<UserFormValues>({
     email: editingUser?.email || '',
@@ -65,7 +66,7 @@ export function UserForm({
         tenantId: '',
       })
     }
-  }, [editingUser])
+  }, [editingUser, DEFAULT_ROLE]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
