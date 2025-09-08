@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getApplicationName, setApplicationName } from '@/lib/i18n';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 // GET - Retrieve application settings
 export async function GET(request: Request) {
@@ -13,11 +14,17 @@ export async function GET(request: Request) {
       );
     }
 
-    // Only allow admin users to access application settings
-    const userRoleName = user.role?.name || 'user';
-    if (userRoleName !== 'admin') {
+    // Check if user has permission to view settings
+    const hasViewPermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'settings',
+      'view'
+    );
+    
+    if (!hasViewPermission) {
       return NextResponse.json(
-        { error: 'Forbidden: Only administrators can access application settings' },
+        { error: 'Forbidden: You do not have permission to access application settings' },
         { status: 403 }
       );
     }
@@ -48,11 +55,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Only allow admin users to update application settings
-    const userRoleName = user.role?.name || 'user';
-    if (userRoleName !== 'admin') {
+    // Check if user has permission to edit settings
+    const hasEditPermission = await hasPermission(
+      user.role?.id || '',
+      user.tenantId,
+      'settings',
+      'edit'
+    );
+    
+    if (!hasEditPermission) {
       return NextResponse.json(
-        { error: 'Forbidden: Only administrators can update application settings' },
+        { error: 'Forbidden: You do not have permission to update application settings' },
         { status: 403 }
       );
     }
@@ -68,8 +81,10 @@ export async function POST(request: Request) {
       );
     }
     
-    // Update application name (this will store it in localStorage on the client side)
-    // For server-side, we'll return the name and let the client handle localStorage
+    // Update application name
+    setApplicationName(applicationName);
+    
+    // Return updated settings
     const shortName = applicationName.split(' ').map(word => word.charAt(0)).join('').toUpperCase() || 'ITAMS';
     
     return NextResponse.json({
