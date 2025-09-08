@@ -37,6 +37,8 @@ export function useCreateRole(options: RolesMutationOptions<Role, RoleFormValues
     },
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
+      // Also invalidate users cache since role assignments might have changed
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       if (options.onSuccess) {
         options.onSuccess(data, variables, context)
       }
@@ -79,6 +81,8 @@ export function useUpdateRole(id: string, options: RolesMutationOptions<Role, Ro
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
       queryClient.invalidateQueries({ queryKey: ['roles', id] })
+      // Also invalidate users cache since role names might have changed
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       if (options.onSuccess) {
         options.onSuccess(data, variables, context)
       }
@@ -122,6 +126,8 @@ export function useDeleteRole(id: string, options: RolesMutationOptions<void, vo
     },
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
+      // Also invalidate users cache since role assignments might have changed
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       if (options.onSuccess) {
         options.onSuccess(data, variables, context)
       }
@@ -163,6 +169,8 @@ export function useBulkDeleteRoles(options: RolesMutationOptions<void, { ids: st
     },
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
+      // Also invalidate users cache since role assignments might have changed
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       if (options.onSuccess) {
         options.onSuccess(data, variables, context)
       }

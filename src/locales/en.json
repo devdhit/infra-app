@@ -38,7 +38,9 @@
     "logout": {
       "success": "Logged out successfully",
       "error": "Failed to logout",
-      "loggingOut": "Logging out..."
+      "loggingOut": "Logging out...",
+      "confirmTitle": "Confirm Logout",
+      "confirmDescription": "Are you sure you want to logout?"
     },
     "forgotPassword": {
       "title": "Forgot Password?",
@@ -384,6 +386,7 @@
   "users": {
     "title": "Users",
     "description": "Manage system users",
+    "subtitle": "View and manage user accounts",
     "search": {
       "placeholder": "Search users..."
     },
