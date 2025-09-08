@@ -611,7 +611,8 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
           const statusClass: Record<string, string> = {
             working: "bg-green-100 text-green-800",
             leave: "bg-blue-100 text-blue-800",
-            repair: "bg-yellow-100 text-yellow-800"
+            repair: "bg-yellow-100 text-yellow-800",
+            有異動: "bg-purple-100 text-purple-800"
           };
           
           return (
@@ -672,7 +673,8 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         options: [
           { label: t('assets.status.working') || "Working", value: "working" },
           { label: t('assets.status.leave') || "Leave", value: "leave" },
-          { label: t('assets.status.repair') || "Repair", value: "repair" }
+          { label: t('assets.status.repair') || "Repair", value: "repair" },
+          { label: t('assets.status.有異動') || "Changed", value: "有異動" }
         ]
       },
       {

@@ -220,7 +220,8 @@
     "status": {
       "working": "工作中",
       "leave": "已離開",
-      "repair": "維修中"
+      "repair": "維修中",
+      "有異動": "有異動"
     },
     "excel": {
       "export": {

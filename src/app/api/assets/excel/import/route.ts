@@ -883,12 +883,24 @@ export async function POST(request: NextRequest) {
               internetUserName = String(row.userName);
             }
 
-            // Handle case sensitivity for status field
-            let internetStatusValue = 'working'; // default value
+            // Handle case sensitivity for status field and convert to 有異動
+            let internetStatusValue = '有異動'; // default value changed to 有異動
             if (row.status) {
-              internetStatusValue = String(row.status);
+              const status = String(row.status).toLowerCase();
+              // Convert all current statuses to 有異動
+              if (['working', 'leave', 'repair'].includes(status)) {
+                internetStatusValue = '有異動';
+              } else {
+                internetStatusValue = status;
+              }
             } else if (row.Status) {
-              internetStatusValue = String(row.Status);
+              const status = String(row.Status).toLowerCase();
+              // Convert all current statuses to 有異動
+              if (['working', 'leave', 'repair'].includes(status)) {
+                internetStatusValue = '有異動';
+              } else {
+                internetStatusValue = status;
+              }
             }
 
             // Remove the user and status fields from row data since we're handling them separately
@@ -959,7 +971,7 @@ export async function POST(request: NextRequest) {
               data: {
                 ...internetRowData,
                 userName: internetUserName, // Use userName instead of userId
-                status: internetStatusValue, // Use the properly cased status value
+                status: internetStatusValue, // Use the properly cased status value (converted to 有異動)
                 ...(internetCustomFields ? { customFields: internetCustomFields } : {}),
                 tenantId: user.tenantId
               }

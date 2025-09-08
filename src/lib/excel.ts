@@ -232,40 +232,40 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
       
       // Add data rows
       data.forEach((row, rowIndex) => {
-        const currentRow = dataStartRow + rowIndex;
-        worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
-        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A');
-        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A');
-        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A');
-        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A');
-        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A');
-        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A');
-        worksheet.cell(currentRow, 8).value(row.pcName || 'N/A');
-        worksheet.cell(currentRow, 9).value(row.userName || 'N/A');
-        // Normalize status values to lowercase
-        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 10).value(normalizedStatus);
-        worksheet.cell(currentRow, 11).value(row.note || 'N/A');
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A')
+        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 8).value(row.pcName || 'N/A')
+        worksheet.cell(currentRow, 9).value(row.userName || 'N/A')
+        // For PC assets, preserve the original status value (including Chinese characters)
+        const statusValue = row.status ? row.status : 'N/A';
+        worksheet.cell(currentRow, 10).value(statusValue)
+        worksheet.cell(currentRow, 11).value(row.note || 'N/A')
       });
       console.log('Data rows added with footer preservation');
     } else {
       console.log('No footer detected, adding data rows normally');
       // No footer found, just add data rows normally
       data.forEach((row, rowIndex) => {
-        const currentRow = dataStartRow + rowIndex;
-        worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
-        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A');
-        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A');
-        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A');
-        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A');
-        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A');
-        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A');
-        worksheet.cell(currentRow, 8).value(row.pcName || 'N/A');
-        worksheet.cell(currentRow, 9).value(row.userName || 'N/A');
-        // Normalize status values to lowercase
-        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 10).value(normalizedStatus);
-        worksheet.cell(currentRow, 11).value(row.note || 'N/A');
+        const currentRow = dataStartRow + rowIndex
+        worksheet.cell(currentRow, 1).value(row.dept || 'N/A')
+        worksheet.cell(currentRow, 2).value(row.cpuBarcode || 'N/A')
+        worksheet.cell(currentRow, 3).value(row.cpuSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 4).value(row.monitorBarcode || 'N/A')
+        worksheet.cell(currentRow, 5).value(row.monitorSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 6).value(row.upsBarcode || 'N/A')
+        worksheet.cell(currentRow, 7).value(row.upsSapBarcode || 'N/A')
+        worksheet.cell(currentRow, 8).value(row.pcName || 'N/A')
+        worksheet.cell(currentRow, 9).value(row.userName || 'N/A')
+        // For PC assets, preserve the original status value (including Chinese characters)
+        const statusValue = row.status ? row.status : 'N/A';
+        worksheet.cell(currentRow, 10).value(statusValue)
+        worksheet.cell(currentRow, 11).value(row.note || 'N/A')
       });
       console.log('Data rows added without footer preservation');
     }
@@ -414,10 +414,9 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
           worksheet.cell(currentRow, 5).value(row.userName || 'N/A');  // Changed from 'user' to 'userName'
           worksheet.cell(currentRow, 6).value(row.email || 'N/A');
           worksheet.cell(currentRow, 7).value(row.model || 'N/A');
-          // Normalize status values to lowercase
-          const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-          worksheet.cell(currentRow, 8).value(normalizedStatus);
-          console.log(`Completed setting values for row ${currentRow}`);
+          // For Laptop assets, preserve the original status value (including Chinese characters)
+          const statusValue = row.status ? row.status : 'N/A';
+          worksheet.cell(currentRow, 8).value(statusValue)
         } catch (rowError) {
           console.error(`Error setting values for row ${currentRow}:`, rowError);
         }
@@ -437,10 +436,9 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
           worksheet.cell(currentRow, 5).value(row.userName || 'N/A');  // Changed from 'user' to 'userName'
           worksheet.cell(currentRow, 6).value(row.email || 'N/A');
           worksheet.cell(currentRow, 7).value(row.model || 'N/A');
-          // Normalize status values to lowercase
-          const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-          worksheet.cell(currentRow, 8).value(normalizedStatus);
-          console.log(`Completed setting values for row ${currentRow}`);
+          // For Laptop assets, preserve the original status value (including Chinese characters)
+          const statusValue = row.status ? row.status : 'N/A';
+          worksheet.cell(currentRow, 8).value(statusValue)
         } catch (rowError) {
           console.error(`Error setting values for row ${currentRow}:`, rowError);
         }
@@ -743,9 +741,9 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
         worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
         worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
         worksheet.cell(currentRow, 10).value(row.date || 'N/A')
-        // Normalize updateStatus values to lowercase
-        const normalizedStatus = row.updateStatus ? row.updateStatus.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 11).value(normalizedStatus)
+        // For License assets, preserve the original updateStatus value (including Chinese characters)
+        const statusValue = row.updateStatus ? row.updateStatus : 'N/A';
+        worksheet.cell(currentRow, 11).value(statusValue)
       });
     } else {
       // No footer found, just add data rows normally
@@ -761,9 +759,9 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
         worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
         worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
         worksheet.cell(currentRow, 10).value(row.date || 'N/A')
-        // Normalize updateStatus values to lowercase
-        const normalizedStatus = row.updateStatus ? row.updateStatus.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 11).value(normalizedStatus)
+        // For License assets, preserve the original updateStatus value (including Chinese characters)
+        const statusValue = row.updateStatus ? row.updateStatus : 'N/A';
+        worksheet.cell(currentRow, 11).value(statusValue)
       });
     }
     
@@ -892,9 +890,9 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         const currentRow = dataStartRow + rowIndex
         worksheet.cell(currentRow, 1).value(row.barcode || 'N/A')
         worksheet.cell(currentRow, 2).value(row.sapCode || 'N/A')
-        // Normalize status values to lowercase
-        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 3).value(normalizedStatus)
+        // For WarehouseIT assets, preserve the original status value (including Chinese characters)
+        const statusValue = row.status ? row.status : 'N/A';
+        worksheet.cell(currentRow, 3).value(statusValue)
         worksheet.cell(currentRow, 4).value(row.note || 'N/A')
       });
     } else {
@@ -903,9 +901,9 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         const currentRow = dataStartRow + rowIndex
         worksheet.cell(currentRow, 1).value(row.barcode || 'N/A')
         worksheet.cell(currentRow, 2).value(row.sapCode || 'N/A')
-        // Normalize status values to lowercase
-        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 3).value(normalizedStatus)
+        // For WarehouseIT assets, preserve the original status value (including Chinese characters)
+        const statusValue = row.status ? row.status : 'N/A';
+        worksheet.cell(currentRow, 3).value(statusValue)
         worksheet.cell(currentRow, 4).value(row.note || 'N/A')
       });
     }
@@ -1039,9 +1037,9 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
         worksheet.cell(currentRow, 4).value(row.email || 'N/A')
         worksheet.cell(currentRow, 5).value(row.ipAddress || 'N/A')
         worksheet.cell(currentRow, 6).value(row.internetAccess || 'N/A')
-        // Normalize status values to lowercase
-        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 7).value(normalizedStatus)
+        // For Internet assets, preserve the original status value (including Chinese characters)
+        const statusValue = row.status ? row.status : 'N/A';
+        worksheet.cell(currentRow, 7).value(statusValue)
         worksheet.cell(currentRow, 8).value(row.note || 'N/A')
       });
     } else {
@@ -1054,9 +1052,9 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
         worksheet.cell(currentRow, 4).value(row.email || 'N/A')
         worksheet.cell(currentRow, 5).value(row.ipAddress || 'N/A')
         worksheet.cell(currentRow, 6).value(row.internetAccess || 'N/A')
-        // Normalize status values to lowercase
-        const normalizedStatus = row.status ? row.status.toLowerCase() : 'N/A';
-        worksheet.cell(currentRow, 7).value(normalizedStatus)
+        // For Internet assets, preserve the original status value (including Chinese characters)
+        const statusValue = row.status ? row.status : 'N/A';
+        worksheet.cell(currentRow, 7).value(statusValue)
         worksheet.cell(currentRow, 8).value(row.note || 'N/A')
       });
     }
@@ -1223,8 +1221,14 @@ export async function importFromExcelWithTemplate(
           }
         } else {
           // For other fields, use null for empty values
-          if (value === null || value === undefined || value === '') {
-            value = null
+          // Special handling for note fields to preserve Chinese characters
+          if (header === 'note' && (value === null || value === undefined)) {
+            value = null;
+          } else if (value === null || value === undefined || value === '') {
+            value = null;
+          } else {
+            // Ensure all values are properly converted to strings to preserve encoding
+            value = String(value);
           }
         }
         
@@ -1334,7 +1338,7 @@ export function generateInternetTemplate(): InternetAsset[] {
     email: '',
     ipAddress: '',
     internetAccess: '',
-    status: 'working',
+    status: '有異動',
     note: ''
   }]
 }
