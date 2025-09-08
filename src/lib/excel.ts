@@ -1149,6 +1149,11 @@ export async function importFromExcelWithTemplate(
           // For PC barcode assets, we need to allow empty values and convert them to 'N/A'
           value = 'N/A';
         }
+        // Handle "no barcode" values for PC CPU barcode specifically
+        else if (assetType === 'pc' && header === 'cpuBarcode' && typeof value === 'string' && value.toLowerCase() === 'no barcode') {
+          // Keep "no barcode" as is for special handling in the import route
+          value = value;
+        }
         // Handle required fields for PC assets (dept and pcName only)
         else if (assetType === 'pc' && (header === 'dept' || header === 'pcName') && (value === null || value === undefined || value === '')) {
           // For PC assets, we need to allow empty values for required fields during import

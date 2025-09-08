@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { importFromExcelWithTemplate } from '@/lib/excel'
+import { emitAssetChange } from '@/lib/realtime'
 
 // POST /api/assets/excel/import - Import assets from Excel
 export async function POST(request: NextRequest) {
@@ -87,22 +88,11 @@ export async function POST(request: NextRequest) {
         switch (assetType) {
           case 'pc':
             // For PC assets, we don't check required fields for barcode columns
-            // Only check required fields for dept
-            if (row.dept === null || row.dept === undefined) {
+            // Only check required fields for dept, pcName
+            if (row.pcName === null || row.pcName === undefined ||
+                row.dept === null || row.dept === undefined) {
               errors.push(`Row missing required fields: PC Name, and Department`)
               continue
-            }
-
-            // Check if PC with this CPU barcode already exists (only if CPU barcode is provided and not 'N/A')
-            if (row.cpuBarcode && row.cpuBarcode !== 'N/A') {
-              const existingPC = await db.pC.findUnique({
-                where: { cpuBarcode: String(row.cpuBarcode) }
-              })
-
-              if (existingPC) {
-                errors.push(`PC with CPU Barcode ${String(row.cpuBarcode)} already exists`)
-                continue
-              }
             }
 
             // Handle user field mapping - if user field exists, we need to find the user ID
@@ -198,6 +188,13 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }
             });
+            
+            // Emit real-time event for PC creation
+            try {
+              emitAssetChange(user.tenantId, 'pc', 'create', createdPC);
+            } catch (emitError) {
+              console.error('Failed to emit real-time event for PC creation:', emitError);
+            }
             break
 
           case 'laptop':
@@ -337,6 +334,13 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }
             });
+            
+            // Emit real-time event for Laptop creation
+            try {
+              emitAssetChange(user.tenantId, 'laptop', 'create', createdLaptop);
+            } catch (emitError) {
+              console.error('Failed to emit real-time event for Laptop creation:', emitError);
+            }
             break
 
           case 'printer':
@@ -485,6 +489,13 @@ export async function POST(request: NextRequest) {
                     tenantId: user.tenantId
                   }
                 });
+                
+                // Emit real-time event for Printer creation
+                try {
+                  emitAssetChange(user.tenantId, 'printer', 'create', createdPrinter);
+                } catch (emitError) {
+                  console.error('Failed to emit real-time event for Printer creation:', emitError);
+                }
               } else {
                 console.log(`Checking for existing printer with barcode: ${barcodeValue}`);
                 // For printers with actual barcodes, first check if one already exists in the database
@@ -741,6 +752,13 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }
             });
+            
+            // Emit real-time event for License creation
+            try {
+              emitAssetChange(user.tenantId, 'license', 'create', createdLicense);
+            } catch (emitError) {
+              console.error('Failed to emit real-time event for License creation:', emitError);
+            }
             break
 
           case 'warehouse':
@@ -839,6 +857,13 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }
             });
+            
+            // Emit real-time event for WarehouseIT creation
+            try {
+              emitAssetChange(user.tenantId, 'warehouse', 'create', createdWarehouseIT);
+            } catch (emitError) {
+              console.error('Failed to emit real-time event for WarehouseIT creation:', emitError);
+            }
             break
 
           case 'internet':
@@ -951,6 +976,13 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }
             });
+            
+            // Emit real-time event for Internet creation
+            try {
+              emitAssetChange(user.tenantId, 'internet', 'create', createdInternet);
+            } catch (emitError) {
+              console.error('Failed to emit real-time event for Internet creation:', emitError);
+            }
             break
 
           default:
