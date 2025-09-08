@@ -3,6 +3,10 @@ import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse } from '@/lib/api-utils'
 
+// Simple in-memory cache for permissions (in production, you might want to use Redis)
+const permissionCache: Record<string, { hasPermission: boolean; timestamp: number }> = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // POST /api/permissions/check - Check if user has permission
 export async function POST(request: NextRequest) {
   try {
@@ -43,25 +47,38 @@ export async function POST(request: NextRequest) {
       return errorResponse('Missing required parameters', 400)
     }
 
-    // For debugging in development only
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Permission check request:', {
-        userId: currentUser.id,
-        userEmail: currentUser.email,
-        userRoleId: currentUser.role?.id,
-        userRoleName: currentUser.role?.name,
-        tenantId: currentUser.tenantId,
-        resource,
-        action
-      });
-    }
-
     // Use current user's role ID and tenant ID for security
     const roleId = currentUser.role?.id || '';
     const tenantId = currentUser.tenantId || '';
 
+    // Create cache key
+    const cacheKey = `${roleId}-${tenantId}-${resource}-${action}`;
+    
+    // Check if we have a cached result that's still valid
+    const cachedResult = permissionCache[cacheKey];
+    if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_TTL) {
+      // For debugging in development only
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Permission check result (from cache):', {
+          roleId,
+          tenantId,
+          resource,
+          action,
+          hasPermission: cachedResult.hasPermission
+        });
+      }
+      
+      return successResponse({ hasPermission: cachedResult.hasPermission });
+    }
+
     // Check if user has permission
     const hasPerm = await hasPermission(roleId, tenantId, resource, action);
+    
+    // Cache the result
+    permissionCache[cacheKey] = {
+      hasPermission: hasPerm,
+      timestamp: Date.now()
+    };
     
     // For debugging in development only
     if (process.env.NODE_ENV === 'development') {
@@ -89,3 +106,17 @@ export async function POST(request: NextRequest) {
     return errorResponse('Internal server error');
   }
 }
+
+// Cleanup function to clear expired cache entries periodically
+function cleanupCache() {
+  const now = Date.now();
+  for (const key in permissionCache) {
+    const cachedItem = permissionCache[key];
+    if (cachedItem && (now - cachedItem.timestamp) >= CACHE_TTL) {
+      delete permissionCache[key];
+    }
+  }
+}
+
+// Run cache cleanup every 10 minutes
+setInterval(cleanupCache, 10 * 60 * 1000);

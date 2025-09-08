@@ -47,7 +47,9 @@ export async function POST(request: NextRequest) {
             pcs: true,
             laptops: true,
             printers: true,
-            licenses: true
+            licenses: true,
+            warehouseITs: true,
+            internets: true
           }
         }
       }
@@ -59,7 +61,9 @@ export async function POST(request: NextRequest) {
       tenant._count.pcs > 0 || 
       tenant._count.laptops > 0 || 
       tenant._count.printers > 0 || 
-      tenant._count.licenses > 0
+      tenant._count.licenses > 0 ||
+      tenant._count.warehouseITs > 0 ||
+      tenant._count.internets > 0
     )
 
     if (tenantsWithData.length > 0) {

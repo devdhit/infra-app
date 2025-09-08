@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const tenants = await db.tenant.findMany({
       include: {
         _count: {
-          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true }
+          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true, warehouseITs: true, internets: true }
         }
       }
     })

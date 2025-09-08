@@ -1,6 +1,10 @@
 // Only import and use PrismaClient on the server side
 import { db } from './db';
 
+// Simple in-memory cache for role permissions (in production, you might want to use Redis)
+const roleCache: Record<string, { role: any; timestamp: number }> = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // Define permission actions with more flexible typing
 export type PermissionAction = string;
 
@@ -89,13 +93,31 @@ export async function hasPermission(
       return false;
     }
 
-    // Get the role with its permissions
-    const role = await db.role.findUnique({
-      where: {
-        id: roleId,
-        tenantId: tenantId
+    // Create cache key
+    const cacheKey = `${roleId}-${tenantId}`;
+    
+    // Check if we have a cached role that's still valid
+    let role = null;
+    const cachedRole = roleCache[cacheKey];
+    if (cachedRole && (Date.now() - cachedRole.timestamp) < CACHE_TTL) {
+      role = cachedRole.role;
+    } else {
+      // Get the role with its permissions
+      role = await db.role.findUnique({
+        where: {
+          id: roleId,
+          tenantId: tenantId
+        }
+      });
+      
+      // Cache the role
+      if (role) {
+        roleCache[cacheKey] = {
+          role,
+          timestamp: Date.now()
+        };
       }
-    });
+    }
 
     // For debugging in development only
     if (process.env.NODE_ENV === 'development') {
@@ -344,6 +366,20 @@ export function removePermissions(
   
   return result;
 }
+
+// Cleanup function to clear expired cache entries periodically
+function cleanupRoleCache() {
+  const now = Date.now();
+  for (const key in roleCache) {
+    const cachedItem = roleCache[key];
+    if (cachedItem && (now - cachedItem.timestamp) >= CACHE_TTL) {
+      delete roleCache[key];
+    }
+  }
+}
+
+// Run cache cleanup every 10 minutes
+setInterval(cleanupRoleCache, 10 * 60 * 1000);
 
 // Cleanup function to disconnect the database when needed
 export async function cleanupPermissions() {

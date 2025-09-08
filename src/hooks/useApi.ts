@@ -511,6 +511,8 @@ export interface Tenant {
     laptops: number
     printers: number
     licenses: number
+    warehouseITs: number
+    internets: number
   }
 }
 
