@@ -86,23 +86,23 @@ export async function POST(request: NextRequest) {
       try {
         switch (assetType) {
           case 'pc':
-            // Validate required fields for PC
-            // Check if fields exist and are not null or undefined (but allow 'N/A')
-            if (row.cpuBarcode === null || row.cpuBarcode === undefined ||
-                row.pcName === null || row.pcName === undefined ||
-                row.dept === null || row.dept === undefined) {
-              errors.push(`Row missing required fields: CPU Barcode, PC Name, and Department`)
+            // For PC assets, we don't check required fields for barcode columns
+            // Only check required fields for dept
+            if (row.dept === null || row.dept === undefined) {
+              errors.push(`Row missing required fields: PC Name, and Department`)
               continue
             }
 
-            // Check if PC with this CPU barcode already exists
-            const existingPC = await db.pC.findUnique({
-              where: { cpuBarcode: String(row.cpuBarcode) }
-            })
+            // Check if PC with this CPU barcode already exists (only if CPU barcode is provided and not 'N/A')
+            if (row.cpuBarcode && row.cpuBarcode !== 'N/A') {
+              const existingPC = await db.pC.findUnique({
+                where: { cpuBarcode: String(row.cpuBarcode) }
+              })
 
-            if (existingPC) {
-              errors.push(`PC with CPU Barcode ${String(row.cpuBarcode)} already exists`)
-              continue
+              if (existingPC) {
+                errors.push(`PC with CPU Barcode ${String(row.cpuBarcode)} already exists`)
+                continue
+              }
             }
 
             // Handle user field mapping - if user field exists, we need to find the user ID
