@@ -861,6 +861,15 @@ export async function POST(request: NextRequest) {
               ...warehouseRowData 
             } = row as any;
             
+            // Explicitly set the barcode and sapCode fields
+            if (warehouseBarcodeField !== undefined) {
+              (warehouseRowData as any).barcode = warehouseBarcodeField;
+            }
+            
+            if (warehouseSapCodeField !== undefined) {
+              (warehouseRowData as any).sapCode = warehouseSapCodeField;
+            }
+            
             // If status was not provided in the row data, use a default value
             if (!warehouseStatusField) {
               (warehouseRowData as any).status = 'working';
