@@ -226,12 +226,9 @@ export class AssetApiHandler<T> {
       case 'WarehouseIT':
         return {
           ...cleanBaseFields,
-          cpuBarcode: true,
-          cpuSapBarcode: true,
-          monitorBarcode: true,
-          monitorSapBarcode: true,
-          upsBarcode: true,
-          upsSapBarcode: true,
+          barcode: true,
+          sapCode: true,
+          status: true,
           note: true,
           customFields: true // Include custom fields
         };
@@ -307,7 +304,7 @@ export class AssetApiHandler<T> {
             'Laptop': ['userName', 'dept', 'status', 'barcode'],
             'Printer': ['dept', 'barcode'],
             'License': ['userName', 'dept', 'updateStatus', 'productKey'],
-            'WarehouseIT': ['status', 'cpuBarcode'],  // Removed 'dept' as WarehouseIT doesn't have this field
+            'WarehouseIT': ['status', 'barcode', 'sapCode'],
             'Internet': ['userName', 'dept', 'status', 'ipAddress']  // Add indexed fields for Internet
           };
           

@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
 import { Asset, AssetColumn } from "@/types/assets";
-import { formatDate } from "@/lib/utils";
+import { formatDisplayDate, formatDate } from "@/lib/utils";
 import { AssetDialog } from "./asset-dialog";
 import { Calendar, Hash, Tag, User, Building, MapPin, Info } from "lucide-react";
 import { AssetDetailSkeleton } from "./asset-detail-skeleton";
@@ -75,7 +75,7 @@ export function AssetDetailDialog({
     // Handle date fields
     if (key.toLowerCase().includes('date') && value) {
       try {
-        return formatDate(value);
+        return formatDisplayDate(value);
       } catch (e) {
         return value;
       }
