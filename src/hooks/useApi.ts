@@ -618,6 +618,8 @@ export function useDeleteTenant(_id: string) {
           message = 'Access denied. You do not have permission to delete this tenant.'
         } else if (error.status === 404) {
           message = 'Tenant not found. It may have been deleted.'
+        } else if (error.status === 400) {
+          message = error.message || 'Cannot delete tenant with associated data. Please delete all associated users and assets first.'
         } else if (error.status === 500) {
           message = 'Server error. Please try again later.'
         } else if (error.message) {
@@ -646,8 +648,10 @@ export function useBulkDeleteTenants() {
         
         if (error.status === 403) {
           message = 'Access denied. You do not have permission to delete these tenants.'
+        } else if (error.status === 404) {
+          message = 'One or more tenants not found. They may have been deleted.'
         } else if (error.status === 400) {
-          message = 'Bad request. No tenants selected for deletion.'
+          message = error.message || 'Cannot delete tenants with associated data. Please delete all associated users and assets first.'
         } else if (error.status === 500) {
           message = 'Server error. Please try again later.'
         } else if (error.message) {

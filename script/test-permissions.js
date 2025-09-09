@@ -1,48 +1,49 @@
+// Script to test permissions for audit logs
 const { PrismaClient } = require('../src/generated/prisma');
 
+const prisma = new PrismaClient();
+
 async function testPermissions() {
-  const prisma = new PrismaClient();
-  
   try {
-    // Get all users with their roles
-    const users = await prisma.user.findMany({
-      include: {
-        role: true
-      }
-    });
+    console.log('Testing audit logs permissions...');
     
-    console.log('Users and their roles:');
-    users.forEach(user => {
-      console.log(`- ${user.email} (${user.name}) - Role: ${user.role?.name || 'No role'} (ID: ${user.role?.id || 'No role ID'})`);
-    });
-    
-    // Test permissions for each user
-    console.log('\nPermission tests:');
-    for (const user of users) {
-      if (user.role) {
-        console.log(`\nTesting permissions for ${user.email} (${user.role.name}):`);
-        
-        // Test view users permission
-        const role = await prisma.role.findUnique({
-          where: {
-            id: user.role.id,
-            tenantId: user.tenantId
-          }
-        });
-        
-        if (role) {
-          const permissions = role.permissions;
-          console.log(`  Users view permission: ${permissions.users?.includes('view') ? 'YES' : 'NO'}`);
-          console.log(`  Users create permission: ${permissions.users?.includes('create') ? 'YES' : 'NO'}`);
-          console.log(`  Roles view permission: ${permissions.roles?.includes('view') ? 'YES' : 'NO'}`);
-        }
-      }
+    // Get a tenant
+    const tenant = await prisma.tenant.findFirst();
+    if (!tenant) {
+      console.log('No tenant found');
+      return;
     }
+    
+    console.log(`Testing tenant: ${tenant.name} (${tenant.id})`);
+    
+    // Get roles for this tenant
+    const roles = await prisma.role.findMany({
+      where: {
+        tenantId: tenant.id
+      }
+    });
+    
+    console.log(`Found ${roles.length} roles:`);
+    
+    for (const role of roles) {
+      console.log(`  Role: ${role.name}`);
+      console.log(`  Permissions:`, role.permissions);
+      
+      // Check if this role has audit logs view permission
+      const hasAuditLogsPermission = role.permissions.auditLogs && 
+                                    Array.isArray(role.permissions.auditLogs) && 
+                                    role.permissions.auditLogs.includes('view');
+      
+      console.log(`  Has audit logs view permission: ${hasAuditLogsPermission}`);
+    }
+    
+    console.log('\nPermissions test completed successfully!');
   } catch (error) {
-    console.error('Error testing permissions:', error);
+    console.error('Permissions test failed:', error);
   } finally {
     await prisma.$disconnect();
   }
 }
 
+// Run the test
 testPermissions();

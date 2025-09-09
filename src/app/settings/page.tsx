@@ -117,10 +117,10 @@ export default function SettingsPage() {
       ]);
       
       setPermissions({
-        canView: viewPermission,
-        canViewUsersSection: usersPermission,
-        canViewTenantsSection: tenantsPermission,
-        canViewRolesSection: rolesPermission,
+        canView: viewPermission ?? true,
+        canViewUsersSection: usersPermission ?? false,
+        canViewTenantsSection: tenantsPermission ?? false,
+        canViewRolesSection: rolesPermission ?? false,
         // Set general settings permissions to true since they're now accessible to all
         canViewApplication: true,
         canViewAppearance: true,
@@ -128,7 +128,7 @@ export default function SettingsPage() {
         canViewSecurity: true,
         canViewDataManagement: true,
         canViewAuditLogs: true,
-        canViewCustomFields: customFieldsPermission
+        canViewCustomFields: customFieldsPermission ?? true
       });
     } catch (error) {
       console.error('Error checking permissions:', error);

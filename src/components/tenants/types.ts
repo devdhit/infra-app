@@ -8,8 +8,8 @@ export interface TenantFormValues {
 
 export interface TenantsTableProps {
   tenants: Tenant[];
-  onEdit: (tenant: Tenant | null) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (tenant: Tenant | null) => void;
+  onDelete?: (id: string | string[]) => void;
   isDeleting: boolean;
   deletingTenantId: string | null;
 }

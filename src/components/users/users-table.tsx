@@ -143,7 +143,7 @@ export function UsersTable({
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => onDelete(Array.from(selectedUsers).join(','))}
+            onClick={() => onDelete(Array.from(selectedUsers))}
             disabled={isDeleting}
           >
             {t('users.table.deleteSelected') || 'Delete Selected'}

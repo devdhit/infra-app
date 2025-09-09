@@ -31,7 +31,7 @@ export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
       await logoutMutation.mutateAsync()
       // Clear token from localStorage and API client
       localStorage.removeItem('auth-token')
-      // Force a page reload to ensure auth state is properly reset
+      // Use window.location for full page redirect to ensure proper navigation
       window.location.href = '/auth/login'
     } catch (error: any) {
       console.error('Logout error:', error)

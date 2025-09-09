@@ -12,6 +12,7 @@ import {
 import { emitAssetChange } from '@/lib/realtime'
 import { hasPermission, ResourceType, PermissionAction } from './permissions'
 import { User } from '@/types/users'
+import { createAuditLog } from '@/lib/audit-logs'
 
 // Define the asset types based on the Prisma schema and route files
 interface PCAsset {
@@ -555,21 +556,19 @@ export class AssetApiHandler<T> {
         }
       })
 
-      // Create history record after asset creation
+      // Create audit log entry after asset creation
       try {
-        await this.db.history.create({
-          data: {
-            action: 'create',
-            modelType: this.operations.modelName,
-            recordId: asset.id,
-            changes: body as any,
-            userId: user.id,
-            tenantId: user.tenantId
-          }
-        })
-      } catch (historyError) {
-        console.error(`Failed to create history record for ${this.operations.modelName}:`, historyError)
-        // Continue with the operation even if history creation fails
+        await createAuditLog(user.tenantId, {
+          action: 'create',
+          modelType: this.operations.modelName,
+          recordId: asset.id,
+          changes: body as any,
+          userId: user.id,
+          tenantId: user.tenantId
+        }, 'create')
+      } catch (auditLogError) {
+        console.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError)
+        // Continue with the operation even if audit log creation fails
       }
 
       // Emit real-time event
@@ -757,21 +756,19 @@ export class AssetApiHandler<T> {
 
       if (Object.keys(changes).length > 0) {
         try {
-          await this.db.history.create({
-            data: {
-              action: 'update',
-              modelType: this.operations.modelName,
-              recordId: id,
-              changes,
-              userId: user.id,
-              tenantId: user.tenantId
-            }
-          })
-        } catch (historyError) {
+          await createAuditLog(user.tenantId, {
+            action: 'update',
+            modelType: this.operations.modelName,
+            recordId: id,
+            changes,
+            userId: user.id,
+            tenantId: user.tenantId
+          }, 'update')
+        } catch (auditLogError) {
           if (process.env.NODE_ENV === 'development') {
-            console.error(`Failed to create history record for ${this.operations.modelName}:`, historyError);
+            console.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError);
           }
-          // Continue with the operation even if history creation fails
+          // Continue with the operation even if audit log creation fails
         }
       }
 
@@ -869,21 +866,19 @@ export class AssetApiHandler<T> {
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
 
-      // Create history record
+      // Create audit log entry
       try {
-        await this.db.history.create({
-          data: {
-            action: 'delete',
-            modelType: this.operations.modelName,
-            recordId: id,
-            changes: existingAsset,
-            userId: user.id,
-            tenantId: user.tenantId
-          }
-        })
-      } catch (historyError) {
-        console.error(`Failed to create history record for ${this.operations.modelName}:`, historyError)
-        // Continue with the operation even if history creation fails
+        await createAuditLog(user.tenantId, {
+          action: 'delete',
+          modelType: this.operations.modelName,
+          recordId: id,
+          changes: existingAsset,
+          userId: user.id,
+          tenantId: user.tenantId
+        }, 'delete')
+      } catch (auditLogError) {
+        console.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError)
+        // Continue with the operation even if audit log creation fails
       }
 
       await (this.db as any)[this.operations.modelName].delete({
@@ -955,28 +950,26 @@ export class AssetApiHandler<T> {
           return notFoundResponse(`Some ${this.operations.modelName} assets not found: ${missingIds.join(', ')}`)
         }
 
-        // Create history records for each asset in batch
+        // Create audit log entries for each asset in batch
         // Use Promise.all for parallel processing
-        const historyPromises = existingAssets.map((asset: any) => 
-          this.db.history.create({
-            data: {
-              action: 'delete',
-              modelType: this.operations.modelName,
-              recordId: asset.id,
-              changes: asset,
-              userId: user.id,
-              tenantId: user.tenantId
-            }
-          }).catch((historyError: any) => {
+        const auditLogPromises = existingAssets.map((asset: any) => 
+          createAuditLog(user.tenantId, {
+            action: 'delete',
+            modelType: this.operations.modelName,
+            recordId: asset.id,
+            changes: asset,
+            userId: user.id,
+            tenantId: user.tenantId
+          }, 'bulkDelete').catch((auditLogError: any) => {
             if (process.env.NODE_ENV === 'development') {
-              console.error(`Failed to create history record for asset ${asset.id}:`, historyError);
+              console.error(`Failed to create audit log for asset ${asset.id}:`, auditLogError);
             }
-            // Continue with deletion even if history creation fails
+            // Continue with deletion even if audit log creation fails
           })
         );
         
-        // Wait for all history records to be created
-        await Promise.all(historyPromises);
+        // Wait for all audit log entries to be created
+        await Promise.all(auditLogPromises);
 
         // Delete all assets in batch
         const deleteResult = await (this.db as any)[this.operations.modelName].deleteMany({
@@ -992,6 +985,25 @@ export class AssetApiHandler<T> {
       // Log the number of deleted assets
       if (process.env.NODE_ENV === 'development') {
         console.log(`Deleted ${totalDeleted} ${this.operations.modelName} assets in ${Math.ceil(ids.length/batchSize)} batches`);
+      }
+
+      // Create audit log entry for the bulk delete operation itself
+      try {
+        await createAuditLog(user.tenantId, {
+          action: 'bulkDelete',
+          modelType: this.operations.modelName,
+          recordId: 'bulk-operation',
+          changes: {
+            count: totalDeleted,
+            ids: ids.slice(0, 10), // Only log first 10 IDs for privacy
+            totalIds: ids.length
+          },
+          userId: user.id,
+          tenantId: user.tenantId
+        }, 'bulkDelete')
+      } catch (auditLogError) {
+        console.error(`Failed to create bulk delete audit log for ${this.operations.modelName}:`, auditLogError)
+        // Continue with the operation even if audit log creation fails
       }
 
       // Emit real-time events for each deleted asset

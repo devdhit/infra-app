@@ -53,6 +53,9 @@ const globalForPrisma = globalThis as unknown as {
 
 export const db = globalForPrisma.prisma ?? prismaClientSingleton()
 
+// Track if database shutdown handlers have been registered
+let dbShutdownHandlersRegistered = false;
+
 // Gracefully disconnect the Prisma client when the application shuts down
 if (typeof window === 'undefined') {
   // Server-side only
@@ -64,23 +67,22 @@ if (typeof window === 'undefined') {
     }
   })
   
-  process.on('SIGTERM', async () => {
-    try {
-      await db.$disconnect()
-    } catch (error) {
-      console.error('Error disconnecting database:', error)
-    }
-    process.exit(0)
-  })
-  
-  process.on('SIGINT', async () => {
-    try {
-      await db.$disconnect()
-    } catch (error) {
-      console.error('Error disconnecting database:', error)
-    }
-    process.exit(0)
-  })
+  // Only register shutdown handlers if they haven't been registered yet
+  if (!dbShutdownHandlersRegistered) {
+    dbShutdownHandlersRegistered = true;
+    
+    const dbShutdownHandler = async () => {
+      try {
+        await db.$disconnect()
+      } catch (error) {
+        console.error('Error disconnecting database:', error)
+      }
+      // Don't exit here as the main server shutdown handler will handle that
+    };
+    
+    process.on('SIGTERM', dbShutdownHandler);
+    process.on('SIGINT', dbShutdownHandler);
+  }
 }
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db

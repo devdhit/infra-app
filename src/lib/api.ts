@@ -115,10 +115,16 @@ apiClient.interceptors.response.use(
 export const api = {
   get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      const response = await apiClient.get<T>(url, config)
-      return response.data
+      // Add timeout promise to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 30000);
+      });
+      
+      const responsePromise = apiClient.get<T>(url, config);
+      const response = await Promise.race([responsePromise, timeoutPromise]);
+      return response.data;
     } catch (error) {
-      throw error
+      throw error;
     }
   },
   
@@ -134,7 +140,13 @@ export const api = {
         }
       }
       
-      const response = await apiClient.post<T>(url, data, config);
+      // Add timeout promise to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 30000);
+      });
+      
+      const responsePromise = apiClient.post<T>(url, data, config);
+      const response = await Promise.race([responsePromise, timeoutPromise]);
       return response.data;
     } catch (error) {
       throw error;
@@ -143,19 +155,31 @@ export const api = {
   
   put: async <T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      const response = await apiClient.put<T>(url, data, config)
-      return response.data
+      // Add timeout promise to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 30000);
+      });
+      
+      const responsePromise = apiClient.put<T>(url, data, config);
+      const response = await Promise.race([responsePromise, timeoutPromise]);
+      return response.data;
     } catch (error) {
-      throw error
+      throw error;
     }
   },
   
   delete: async <T = void>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      const response = await apiClient.delete<T>(url, config)
-      return response.data
+      // Add timeout promise to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 30000);
+      });
+      
+      const responsePromise = apiClient.delete<T>(url, config);
+      const response = await Promise.race([responsePromise, timeoutPromise]);
+      return response.data;
     } catch (error) {
-      throw error
+      throw error;
     }
   },
   
@@ -246,10 +270,16 @@ export const api = {
         }
       );
       
-      const response = await importClient.post<T>(url, data, config)
-      return response.data
+      // Add timeout promise to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 300000);
+      });
+      
+      const responsePromise = importClient.post<T>(url, data, config);
+      const response = await Promise.race([responsePromise, timeoutPromise]);
+      return response.data;
     } catch (error) {
-      throw error
+      throw error;
     }
   },
   

@@ -13,6 +13,7 @@
     "settings": "Settings",
     "management": "Management",
     "roles": "Roles",
+    "auditLogs": "Audit Logs",
     "test_roles": "Test Roles"
   },
   "management": {
@@ -945,6 +946,14 @@
         "edit": "Edit assets",
         "delete": "Delete assets",
         "bulkDelete": "Bulk delete assets"
+      },
+      "auditLogs": {
+        "label": "Audit Logs",
+        "view": "View audit logs",
+        "create": "Create audit logs",
+        "edit": "Edit audit logs",
+        "delete": "Delete audit logs",
+        "bulkDelete": "Bulk delete audit logs"
       }
     }
   }
