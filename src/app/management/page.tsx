@@ -46,30 +46,60 @@ export default function ManagementPage() {
     canViewRoles: false
   });
 
-  // Check permissions
+  // Check permissions with error handling and timeout
   useEffect(() => {
+    let isMounted = true;
+    
     const checkPermissions = async () => {
       if (!isUserLoading && currentUser) {
-        // Check all permissions in parallel for better performance
-        const [
-          viewUsers,
-          viewTenants,
-          viewRoles
-        ] = await Promise.all([
-          canViewUsers(),
-          canViewTenants(),
-          canViewRoles()
-        ]);
+        try {
+          // Add timeout to prevent hanging
+          const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+          
+          // Check all permissions in parallel for better performance with timeout
+          const permissionChecks = [
+            canViewUsers(),
+            canViewTenants(),
+            canViewRoles()
+          ];
+          
+          // Apply timeout to each permission check
+          const permissionChecksWithTimeout = permissionChecks.map(promise => 
+            Promise.race([promise, timeout(5000).then(() => false)])
+          );
+          
+          const [
+            viewUsers,
+            viewTenants,
+            viewRoles
+          ] = await Promise.all(permissionChecksWithTimeout);
 
-        setPermissions({
-          canViewUsers: viewUsers,
-          canViewTenants: viewTenants,
-          canViewRoles: viewRoles
-        });
+          if (isMounted) {
+            setPermissions({
+              canViewUsers: viewUsers ?? false,
+              canViewTenants: viewTenants ?? false,
+              canViewRoles: viewRoles ?? false
+            });
+          }
+        } catch (error) {
+          console.error('Error checking permissions:', error);
+          // Set default permissions on error to prevent infinite loading
+          if (isMounted) {
+            setPermissions({
+              canViewUsers: false,
+              canViewTenants: false,
+              canViewRoles: false
+            });
+          }
+        }
       }
     };
 
     checkPermissions();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [currentUser, isUserLoading, canViewUsers, canViewTenants, canViewRoles]);
 
   const managementSections: ManagementSection[] = [
@@ -117,7 +147,7 @@ export default function ManagementPage() {
   }
 
   // If user doesn't have access to any management sections, show unauthorized message
-  if (accessibleSections.length === 0) {
+  if (accessibleSections.length === 0 && currentUser) {
     return (
       <div className="flex items-center justify-center h-52">
         <div className="text-center">

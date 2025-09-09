@@ -40,6 +40,39 @@ const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
+// Track if shutdown handlers have been registered
+let shutdownHandlersRegistered = false;
+
+// Function to register shutdown handlers only once
+function registerShutdownHandlers(server) {
+  if (shutdownHandlersRegistered) {
+    return;
+  }
+  
+  shutdownHandlersRegistered = true;
+  
+  // Handle uncaught exceptions and unhandled rejections
+  process.on('uncaughtException', (err) => {
+    console.error(`[${getTimestamp()}] ❌ Uncaught Exception:`, err);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error(`[${getTimestamp()}] ❌ Unhandled Rejection at:`, promise, 'reason:', reason);
+  });
+  
+  // Graceful shutdown
+  const shutdownHandler = () => {
+    console.log(`[${getTimestamp()}] 🛑 Shutdown signal received, shutting down gracefully`);
+    server.close(() => {
+      console.log(`[${getTimestamp()}] 🔌 Server closed`);
+      process.exit(0);
+    });
+  };
+  
+  process.on('SIGTERM', shutdownHandler);
+  process.on('SIGINT', shutdownHandler);
+}
+
 app.prepare().then(() => {
   const server = createServer((req, res) => {
     // Be sure to pass `true` as the second argument to `url.parse`.
@@ -84,29 +117,6 @@ app.prepare().then(() => {
     console.log(`[${getTimestamp()}] 🚀 Server ready at http://localhost:${port}`);
   });
   
-  // Handle uncaught exceptions and unhandled rejections
-  process.on('uncaughtException', (err) => {
-    console.error(`[${getTimestamp()}] ❌ Uncaught Exception:`, err);
-  });
-
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error(`[${getTimestamp()}] ❌ Unhandled Rejection at:`, promise, 'reason:', reason);
-  });
-  
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    console.log(`[${getTimestamp()}] 🛑 SIGTERM received, shutting down gracefully`);
-    server.close(() => {
-      console.log(`[${getTimestamp()}] 🔌 Server closed`);
-      process.exit(0);
-    });
-  });
-  
-  process.on('SIGINT', () => {
-    console.log(`[${getTimestamp()}] 🛑 SIGINT received, shutting down gracefully`);
-    server.close(() => {
-      console.log(`[${getTimestamp()}] 🔌 Server closed`);
-      process.exit(0);
-    });
-  });
+  // Register shutdown handlers
+  registerShutdownHandlers(server);
 });

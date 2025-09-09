@@ -27,10 +27,34 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { ids } = body
+    
+    console.log('Received bulk delete request with IDs:', ids);
 
     // Validate input
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return errorResponse('Invalid request: ids array is required', 400)
+    }
+    
+    // Log the type of each ID to see if they're being converted
+    ids.forEach((id: any, index: number) => {
+      console.log(`ID ${index}:`, id, 'Type:', typeof id);
+    });
+
+    // Check if all tenants exist
+    const existingTenants = await db.tenant.findMany({
+      where: {
+        id: {
+          in: ids
+        }
+      }
+    })
+
+    // Check if all requested tenants were found
+    const existingTenantIds = existingTenants.map(tenant => tenant.id)
+    const missingTenantIds = ids.filter(id => !existingTenantIds.includes(id))
+    
+    if (missingTenantIds.length > 0) {
+      return errorResponse(`Tenants not found: ${missingTenantIds.join(', ')}`, 404)
     }
 
     // Check if any tenant has associated users or assets
@@ -49,13 +73,14 @@ export async function POST(request: NextRequest) {
             printers: true,
             licenses: true,
             warehouseITs: true,
-            internets: true
+            internets: true,
+            histories: true
           }
         }
       }
     })
 
-    // Check if any tenant has associated data
+    // Check if any tenant has associated data (excluding histories and audit logs settings since we'll delete those)
     const tenantsWithData = tenantsWithRelations.filter((tenant: any) => 
       tenant._count.users > 0 || 
       tenant._count.pcs > 0 || 
@@ -81,6 +106,24 @@ export async function POST(request: NextRequest) {
         tenantId: user.tenantId
       })
     }
+
+    // Delete audit logs settings first to avoid foreign key constraint violation
+    await db.auditLogsSettings.deleteMany({
+      where: { 
+        tenantId: {
+          in: ids
+        }
+      }
+    })
+
+    // Delete history records first to avoid foreign key constraint violation
+    await db.history.deleteMany({
+      where: { 
+        tenantId: {
+          in: ids
+        }
+      }
+    })
 
     // Perform bulk delete
     await db.tenant.deleteMany({

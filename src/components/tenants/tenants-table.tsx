@@ -21,7 +21,7 @@ import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
 interface TenantsTableProps {
   tenants: Tenant[];
   onEdit?: (tenant: Tenant | null) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string | string[]) => void;
   isDeleting: boolean;
   deletingTenantId: string | null;
 }
@@ -224,7 +224,7 @@ export function TenantsTable({
   const confirmBulkDelete = useCallback(() => {
     if (!onDelete) return;
     // This will be handled by the parent component
-    onDelete(selectedTenants.join(',')) // Pass selected IDs as a comma-separated string
+    onDelete(selectedTenants) // Pass selected IDs as an array
     setIsBulkDeleteDialogOpen(false)
     setSelectedTenants([])
   }, [onDelete, selectedTenants])
@@ -273,6 +273,8 @@ export function TenantsTable({
         // Pass column visibility state
         columnVisibility={columnVisibility}
         onColumnVisibilityChange={setColumnVisibility}
+        // Add getRowId to use tenant ID instead of row index
+        getRowId={(row: Tenant) => row.id}
       />
 
       <BulkDeleteDialog

@@ -1164,6 +1164,49 @@ export async function importFromExcelWithTemplate(
           // The validation will be handled in the API route
           value = null; // Keep as null for proper validation in the API
         }
+        // Handle date fields for Laptop assets
+        else if (assetType === 'laptop' && header === 'dateBuy') {
+          if (value === null || value === undefined || value === '') {
+            value = null;
+          } else {
+            // Try to parse the date value
+            try {
+              // If it's already a string representation of a date, keep it
+              if (typeof value === 'string') {
+                // Check if it's a valid date string
+                const date = new Date(value);
+                if (!isNaN(date.getTime())) {
+                  // Ensure the date is reasonable (between 1900 and 2100)
+                  if (date.getFullYear() >= 1900 && date.getFullYear() <= 2100) {
+                    value = value;
+                  } else {
+                    value = null;
+                  }
+                } else {
+                  value = null;
+                }
+              } else if (typeof value === 'number') {
+                // Handle Excel serial date numbers
+                if (value > 1000 && value < 100000) {
+                  // Convert Excel serial date to JavaScript Date
+                  const date = new Date((value - 25569) * 86400 * 1000);
+                  if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2100) {
+                    value = date.toISOString();
+                  } else {
+                    value = null;
+                  }
+                } else {
+                  value = null;
+                }
+              } else {
+                value = String(value);
+              }
+            } catch (e) {
+              console.warn(`Could not parse date value for ${header}:`, value);
+              value = null;
+            }
+          }
+        }
         // Handle required fields for License assets
         else if (assetType === 'license' && (header === 'productType' || header === 'productKey' || header === 'ProductType' || header === 'ProductKey') && (value === null || value === undefined || value === '')) {
           // For License assets, we need to allow empty values for required fields during import
@@ -1271,7 +1314,7 @@ export function generateLaptopTemplate(): LaptopAsset[] {
     dept: '',
     barcode: '',
     sapBarcode: '',
-    dateBuy: '',
+    dateBuy: undefined,  // Changed from empty string to undefined for proper date handling
     userName: '',  // Changed from 'user' to 'userName'
     email: '',
     model: '',

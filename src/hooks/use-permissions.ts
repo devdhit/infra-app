@@ -1,285 +1,436 @@
-import { useCurrentUser } from './useApi';
-import { ResourceType, PermissionAction } from '@/lib/permissions';
-import { api } from '@/lib/api';
-import { useCallback, useEffect, useRef, useMemo } from 'react';
-import { User } from '@/types/users';
+import { useCurrentUser } from '@/hooks/useApi';
+import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
+import { api } from '@/lib/api'; // Import the API object with methods
 
-/**
- * Hook to check user permissions
- * @returns Object with permission checking functions
- */
+// Global cache for permission checks shared across all instances of the hook
+const globalPermissionCache = new Map<string, { value: boolean; timestamp: number }>();
+
+// Cache timeout (5 minutes)
+const CACHE_TIMEOUT = 5 * 60 * 1000;
+
+// Define the permission check structure
+interface PermissionCheck {
+  resource: string;
+  action: string;
+}
+
+// Batch permission check queue
+const permissionQueue: { resource: string; action: string; resolve: (value: boolean) => void; reject: (reason: any) => void }[] = [];
+let isProcessingQueue = false;
+
+// Cleanup function to clear expired cache entries periodically
+function cleanupPermissionCache() {
+  const now = Date.now();
+  for (const [key, cached] of globalPermissionCache.entries()) {
+    if ((now - cached.timestamp) >= CACHE_TIMEOUT) {
+      globalPermissionCache.delete(key);
+    }
+  }
+}
+
+// Run cache cleanup every 10 minutes
+setInterval(cleanupPermissionCache, 10 * 60 * 1000);
+
+// Process permission queue in batches with timeout
+async function processPermissionQueue() {
+  if (isProcessingQueue || permissionQueue.length === 0) {
+    return;
+  }
+
+  isProcessingQueue = true;
+
+  try {
+    // Process queue in batches of 10 to avoid overwhelming the server
+    while (permissionQueue.length > 0) {
+      const batch = permissionQueue.splice(0, 10);
+      
+      // Create batch request
+      const permissionsToCheck: PermissionCheck[] = batch.map(item => ({
+        resource: item.resource,
+        action: item.action
+      }));
+
+      try {
+        // Add timeout to the API call
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Permission check timeout')), 10000)
+        );
+        
+        // Make batch API call using the existing API client with proper authentication
+        // Note: The API client automatically prepends /api to URLs, so we don't need to include it
+        const apiCall = api.post<{ permissions: Record<string, boolean> }>('/permissions/batch', {
+          permissions: permissionsToCheck
+        });
+
+        const response = await Promise.race([apiCall, timeout]) as { permissions: Record<string, boolean> };
+
+        // Resolve each promise with the corresponding result
+        // Note: api.post already unwraps the response.data, so we can access permissions directly
+        for (const item of batch) {
+          const key = `${item.resource}:${item.action}`;
+          const hasPermission = response.permissions?.[key] ?? false;
+          
+          // Cache the result globally
+          globalPermissionCache.set(key, {
+            value: hasPermission,
+            timestamp: Date.now()
+          });
+          
+          item.resolve(hasPermission);
+        }
+      } catch (error: any) {
+        console.error('Error checking batch permissions:', error);
+        
+        // Handle specific error cases
+        if (error?.message?.includes('401') || error?.status === 401) {
+          // For 401 errors, clear the token and redirect to login
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth-token');
+            // Only redirect if we're not already on the login page
+            if (window.location.pathname !== '/auth/login') {
+              window.location.href = '/auth/login';
+            }
+          }
+        }
+        
+        // Reject all promises in the batch
+        for (const item of batch) {
+          item.reject(error);
+        }
+      }
+
+      // Add a small delay between batches to avoid overwhelming the server
+      if (permissionQueue.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+  } finally {
+    isProcessingQueue = false;
+  }
+}
+
+// Custom hook for checking user permissions with global caching
 export function usePermissions() {
-  const { data: user, isLoading: isUserLoading } = useCurrentUser() as { data: User | undefined; isLoading: boolean };
-  const isMountedRef = useRef(true);
+  const { data: user, isLoading } = useCurrentUser();
+  const [permissionErrors, setPermissionErrors] = useState<Record<string, boolean>>({});
   
-  // Cache for permission results to avoid redundant API calls
-  const permissionCache = useRef<Record<string, boolean>>({});
-  
-  // Timestamp for cache invalidation (5 minutes)
-  const cacheTimestamp = useRef<number>(Date.now());
-  
-  // Reset cache every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (isMountedRef.current) {
-        cacheTimestamp.current = Date.now();
-        permissionCache.current = {};
-      }
-    }, 5 * 60 * 1000); // 5 minutes
+  // Helper function to check permissions via API with global caching
+  const checkPermission = useCallback(async (resource: string, action: string) => {
+    // For admin users, return true immediately without making API calls
+    if (user?.role?.name === 'admin') {
+      return true;
+    }
     
-    return () => {
-      clearInterval(interval);
+    const cacheKey = `${resource}:${action}`;
+    const now = Date.now();
+    
+    // Check if we have a cached value that's still valid
+    const cached = globalPermissionCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < CACHE_TIMEOUT) {
+      return cached.value;
+    }
+    
+    // For non-admin users, use batch checking for better performance
+    return new Promise<boolean>((resolve, reject) => {
+      // Add timeout to reject the promise if it takes too long
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`Permission check timeout for ${resource}:${action}`));
+      }, 5000);
+      
+      // Wrap resolve and reject to clear timeout
+      const wrappedResolve = (value: boolean) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      };
+      
+      const wrappedReject = (error: any) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      };
+      
+      // Add to queue
+      permissionQueue.push({ resource, action, resolve: wrappedResolve, reject: wrappedReject });
+      
+      // Process queue if not already processing
+      if (!isProcessingQueue) {
+        setTimeout(processPermissionQueue, 10);
+      }
+    }).catch((error: any) => {
+      console.error(`Error checking permission for ${resource}:${action}`, error);
+      
+      // Set error state for this permission
+      setPermissionErrors(prev => ({
+        ...prev,
+        [cacheKey]: true
+      }));
+      
+      // Show user-friendly error message
+      if (error?.message?.includes('401')) {
+        toast.error(`Authentication error. Please log in again.`);
+      } else if (error?.message?.includes('timeout')) {
+        // Don't show toast for timeouts to avoid spam
+        console.warn(`Permission check timed out for ${resource}:${action}`);
+      } else {
+        toast.error(`Unable to check permissions. You may not have permission to perform this action.`);
+      }
+      
+      // Return false on error but don't cache it
+      return false;
+    });
+  }, [user?.role?.name]);
+
+  // If user data is still loading, return default values
+  if (isLoading || !user) {
+    return {
+      userRole: null,
+      isLoading,
+      permissionErrors: {},
+      // Asset permissions
+      canViewPC: () => Promise.resolve(false),
+      canCreatePC: () => Promise.resolve(false),
+      canEditPC: () => Promise.resolve(false),
+      canDeletePC: () => Promise.resolve(false),
+      canBulkDeletePC: () => Promise.resolve(false),
+      canViewLaptop: () => Promise.resolve(false),
+      canCreateLaptop: () => Promise.resolve(false),
+      canEditLaptop: () => Promise.resolve(false),
+      canDeleteLaptop: () => Promise.resolve(false),
+      canBulkDeleteLaptop: () => Promise.resolve(false),
+      canViewPrinter: () => Promise.resolve(false),
+      canCreatePrinter: () => Promise.resolve(false),
+      canEditPrinter: () => Promise.resolve(false),
+      canDeletePrinter: () => Promise.resolve(false),
+      canBulkDeletePrinter: () => Promise.resolve(false),
+      canViewLicense: () => Promise.resolve(false),
+      canCreateLicense: () => Promise.resolve(false),
+      canEditLicense: () => Promise.resolve(false),
+      canDeleteLicense: () => Promise.resolve(false),
+      canBulkDeleteLicense: () => Promise.resolve(false),
+      canViewWarehouse: () => Promise.resolve(false),
+      canCreateWarehouse: () => Promise.resolve(false),
+      canEditWarehouse: () => Promise.resolve(false),
+      canDeleteWarehouse: () => Promise.resolve(false),
+      canBulkDeleteWarehouse: () => Promise.resolve(false),
+      canViewInternet: () => Promise.resolve(false),
+      canCreateInternet: () => Promise.resolve(false),
+      canEditInternet: () => Promise.resolve(false),
+      canDeleteInternet: () => Promise.resolve(false),
+      canBulkDeleteInternet: () => Promise.resolve(false),
+      // Settings permissions
+      canViewSettings: () => Promise.resolve(false),
+      canEditSettings: () => Promise.resolve(false),
+      canViewAuditLogs: () => Promise.resolve(false),
+      // Asset management permissions (generic)
+      canViewAssets: () => Promise.resolve(false),
+      // User management permissions
+      canViewUsers: () => Promise.resolve(false),
+      canCreateUsers: () => Promise.resolve(false),
+      canEditUsers: () => Promise.resolve(false),
+      canDeleteUsers: () => Promise.resolve(false),
+      canBulkDeleteUsers: () => Promise.resolve(false),
+      canViewTenants: () => Promise.resolve(false),
+      canCreateTenants: () => Promise.resolve(false),
+      canEditTenants: () => Promise.resolve(false),
+      canDeleteTenants: () => Promise.resolve(false),
+      canBulkDeleteTenants: () => Promise.resolve(false),
+      canViewRoles: () => Promise.resolve(false),
+      canCreateRoles: () => Promise.resolve(false),
+      canEditRoles: () => Promise.resolve(false),
+      canDeleteRoles: () => Promise.resolve(false),
+      canBulkDeleteRoles: () => Promise.resolve(false)
     };
-  }, []);
-  
-  // Clean up ref on unmount
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
+  }
+
+  // For admin users, all permissions are true
+  if (user.role?.name === 'admin') {
+    return {
+      userRole: user.role?.name || null,
+      isLoading,
+      permissionErrors: {},
+      // Asset permissions
+      canViewPC: () => Promise.resolve(true),
+      canCreatePC: () => Promise.resolve(true),
+      canEditPC: () => Promise.resolve(true),
+      canDeletePC: () => Promise.resolve(true),
+      canBulkDeletePC: () => Promise.resolve(true),
+      canViewLaptop: () => Promise.resolve(true),
+      canCreateLaptop: () => Promise.resolve(true),
+      canEditLaptop: () => Promise.resolve(true),
+      canDeleteLaptop: () => Promise.resolve(true),
+      canBulkDeleteLaptop: () => Promise.resolve(true),
+      canViewPrinter: () => Promise.resolve(true),
+      canCreatePrinter: () => Promise.resolve(true),
+      canEditPrinter: () => Promise.resolve(true),
+      canDeletePrinter: () => Promise.resolve(true),
+      canBulkDeletePrinter: () => Promise.resolve(true),
+      canViewLicense: () => Promise.resolve(true),
+      canCreateLicense: () => Promise.resolve(true),
+      canEditLicense: () => Promise.resolve(true),
+      canDeleteLicense: () => Promise.resolve(true),
+      canBulkDeleteLicense: () => Promise.resolve(true),
+      canViewWarehouse: () => Promise.resolve(true),
+      canCreateWarehouse: () => Promise.resolve(true),
+      canEditWarehouse: () => Promise.resolve(true),
+      canDeleteWarehouse: () => Promise.resolve(true),
+      canBulkDeleteWarehouse: () => Promise.resolve(true),
+      canViewInternet: () => Promise.resolve(true),
+      canCreateInternet: () => Promise.resolve(true),
+      canEditInternet: () => Promise.resolve(true),
+      canDeleteInternet: () => Promise.resolve(true),
+      canBulkDeleteInternet: () => Promise.resolve(true),
+      // Settings permissions
+      canViewSettings: () => Promise.resolve(true),
+      canEditSettings: () => Promise.resolve(true),
+      canViewAuditLogs: () => Promise.resolve(true),
+      // Asset management permissions (generic)
+      canViewAssets: () => Promise.resolve(true),
+      // User management permissions
+      canViewUsers: () => Promise.resolve(true),
+      canCreateUsers: () => Promise.resolve(true),
+      canEditUsers: () => Promise.resolve(true),
+      canDeleteUsers: () => Promise.resolve(true),
+      canBulkDeleteUsers: () => Promise.resolve(true),
+      canViewTenants: () => Promise.resolve(true),
+      canCreateTenants: () => Promise.resolve(true),
+      canEditTenants: () => Promise.resolve(true),
+      canDeleteTenants: () => Promise.resolve(true),
+      canBulkDeleteTenants: () => Promise.resolve(true),
+      canViewRoles: () => Promise.resolve(true),
+      canCreateRoles: () => Promise.resolve(true),
+      canEditRoles: () => Promise.resolve(true),
+      canDeleteRoles: () => Promise.resolve(true),
+      canBulkDeleteRoles: () => Promise.resolve(true)
     };
-  }, []);
+  }
 
-  /**
-   * Check if the current user has permission to perform an action on a resource
-   */
-  const checkPermission = useCallback(async (
-    resource: ResourceType,
-    action: PermissionAction
-  ): Promise<boolean> => {
-    // Prevent running on the server or when user data is not available
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    
-    if (!user) {
-      return false;
-    }
-    
-    if (!user.role?.id) {
-      return false;
-    }
-    
-    if (!user.tenantId) {
-      return false;
-    }
-    
-    // Create cache key
-    const cacheKey = `${user.role.id}-${user.tenantId}-${resource}-${action}`;
-    
-    // Check if result is cached and not expired
-    if (permissionCache.current[cacheKey] !== undefined) {
-      return permissionCache.current[cacheKey];
-    }
-    
-    try {
-      // Make API call to check permissions using the authenticated API client
-      // The API will use the current user's role and tenant ID
-      const response = await api.post<{
-        hasPermission: boolean;
-      }, {
-        resource: ResourceType;
-        action: PermissionAction;
-      }>(`/permissions/check`, {
-        resource,
-        action
-      });
+  // Asset permissions
+  const canViewPC = () => checkPermission('pc', 'view');
+  const canCreatePC = () => checkPermission('pc', 'create');
+  const canEditPC = () => checkPermission('pc', 'edit');
+  const canDeletePC = () => checkPermission('pc', 'delete');
+  const canBulkDeletePC = () => checkPermission('pc', 'bulkDelete');
+
+  const canViewLaptop = () => checkPermission('laptop', 'view');
+  const canCreateLaptop = () => checkPermission('laptop', 'create');
+  const canEditLaptop = () => checkPermission('laptop', 'edit');
+  const canDeleteLaptop = () => checkPermission('laptop', 'delete');
+  const canBulkDeleteLaptop = () => checkPermission('laptop', 'bulkDelete');
+
+  const canViewPrinter = () => checkPermission('printer', 'view');
+  const canCreatePrinter = () => checkPermission('printer', 'create');
+  const canEditPrinter = () => checkPermission('printer', 'edit');
+  const canDeletePrinter = () => checkPermission('printer', 'delete');
+  const canBulkDeletePrinter = () => checkPermission('printer', 'bulkDelete');
+
+  const canViewLicense = () => checkPermission('license', 'view');
+  const canCreateLicense = () => checkPermission('license', 'create');
+  const canEditLicense = () => checkPermission('license', 'edit');
+  const canDeleteLicense = () => checkPermission('license', 'delete');
+  const canBulkDeleteLicense = () => checkPermission('license', 'bulkDelete');
+
+  const canViewWarehouse = () => checkPermission('warehouse', 'view');
+  const canCreateWarehouse = () => checkPermission('warehouse', 'create');
+  const canEditWarehouse = () => checkPermission('warehouse', 'edit');
+  const canDeleteWarehouse = () => checkPermission('warehouse', 'delete');
+  const canBulkDeleteWarehouse = () => checkPermission('warehouse', 'bulkDelete');
+
+  const canViewInternet = () => checkPermission('internet', 'view');
+  const canCreateInternet = () => checkPermission('internet', 'create');
+  const canEditInternet = () => checkPermission('internet', 'edit');
+  const canDeleteInternet = () => checkPermission('internet', 'delete');
+  const canBulkDeleteInternet = () => checkPermission('internet', 'bulkDelete');
+
+  // Settings permissions
+  const canViewSettings = () => checkPermission('settings', 'view');
+  const canEditSettings = () => checkPermission('settings', 'edit');
+  const canViewAuditLogs = () => checkPermission('auditLogs', 'view');
       
-      // Cache the result
-      if (isMountedRef.current) {
-        permissionCache.current[cacheKey] = response.hasPermission;
-      }
-      
-      return response.hasPermission;
-    } catch (error) {
-      // Log errors only in development
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error checking permissions:', error);
-      }
-      return false;
-    }
-  }, [user]);
+  // Asset management permissions (generic)
+  const canViewAssets = () => Promise.all([
+    checkPermission('pc', 'view'),
+    checkPermission('laptop', 'view'),
+    checkPermission('printer', 'view'),
+    checkPermission('license', 'view'),
+    checkPermission('warehouse', 'view'),
+    checkPermission('internet', 'view')
+  ]).then(results => results.some(result => result));
 
-  /**
-   * Check if the current user has any of the specified permissions
-   */
-  const checkAnyPermission = useCallback(async (
-    resource: ResourceType,
-    actions: PermissionAction[]
-  ): Promise<boolean> => {
-    // Prevent running on the server or when user data is not available
-    if (typeof window === 'undefined' || !user || !user.role?.id || !user.tenantId) {
-      return false;
-    }
-    
-    // Check cache for any of the permissions
-    for (const action of actions) {
-      const cacheKey = `${user.role.id}-${user.tenantId}-${resource}-${action}`;
-      if (permissionCache.current[cacheKey] === true) {
-        return true;
-      }
-    }
-    
-    for (const action of actions) {
-      if (await checkPermission(resource, action)) {
-        return true;
-      }
-    }
-    return false;
-  }, [user, checkPermission]);
+  // User management permissions
+  const canViewUsers = () => checkPermission('users', 'view');
+  const canCreateUsers = () => checkPermission('users', 'create');
+  const canEditUsers = () => checkPermission('users', 'edit');
+  const canDeleteUsers = () => checkPermission('users', 'delete');
+  const canBulkDeleteUsers = () => checkPermission('users', 'bulkDelete');
 
-  // Get user role name, defaulting to 'user' if not available
-  const userRole = user?.role?.name || 'user';
+  const canViewTenants = () => checkPermission('tenants', 'view');
+  const canCreateTenants = () => checkPermission('tenants', 'create');
+  const canEditTenants = () => checkPermission('tenants', 'edit');
+  const canDeleteTenants = () => checkPermission('tenants', 'delete');
+  const canBulkDeleteTenants = () => checkPermission('tenants', 'bulkDelete');
 
-  // Create a factory function for permission checkers that can be used with useCallback
-  const createPermissionChecker = useCallback((resource: ResourceType, action: PermissionAction) => {
-    return async (): Promise<boolean> => {
-      // If still loading user data, return false to prevent unauthorized access
-      if (isUserLoading) {
-        return false;
-      }
-      
-      // If user data is not available, return false
-      if (!user || !user.role?.id || !user.tenantId) {
-        return false;
-      }
-      
-      // Check actual permission
-      return await checkPermission(resource, action);
-    };
-  }, [user, isUserLoading, checkPermission]);
-
-  // Create permission checking functions using useMemo to avoid recreating them on every render
-  const canViewUsers = useMemo(() => createPermissionChecker('users', 'view'), [createPermissionChecker]);
-  const canCreateUsers = useMemo(() => createPermissionChecker('users', 'create'), [createPermissionChecker]);
-  const canEditUsers = useMemo(() => createPermissionChecker('users', 'edit'), [createPermissionChecker]);
-  const canDeleteUsers = useMemo(() => createPermissionChecker('users', 'delete'), [createPermissionChecker]);
-  const canBulkDeleteUsers = useMemo(() => createPermissionChecker('users', 'bulkDelete'), [createPermissionChecker]);
-  
-  const canViewTenants = useMemo(() => createPermissionChecker('tenants', 'view'), [createPermissionChecker]);
-  const canCreateTenants = useMemo(() => createPermissionChecker('tenants', 'create'), [createPermissionChecker]);
-  const canEditTenants = useMemo(() => createPermissionChecker('tenants', 'edit'), [createPermissionChecker]);
-  const canDeleteTenants = useMemo(() => createPermissionChecker('tenants', 'delete'), [createPermissionChecker]);
-  const canBulkDeleteTenants = useMemo(() => createPermissionChecker('tenants', 'bulkDelete'), [createPermissionChecker]);
-  
-  const canViewAssets = useMemo(() => createPermissionChecker('assets', 'view'), [createPermissionChecker]);
-  const canCreateAssets = useMemo(() => createPermissionChecker('assets', 'create'), [createPermissionChecker]);
-  const canEditAssets = useMemo(() => createPermissionChecker('assets', 'edit'), [createPermissionChecker]);
-  const canDeleteAssets = useMemo(() => createPermissionChecker('assets', 'delete'), [createPermissionChecker]);
-  const canBulkDeleteAssets = useMemo(() => createPermissionChecker('assets', 'bulkDelete'), [createPermissionChecker]);
-  
-  // Asset-specific permissions
-  const canViewPC = useMemo(() => createPermissionChecker('pc', 'view'), [createPermissionChecker]);
-  const canCreatePC = useMemo(() => createPermissionChecker('pc', 'create'), [createPermissionChecker]);
-  const canEditPC = useMemo(() => createPermissionChecker('pc', 'edit'), [createPermissionChecker]);
-  const canDeletePC = useMemo(() => createPermissionChecker('pc', 'delete'), [createPermissionChecker]);
-  const canBulkDeletePC = useMemo(() => createPermissionChecker('pc', 'bulkDelete'), [createPermissionChecker]);
-  
-  const canViewLaptop = useMemo(() => createPermissionChecker('laptop', 'view'), [createPermissionChecker]);
-  const canCreateLaptop = useMemo(() => createPermissionChecker('laptop', 'create'), [createPermissionChecker]);
-  const canEditLaptop = useMemo(() => createPermissionChecker('laptop', 'edit'), [createPermissionChecker]);
-  const canDeleteLaptop = useMemo(() => createPermissionChecker('laptop', 'delete'), [createPermissionChecker]);
-  const canBulkDeleteLaptop = useMemo(() => createPermissionChecker('laptop', 'bulkDelete'), [createPermissionChecker]);
-  
-  const canViewPrinter = useMemo(() => createPermissionChecker('printer', 'view'), [createPermissionChecker]);
-  const canCreatePrinter = useMemo(() => createPermissionChecker('printer', 'create'), [createPermissionChecker]);
-  const canEditPrinter = useMemo(() => createPermissionChecker('printer', 'edit'), [createPermissionChecker]);
-  const canDeletePrinter = useMemo(() => createPermissionChecker('printer', 'delete'), [createPermissionChecker]);
-  const canBulkDeletePrinter = useMemo(() => createPermissionChecker('printer', 'bulkDelete'), [createPermissionChecker]);
-  
-  const canViewLicense = useMemo(() => createPermissionChecker('license', 'view'), [createPermissionChecker]);
-  const canCreateLicense = useMemo(() => createPermissionChecker('license', 'create'), [createPermissionChecker]);
-  const canEditLicense = useMemo(() => createPermissionChecker('license', 'edit'), [createPermissionChecker]);
-  const canDeleteLicense = useMemo(() => createPermissionChecker('license', 'delete'), [createPermissionChecker]);
-  const canBulkDeleteLicense = useMemo(() => createPermissionChecker('license', 'bulkDelete'), [createPermissionChecker]);
-  
-  const canViewWarehouse = useMemo(() => createPermissionChecker('warehouse', 'view'), [createPermissionChecker]);
-  const canCreateWarehouse = useMemo(() => createPermissionChecker('warehouse', 'create'), [createPermissionChecker]);
-  const canEditWarehouse = useMemo(() => createPermissionChecker('warehouse', 'edit'), [createPermissionChecker]);
-  const canDeleteWarehouse = useMemo(() => createPermissionChecker('warehouse', 'delete'), [createPermissionChecker]);
-  const canBulkDeleteWarehouse = useMemo(() => createPermissionChecker('warehouse', 'bulkDelete'), [createPermissionChecker]);
-  
-  const canViewInternet = useMemo(() => createPermissionChecker('internet', 'view'), [createPermissionChecker]);
-  const canCreateInternet = useMemo(() => createPermissionChecker('internet', 'create'), [createPermissionChecker]);
-  const canEditInternet = useMemo(() => createPermissionChecker('internet', 'edit'), [createPermissionChecker]);
-  const canDeleteInternet = useMemo(() => createPermissionChecker('internet', 'delete'), [createPermissionChecker]);
-  const canBulkDeleteInternet = useMemo(() => createPermissionChecker('internet', 'bulkDelete'), [createPermissionChecker]);
-  
-  const canViewSettings = useMemo(() => createPermissionChecker('settings', 'view'), [createPermissionChecker]);
-  const canEditSettings = useMemo(() => createPermissionChecker('settings', 'edit'), [createPermissionChecker]);
-  
-  const canViewRoles = useMemo(() => createPermissionChecker('roles', 'view'), [createPermissionChecker]);
-  const canCreateRoles = useMemo(() => createPermissionChecker('roles', 'create'), [createPermissionChecker]);
-  const canEditRoles = useMemo(() => createPermissionChecker('roles', 'edit'), [createPermissionChecker]);
-  const canDeleteRoles = useMemo(() => createPermissionChecker('roles', 'delete'), [createPermissionChecker]);
-  const canBulkDeleteRoles = useMemo(() => createPermissionChecker('roles', 'bulkDelete'), [createPermissionChecker]);
+  const canViewRoles = () => checkPermission('roles', 'view');
+  const canCreateRoles = () => checkPermission('roles', 'create');
+  const canEditRoles = () => checkPermission('roles', 'edit');
+  const canDeleteRoles = () => checkPermission('roles', 'delete');
+  const canBulkDeleteRoles = () => checkPermission('roles', 'bulkDelete');
 
   return {
-    userRole,
-    checkPermission,
-    checkAnyPermission,
-    // Convenience methods for common resources
-    canViewUsers,
-    canCreateUsers,
-    canEditUsers,
-    canDeleteUsers,
-    canBulkDeleteUsers,
-    
-    canViewTenants,
-    canCreateTenants,
-    canEditTenants,
-    canDeleteTenants,
-    canBulkDeleteTenants,
-    
-    canViewAssets,
-    canCreateAssets,
-    canEditAssets,
-    canDeleteAssets,
-    canBulkDeleteAssets,
-    
-    // Asset-specific permissions
+    userRole: user.role?.name || null,
+    isLoading,
+    permissionErrors,
+    // Asset permissions
     canViewPC,
     canCreatePC,
     canEditPC,
     canDeletePC,
     canBulkDeletePC,
-    
     canViewLaptop,
     canCreateLaptop,
     canEditLaptop,
     canDeleteLaptop,
     canBulkDeleteLaptop,
-    
     canViewPrinter,
     canCreatePrinter,
     canEditPrinter,
     canDeletePrinter,
     canBulkDeletePrinter,
-    
     canViewLicense,
     canCreateLicense,
     canEditLicense,
     canDeleteLicense,
     canBulkDeleteLicense,
-    
     canViewWarehouse,
     canCreateWarehouse,
     canEditWarehouse,
     canDeleteWarehouse,
     canBulkDeleteWarehouse,
-    
     canViewInternet,
     canCreateInternet,
     canEditInternet,
     canDeleteInternet,
     canBulkDeleteInternet,
-    
+    // Settings permissions
     canViewSettings,
     canEditSettings,
-    
+    canViewAuditLogs,
+    // Asset management permissions (generic)
+    canViewAssets,
+    // User management permissions
+    canViewUsers,
+    canCreateUsers,
+    canEditUsers,
+    canDeleteUsers,
+    canBulkDeleteUsers,
+    canViewTenants,
+    canCreateTenants,
+    canEditTenants,
+    canDeleteTenants,
+    canBulkDeleteTenants,
     canViewRoles,
     canCreateRoles,
     canEditRoles,
     canDeleteRoles,
-    canBulkDeleteRoles,
+    canBulkDeleteRoles
   };
 }

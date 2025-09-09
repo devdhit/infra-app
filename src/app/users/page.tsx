@@ -10,12 +10,14 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 // FIX: Remove unused imports
-import { useUsers, useCreateUser, useTenants, useBulkDeleteUsers } from "@/hooks/useApi"
+import { useUsers, useCreateUser, useTenants, useBulkDeleteUsers, useDeleteUser } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { UsersTable } from "@/components/users/users-table"
 import { UserForm } from "@/components/users/user-form"
+import { ConfirmDialog } from "@/components/users/confirm-dialog"
+import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"
 import { UserFormValues, User } from "@/types/users"
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus} from "lucide-react"
@@ -38,15 +40,25 @@ export default function UsersPage() {
   const { data: users = [], refetch } = useUsers()
   const { data: tenants = [] } = useTenants()
   const createUserMutation = useCreateUser()
+  const deleteUserMutation = useDeleteUser('') // Use empty string as placeholder
+  const bulkDeleteMutation = useBulkDeleteUsers()
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   
   // Manage the ID for delete operations in state
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null)
-  const bulkDeleteMutation = useBulkDeleteUsers()
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  
+  // State for bulk delete operations
+  const [bulkDeleteUserIds, setBulkDeleteUserIds] = useState<string[]>([])
   
   // State for update user ID
   const [updateUserId, setUpdateUserId] = useState<string | null>(null)
+  
+  // Confirmation dialog states
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false)
   
   // Permission states
   const [canView, setCanView] = useState<boolean | null>(null) // null means still checking
@@ -186,59 +198,36 @@ export default function UsersPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string | string[]) => {
     try {
       // Only check permissions if user data is fully loaded
       if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-        const hasDeletePermission = await canDeleteUsers()
-        const hasBulkDeletePermission = await canBulkDeleteUsers()
-        
-        // Check if it's a bulk delete (comma-separated IDs)
-        if (id.includes(',')) {
+        // Check if it's a bulk delete (array of IDs)
+        if (Array.isArray(id)) {
+          const hasBulkDeletePermission = await canBulkDeleteUsers()
+          
           if (!hasBulkDeletePermission) {
             toast.error(t('users.bulkDelete.unauthorized') || 'You do not have permission to bulk delete users')
             return
           }
+          
           // Handle bulk delete
-          const ids = id.split(',')
-          if (window.confirm(t('users.bulkDelete.confirm', 'Are you sure you want to delete {0} users?', ids.length.toString()) || 
-              `Are you sure you want to delete ${ids.length} users?`)) {
-            try {
-              await bulkDeleteMutation.mutateAsync({ ids })
-              toast.success(t('users.bulkDelete.success', '{0} users deleted successfully', ids.length.toString()) || 
-                           `${ids.length} users deleted successfully`)
-              refetch()
-            } catch (error: any) {
-              toast.error(error.message || t('users.bulkDelete.error') || 'Failed to delete users')
-            }
-          }
+          setBulkDeleteUserIds(id)
+          setIsBulkDeleteConfirmOpen(true)
         } else {
+          const hasDeletePermission = await canDeleteUsers()
+          
           if (!hasDeletePermission) {
             toast.error(t('users.delete.unauthorized') || 'You do not have permission to delete users')
             return
           }
+          
           // Handle single delete
           setDeleteUserId(id)
-          if (window.confirm(t('users.delete.confirm') || 'Are you sure you want to delete this user?')) {
-            try {
-              // Instead of calling the hook directly, we'll use the API client directly
-              const response = await fetch(`/api/users/${id}`, {
-                method: 'DELETE',
-                headers: {
-                  'Content-Type': 'application/json',
-                }
-              });
-              
-              if (!response.ok) {
-                throw new Error('Failed to delete user');
-              }
-              
-              toast.success(t('users.delete.success') || 'User deleted successfully')
-              refetch()
-            } catch (error: any) {
-              toast.error(error.message || t('users.delete.error') || 'Failed to delete user')
-            }
-          }
+          // Find the user to display in the confirmation dialog
+          const user = users.find(u => u.id === id)
+          setUserToDelete(user || null)
+          setIsDeleteConfirmOpen(true)
         }
       }
     } catch (error) {
@@ -247,6 +236,37 @@ export default function UsersPage() {
         console.error('Error checking delete permissions:', error)
       }
       toast.error(t('common.error') || 'An error occurred while checking permissions')
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteUserId) return
+    
+    try {
+      // Use the deleteUserMutation hook instead of direct fetch
+      await deleteUserMutation.mutateAsync(deleteUserId)
+      toast.success(t('users.delete.success') || 'User deleted successfully')
+      refetch()
+    } catch (error: any) {
+      toast.error(error.message || t('users.delete.error') || 'Failed to delete user')
+    } finally {
+      setIsDeleteConfirmOpen(false)
+      setDeleteUserId(null)
+      setUserToDelete(null)
+    }
+  }
+
+  const confirmBulkDelete = async () => {
+    try {
+      await bulkDeleteMutation.mutateAsync({ ids: bulkDeleteUserIds })
+      toast.success(t('users.bulkDelete.success', '{0} users deleted successfully', bulkDeleteUserIds.length.toString()) || 
+                   `${bulkDeleteUserIds.length} users deleted successfully`)
+      refetch()
+    } catch (error: any) {
+      toast.error(error.message || t('users.bulkDelete.error') || 'Failed to delete users')
+    } finally {
+      setIsBulkDeleteConfirmOpen(false)
+      setBulkDeleteUserIds([])
     }
   }
 
@@ -367,7 +387,7 @@ export default function UsersPage() {
             tenants={tenants}
             onEdit={canEdit || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) ? handleEdit : undefined}
             onDelete={canDelete || canBulkDelete || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) ? handleDelete : undefined}
-            isDeleting={false}
+            isDeleting={deleteUserMutation.isPending || bulkDeleteMutation.isPending}
             deletingUserId={deleteUserId}
           />
         </CardContent>
@@ -380,6 +400,27 @@ export default function UsersPage() {
         tenants={tenants}
         onSubmit={handleSubmit}
         isSubmitting={createUserMutation.isPending || (editingUser && updateUserId ? true : false)}
+      />
+      
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title={t('users.delete.confirmTitle') || 'Delete User'}
+        description={t('users.delete.confirmDescription', 'Are you sure you want to delete user {0}?', userToDelete?.name || 'this user') || 
+                    `Are you sure you want to delete user ${userToDelete?.name || 'this user'}? This action cannot be undone.`}
+        confirmText={t('common.delete') || 'Delete'}
+        cancelText={t('common.cancel') || 'Cancel'}
+        onConfirm={confirmDelete}
+        isLoading={false}
+      />
+      
+      <BulkDeleteDialog
+        title={t('users.title') || 'Users'}
+        count={bulkDeleteUserIds.length}
+        isOpen={isBulkDeleteConfirmOpen}
+        isDeleting={bulkDeleteMutation.isPending}
+        onClose={() => setIsBulkDeleteConfirmOpen(false)}
+        onConfirm={confirmBulkDelete}
       />
     </div>
   )

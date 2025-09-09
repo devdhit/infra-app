@@ -15,6 +15,8 @@ import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { TenantsTable } from "@/components/tenants/tenants-table"
 import { TenantForm } from "@/components/tenants/tenant-form"
+import { ConfirmDialog } from "@/components/tenants/confirm-dialog"
+import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
 import { TenantFormValues } from "@/components/tenants/types"
 import { Tenant } from "@/hooks/useApi"
 import { useQueryClient } from '@tanstack/react-query'
@@ -51,7 +53,17 @@ export default function TenantsPage() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null)
+  
+  // Manage the ID for delete operations in state
   const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null)
+  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null)
+  
+  // State for bulk delete operations
+  const [bulkDeleteTenantIds, setBulkDeleteTenantIds] = useState<string[]>([])
+  
+  // Confirmation dialog states
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false)
   
   // Permission states
   const [canView, setCanView] = useState<boolean | null>(null) // null means still checking
@@ -227,32 +239,93 @@ export default function TenantsPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string | string[]) => {
     try {
       // Only check permissions if user data is fully loaded
       if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-        const hasDeletePermission = await canDeleteTenants()
-        const hasBulkDeletePermission = await canBulkDeleteTenants()
-        
-        if (!hasDeletePermission && !hasBulkDeletePermission) {
-          toast.error(t('tenants.delete.unauthorized') || 'You do not have permission to delete tenants')
-          return
-        }
-      }
-      
-      setDeleteTenantId(id)
-      if (window.confirm(t('tenants.delete.confirm') || 'Are you sure you want to delete this tenant? This action cannot be undone.')) {
-        try {
-          await deleteMutation.mutateAsync(id)
-          toast.success(t('tenants.delete.success') || 'Tenant deleted successfully')
-          refetch()
-        } catch (error: any) {
-          toast.error(error.message || t('tenants.delete.error') || 'Failed to delete tenant')
+        // Check if it's a bulk delete (array of IDs)
+        if (Array.isArray(id)) {
+          const hasBulkDeletePermission = await canBulkDeleteTenants()
+          
+          if (!hasBulkDeletePermission) {
+            toast.error(t('tenants.bulkDelete.unauthorized') || 'You do not have permission to bulk delete tenants')
+            return
+          }
+          
+          // Handle bulk delete
+          setBulkDeleteTenantIds(id)
+          setIsBulkDeleteConfirmOpen(true)
+        } else {
+          const hasDeletePermission = await canDeleteTenants()
+          
+          if (!hasDeletePermission) {
+            toast.error(t('tenants.delete.unauthorized') || 'You do not have permission to delete tenants')
+            return
+          }
+          
+          // Handle single delete
+          setDeleteTenantId(id)
+          // Find the tenant to display in the confirmation dialog
+          const tenant = tenantsData.find(t => t.id === id)
+          setTenantToDelete(tenant || null)
+          setIsDeleteConfirmOpen(true)
         }
       }
     } catch (error) {
       console.error('Error in handleDelete:', error)
-      toast.error(t('tenants.delete.error') || 'Failed to delete tenant')
+      toast.error(t('common.error') || 'An error occurred while checking permissions')
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTenantId) return
+    
+    try {
+      console.log('Sending delete request for tenant ID:', deleteTenantId);
+      await deleteMutation.mutateAsync(deleteTenantId)
+      toast.success(t('tenants.delete.success') || 'Tenant deleted successfully')
+      refetch()
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      // Provide more specific error messages
+      if (error.status === 404) {
+        toast.error(t('tenants.delete.notFound') || 'Tenant not found. It may have already been deleted.')
+      } else if (error.status === 403) {
+        toast.error(t('tenants.delete.forbidden') || 'You do not have permission to delete this tenant.')
+      } else if (error.status === 400) {
+        toast.error(error.message || t('tenants.delete.hasData') || 'Cannot delete tenant with associated data. Please delete all associated users and assets first.')
+      } else {
+        toast.error(error.message || t('tenants.delete.error') || 'Failed to delete tenant')
+      }
+    } finally {
+      setIsDeleteConfirmOpen(false)
+      setDeleteTenantId(null)
+      setTenantToDelete(null)
+    }
+  }
+
+  const confirmBulkDelete = async () => {
+    try {
+      console.log('Sending bulk delete request with IDs:', bulkDeleteTenantIds);
+      await bulkDeleteMutation.mutateAsync({ ids: bulkDeleteTenantIds })
+      toast.success(t('tenants.bulkDelete.success', '{0} tenants deleted successfully', bulkDeleteTenantIds.length.toString()) || 
+                   `${bulkDeleteTenantIds.length} tenants deleted successfully`)
+      refetch()
+    } catch (error: any) {
+      console.error('Bulk delete error:', error);
+      // Provide more specific error messages for bulk delete
+      if (error.status === 404) {
+        toast.error(t('tenants.bulkDelete.notFound') || 'One or more tenants not found. They may have already been deleted.')
+      } else if (error.status === 403) {
+        toast.error(t('tenants.bulkDelete.forbidden') || 'You do not have permission to delete these tenants.')
+      } else if (error.status === 400) {
+        toast.error(error.message || t('tenants.bulkDelete.hasData') || 'Cannot delete tenants with associated data. Please delete all associated users and assets first.')
+      } else {
+        toast.error(error.message || t('tenants.bulkDelete.error') || 'Failed to delete tenants')
+      }
+    } finally {
+      setIsBulkDeleteConfirmOpen(false)
+      setBulkDeleteTenantIds([])
     }
   }
 
@@ -391,6 +464,27 @@ export default function TenantsPage() {
           isSubmitting={createTenantMutation.isPending || (editingTenant ? false : false)}
         />
       )}
+      
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title={t('tenants.delete.confirmTitle') || 'Delete Tenant'}
+        description={t('tenants.delete.confirmDescription', 'Are you sure you want to delete tenant {0}?', tenantToDelete?.name || 'this tenant') || 
+                    `Are you sure you want to delete tenant ${tenantToDelete?.name || 'this tenant'}? This action cannot be undone.`}
+        confirmText={t('common.delete') || 'Delete'}
+        cancelText={t('common.cancel') || 'Cancel'}
+        onConfirm={confirmDelete}
+        isLoading={false}
+      />
+      
+      <BulkDeleteDialog
+        title={t('tenants.title') || 'Tenants'}
+        count={bulkDeleteTenantIds.length}
+        isOpen={isBulkDeleteConfirmOpen}
+        isDeleting={bulkDeleteMutation.isPending}
+        onClose={() => setIsBulkDeleteConfirmOpen(false)}
+        onConfirm={confirmBulkDelete}
+      />
     </div>
   )
 }

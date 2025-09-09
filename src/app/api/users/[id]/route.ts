@@ -2,16 +2,14 @@ import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser, hashPassword } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
+import { successResponse, errorResponse, notFoundResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 // GET /api/users/[id] - Get a specific user
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const currentUser = await getCurrentUser(request)
     if (!currentUser) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return unauthorizedResponse()
     }
 
     // Await params before using
@@ -26,10 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     )
 
     if (!hasViewPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
     // Get role name from the related Role object, default to 'user'
@@ -49,30 +44,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!user) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('User not found')
     }
 
     // Check if user belongs to the same tenant (unless admin)
     if (currentRoleName !== 'admin' && currentUser.tenantId !== user.tenantId) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
-    return new Response(JSON.stringify(user), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return successResponse(user)
   } catch (error) {
     console.error('Error fetching user:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }
 
@@ -81,10 +64,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const currentUser = await getCurrentUser(request)
     if (!currentUser) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return unauthorizedResponse()
     }
 
     // Await params before using
@@ -99,10 +79,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     )
 
     if (!hasEditPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
     // Get role name from the related Role object, default to 'user'
@@ -112,10 +89,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     // Validate input
     if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
-      return new Response(JSON.stringify({ error: 'Invalid email format' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Invalid email format', 400)
     }
 
     // Check if user exists
@@ -124,18 +98,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingUser) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('User not found')
     }
 
     // Check permissions
     if (currentRoleName !== 'admin' && currentUser.tenantId !== existingUser.tenantId) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
     // Prevent non-admins from changing user role or tenant
@@ -156,10 +124,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         })
 
         if (!role) {
-          return new Response(JSON.stringify({ error: 'Role not found' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' }
-          })
+          return errorResponse('Role not found', 400)
         }
 
         updateData.roleId = role.id
@@ -174,10 +139,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Hash password if provided
     if (body.password) {
       if (body.password.length < 6) {
-        return new Response(JSON.stringify({ error: 'Password must be at least 6 characters long' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        })
+        return errorResponse('Password must be at least 6 characters long', 400)
       }
       updateData.password = await hashPassword(body.password)
     }
@@ -197,30 +159,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       role: user.role
     }
 
-    return new Response(JSON.stringify(userWithRole), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return successResponse(userWithRole)
   } catch (error: any) {
     if (error.code === 'P2025') {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('User not found')
     }
     
     if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
-      return new Response(JSON.stringify({ error: 'User with this email already exists' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('User with this email already exists', 400)
     }
     
     console.error('Error updating user:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }
 
@@ -229,10 +179,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const currentUser = await getCurrentUser(request)
     if (!currentUser) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return unauthorizedResponse()
     }
 
     // Await params before using
@@ -247,10 +194,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     )
 
     if (!hasDeletePermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
     // Get role name from the related Role object, default to 'user'
@@ -262,47 +206,30 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     })
 
     if (!existingUser) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('User not found')
     }
 
     // Check permissions
     if (currentRoleName !== 'admin' && currentUser.tenantId !== existingUser.tenantId) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Forbidden', 403)
     }
 
     // Prevent users from deleting themselves
     if (currentUser.id === resolvedParams.id) {
-      return new Response(JSON.stringify({ error: 'Cannot delete yourself' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Cannot delete yourself', 400)
     }
 
     await db.user.delete({
       where: { id: resolvedParams.id }
     })
 
-    return new Response(null, {
-      status: 204
-    })
+    return successResponse(null, 204)
   } catch (error: any) {
     if (error.code === 'P2025') {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('User not found')
     }
     
     console.error('Error deleting user:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }

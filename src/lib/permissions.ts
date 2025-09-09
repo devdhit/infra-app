@@ -23,7 +23,8 @@ export const COMMON_RESOURCE_TYPES = [
   'printer', 
   'license', 
   'warehouse', 
-  'internet'
+  'internet',
+  'auditLogs'
 ] as const;
 
 // Define common permission actions for better type safety
@@ -42,26 +43,28 @@ const defaultPermissions: Record<string, Record<ResourceType, PermissionAction[]
     tenants: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     assets: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     settings: ['view', 'edit'],
-    roles: ['view', 'create', 'edit', 'delete'],
+    roles: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     pc: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     laptop: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     printer: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     license: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     warehouse: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
-    internet: ['view', 'create', 'edit', 'delete', 'bulkDelete']
+    internet: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    auditLogs: ['view']
   },
   user: {
-    users: ['view'], // Regular users can only view their own profile
+    users: ['view'],
     tenants: ['view'],
-    assets: ['view', 'create', 'edit', 'delete'],
+    assets: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     settings: ['view'],
-    roles: ['view'], // Regular users can view roles
-    pc: ['view', 'create', 'edit', 'delete'],
-    laptop: ['view', 'create', 'edit', 'delete'],
-    printer: ['view', 'create', 'edit', 'delete'],
-    license: ['view', 'create', 'edit', 'delete'],
-    warehouse: ['view', 'create', 'edit', 'delete'],
-    internet: ['view', 'create', 'edit', 'delete']
+    roles: ['view'],
+    pc: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    laptop: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    printer: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    license: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    warehouse: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    internet: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    auditLogs: [] // Regular users cannot view audit logs by default
   }
 };
 
@@ -134,6 +137,11 @@ export async function hasPermission(
 
     if (!role) {
       return false;
+    }
+
+    // For admin roles, all permissions are true
+    if (role.name === 'admin') {
+      return true;
     }
 
     // Get permissions directly from the role object
@@ -264,7 +272,8 @@ export function getDefaultPermissions(roleName: string): Record<ResourceType, Pe
     printer: [],
     license: [],
     warehouse: [],
-    internet: []
+    internet: [],
+    auditLogs: []
   };
 }
 

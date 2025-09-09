@@ -19,7 +19,7 @@ export interface UserFormValues {
 export interface UsersTableProps {
   users: User[];
   onEdit?: (user: User) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string | string[]) => void;
   isDeleting: boolean;
   deletingUserId: string | null;
 }

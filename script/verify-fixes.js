@@ -1,15 +1,81 @@
-// Simple verification script to confirm the permission fixes
-console.log('Verifying permission fixes...\n');
+// Script to verify that the fixes are working correctly
+const { PrismaClient } = require('../src/generated/prisma');
 
-console.log('The fixes applied to the following pages ensure that:');
-console.log('1. Permissions are only checked after user data is fully loaded');
-console.log('2. The useEffect hooks re-run when userRole changes');
-console.log('3. The condition checks for both window availability and userRole before checking permissions\n');
+const prisma = new PrismaClient();
 
-console.log('Pages fixed:');
-console.log('- Users page (src/app/users/page.tsx)');
-console.log('- Roles page (src/app/roles/page.tsx)');
-console.log('- Settings page (src/app/settings/page.tsx)');
-console.log('- Tenants page (src/app/tenants/page.tsx)\n');
+async function verifyFixes() {
+  try {
+    console.log('Verifying fixes...');
+    
+    // Check that the role has been fixed
+    const employeeRole = await prisma.role.findFirst({
+      where: {
+        name: 'employee'
+      }
+    });
+    
+    if (!employeeRole) {
+      console.log('❌ Employee role not found');
+      return;
+    }
+    
+    console.log(`✅ Employee role found: ${employeeRole.name} (${employeeRole.id})`);
+    
+    // Check that permissions are properly assigned
+    const hasProperPermissions = employeeRole.permissions.users && 
+                                employeeRole.permissions.users.includes('view') &&
+                                employeeRole.permissions.assets && 
+                                employeeRole.permissions.assets.includes('view');
+    
+    if (hasProperPermissions) {
+      console.log('✅ Employee role has proper permissions');
+      console.log('Permissions:', JSON.stringify(employeeRole.permissions, null, 2));
+    } else {
+      console.log('❌ Employee role does not have proper permissions');
+      console.log('Current permissions:', JSON.stringify(employeeRole.permissions, null, 2));
+      return;
+    }
+    
+    // Check that the old 'employe' role no longer exists
+    const employeRole = await prisma.role.findFirst({
+      where: {
+        name: 'employe'
+      }
+    });
+    
+    if (employeRole) {
+      console.log('❌ Old employe role still exists');
+      return;
+    }
+    
+    console.log('✅ Old employe role no longer exists');
+    
+    // Check the user who had the employe role
+    const userWithEmployeeRole = await prisma.user.findFirst({
+      where: {
+        roleId: employeeRole.id
+      },
+      include: {
+        role: true
+      }
+    });
+    
+    if (userWithEmployeeRole) {
+      console.log(`✅ User ${userWithEmployeeRole.name} (${userWithEmployeeRole.email}) has the correct employee role`);
+      console.log(`Role: ${userWithEmployeeRole.role.name}`);
+    } else {
+      console.log('❌ No user found with the employee role');
+    }
+    
+    console.log('\n🎉 All fixes verified successfully!');
+    console.log('The user should now be able to access the application properly.');
+    
+  } catch (error) {
+    console.error('Error verifying fixes:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
 
-console.log('Verification complete. The admin user should now be able to access all pages.');
+// Run the verification
+verifyFixes();

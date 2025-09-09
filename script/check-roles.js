@@ -1,46 +1,50 @@
+// Script to check current roles and their permissions in the database
 const { PrismaClient } = require('../src/generated/prisma');
 
+const prisma = new PrismaClient();
+
 async function checkRoles() {
-  const prisma = new PrismaClient();
-  
   try {
-    console.log('Checking roles in the database...\n');
+    console.log('Checking roles in the database...');
     
-    // Get all roles
-    const roles = await prisma.role.findMany({
-      include: {
-        users: true
+    // Get all tenants
+    const tenants = await prisma.tenant.findMany();
+    
+    for (const tenant of tenants) {
+      console.log(`\nTenant: ${tenant.name} (${tenant.id})`);
+      
+      // Get all roles for this tenant
+      const roles = await prisma.role.findMany({
+        where: {
+          tenantId: tenant.id
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+      
+      console.log(`Found ${roles.length} roles:`);
+      
+      for (const role of roles) {
+        console.log(`\n  Role: ${role.name} (${role.id})`);
+        console.log(`  Description: ${role.description}`);
+        console.log(`  Permissions: ${JSON.stringify(role.permissions, null, 2)}`);
       }
-    });
+    }
     
-    console.log('Roles found:');
-    roles.forEach(role => {
-      console.log(`- ID: ${role.id}`);
-      console.log(`  Name: ${role.name}`);
-      console.log(`  Description: ${role.description || 'No description'}`);
-      console.log(`  Permissions: ${JSON.stringify(role.permissions, null, 2)}`);
-      console.log(`  Tenant ID: ${role.tenantId}`);
-      console.log(`  Users with this role: ${role.users.length}`);
-      console.log('---');
-    });
-    
-    // Get all users with their roles
-    console.log('\nUsers and their roles:');
+    // Get a sample user to see what role they have
     const users = await prisma.user.findMany({
       include: {
-        role: true,
-        tenant: true
-      }
+        role: true
+      },
+      take: 5
     });
     
-    users.forEach(user => {
-      console.log(`- Email: ${user.email}`);
-      console.log(`  Name: ${user.name}`);
-      console.log(`  Role: ${user.role ? user.role.name : 'No role'}`);
-      console.log(`  Tenant: ${user.tenant ? user.tenant.name : 'No tenant'}`);
-      console.log('---');
-    });
-    
+    console.log('\nSample users:');
+    for (const user of users) {
+      console.log(`\n  User: ${user.name} (${user.email})`);
+      console.log(`  Role: ${user.role?.name || 'No role'} (${user.roleId})`);
+    }
   } catch (error) {
     console.error('Error checking roles:', error);
   } finally {
@@ -48,4 +52,5 @@ async function checkRoles() {
   }
 }
 
+// Run the check
 checkRoles();

@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { importFromExcelWithTemplate } from '@/lib/excel'
 import { emitAssetChange } from '@/lib/realtime'
+import { createAuditLog } from '@/lib/audit-logs'
 
 // POST /api/assets/excel/import - Import assets from Excel
 export async function POST(request: NextRequest) {
@@ -178,16 +179,17 @@ export async function POST(request: NextRequest) {
             });
 
             // Then create the history record separately
-            await db.history.create({
-              data: {
-                action: 'create',
-                modelType: 'PC',
-                recordId: createdPC.id,
-                changes: JSON.stringify(row),
-                userId: user.id,
-                tenantId: user.tenantId
-              }
-            });
+            await createAuditLog(user.tenantId, {
+              action: 'import',
+              modelType: 'PC',
+              recordId: createdPC.id,
+              changes: {
+                ...row,
+                id: createdPC.id
+              },
+              userId: user.id,
+              tenantId: user.tenantId
+            }, 'import');
             
             // Emit real-time event for PC creation
             try {
@@ -205,7 +207,7 @@ export async function POST(request: NextRequest) {
               continue
             }
 
-            // Check if Laptop with this barcode already exists (unless it's "No Barcode")
+            // Check if Laptop with this barcode already exists (unless it's "No Barcode" or "N/A")
             if (row.barcode && row.barcode !== 'No Barcode' && row.barcode !== 'N/A') {
               const existingLaptop = await db.laptop.findUnique({
                 where: { barcode: String(row.barcode) }
@@ -213,6 +215,33 @@ export async function POST(request: NextRequest) {
 
               if (existingLaptop) {
                 errors.push(`Laptop with Barcode ${String(row.barcode)} already exists`)
+                continue
+              }
+              
+              // Also check if we've already processed a laptop with this barcode in this import batch
+              const isDuplicateInBatch = jsonData.slice(0, jsonData.indexOf(row)).some(
+                (prevRow: any) => {
+                  const prevBarcode = prevRow.barcode !== undefined && prevRow.barcode !== null ? String(prevRow.barcode) : '';
+                  return prevBarcode === String(row.barcode) && prevRow !== row;
+                }
+              );
+
+              if (isDuplicateInBatch) {
+                errors.push(`Laptop with Barcode ${String(row.barcode)} already exists in this import batch`)
+                continue
+              }
+            } else if (row.barcode === 'N/A') {
+              // For N/A barcodes, we still need to check for duplicates within the batch
+              // but we won't check against existing database records
+              const isDuplicateInBatch = jsonData.slice(0, jsonData.indexOf(row)).some(
+                (prevRow: any) => {
+                  const prevBarcode = prevRow.barcode !== undefined && prevRow.barcode !== null ? String(prevRow.barcode) : '';
+                  return prevBarcode === 'N/A' && prevRow !== row;
+                }
+              );
+
+              if (isDuplicateInBatch) {
+                errors.push(`Laptop with Barcode N/A already exists in this import batch`)
                 continue
               }
             }
@@ -230,9 +259,54 @@ export async function POST(request: NextRequest) {
             let dateBuyValue = null;
             if (row.dateBuy && typeof row.dateBuy === 'string' && row.dateBuy !== 'N/A') {
               try {
-                // The date should already be in ISO format from the importFromExcelWithTemplate function
-                dateBuyValue = new Date(row.dateBuy);
-                if (isNaN(dateBuyValue.getTime())) {
+                // Handle various date formats
+                const dateStr = row.dateBuy;
+                
+                // If it's already an ISO string, use it directly
+                if (dateStr.includes('T') && dateStr.includes('Z')) {
+                  dateBuyValue = new Date(dateStr);
+                } else {
+                  // Try to parse different date formats
+                  // Handle Excel serial date numbers
+                  if (!isNaN(Number(dateStr)) && Number(dateStr) > 1000) {
+                    // Convert Excel serial date to JavaScript Date
+                    dateBuyValue = new Date((Number(dateStr) - 25569) * 86400 * 1000);
+                  } else {
+                    // Try common date formats
+                    // const formats = [
+                    //   'MM/DD/YYYY',
+                    //   'DD/MM/YYYY',
+                    //   'YYYY-MM-DD',
+                    //   'MM-DD-YYYY',
+                    //   'DD-MM-YYYY'
+                    // ];
+                    
+                    // Try to parse with Date constructor first
+                    dateBuyValue = new Date(dateStr);
+                    
+                    // If that fails, try with specific formats
+                    if (isNaN(dateBuyValue.getTime())) {
+                      // Handle DD/MM/YYYY or MM/DD/YYYY ambiguity
+                      const parts = dateStr.split(/[/\-]/);
+                      if (parts.length === 3) {
+                        const [part1, part2, part3] = parts;
+                        // Assume YYYY-MM-DD if first part is 4 digits
+                        if (part1 && part1.length === 4) {
+                          dateBuyValue = new Date(`${part1}-${part2}-${part3}`);
+                        } else if (part1 && part2 && part3) {
+                          // Try MM/DD/YYYY first, then DD/MM/YYYY
+                          dateBuyValue = new Date(`${part3}-${part1}-${part2}`);
+                          if (isNaN(dateBuyValue.getTime())) {
+                            dateBuyValue = new Date(`${part3}-${part2}-${part1}`);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                // Validate the date
+                if (isNaN(dateBuyValue.getTime()) || dateBuyValue.getFullYear() < 1900 || dateBuyValue.getFullYear() > 2100) {
                   dateBuyValue = null;
                 }
               } catch (e) {
@@ -324,16 +398,17 @@ export async function POST(request: NextRequest) {
             });
 
             // Then create the history record separately
-            await db.history.create({
-              data: {
-                action: 'create',
-                modelType: 'Laptop',
-                recordId: createdLaptop.id,
-                changes: JSON.stringify(row),
-                userId: user.id,
-                tenantId: user.tenantId
-              }
-            });
+            await createAuditLog(user.tenantId, {
+              action: 'import',
+              modelType: 'Laptop',
+              recordId: createdLaptop.id,
+              changes: {
+                ...row,
+                id: createdLaptop.id
+              },
+              userId: user.id,
+              tenantId: user.tenantId
+            }, 'import');
             
             // Emit real-time event for Laptop creation
             try {

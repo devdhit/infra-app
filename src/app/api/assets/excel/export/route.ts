@@ -11,6 +11,7 @@ import {
 
 // Add the Internet export function
 import { exportInternetToExcel } from '@/lib/excel'
+import { createAuditLog } from '@/lib/audit-logs'
 
 // Define types for our data
 type AssetType = 'pc' | 'laptop' | 'printer' | 'license' | 'warehouse' | 'internet'
@@ -488,14 +489,32 @@ export async function GET(request: NextRequest) {
         })
     }
 
+    // Clear the timeout since the operation completed successfully
+    if (timer) clearTimeout(timer);
+    
+    // Log the export operation
+    try {
+      await createAuditLog(user.tenantId, {
+        action: 'export',
+        modelType: assetType,
+        recordId: 'export-operation',
+        changes: {
+          count: 0, // We don't have a count here, but we could add it
+          department: department || 'all',
+          selectedIds: selectedIdArray ? selectedIdArray.length : 0
+        },
+        userId: user.id,
+        tenantId: user.tenantId
+      }, 'export');
+    } catch (auditLogError) {
+      console.error('Failed to create export audit log:', auditLogError);
+      // Continue with the operation even if audit log creation fails
+    }
+    
     // Log performance metrics
     const endTime = Date.now();
-    console.log(`Export operation completed in ${(endTime - startTime) / 1000} seconds`);
+    console.log(`Export operation completed successfully in ${(endTime - startTime) / 1000} seconds`);
     
-    // Clear the timeout since we're done
-    if (timer) clearTimeout(timer);
-
-    // Return Excel file
     return new Response(buffer, {
       status: 200,
       headers: {

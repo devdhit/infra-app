@@ -3,6 +3,12 @@ import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse } from '@/lib/api-utils'
 
+// Define the request body structure
+interface PermissionCheckRequest {
+  resource: string;
+  action: string;
+}
+
 // Simple in-memory cache for permissions (in production, you might want to use Redis)
 const permissionCache: Record<string, { hasPermission: boolean; timestamp: number }> = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -16,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Safely parse request body
-    let body;
+    let body: PermissionCheckRequest | undefined;
     try {
       const text = await request.text();
       
@@ -50,6 +56,11 @@ export async function POST(request: NextRequest) {
     // Use current user's role ID and tenant ID for security
     const roleId = currentUser.role?.id || '';
     const tenantId = currentUser.tenantId || '';
+
+    // For admin users, all permissions are true
+    if (currentUser.role?.name === 'admin') {
+      return successResponse({ hasPermission: true });
+    }
 
     // Create cache key
     const cacheKey = `${roleId}-${tenantId}-${resource}-${action}`;

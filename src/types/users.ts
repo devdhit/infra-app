@@ -36,7 +36,7 @@ export interface UsersTableProps {
   users: User[];
   tenants: TenantType[];
   onEdit?: (user: User) => void;
-  onDelete?: (userId: string | string) => void;
+  onDelete?: (userId: string | string[]) => void;
   isDeleting?: boolean;
   deletingUserId?: string | null;
 }
