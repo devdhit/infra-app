@@ -46,6 +46,7 @@ import { AssetFormSkeleton } from "./asset-form-skeleton";
 // import { useRouter } from "next/navigation"; // Unused
 import { Badge } from "@/components/ui/badge";
 import { getModelType } from "@/lib/custom-fields";
+import { formatInputDate } from "@/lib/utils";
 
 interface AssetFormProps {
   assetType: string;
@@ -246,14 +247,8 @@ export function AssetFormDialog({
           // Handle date fields - convert ISO string to YYYY-MM-DD format for input[type="date"]
           if (key.toLowerCase().includes('date') && value) {
             try {
-              // Ensure we're working with a valid date string
-              const dateValue = new Date(value);
-              if (!isNaN(dateValue.getTime())) {
-                // Format as YYYY-MM-DD for input[type="date"]
-                acc[key] = dateValue.toISOString().split('T')[0];
-              } else {
-                acc[key] = "";
-              }
+              // Use our utility function to format the date for input fields
+              acc[key] = formatInputDate(value);
             } catch (e) {
               acc[key] = "";
             }
@@ -270,12 +265,8 @@ export function AssetFormDialog({
             // Format date values if needed
             if (typeof value === 'string' && value && key.toLowerCase().includes('date')) {
               try {
-                const dateValue = new Date(value);
-                if (!isNaN(dateValue.getTime())) {
-                  formattedData[key] = dateValue.toISOString().split('T')[0];
-                } else {
-                  formattedData[key] = value;
-                }
+                // Use our utility function to format the date for input fields
+                formattedData[key] = formatInputDate(value);
               } catch (e) {
                 formattedData[key] = value;
               }
@@ -320,8 +311,10 @@ export function AssetFormDialog({
           try {
             const dateValue = new Date(value as string);
             if (dateValue.toString() !== 'Invalid Date') {
-              // Convert to ISO string for API
-              processedValue = dateValue.toISOString();
+              // Convert to ISO string for API but set time to midnight and remove time component
+              dateValue.setUTCHours(0, 0, 0, 0);
+              // Store as date string without time component (YYYY-MM-DD)
+              processedValue = dateValue.toISOString().split('T')[0];
             } else {
               // If invalid date, set to null
               processedValue = null;

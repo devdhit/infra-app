@@ -55,6 +55,7 @@ import { InlineEditCell } from "./inline-edit-cell";
 import { useCustomFields } from "@/hooks/useApi";
 import { getModelType, isCustomField, getFieldValue } from "@/lib/custom-fields";
 import { debounce } from '@/lib/performance';
+import { formatDisplayDate } from "@/lib/utils";
 
 // Import the new separate Excel dialogs
 import { ExcelImportDialog } from "./excel-import-dialog";
@@ -172,12 +173,18 @@ const getAssetColumns = (
         // Safely access the cell value
         const cellValue = getFieldValue(column.key, asset, isCustom);
         
+        // Format date fields for display
+        let displayValue = cellValue;
+        if (column.key.toLowerCase().includes('date') && cellValue) {
+          displayValue = formatDisplayDate(cellValue);
+        }
+        
         return field ? (
           <InlineEditCell
             asset={asset}
             assetType={assetType}
             field={field}
-            value={cellValue}
+            value={displayValue}
             isCustomField={isCustom}
             customFieldsData={customFieldsData}
             onUpdate={(newValue) => {
@@ -247,7 +254,7 @@ const getAssetColumns = (
             }}
           />
         ) : (
-          column.render ? column.render(cellValue) : String(cellValue || '')
+          column.render ? column.render(displayValue) : String(displayValue || '')
         );
       },
     };

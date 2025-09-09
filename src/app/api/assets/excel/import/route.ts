@@ -262,15 +262,22 @@ export async function POST(request: NextRequest) {
                 // Handle various date formats
                 const dateStr = row.dateBuy;
                 
-                // If it's already an ISO string, use it directly
+                // If it's already an ISO string, use it directly but remove time component
                 if (dateStr.includes('T') && dateStr.includes('Z')) {
-                  dateBuyValue = new Date(dateStr);
+                  const dateObj = new Date(dateStr);
+                  // Set time to midnight and format as ISO string without time component
+                  dateObj.setUTCHours(0, 0, 0, 0);
+                  // Store as ISO string without time component
+                  dateBuyValue = dateObj.toISOString().split('T')[0];
                 } else {
                   // Try to parse different date formats
                   // Handle Excel serial date numbers
                   if (!isNaN(Number(dateStr)) && Number(dateStr) > 1000) {
                     // Convert Excel serial date to JavaScript Date
-                    dateBuyValue = new Date((Number(dateStr) - 25569) * 86400 * 1000);
+                    const dateObj = new Date((Number(dateStr) - 25569) * 86400 * 1000);
+                    // Set time to midnight and format as ISO string without time component
+                    dateObj.setUTCHours(0, 0, 0, 0);
+                    dateBuyValue = dateObj.toISOString().split('T')[0];
                   } else {
                     // Try common date formats
                     // const formats = [
@@ -282,32 +289,36 @@ export async function POST(request: NextRequest) {
                     // ];
                     
                     // Try to parse with Date constructor first
-                    dateBuyValue = new Date(dateStr);
+                    let dateObj = new Date(dateStr);
                     
                     // If that fails, try with specific formats
-                    if (isNaN(dateBuyValue.getTime())) {
+                    if (isNaN(dateObj.getTime())) {
                       // Handle DD/MM/YYYY or MM/DD/YYYY ambiguity
                       const parts = dateStr.split(/[/\-]/);
                       if (parts.length === 3) {
                         const [part1, part2, part3] = parts;
                         // Assume YYYY-MM-DD if first part is 4 digits
                         if (part1 && part1.length === 4) {
-                          dateBuyValue = new Date(`${part1}-${part2}-${part3}`);
+                          dateObj = new Date(`${part1}-${part2}-${part3}`);
                         } else if (part1 && part2 && part3) {
                           // Try MM/DD/YYYY first, then DD/MM/YYYY
-                          dateBuyValue = new Date(`${part3}-${part1}-${part2}`);
-                          if (isNaN(dateBuyValue.getTime())) {
-                            dateBuyValue = new Date(`${part3}-${part2}-${part1}`);
+                          dateObj = new Date(`${part3}-${part1}-${part2}`);
+                          if (isNaN(dateObj.getTime())) {
+                            dateObj = new Date(`${part3}-${part2}-${part1}`);
                           }
                         }
                       }
                     }
+                    
+                    // Validate the date
+                    if (isNaN(dateObj.getTime()) || dateObj.getFullYear() < 1900 || dateObj.getFullYear() > 2100) {
+                      dateBuyValue = null;
+                    } else {
+                      // Set time to midnight and format as ISO string without time component
+                      dateObj.setUTCHours(0, 0, 0, 0);
+                      dateBuyValue = dateObj.toISOString().split('T')[0];
+                    }
                   }
-                }
-                
-                // Validate the date
-                if (isNaN(dateBuyValue.getTime()) || dateBuyValue.getFullYear() < 1900 || dateBuyValue.getFullYear() > 2100) {
-                  dateBuyValue = null;
                 }
               } catch (e) {
                 console.error('Error parsing date:', e);

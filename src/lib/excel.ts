@@ -410,7 +410,25 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
           worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
           worksheet.cell(currentRow, 2).value(row.barcode || 'N/A');
           worksheet.cell(currentRow, 3).value(row.sapBarcode || 'N/A');
-          worksheet.cell(currentRow, 4).value(row.dateBuy || 'N/A');
+          // Format dateBuy for export without time component
+          let dateBuyValue = row.dateBuy || 'N/A';
+          if (row.dateBuy && typeof row.dateBuy === 'string') {
+            try {
+              const dateObj = new Date(row.dateBuy);
+              if (!isNaN(dateObj.getTime())) {
+                // Format as DD/MM/YYYY for export
+                dateBuyValue = new Intl.DateTimeFormat('en-GB', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                }).format(dateObj);
+              }
+            } catch (e) {
+              // If date parsing fails, keep original value
+              dateBuyValue = row.dateBuy;
+            }
+          }
+          worksheet.cell(currentRow, 4).value(dateBuyValue);
           worksheet.cell(currentRow, 5).value(row.userName || 'N/A');  // Changed from 'user' to 'userName'
           worksheet.cell(currentRow, 6).value(row.email || 'N/A');
           worksheet.cell(currentRow, 7).value(row.model || 'N/A');
@@ -432,7 +450,25 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
           worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
           worksheet.cell(currentRow, 2).value(row.barcode || 'N/A');
           worksheet.cell(currentRow, 3).value(row.sapBarcode || 'N/A');
-          worksheet.cell(currentRow, 4).value(row.dateBuy || 'N/A');
+          // Format dateBuy for export without time component
+          let dateBuyValue = row.dateBuy || 'N/A';
+          if (row.dateBuy && typeof row.dateBuy === 'string') {
+            try {
+              const dateObj = new Date(row.dateBuy);
+              if (!isNaN(dateObj.getTime())) {
+                // Format as DD/MM/YYYY for export
+                dateBuyValue = new Intl.DateTimeFormat('en-GB', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                }).format(dateObj);
+              }
+            } catch (e) {
+              // If date parsing fails, keep original value
+              dateBuyValue = row.dateBuy;
+            }
+          }
+          worksheet.cell(currentRow, 4).value(dateBuyValue);
           worksheet.cell(currentRow, 5).value(row.userName || 'N/A');  // Changed from 'user' to 'userName'
           worksheet.cell(currentRow, 6).value(row.email || 'N/A');
           worksheet.cell(currentRow, 7).value(row.model || 'N/A');
