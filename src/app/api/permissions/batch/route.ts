@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // Define the permission check structure
 interface PermissionCheck {
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
         } catch (error) {
           // Log errors only in development
           if (process.env.NODE_ENV === 'development') {
-            console.error(`Error checking permission ${perm.resource}:${perm.action}:`, error);
+            logger.error(`Error checking permission ${perm.resource}:${perm.action}:`, error);
           }
           return {
             key: `${perm.resource}:${perm.action}`,
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error checking batch permissions:', error);
+      logger.error('Error checking batch permissions:', error);
     }
     
     // Handle abort errors specifically

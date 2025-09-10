@@ -7,6 +7,7 @@ import {
   errorResponse
 } from '@/lib/api-utils'
 import { pcHandler } from '@/lib/asset-api-handler'
+import logger from '@/lib/logger'
 
 // Define the PC asset type based on the Prisma schema
 interface PCAsset {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const queryParams = getQueryParams(request)
     return await pcHandler.getAll(user, queryParams)
   } catch (error) {
-    console.error('Error in PC GET route:', error)
+    logger.error('Error in PC GET route:', error)
     return errorResponse('Failed to fetch PC assets. Please try again later.')
   }
 }
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
     const body = await parseRequestBody<PCAsset>(request)
     return await pcHandler.create(user, body)
   } catch (error: any) {
-    console.error('Error in PC POST route:', error)
+    logger.error('Error in PC POST route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {
@@ -73,7 +74,7 @@ export async function DELETE(request: NextRequest) {
     const body = await parseRequestBody<{ ids: string[] }>(request)
     return await pcHandler.bulkDelete(user, body.ids)
   } catch (error: any) {
-    console.error('Error in PC bulk DELETE route:', error)
+    logger.error('Error in PC bulk DELETE route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {

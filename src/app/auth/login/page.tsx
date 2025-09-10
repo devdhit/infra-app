@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import logger from '@/lib/logger';
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -58,7 +59,7 @@ export default function LoginPage() {
       router.push('/dashboard');
       toast.success(t('auth.login.success') || 'Logged in successfully');
     } catch (error: any) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       let message = t('auth.login.error') || 'Invalid email or password';
       
       // Provide more specific error messages based on status codes

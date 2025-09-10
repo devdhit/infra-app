@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import logger from '@/lib/logger';
 
 // Helper function to get formatted timestamp
 function getTimestamp() {
@@ -13,7 +14,7 @@ export async function GET() {
   };
   
   // Log the health check
-  console.log(`[${getTimestamp()}] 🏥 Health check performed`);
+  logger.debug(`[${getTimestamp()}] 🏥 Health check performed`);
   
   return NextResponse.json(healthData);
 }

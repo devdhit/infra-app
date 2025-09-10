@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { SettingsLayout } from "@/components/settings/settings-layout"
+import logger from '@/lib/logger'
 
 interface NotificationSettings {
   emailEnabled: boolean
@@ -46,7 +47,7 @@ export default function NotificationsSettingsPage() {
       try {
         setSettings(JSON.parse(savedSettings))
       } catch (error) {
-        console.error('Failed to parse notification settings', error)
+        logger.error('Failed to parse notification settings', error)
       }
     }
   }, [])
@@ -267,5 +268,3 @@ export default function NotificationsSettingsPage() {
     </SettingsLayout>
   )
 }
-
-

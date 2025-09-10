@@ -1,40 +1,68 @@
-// Simple script to check role permissions using direct database query
-const { exec } = require('child_process');
+const { PrismaClient } = require('@prisma/client');
+const logger = require('./logger');
 
-// Get database URL from environment
-const dbUrl = process.env.DATABASE_URL;
+const prisma = new PrismaClient();
 
-if (!dbUrl) {
-  console.log('DATABASE_URL not found in environment');
-  process.exit(1);
+async function checkDbPermissions() {
+  logger.info('Checking database permissions...');
+  
+  // Check DATABASE_URL environment variable
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    logger.error('DATABASE_URL not found in environment');
+    return;
+  }
+  
+  // Validate DATABASE_URL format
+  const urlPattern = /^postgresql:\/\/[^:]+:[^@]+@[^:]+:\d+\/.+$/;
+  if (!urlPattern.test(databaseUrl)) {
+    logger.error('Invalid DATABASE_URL format');
+    return;
+  }
+  
+  try {
+    logger.info('Checking admin role permissions...');
+    
+    // Try to find admin role
+    const adminRole = await prisma.role.findFirst({
+      where: {
+        name: 'admin'
+      }
+    });
+    
+    if (adminRole) {
+      logger.info('Admin role found with permissions:', adminRole.permissions);
+    } else {
+      logger.warn('No admin role found in database');
+    }
+    
+    // Try to find any user with admin role
+    const adminUser = await prisma.user.findFirst({
+      where: {
+        role: {
+          name: 'admin'
+        }
+      },
+      include: {
+        role: true
+      }
+    });
+    
+    if (adminUser) {
+      logger.info('Admin user found:', {
+        email: adminUser.email,
+        name: adminUser.name,
+        role: adminUser.role.name
+      });
+    } else {
+      logger.warn('No admin user found in database');
+    }
+    
+  } catch (error) {
+    logger.error('Database permission check failed:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-// Extract connection details from DATABASE_URL
-// Format: postgresql://user:password@host:port/database
-const match = dbUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
-if (!match) {
-  console.log('Invalid DATABASE_URL format');
-  process.exit(1);
-}
-
-const [, user, password, host, port, database] = match;
-
-// Simple query to check role permissions
-const query = `
-SELECT id, name, permissions 
-FROM "Role" 
-WHERE name = 'admin' 
-LIMIT 5;
-`;
-
-console.log('Checking admin role permissions...');
-
-// For security reasons, we won't execute direct database commands
-// Instead, let's create a simple API endpoint to check this
-console.log('For security reasons, please check the database directly with this query:');
-console.log(query);
-console.log('\nOr use a database client to connect to:');
-console.log(`Host: ${host}`);
-console.log(`Port: ${port}`);
-console.log(`Database: ${database}`);
-console.log(`User: ${user}`);
+checkDbPermissions();

@@ -2,6 +2,7 @@ import { useCurrentUser } from '@/hooks/useApi';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api'; // Import the API object with methods
+import logger from '@/lib/logger';
 
 // Global cache for permission checks shared across all instances of the hook
 const globalPermissionCache = new Map<string, { value: boolean; timestamp: number }>();
@@ -80,7 +81,7 @@ async function processPermissionQueue() {
           item.resolve(hasPermission);
         }
       } catch (error: any) {
-        console.error('Error checking batch permissions:', error);
+        logger.error('Error checking batch permissions:', error);
         
         // Handle specific error cases
         if (error?.message?.includes('401') || error?.status === 401) {
@@ -157,7 +158,7 @@ export function usePermissions() {
         setTimeout(processPermissionQueue, 10);
       }
     }).catch((error: any) => {
-      console.error(`Error checking permission for ${resource}:${action}`, error);
+      logger.error(`Error checking permission for ${resource}:${action}`, error);
       
       // Set error state for this permission
       setPermissionErrors(prev => ({
@@ -170,7 +171,7 @@ export function usePermissions() {
         toast.error(`Authentication error. Please log in again.`);
       } else if (error?.message?.includes('timeout')) {
         // Don't show toast for timeouts to avoid spam
-        console.warn(`Permission check timed out for ${resource}:${action}`);
+        logger.warn(`Permission check timed out for ${resource}:${action}`);
       } else {
         toast.error(`Unable to check permissions. You may not have permission to perform this action.`);
       }

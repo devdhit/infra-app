@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
 import { CacheManager } from '@/lib/performance'
+import logger from '@/lib/logger';
 
 // Define strong TypeScript types with Zod for request validation
 const assetQuerySchema = z.object({
@@ -78,11 +79,12 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
     // Try to get data from cache first
     const cachedData = assetCache.get(cacheKey);
     if (cachedData) {
+      logger.debug(`Returning cached data for key: ${cacheKey}`);
       return new Response(JSON.stringify(cachedData), {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=60, stale-while-revalidate=59'
+          'Cache-Control': search || status ? 'no-cache' : 'max-age=60, stale-while-revalidate=59'
         }
       });
     }
@@ -92,23 +94,87 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       tenantId: user.tenantId
     };
 
+    // Define search fields for both Prisma and raw SQL queries
+    // Create asset-type-specific search fields
+    let searchFields: string[] = [];
+    switch (assetType) {
+      case 'pc':
+        searchFields = [
+          'cpuBarcode',
+          'pcName',
+          'userName',
+          'dept',
+          'status'
+        ];
+        break;
+      case 'laptop':
+        searchFields = [
+          'barcode',
+          'userName',
+          'dept',
+          'model',
+          'status'
+        ];
+        break;
+      case 'printer':
+        searchFields = [
+          'barcode',
+          'dept',
+          'location',
+          'ip',
+          'model'
+        ];
+        break;
+      case 'license':
+        searchFields = [
+          'deviceName',
+          'userName',
+          'dept',
+          'productType',
+          'productKey',
+          'model',
+          'pc',
+          'mac',
+          'ip',
+          'updateStatus'
+        ];
+        break;
+      case 'warehouse':
+        searchFields = [
+          'barcode',
+          'sapCode',
+          'status'
+        ];
+        break;
+      case 'internet':
+        searchFields = [
+          'dept',
+          'manager',
+          'userName',
+          'email',
+          'ipAddress',
+          'internetAccess',
+          'status'
+        ];
+        break;
+      default:
+        searchFields = [
+          'barcode',
+          'pcName',
+          'userName',
+          'dept',
+          'ip',
+        ];
+    }
+
     // Add search condition if provided with optimized indexing
     if (search) {
-      // Use indexed fields for better performance
-      const searchFields = [
-        'barcode',
-        'pcName',
-        'userName',
-        'dept',
-        'ip'
-      ];
-      
       // Create search conditions for indexed fields
       whereClause.OR = searchFields.map(field => ({
         [field]: { contains: search, mode: 'insensitive' }
       }));
       
-      // Also search in custom fields
+      // Also search in custom fields using proper JSON search
       whereClause.OR.push({
         customFields: {
           path: [],
@@ -129,139 +195,292 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
     let totalCount: number;
     let assets: any[];
     
-    switch (assetType) {
-      case 'pc':
-        [totalCount, assets] = await Promise.all([
-          db.pC.count({ where: whereClause }),
-          db.pC.findMany({
-            where: whereClause,
-            skip,
-            take: limit,
-            orderBy: { dept: 'asc' },
-            // Select only necessary fields to reduce payload size
-            select: {
-              id: true,
-              cpuBarcode: true,
-              pcName: true,
-              userName: true,
-              dept: true,
-              status: true,
-              updatedAt: true,
-              customFields: true // Include custom fields
-            }
-          })
-        ]);
-        break;
-      case 'laptop':
-        [totalCount, assets] = await Promise.all([
-          db.laptop.count({ where: whereClause }),
-          db.laptop.findMany({
-            where: whereClause,
-            skip,
-            take: limit,
-            orderBy: { dept: 'asc' },
-            // Select only necessary fields to reduce payload size
-            select: {
-              id: true,
-              barcode: true,
-              userName: true,
-              dept: true,
-              status: true,
-              updatedAt: true,
-              customFields: true // Include custom fields
-            }
-          })
-        ]);
-        break;
-      case 'printer':
-        [totalCount, assets] = await Promise.all([
-          db.printer.count({ where: whereClause }),
-          db.printer.findMany({
-            where: whereClause,
-            skip,
-            take: limit,
-            orderBy: { dept: 'asc' },
-            // Select only necessary fields to reduce payload size
-            select: {
-              id: true,
-              barcode: true,
-              dept: true,
-              updatedAt: true,
-              customFields: true // Include custom fields
-            }
-          })
-        ]);
-        break;
-      case 'license':
-        [totalCount, assets] = await Promise.all([
-          db.license.count({ where: whereClause }),
-          db.license.findMany({
-            where: whereClause,
-            skip,
-            take: limit,
-            orderBy: { dept: 'asc' },
-            // Select only necessary fields to reduce payload size
-            select: {
-              id: true,
-              userName: true,
-              dept: true,
-              // License model uses updateStatus instead of status
-              updateStatus: true,
-              updatedAt: true,
-              customFields: true // Include custom fields
-            }
-          })
-        ]);
-        break;
-      case 'warehouse':
-        [totalCount, assets] = await Promise.all([
-          db.warehouseIT.count({ where: whereClause }),
-          db.warehouseIT.findMany({
-            where: whereClause,
-            skip,
-            take: limit,
-            orderBy: { updatedAt: 'desc' },
-            // Select only necessary fields to reduce payload size
-            select: {
-              id: true,
-              barcode: true,
-              sapCode: true,
-              status: true,
-              updatedAt: true,
-              customFields: true // Include custom fields
-            }
-          })
-        ]);
-        break;
-      case 'internet':
-        [totalCount, assets] = await Promise.all([
-          db.internet.count({ where: whereClause }),
-          db.internet.findMany({
-            where: whereClause,
-            skip,
-            take: limit,
-            orderBy: { updatedAt: 'desc' },
-            // Select only necessary fields to reduce payload size
-            select: {
-              id: true,
-              dept: true,
-              manager: true,
-              userName: true,
-              email: true,
-              ipAddress: true,
-              internetAccess: true,
-              status: true,
-              updatedAt: true,
-              customFields: true // Include custom fields
-            }
-          })
-        ]);
-        break;
-      default:
-        return new Response(JSON.stringify({ error: `Unsupported asset type: ${assetType}` }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
+    // For search queries, we need to use raw SQL to properly search within custom field values
+    if (search) {
+      // Build the raw SQL query with proper custom field searching
+      let baseQuery = '';
+      let countQuery = '';
+      const queryArgs: any[] = [user.tenantId];
+      
+      switch (assetType) {
+        case 'pc':
+          baseQuery = `
+            SELECT id, "cpuBarcode", "pcName", "userName", "dept", "status", "updatedAt", "customFields"
+            FROM "PC"
+            WHERE "tenantId" = $1
+          `;
+          countQuery = `
+            SELECT COUNT(*) as count
+            FROM "PC"
+            WHERE "tenantId" = $1
+          `;
+          break;
+        case 'laptop':
+          baseQuery = `
+            SELECT id, "barcode", "userName", "dept", "status", "updatedAt", "customFields"
+            FROM "Laptop"
+            WHERE "tenantId" = $1
+          `;
+          countQuery = `
+            SELECT COUNT(*) as count
+            FROM "Laptop"
+            WHERE "tenantId" = $1
+          `;
+          break;
+        case 'printer':
+          baseQuery = `
+            SELECT id, "barcode", "dept", "updatedAt", "customFields"
+            FROM "Printer"
+            WHERE "tenantId" = $1
+          `;
+          countQuery = `
+            SELECT COUNT(*) as count
+            FROM "Printer"
+            WHERE "tenantId" = $1
+          `;
+          break;
+        case 'license':
+          baseQuery = `
+            SELECT id, "userName", "dept", "updateStatus", "updatedAt", "customFields"
+            FROM "License"
+            WHERE "tenantId" = $1
+          `;
+          countQuery = `
+            SELECT COUNT(*) as count
+            FROM "License"
+            WHERE "tenantId" = $1
+          `;
+          break;
+        case 'warehouse':
+          baseQuery = `
+            SELECT id, "barcode", "sapCode", "status", "updatedAt", "customFields"
+            FROM "WarehouseIT"
+            WHERE "tenantId" = $1
+          `;
+          countQuery = `
+            SELECT COUNT(*) as count
+            FROM "WarehouseIT"
+            WHERE "tenantId" = $1
+          `;
+          break;
+        case 'internet':
+          baseQuery = `
+            SELECT id, "dept", "manager", "userName", "email", "ipAddress", "internetAccess", "status", "updatedAt", "customFields"
+            FROM "Internet"
+            WHERE "tenantId" = $1
+          `;
+          countQuery = `
+            SELECT COUNT(*) as count
+            FROM "Internet"
+            WHERE "tenantId" = $1
+          `;
+          break;
+        default:
+          return new Response(JSON.stringify({ error: `Unsupported asset type: ${assetType}` }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+      }
+      
+      // Add search conditions if search term is provided
+      if (search) {
+        // Add search parameter to args
+        queryArgs.push(`%${search}%`);
+        const searchParamIndex = queryArgs.length; // This will be $2
+        
+        // Add search conditions for standard fields
+        const searchConditions = searchFields.map((field) => `"${field}" ILIKE $${searchParamIndex}`).join(' OR ');
+        
+        // Add custom field search condition using jsonb_each_text for proper JSON value searching
+        baseQuery += ` AND (${searchConditions} OR EXISTS (SELECT 1 FROM jsonb_each_text("customFields") AS kv WHERE kv.value ILIKE $${searchParamIndex}))`;
+        
+        countQuery += ` AND (${searchConditions} OR EXISTS (SELECT 1 FROM jsonb_each_text("customFields") AS kv WHERE kv.value ILIKE $${searchParamIndex}))`;
+      }
+      
+      // Add status filter if provided
+      if (status) {
+        queryArgs.push(status);
+        const statusField = assetType === 'license' ? 'updateStatus' : 'status';
+        baseQuery += ` AND "${statusField}" = $${queryArgs.length}`;
+        countQuery += ` AND "${statusField}" = $${queryArgs.length}`;
+      }
+      
+      // Add ordering and pagination
+      let orderByClause = '';
+      switch (assetType) {
+        case 'pc':
+        case 'laptop':
+        case 'printer':
+        case 'license':
+          orderByClause = ' ORDER BY "dept" ASC';
+          break;
+        case 'warehouse':
+        case 'internet':
+          orderByClause = ' ORDER BY "updatedAt" DESC';
+          break;
+      }
+      
+      // Add limit and skip to the query string
+      const limitIndex = queryArgs.length + 1;
+      const offsetIndex = queryArgs.length + 2;
+      baseQuery += `${orderByClause} LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
+      
+      // Add limit and skip parameters to queryArgs
+      queryArgs.push(limit, skip);
+      
+      // Execute queries
+      // For count query, we need to remove limit and skip parameters
+      const countQueryArgs = [...queryArgs];
+      countQueryArgs.pop(); // Remove skip
+      countQueryArgs.pop(); // Remove limit
+      
+      const [countResult, assetsResult] = await Promise.all([
+        db.$queryRawUnsafe(countQuery, ...countQueryArgs),
+        db.$queryRawUnsafe(baseQuery, ...queryArgs)
+      ]);
+      
+      // Better type safety for countResult with proper undefined checking
+      const countArray = countResult as Array<{count: string | number}>;
+      totalCount = countArray && countArray.length > 0 && countArray[0] ? 
+        parseInt(countArray[0].count.toString()) : 0;
+      assets = assetsResult as any[];
+
+    } else {
+      // For non-search queries, use the existing Prisma queries
+      switch (assetType) {
+        case 'pc':
+          [totalCount, assets] = await Promise.all([
+            db.pC.count({ where: whereClause }),
+            db.pC.findMany({
+              where: whereClause,
+              skip,
+              take: limit,
+              orderBy: { dept: 'asc' },
+              // Select only necessary fields to reduce payload size
+              select: {
+                id: true,
+                cpuBarcode: true,
+                pcName: true,
+                userName: true,
+                dept: true,
+                status: true,
+                updatedAt: true,
+                customFields: true // Include custom fields
+              }
+            })
+          ]);
+          break;
+        case 'laptop':
+          [totalCount, assets] = await Promise.all([
+            db.laptop.count({ where: whereClause }),
+            db.laptop.findMany({
+              where: whereClause,
+              skip,
+              take: limit,
+              orderBy: { dept: 'asc' },
+              // Select only necessary fields to reduce payload size
+              select: {
+                id: true,
+                barcode: true,
+                userName: true,
+                dept: true,
+                status: true,
+                updatedAt: true,
+                customFields: true // Include custom fields
+              }
+            })
+          ]);
+          break;
+        case 'printer':
+          [totalCount, assets] = await Promise.all([
+            db.printer.count({ where: whereClause }),
+            db.printer.findMany({
+              where: whereClause,
+              skip,
+              take: limit,
+              orderBy: { dept: 'asc' },
+              // Select only necessary fields to reduce payload size
+              select: {
+                id: true,
+                barcode: true,
+                dept: true,
+                updatedAt: true,
+                customFields: true // Include custom fields
+              }
+            })
+          ]);
+          break;
+        case 'license':
+          [totalCount, assets] = await Promise.all([
+            db.license.count({ where: whereClause }),
+            db.license.findMany({
+              where: whereClause,
+              skip,
+              take: limit,
+              orderBy: { dept: 'asc' },
+              // Select only necessary fields to reduce payload size
+              select: {
+                id: true,
+                userName: true,
+                dept: true,
+                // License model uses updateStatus instead of status
+                updateStatus: true,
+                updatedAt: true,
+                customFields: true // Include custom fields
+              }
+            })
+          ]);
+          break;
+        case 'warehouse':
+          [totalCount, assets] = await Promise.all([
+            db.warehouseIT.count({ where: whereClause }),
+            db.warehouseIT.findMany({
+              where: whereClause,
+              skip,
+              take: limit,
+              orderBy: { updatedAt: 'desc' },
+              // Select only necessary fields to reduce payload size
+              select: {
+                id: true,
+                barcode: true,
+                sapCode: true,
+                status: true,
+                updatedAt: true,
+                customFields: true // Include custom fields
+              }
+            })
+          ]);
+          break;
+        case 'internet':
+          [totalCount, assets] = await Promise.all([
+            db.internet.count({ where: whereClause }),
+            db.internet.findMany({
+              where: whereClause,
+              skip,
+              take: limit,
+              orderBy: { updatedAt: 'desc' },
+              // Select only necessary fields to reduce payload size
+              select: {
+                id: true,
+                dept: true,
+                manager: true,
+                userName: true,
+                email: true,
+                ipAddress: true,
+                internetAccess: true,
+                status: true,
+                updatedAt: true,
+                customFields: true // Include custom fields
+              }
+            })
+          ]);
+          break;
+        default:
+          return new Response(JSON.stringify({ error: `Unsupported asset type: ${assetType}` }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+      }
     }
 
     // Calculate pagination metadata
@@ -279,16 +498,17 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
 
     // Cache the result
     assetCache.set(cacheKey, result);
+    logger.debug(`Caching data for key: ${cacheKey}`);
 
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'max-age=60, stale-while-revalidate=59'
+        'Cache-Control': search || status ? 'no-cache' : 'max-age=60, stale-while-revalidate=59'
       }
     });
   } catch (error) {
-    console.error(`Error fetching ${params.type} assets:`, error);
+    logger.error(`Error fetching ${params.type} assets:`, error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

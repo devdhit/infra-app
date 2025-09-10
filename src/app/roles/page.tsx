@@ -20,6 +20,7 @@ import { RoleFormValues, Role } from "@/types/roles"
 import { Plus, Shield } from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
 import { api } from '@/lib/api'
+import logger from '@/lib/logger'
 
 export default function RolesPage() {
   const { t } = useTranslation()
@@ -83,7 +84,7 @@ export default function RolesPage() {
         
         // For debugging in development only
         if (process.env.NODE_ENV === 'development') {
-          console.log('Checking roles page permissions:', {
+          logger.debug('Checking roles page permissions:', {
             isUserLoading,
             currentUser: currentUser ? {
               id: currentUser.id,
@@ -114,7 +115,7 @@ export default function RolesPage() {
           
           // For debugging in development only
           if (process.env.NODE_ENV === 'development') {
-            console.log('Roles page permission results:', {
+            logger.debug('Roles page permission results:', {
               viewPermission,
               createPermission,
               editPermission,
@@ -145,7 +146,7 @@ export default function RolesPage() {
       } catch (error) {
         // Log errors only in development
         if (process.env.NODE_ENV === 'development') {
-          console.error('Error checking permissions:', error);
+          logger.error('Error checking permissions:', error);
         }
         // Deny access if there's an error
         if (!isCancelledRef.current) {
@@ -197,7 +198,7 @@ export default function RolesPage() {
       if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
         // For debugging in development only
         if (process.env.NODE_ENV === 'development') {
-          console.log('Checking edit permissions for role:', {
+          logger.debug('Checking edit permissions for role:', {
             roleId: currentUser.role.id,
             roleName: currentUser.role.name,
             tenantId: currentUser.tenantId,
@@ -210,7 +211,7 @@ export default function RolesPage() {
         
         // For debugging in development only
         if (process.env.NODE_ENV === 'development') {
-          console.log('Edit permission check results:', {
+          logger.debug('Edit permission check results:', {
             hasEditPermission,
             hasCreatePermission
           });
@@ -236,7 +237,7 @@ export default function RolesPage() {
     } catch (error) {
       // Log errors only in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error checking edit permissions:', error)
+        logger.error('Error checking edit permissions:', error)
       }
       // Allow the action by default if there's an error
       setEditingRole(role)
@@ -288,7 +289,7 @@ export default function RolesPage() {
     } catch (error) {
       // Log errors only in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error checking delete permissions:', error)
+        logger.error('Error checking delete permissions:', error)
       }
       toast.error(t('common.error') || 'An error occurred while checking permissions')
     }
@@ -306,7 +307,7 @@ export default function RolesPage() {
     } catch (error: any) {
       // Log errors only in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error deleting role:', error)
+        logger.error('Error deleting role:', error)
       }
       toast.error(error.message || t('roles.delete.error') || 'Failed to delete role')
     } finally {
@@ -326,7 +327,7 @@ export default function RolesPage() {
       // Error is handled by the mutation hook
       // Log errors only in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error bulk deleting roles:', error)
+        logger.error('Error bulk deleting roles:', error)
       }
     } finally {
       setIsBulkDeleteConfirmOpen(false)
@@ -360,7 +361,7 @@ export default function RolesPage() {
         } catch (error: any) {
           // Log errors only in development
           if (process.env.NODE_ENV === 'development') {
-            console.error('Error updating role:', error)
+            logger.error('Error updating role:', error)
           }
           // Error is handled by the mutation hook
         }
@@ -381,7 +382,7 @@ export default function RolesPage() {
         } catch (error: any) {
           // Log errors only in development
           if (process.env.NODE_ENV === 'development') {
-            console.error('Error creating role:', error)
+            logger.error('Error creating role:', error)
           }
           // Error is handled by the mutation hook
         }
@@ -389,7 +390,7 @@ export default function RolesPage() {
     } catch (error: any) {
       // Log errors only in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error submitting role form:', error)
+        logger.error('Error submitting role form:', error)
       }
       toast.error(error.message || (editingRole 
         ? t('roles.update.error') || 'Failed to update role' 

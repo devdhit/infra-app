@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser, hashPassword } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // GET /api/users - Get all users (requires view permission)
 export async function GET(request: NextRequest) {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(users)
   } catch (error) {
-    console.error('Error fetching users:', error)
+    logger.error('Error fetching users:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
     // This should not be reached, but adding a fallback return for type safety
     return errorResponse('Failed to create user')
   } catch (error: any) {
-    console.error('Error creating user:', error)
+    logger.error('Error creating user:', error)
     return errorResponse('Internal server error')
   }
 }

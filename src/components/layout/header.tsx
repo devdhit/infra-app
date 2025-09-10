@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getApplicationSettings } from '@/lib/api/application';
+import logger from '@/lib/logger';
 
 export function Header() {
   const { t } = useTranslation();
@@ -40,7 +41,7 @@ export function Header() {
         const settings = await getApplicationSettings();
         setShortName(settings.shortName);
       } catch (error) {
-        console.error('Failed to load application name:', error);
+        logger.error('Failed to load application name:', error);
       }
     };
 

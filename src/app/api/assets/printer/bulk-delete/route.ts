@@ -6,7 +6,7 @@ import {
   errorResponse
 } from '@/lib/api-utils'
 import { printerHandler } from '@/lib/asset-api-handler'
-
+import logger from '@/lib/logger'
 
 // POST /api/assets/printer/bulk-delete - Bulk delete Printer assets
 export async function POST(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     
     return await printerHandler.bulkDelete(user, body.ids)
   } catch (error) {
-    console.error('Error in Printer bulk DELETE route:', error)
+    logger.error('Error in Printer bulk DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse, badRequestResponse, conflictResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger';
 
 // GET /api/roles - Get all roles
 export async function GET(request: NextRequest) {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     
     // For debugging in development only
     if (process.env.NODE_ENV === 'development') {
-      console.log('Role permission check:', {
+      logger.info('Role permission check:', {
         userId: currentUser.id,
         userEmail: currentUser.email,
         userRole: currentUser.role?.name,
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error fetching roles:', error)
+      logger.error('Error fetching roles:', error)
     }
     return errorResponse('Internal server error')
   }
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error creating role:', error)
+      logger.error('Error creating role:', error)
     }
     return errorResponse('Internal server error')
   }

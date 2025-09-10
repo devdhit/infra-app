@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import logger from '@/lib/logger';
 
 interface LogoutDialogProps {
   open: boolean
@@ -34,7 +35,7 @@ export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
       // Use window.location for full page redirect to ensure proper navigation
       window.location.href = '/auth/login'
     } catch (error: any) {
-      console.error('Logout error:', error)
+      logger.error('Logout error:', error)
       let message = t('auth.logout.error') || 'Failed to logout'
       if (error?.message) {
         message = error.message

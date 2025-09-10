@@ -7,6 +7,7 @@ import {
   badRequestResponse,
   parseRequestBody
 } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // Define the Printer asset type
 interface PrinterAsset {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return await printerHandler.getById(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in Printer GET by ID route:', error)
+    logger.error('Error in Printer GET by ID route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -60,7 +61,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     return await printerHandler.update(user, resolvedParams.id, body)
   } catch (error) {
-    console.error('Error in Printer PUT route:', error)
+    logger.error('Error in Printer PUT route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -78,7 +79,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return await printerHandler.delete(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in Printer DELETE route:', error)
+    logger.error('Error in Printer DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

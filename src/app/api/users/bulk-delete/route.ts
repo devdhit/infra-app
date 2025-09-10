@@ -4,6 +4,7 @@ import { unauthorizedResponse, errorResponse, successResponse } from '@/lib/api-
 import { db } from '@/lib/db'
 import { createHistoryRecord } from '@/lib/history'
 import { hasPermission } from '@/lib/permissions'
+import logger from '@/lib/logger'
 
 // POST /api/users/bulk-delete - Bulk delete users
 export async function POST(request: NextRequest) {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     return successResponse(null, 204)
   } catch (error: any) {
-    console.error('Error in bulk delete users route:', error)
+    logger.error('Error in bulk delete users route:', error)
     return errorResponse('Failed to delete users. Please try again later.')
   }
 }

@@ -1,56 +1,42 @@
-// Script to check current roles and their permissions in the database
-const { PrismaClient } = require('../src/generated/prisma');
+const { PrismaClient } = require('@prisma/client');
+const logger = require('./logger');
 
 const prisma = new PrismaClient();
 
 async function checkRoles() {
   try {
-    console.log('Checking roles in the database...');
+    logger.info('Checking roles...');
     
-    // Get all tenants
-    const tenants = await prisma.tenant.findMany();
+    // Get all roles
+    const roles = await prisma.role.findMany({
+      include: {
+        users: true
+      }
+    });
     
-    for (const tenant of tenants) {
-      console.log(`\nTenant: ${tenant.name} (${tenant.id})`);
+    logger.info(`Found ${roles.length} roles`);
+    
+    for (const role of roles) {
+      logger.info(`\nRole: ${role.name}`);
+      logger.info(`Description: ${role.description}`);
+      logger.info(`Users with this role: ${role.users.length}`);
       
-      // Get all roles for this tenant
-      const roles = await prisma.role.findMany({
-        where: {
-          tenantId: tenant.id
-        },
-        orderBy: {
-          name: 'asc'
-        }
-      });
+      // Show sample users
+      const sampleUsers = role.users.slice(0, 3);
+      for (const user of sampleUsers) {
+        logger.info(`  - ${user.name} (${user.email})`);
+      }
       
-      console.log(`Found ${roles.length} roles:`);
-      
-      for (const role of roles) {
-        console.log(`\n  Role: ${role.name} (${role.id})`);
-        console.log(`  Description: ${role.description}`);
-        console.log(`  Permissions: ${JSON.stringify(role.permissions, null, 2)}`);
+      if (role.users.length > 3) {
+        logger.info(`  ... and ${role.users.length - 3} more users`);
       }
     }
     
-    // Get a sample user to see what role they have
-    const users = await prisma.user.findMany({
-      include: {
-        role: true
-      },
-      take: 5
-    });
-    
-    console.log('\nSample users:');
-    for (const user of users) {
-      console.log(`\n  User: ${user.name} (${user.email})`);
-      console.log(`  Role: ${user.role?.name || 'No role'} (${user.roleId})`);
-    }
   } catch (error) {
-    console.error('Error checking roles:', error);
+    logger.error('Error checking roles:', error);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Run the check
 checkRoles();

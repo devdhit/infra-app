@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
+import logger from '@/lib/logger';
 
 // GET /api/tenants - Get all tenants (requires view permission)
 export async function GET(request: NextRequest) {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' }
     })
   } catch (error) {
-    console.error('Error fetching tenants:', error)
+    logger.error('Error fetching tenants:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    console.error('Error creating tenant:', error)
+    logger.error('Error creating tenant:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

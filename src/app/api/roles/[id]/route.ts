@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse, badRequestResponse, conflictResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger';
 
 // GET /api/roles/[id] - Get a specific role
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   } catch (error: any) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error fetching role:', error)
+      logger.error('Error fetching role:', error)
     }
     return errorResponse('Internal server error')
   }
@@ -127,7 +128,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error updating role:', error)
+      logger.error('Error updating role:', error)
     }
     return errorResponse('Internal server error')
   }
@@ -190,7 +191,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   } catch (error: any) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error deleting role:', error)
+      logger.error('Error deleting role:', error)
     }
     return errorResponse('Internal server error')
   }

@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser, hashPassword } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse, notFoundResponse, unauthorizedResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // GET /api/users/[id] - Get a specific user
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return successResponse(user)
   } catch (error) {
-    console.error('Error fetching user:', error)
+    logger.error('Error fetching user:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -169,7 +170,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return errorResponse('User with this email already exists', 400)
     }
     
-    console.error('Error updating user:', error)
+    logger.error('Error updating user:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -229,7 +230,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return notFoundResponse('User not found')
     }
     
-    console.error('Error deleting user:', error)
+    logger.error('Error deleting user:', error)
     return errorResponse('Internal server error')
   }
 }

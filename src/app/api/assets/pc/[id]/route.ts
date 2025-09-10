@@ -7,6 +7,7 @@ import {
   badRequestResponse,
   parseRequestBody
 } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // Define the PC asset type based on the Prisma schema
 interface PCAsset {
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     
     return await pcHandler.getById(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in PC GET by ID route:', error)
+    logger.error('Error in PC GET by ID route:', error)
     return errorResponse('Failed to fetch PC asset details. Please try again later.')
   }
 }
@@ -62,7 +63,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     return await pcHandler.update(user, resolvedParams.id, body)
   } catch (error) {
-    console.error('Error in PC PUT route:', error)
+    logger.error('Error in PC PUT route:', error)
     return errorResponse('Failed to update PC asset. Please try again later.')
   }
 }
@@ -80,7 +81,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return await pcHandler.delete(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in PC DELETE route:', error)
+    logger.error('Error in PC DELETE route:', error)
     return errorResponse('Failed to delete PC asset. Please try again later.')
   }
 }

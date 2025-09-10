@@ -7,6 +7,7 @@ import {
   badRequestResponse,
   parseRequestBody
 } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // Define the WarehouseIT asset type
 interface WarehouseITAsset {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return await warehouseHandler.getById(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in WarehouseIT GET by ID route:', error)
+    logger.error('Error in WarehouseIT GET by ID route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -57,7 +58,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     return await warehouseHandler.update(user, resolvedParams.id, body)
   } catch (error) {
-    console.error('Error in WarehouseIT PUT route:', error)
+    logger.error('Error in WarehouseIT PUT route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -75,7 +76,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return await warehouseHandler.delete(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in WarehouseIT DELETE route:', error)
+    logger.error('Error in WarehouseIT DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

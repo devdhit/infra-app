@@ -11,6 +11,7 @@ import { HexColorPicker } from "react-colorful"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { SettingsLayout } from "@/components/settings/settings-layout"
+import logger from '@/lib/logger'
 
 interface AppearanceSettings {
   theme: 'light' | 'dark' | 'system'
@@ -35,7 +36,7 @@ export default function AppearanceSettingsPage() {
       try {
         setSettings(JSON.parse(savedSettings))
       } catch (error) {
-        console.error('Failed to parse appearance settings', error)
+        logger.error('Failed to parse appearance settings', error)
       }
     }
   }, [])

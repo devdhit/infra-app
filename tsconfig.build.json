@@ -42,7 +42,8 @@
   },
   "include": [
     "src/lib/realtime.ts",
-    "src/lib/path-utils.ts"
+    "src/lib/path-utils.ts",
+    "src/lib/logger.ts"
   ],
   "exclude": [
     "node_modules",

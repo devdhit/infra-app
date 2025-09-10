@@ -12,6 +12,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentUser } from '@/hooks/useApi';
 import { useState, useEffect } from 'react';
+import logger from '@/lib/logger';
 
 // Define the structure of our permissions state
 interface PermissionsState {
@@ -82,7 +83,7 @@ export default function ManagementPage() {
             });
           }
         } catch (error) {
-          console.error('Error checking permissions:', error);
+          logger.error('Error checking permissions:', error);
           // Set default permissions on error to prevent infinite loading
           if (isMounted) {
             setPermissions({

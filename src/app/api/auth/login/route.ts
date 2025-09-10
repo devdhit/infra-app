@@ -6,6 +6,7 @@ import {
   badRequestResponse 
 } from '@/lib/api-utils'
 import { generateToken, verifyPassword } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 // Simple in-memory rate limiter (in production, use Redis or similar)
 const rateLimiter = new Map<string, { attempts: number; lastAttempt: number }>()
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
         include: { role: true }
       })
     } catch (dbError) {
-      console.error('Database error during user lookup:', dbError)
+      logger.error('Database error during user lookup:', dbError)
       return errorResponse('Service temporarily unavailable. Please try again later.', 503)
     }
 
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
     try {
       isValidPassword = await verifyPassword(password, user.password)
     } catch (passwordError) {
-      console.error('Password verification error:', passwordError)
+      logger.error('Password verification error:', passwordError)
       return errorResponse('Service temporarily unavailable. Please try again later.', 503)
     }
     
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error in login route:', error)
+    logger.error('Error in login route:', error)
     return errorResponse('Internal server error')
   }
 }

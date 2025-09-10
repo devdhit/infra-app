@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const logger = require('./logger');
 
 const prisma = new PrismaClient();
 
@@ -12,20 +13,20 @@ async function checkAdminPermissions() {
     });
 
     if (!adminRole) {
-      console.log('No admin role found');
+      logger.info('No admin role found');
       return;
     }
 
-    console.log('Admin Role:', adminRole);
+    logger.info('Admin Role:', adminRole);
 
     // Check the permissions object
-    console.log('Permissions:', JSON.stringify(adminRole.permissions, null, 2));
+    logger.info('Permissions:', JSON.stringify(adminRole.permissions, null, 2));
 
     // Check if auditLogs permission is present
     if (adminRole.permissions && adminRole.permissions.auditLogs) {
-      console.log('Audit Logs permissions:', adminRole.permissions.auditLogs);
+      logger.info('Audit Logs permissions:', adminRole.permissions.auditLogs);
     } else {
-      console.log('No auditLogs permissions found');
+      logger.info('No auditLogs permissions found');
     }
 
     // Find a user with admin role
@@ -39,15 +40,15 @@ async function checkAdminPermissions() {
     });
 
     if (!adminUser) {
-      console.log('No admin user found');
+      logger.info('No admin user found');
       return;
     }
 
-    console.log('Admin User:', adminUser);
-    console.log('User Role Permissions:', JSON.stringify(adminUser.role.permissions, null, 2));
+    logger.info('Admin User:', adminUser);
+    logger.info('User Role Permissions:', JSON.stringify(adminUser.role.permissions, null, 2));
 
   } catch (error) {
-    console.error('Error checking admin permissions:', error);
+    logger.error('Error checking admin permissions:', error);
   } finally {
     await prisma.$disconnect();
   }

@@ -22,6 +22,7 @@ import { UserFormValues, User } from "@/types/users"
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus} from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
+import logger from '@/lib/logger'
 
 export default function UsersPage() {
   const { t } = useTranslation()
@@ -122,7 +123,7 @@ export default function UsersPage() {
       } catch (error) {
         // Log errors only in development
         if (process.env.NODE_ENV === 'development') {
-          console.error('Error checking permissions:', error);
+          logger.error('Error checking permissions:', error);
         }
         // Deny access if there's an error
         if (!isCancelledRef.current) {
@@ -190,7 +191,7 @@ export default function UsersPage() {
     } catch (error) {
       // Log errors only in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error checking edit permissions:', error)
+        logger.error('Error checking edit permissions:', error)
       }
       // Allow the action by default if there's an error
       setEditingUser(user)
@@ -233,7 +234,7 @@ export default function UsersPage() {
     } catch (error) {
       // Log errors only in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error checking delete permissions:', error)
+        logger.error('Error checking delete permissions:', error)
       }
       toast.error(t('common.error') || 'An error occurred while checking permissions')
     }

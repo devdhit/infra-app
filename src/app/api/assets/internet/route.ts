@@ -8,6 +8,7 @@ import {
   badRequestResponse
 } from '@/lib/api-utils'
 import { internetHandler } from '@/lib/asset-api-handler'
+import logger from '@/lib/logger'
 
 // Define the Internet asset type based on the Prisma schema
 interface InternetAsset {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     const queryParams = getQueryParams(request)
     return await internetHandler.getAll(user, queryParams)
   } catch (error) {
-    console.error('Error in Internet GET route:', error)
+    logger.error('Error in Internet GET route:', error)
     return errorResponse('Failed to fetch Internet assets. Please try again later.')
   }
 }
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     const body = await parseRequestBody<InternetAsset>(request)
     return await internetHandler.create(user, body)
   } catch (error: any) {
-    console.error('Error in Internet POST route:', error)
+    logger.error('Error in Internet POST route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {
@@ -71,7 +72,7 @@ export async function DELETE(request: NextRequest) {
     const body = await parseRequestBody<{ ids: string[] }>(request)
     return await internetHandler.bulkDelete(user, body.ids)
   } catch (error: any) {
-    console.error('Error in Internet bulk DELETE route:', error)
+    logger.error('Error in Internet bulk DELETE route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {

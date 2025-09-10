@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { unauthorizedResponse, errorResponse, successResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger';
 
 // POST /api/roles/bulk-delete - Bulk delete roles
 export async function POST(request: NextRequest) {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error bulk deleting roles:', error)
+      logger.error('Error bulk deleting roles:', error)
     }
     return errorResponse('Internal server error')
   }

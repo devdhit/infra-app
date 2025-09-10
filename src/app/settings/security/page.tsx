@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { SettingsLayout } from "@/components/settings/settings-layout"
 import { usePermissions } from "@/hooks/use-permissions"
+import logger from '@/lib/logger'
 
 interface SecuritySettings {
   twoFactorEnabled: boolean
@@ -55,7 +56,7 @@ export default function SecuritySettingsPage() {
           setCanEdit(await canEditSettings())
         }
       } catch (error) {
-        console.error('Error checking permissions:', error)
+        logger.error('Error checking permissions:', error)
         // Default to allowing access if there's an error
         setCanView(true)
         setCanEdit(true)

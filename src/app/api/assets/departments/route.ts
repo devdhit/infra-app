@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { errorResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // GET /api/assets/departments - Get all unique departments for the current tenant
 export async function GET(request: NextRequest) {
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
     })
   } catch (error) {
-    console.error('Error fetching departments:', error)
+    logger.error('Error fetching departments:', error)
     return errorResponse('Internal server error', 500)
   }
 }

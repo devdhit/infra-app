@@ -16,6 +16,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Mail } from "lucide-react";
+import logger from '@/lib/logger';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -33,7 +34,7 @@ export default function ForgotPasswordPage() {
       setIsSubmitted(true);
       toast.success(t('auth.forgotPassword.success') || 'Password reset instructions sent to your email');
     } catch (error: any) {
-      console.error('Forgot password error:', error);
+      logger.error('Forgot password error:', error);
       let message = t('auth.forgotPassword.error') || 'Failed to send password reset instructions';
       if (error?.message) {
         message = error.message;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getApplicationSettings } from '@/lib/api/application';
+import logger from '@/lib/logger';
 
 export function useApplicationName() {
   const [applicationName, setApplicationNameState] = useState('');
@@ -15,7 +16,7 @@ export function useApplicationName() {
         setApplicationNameState(settings.applicationName);
         setShortName(settings.shortName);
       } catch (error) {
-        console.error('Failed to load application name:', error);
+        logger.error('Failed to load application name:', error);
         // Fallback to default values
         setApplicationNameState('IT Asset Management');
         setShortName('ITAMS');

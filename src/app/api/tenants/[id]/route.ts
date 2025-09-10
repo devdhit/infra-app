@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { createHistoryRecord } from '@/lib/history'
+import logger from '@/lib/logger';
 
 // GET /api/tenants/[id] - Get a specific tenant
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       headers: { 'Content-Type': 'application/json' }
     })
   } catch (error) {
-    console.error('Error fetching tenant:', error)
+    logger.error('Error fetching tenant:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -138,7 +139,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
     
-    console.error('Error updating tenant:', error)
+    logger.error('Error updating tenant:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -160,7 +161,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     // Await params before using
     const resolvedParams = await params;
     
-    console.log('Received delete request for tenant ID:', resolvedParams.id, 'Type:', typeof resolvedParams.id);
+    logger.info('Received delete request for tenant ID:', resolvedParams.id, 'Type:', typeof resolvedParams.id);
 
     // Check if user has permission to delete tenants
     const hasDeletePermission = await hasPermission(
@@ -258,7 +259,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       })
     }
     
-    console.error('Error deleting tenant:', error)
+    logger.error('Error deleting tenant:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

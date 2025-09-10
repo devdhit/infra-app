@@ -1,6 +1,7 @@
 import XLSX from 'xlsx-populate'
 import * as path from 'path'
 import { promises as fs } from 'fs'
+import logger from '@/lib/logger'
 
 // Define interfaces for asset templates
 export interface PCAsset {
@@ -80,15 +81,15 @@ async function readTemplateFile(templateName: string): Promise<ArrayBuffer> {
   try {
     // Use path.resolve to ensure we get the correct absolute path
     const templatePath = path.resolve(process.cwd(), 'src', 'templates', templateName);
-    console.log(`Attempting to read template file from: ${templatePath}`);
+    logger.debug(`Attempting to read template file from: ${templatePath}`);
     const fileBuffer = await fs.readFile(templatePath);
-    console.log(`Successfully read template file: ${templateName}, size: ${fileBuffer.byteLength} bytes`);
+    logger.debug(`Successfully read template file: ${templateName}, size: ${fileBuffer.byteLength} bytes`);
     // Convert Buffer to ArrayBuffer
     const arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer;
-    console.log(`Converted to ArrayBuffer, size: ${arrayBuffer.byteLength} bytes`);
+    logger.debug(`Converted to ArrayBuffer, size: ${arrayBuffer.byteLength} bytes`);
     return arrayBuffer;
   } catch (error) {
-    console.error(`Error reading template file ${templateName}:`, error);
+    logger.error(`Error reading template file ${templateName}:`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Template file ${templateName} not found or could not be read: ${errorMessage}`);
   }
@@ -99,14 +100,14 @@ async function readTemplateFile(templateName: string): Promise<ArrayBuffer> {
  */
 export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
   try {
-    console.log(`Starting exportPCToExcel with ${data.length} records`);
+    logger.debug(`Starting exportPCToExcel with ${data.length} records`);
     // Read the PC template
     const templateBuffer = await readTemplateFile('PC_Template.xlsx');
-    console.log('Template buffer loaded, creating workbook');
+    logger.debug('Template buffer loaded, creating workbook');
     const workbook = await XLSX.fromDataAsync(templateBuffer);
-    console.log('Workbook created, getting worksheet');
+    logger.debug('Workbook created, getting worksheet');
     const worksheet = workbook.sheet(0);
-    console.log('Worksheet obtained, finding data start row');
+    logger.debug('Worksheet obtained, finding data start row');
     
     // Find the data start row (usually row 2, but we'll look for the first empty row after headers)
     let dataStartRow = 2;
@@ -120,18 +121,18 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
           break;
         }
       } catch (cellError) {
-        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        logger.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
         break;
       }
       dataStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        logger.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
         dataStartRow = 3;
         break;
       }
     }
-    console.log(`Data start row found at row ${dataStartRow}`);
+    logger.debug(`Data start row found at row ${dataStartRow}`);
     
     // Find the footer row (look for a row after data that has content)
     let footerStartRow = dataStartRow;
@@ -148,23 +149,23 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
             break;
           }
         } catch (cellError) {
-          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+          logger.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
         }
       }
       if (hasContent) break;
       footerStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        logger.warn('Safety counter exceeded in footer detection, defaulting to no footer');
         footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
         break;
       }
     }
-    console.log(`Footer start row found at row ${footerStartRow}`);
+    logger.debug(`Footer start row found at row ${footerStartRow}`);
     
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < 1000) {
-      console.log('Footer detected, inserting rows');
+      logger.debug('Footer detected, inserting rows');
       // Calculate how many rows we need to insert
       const rowsToInsert = data.length;
       
@@ -223,12 +224,12 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
               currentCell.style(allStyles);
             } catch (styleError: any) {
               // If there's an error with styles, just continue - we still want the data
-              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+              logger.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }
       }
-      console.log(`Shifted footer by ${rowsToInsert} rows`);
+      logger.debug(`Shifted footer by ${rowsToInsert} rows`);
       
       // Add data rows
       data.forEach((row, rowIndex) => {
@@ -247,9 +248,9 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
         worksheet.cell(currentRow, 10).value(statusValue)
         worksheet.cell(currentRow, 11).value(row.note || 'N/A')
       });
-      console.log('Data rows added with footer preservation');
+      logger.debug('Data rows added with footer preservation');
     } else {
-      console.log('No footer detected, adding data rows normally');
+      logger.debug('No footer detected, adding data rows normally');
       // No footer found, just add data rows normally
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex
@@ -267,16 +268,16 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
         worksheet.cell(currentRow, 10).value(statusValue)
         worksheet.cell(currentRow, 11).value(row.note || 'N/A')
       });
-      console.log('Data rows added without footer preservation');
+      logger.debug('Data rows added without footer preservation');
     }
     
-    console.log('Converting workbook to buffer');
+    logger.debug('Converting workbook to buffer');
     // Convert to buffer and return
     const result = await workbook.outputAsync() as ArrayBuffer;
-    console.log('Workbook converted to buffer successfully');
+    logger.debug('Workbook converted to buffer successfully');
     return result;
   } catch (error) {
-    console.error('Error exporting PC to Excel:', error);
+    logger.error('Error exporting PC to Excel:', error);
     throw error;
   }
 }
@@ -286,42 +287,42 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
  */
 export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuffer> {
   try {
-    console.log(`Starting exportLaptopToExcel with ${data.length} records`);
+    logger.debug(`Starting exportLaptopToExcel with ${data.length} records`);
     // Read the Laptop template
     const templateBuffer = await readTemplateFile('Laptop_Template.xlsx');
-    console.log('Template buffer loaded, creating workbook');
+    logger.debug('Template buffer loaded, creating workbook');
     const workbook = await XLSX.fromDataAsync(templateBuffer);
-    console.log('Workbook created, getting worksheet');
+    logger.debug('Workbook created, getting worksheet');
     const worksheet = workbook.sheet(0);
-    console.log('Worksheet obtained, finding data start row');
+    logger.debug('Worksheet obtained, finding data start row');
     
     // Find the data start row
     let dataStartRow = 2;
     // Add a safety check to prevent infinite loop
     let safetyCounter = 0;
     const MAX_ROWS = 1000; // Reasonable limit
-    console.log(`Checking cell values for data start row detection:`);
+    logger.debug(`Checking cell values for data start row detection:`);
     while (dataStartRow < MAX_ROWS) {
       try {
         const cellValue = worksheet.cell(dataStartRow, 1).value();
-        console.log(`Row ${dataStartRow}, Column 1 cell value:`, cellValue);
+        logger.debug(`Row ${dataStartRow}, Column 1 cell value:`, cellValue);
         if (cellValue === null || cellValue === undefined || cellValue === '') {
-          console.log(`Found empty cell at row ${dataStartRow}, breaking loop`);
+          logger.debug(`Found empty cell at row ${dataStartRow}, breaking loop`);
           break;
         }
       } catch (cellError) {
-        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        logger.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
         break;
       }
       dataStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        logger.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
         dataStartRow = 3;
         break;
       }
     }
-    console.log(`Data start row found at row ${dataStartRow}`);
+    logger.debug(`Data start row found at row ${dataStartRow}`);
     
     // Find the footer row (look for a row after data that has content)
     let footerStartRow = dataStartRow;
@@ -338,14 +339,14 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
             break;
           }
         } catch (cellError) {
-          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+          logger.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
         }
       }
       if (hasContent) break;
       footerStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        logger.warn('Safety counter exceeded in footer detection, defaulting to no footer');
         footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
         break;
       }
@@ -395,17 +396,17 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
               currentCell.style(allStyles);
             } catch (styleError: any) {
               // If there's an error with styles, just continue - we still want the data
-              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+              logger.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }
       }
       
       // Add data rows
-      console.log('Adding data rows');
+      logger.debug('Adding data rows');
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex;
-        console.log(`Setting values for row ${currentRow}`);
+        logger.debug(`Setting values for row ${currentRow}`);
         try {
           worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
           worksheet.cell(currentRow, 2).value(row.barcode || 'N/A');
@@ -436,16 +437,16 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
           const statusValue = row.status ? row.status : 'N/A';
           worksheet.cell(currentRow, 8).value(statusValue)
         } catch (rowError) {
-          console.error(`Error setting values for row ${currentRow}:`, rowError);
+          logger.error(`Error setting values for row ${currentRow}:`, rowError);
         }
       });
-      console.log('Data rows added with footer preservation');
+      logger.debug('Data rows added with footer preservation');
     } else {
       // No footer found, just add data rows normally
-      console.log('Adding data rows');
+      logger.debug('Adding data rows');
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex;
-        console.log(`Setting values for row ${currentRow}`);
+        logger.debug(`Setting values for row ${currentRow}`);
         try {
           worksheet.cell(currentRow, 1).value(row.dept || 'N/A');
           worksheet.cell(currentRow, 2).value(row.barcode || 'N/A');
@@ -476,15 +477,15 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
           const statusValue = row.status ? row.status : 'N/A';
           worksheet.cell(currentRow, 8).value(statusValue)
         } catch (rowError) {
-          console.error(`Error setting values for row ${currentRow}:`, rowError);
+          logger.error(`Error setting values for row ${currentRow}:`, rowError);
         }
       });
-      console.log('Data rows added without footer preservation');
+      logger.debug('Data rows added without footer preservation');
     }
     
-    console.log('Converting workbook to buffer');
+    logger.debug('Converting workbook to buffer');
     // Convert to buffer and return
-    console.log('Calling workbook.outputAsync()');
+    logger.debug('Calling workbook.outputAsync()');
     // Add a timeout to prevent hanging
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Workbook output timeout after 30 seconds')), 30000);
@@ -494,11 +495,11 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
       workbook.outputAsync() as Promise<ArrayBuffer>,
       timeoutPromise
     ]);
-    console.log('workbook.outputAsync() completed successfully');
-    console.log('Workbook converted to buffer successfully');
+    logger.debug('workbook.outputAsync() completed successfully');
+    logger.debug('Workbook converted to buffer successfully');
     return result;
   } catch (error) {
-    console.error('Error exporting Laptop to Excel:', error);
+    logger.error('Error exporting Laptop to Excel:', error);
     throw error;
   }
 }
@@ -525,13 +526,13 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
           break;
         }
       } catch (cellError) {
-        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        logger.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
         break;
       }
       dataStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        logger.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
         dataStartRow = 3;
         break;
       }
@@ -552,14 +553,14 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
             break;
           }
         } catch (cellError) {
-          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+          logger.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
         }
       }
       if (hasContent) break;
       footerStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        logger.warn('Safety counter exceeded in footer detection, defaulting to no footer');
         footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
         break;
       }
@@ -609,7 +610,7 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
               currentCell.style(allStyles);
             } catch (styleError: any) {
               // If there's an error with styles, just continue - we still want the data
-              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+              logger.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }
@@ -647,7 +648,7 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
   } catch (error) {
-    console.error('Error exporting Printer to Excel:', error)
+    logger.error('Error exporting Printer to Excel:', error)
     throw error
   }
 }
@@ -674,13 +675,13 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
           break;
         }
       } catch (cellError) {
-        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        logger.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
         break;
       }
       dataStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        logger.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
         dataStartRow = 3;
         break;
       }
@@ -701,14 +702,14 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
             break;
           }
         } catch (cellError) {
-          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+          logger.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
         }
       }
       if (hasContent) break;
       footerStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        logger.warn('Safety counter exceeded in footer detection, defaulting to no footer');
         footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
         break;
       }
@@ -758,7 +759,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
               currentCell.style(allStyles);
             } catch (styleError: any) {
               // If there's an error with styles, just continue - we still want the data
-              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+              logger.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }
@@ -804,7 +805,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
   } catch (error) {
-    console.error('Error exporting License to Excel:', error)
+    logger.error('Error exporting License to Excel:', error)
     throw error
   }
 }
@@ -831,13 +832,13 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
           break;
         }
       } catch (cellError) {
-        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        logger.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
         break;
       }
       dataStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        logger.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
         dataStartRow = 3;
         break;
       }
@@ -858,14 +859,14 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
             break;
           }
         } catch (cellError) {
-          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+          logger.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
         }
       }
       if (hasContent) break;
       footerStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        logger.warn('Safety counter exceeded in footer detection, defaulting to no footer');
         footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
         break;
       }
@@ -915,7 +916,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
               currentCell.style(allStyles);
             } catch (styleError: any) {
               // If there's an error with styles, just continue - we still want the data
-              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+              logger.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }
@@ -947,7 +948,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
   } catch (error) {
-    console.error('Error exporting WarehouseIT to Excel:', error)
+    logger.error('Error exporting WarehouseIT to Excel:', error)
     throw error
   }
 }
@@ -974,13 +975,13 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
           break;
         }
       } catch (cellError) {
-        console.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        logger.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
         break;
       }
       dataStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        logger.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
         dataStartRow = 3;
         break;
       }
@@ -1001,14 +1002,14 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
             break;
           }
         } catch (cellError) {
-          console.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
+          logger.error(`Error reading cell at row ${footerStartRow}, column ${col}:`, cellError);
         }
       }
       if (hasContent) break;
       footerStartRow++;
       safetyCounter++;
       if (safetyCounter > MAX_ROWS) {
-        console.warn('Safety counter exceeded in footer detection, defaulting to no footer');
+        logger.warn('Safety counter exceeded in footer detection, defaulting to no footer');
         footerStartRow = MAX_ROWS; // Set to MAX_ROWS to indicate no footer found
         break;
       }
@@ -1058,7 +1059,7 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
               currentCell.style(allStyles);
             } catch (styleError: any) {
               // If there's an error with styles, just continue - we still want the data
-              console.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
+              logger.warn(`Warning: Could not copy formatting for cell at row ${currentRow}, col ${col}:`, styleError.message);
             }
           }
         }
@@ -1098,7 +1099,7 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
   } catch (error) {
-    console.error('Error exporting Internet to Excel:', error)
+    logger.error('Error exporting Internet to Excel:', error)
     throw error
   }
 }
@@ -1238,7 +1239,7 @@ export async function importFromExcelWithTemplate(
                 value = String(value);
               }
             } catch (e) {
-              console.warn(`Could not parse date value for ${header}:`, value);
+              logger.warn(`Could not parse date value for ${header}:`, value);
               value = null;
             }
           }
@@ -1318,7 +1319,7 @@ export async function importFromExcelWithTemplate(
     
     return data
   } catch (error) {
-    console.error('Error importing from Excel:', error)
+    logger.error('Error importing from Excel:', error)
     throw error
   }
 }

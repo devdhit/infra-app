@@ -7,6 +7,7 @@ import {
   badRequestResponse,
   parseRequestBody
 } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // Define the Laptop asset type
 interface LaptopAsset {
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return await laptopHandler.getById(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in Laptop GET by ID route:', error)
+    logger.error('Error in Laptop GET by ID route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -59,7 +60,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     return await laptopHandler.update(user, resolvedParams.id, body)
   } catch (error) {
-    console.error('Error in Laptop PUT route:', error)
+    logger.error('Error in Laptop PUT route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -77,7 +78,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return await laptopHandler.delete(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in Laptop DELETE route:', error)
+    logger.error('Error in Laptop DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

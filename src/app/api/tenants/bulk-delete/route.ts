@@ -4,6 +4,7 @@ import { unauthorizedResponse, errorResponse, successResponse } from '@/lib/api-
 import { db } from '@/lib/db'
 import { createHistoryRecord } from '@/lib/history'
 import { hasPermission } from '@/lib/permissions'
+import logger from '@/lib/logger';
 
 // POST /api/tenants/bulk-delete - Bulk delete tenants
 export async function POST(request: NextRequest) {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { ids } = body
     
-    console.log('Received bulk delete request with IDs:', ids);
+    logger.info('Received bulk delete request with IDs:', ids);
 
     // Validate input
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     
     // Log the type of each ID to see if they're being converted
     ids.forEach((id: any, index: number) => {
-      console.log(`ID ${index}:`, id, 'Type:', typeof id);
+      logger.info(`ID ${index}:`, id, 'Type:', typeof id);
     });
 
     // Check if all tenants exist
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     return successResponse(null, 204)
   } catch (error: any) {
-    console.error('Error in bulk delete tenants route:', error)
+    logger.error('Error in bulk delete tenants route:', error)
     return errorResponse('Failed to delete tenants. Please try again later.')
   }
 }
