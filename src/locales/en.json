@@ -68,6 +68,7 @@
     "close": "Close",
     "confirm": "Confirm",
     "search": "Search",
+    "gotIt": "Got it",
     "search": {
       "placeholder": "Search assets..."
     },
