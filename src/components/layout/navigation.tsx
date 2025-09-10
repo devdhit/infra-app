@@ -19,6 +19,10 @@ import {
   Wifi,
   Shield,
   FileText,
+  Palette,
+  Bell,
+  Database,
+  AppWindow,
   ShieldAlert
 } from "lucide-react";
 import Link from "next/link";
@@ -80,6 +84,42 @@ const navigationItems: NavigationItem[] = [
     icon: Settings,
     requiredPermission: { resource: 'settings', action: 'view' },
     children: [
+      { 
+        nameKey: "settings.application.title", 
+        href: "/settings/application", 
+        icon: AppWindow,
+        requiredPermission: { resource: 'settings', action: 'view' }
+      },
+      { 
+        nameKey: "settings.appearance.title", 
+        href: "/settings/appearance", 
+        icon: Palette,
+        requiredPermission: { resource: 'settings', action: 'view' }
+      },
+      { 
+        nameKey: "settings.notifications.title", 
+        href: "/settings/notifications", 
+        icon: Bell,
+        requiredPermission: { resource: 'settings', action: 'view' }
+      },
+      { 
+        nameKey: "settings.customFields.title", 
+        href: "/settings/custom-fields", 
+        icon: Settings,
+        requiredPermission: { resource: 'settings', action: 'view' }
+      },
+      { 
+        nameKey: "settings.security.title", 
+        href: "/settings/security", 
+        icon: Shield,
+        requiredPermission: { resource: 'settings', action: 'view' }
+      },
+      { 
+        nameKey: "settings.dataManagement.title", 
+        href: "/settings/data-management", 
+        icon: Database,
+        requiredPermission: { resource: 'settings', action: 'view' }
+      },
       { 
         nameKey: "nav.auditLogs", 
         href: "/settings/audit-logs", 
