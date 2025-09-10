@@ -15,7 +15,8 @@ import {
 import { Search, MoreHorizontal, Edit, Trash } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { Tenant } from "@/hooks/useApi"
-import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
+// Remove the import for BulkDeleteDialog since we're not using it in this component
+// import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
 
 // Define the interface directly in this file to avoid import issues
 interface TenantsTableProps {
@@ -171,7 +172,8 @@ export function TenantsTable({
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [selectedTenants, setSelectedTenants] = useState<string[]>([])
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
+  // Remove the local state for the bulk delete dialog since it's handled by the parent
+  // const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
   const columns = useTenantColumns(t, onEdit, onDelete, isDeleting, deletingTenantId)
   
   // Load column visibility from localStorage
@@ -217,17 +219,9 @@ export function TenantsTable({
       // Show error message or do nothing
       return
     }
-    setIsBulkDeleteDialogOpen(true)
-  }, [selectedTenants.length, onDelete])
-
-  // Confirm bulk delete
-  const confirmBulkDelete = useCallback(() => {
-    if (!onDelete) return;
-    // This will be handled by the parent component
-    onDelete(selectedTenants) // Pass selected IDs as an array
-    setIsBulkDeleteDialogOpen(false)
-    setSelectedTenants([])
-  }, [onDelete, selectedTenants])
+    // Instead of opening a local dialog, we call the onDelete prop directly with the selected IDs
+    onDelete(selectedTenants)
+  }, [selectedTenants, onDelete])
 
   // Handle row selection
   const handleRowSelection = useCallback((rows: Record<string, boolean>) => {
@@ -277,14 +271,7 @@ export function TenantsTable({
         getRowId={(row: Tenant) => row.id}
       />
 
-      <BulkDeleteDialog
-        title={t('tenants.title', 'Tenants')}
-        count={selectedTenants.length}
-        isOpen={isBulkDeleteDialogOpen}
-        isDeleting={isDeleting}
-        onClose={() => setIsBulkDeleteDialogOpen(false)}
-        onConfirm={confirmBulkDelete}
-      />
+      {/* Remove the local BulkDeleteDialog since it's handled by the parent component */}
     </div>
   )
 }
