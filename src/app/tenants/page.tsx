@@ -23,6 +23,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Plus, Building as BuildingIcon } from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
 import apiClient from '@/lib/api'
+import logger from '@/lib/logger'
 
 export default function TenantsPage() {
   const { t } = useTranslation()
@@ -82,19 +83,19 @@ export default function TenantsPage() {
     const checkPermissions = async () => {
       // Prevent multiple simultaneous permission checks
       if (isCheckingPermissions.current) {
-        console.log('Permission check already in progress, skipping');
+        logger.debug('Permission check already in progress, skipping');
         return;
       }
       
       try {
         isCheckingPermissions.current = true;
-        console.log('=== TENANT PERMISSION CHECKING STARTED ===');
-        console.log('User loading state:', isUserLoading);
-        console.log('Current user data:', currentUser);
+        logger.debug('=== TENANT PERMISSION CHECKING STARTED ===');
+        logger.debug('User loading state:', isUserLoading);
+        logger.debug('Current user data:', currentUser);
         
         // Only check permissions if user data is fully loaded
         if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          console.log('User data fully loaded, checking permissions for user:', {
+          logger.debug('User data fully loaded, checking permissions for user:', {
             email: currentUser.email,
             role: currentUser.role.name,
             roleId: currentUser.role.id,
@@ -102,7 +103,7 @@ export default function TenantsPage() {
           });
           
           // Check all permissions in parallel for better performance
-          console.log('Starting parallel permission checks...');
+          logger.debug('Starting parallel permission checks...');
           const startTime = Date.now();
           const [
             viewPermission,
@@ -120,7 +121,7 @@ export default function TenantsPage() {
           const endTime = Date.now();
           const duration = endTime - startTime;
           
-          console.log('Permission results:', { 
+          logger.debug('Permission results:', { 
             viewPermission, 
             createPermission, 
             editPermission, 
@@ -131,13 +132,13 @@ export default function TenantsPage() {
           
           // Only update state if component is still mounted
           if (!isCancelledRef.current) {
-            console.log('Updating permission states...');
+            logger.debug('Updating permission states...');
             setCanView(viewPermission);
             setCanCreate(createPermission);
             setCanEdit(editPermission);
             setCanDelete(deletePermission);
             setCanBulkDelete(bulkDeletePermission);
-            console.log('Permission states updated:', {
+            logger.debug('Permission states updated:', {
               canView: viewPermission,
               canCreate: createPermission,
               canEdit: editPermission,
@@ -145,12 +146,12 @@ export default function TenantsPage() {
               canBulkDelete: bulkDeletePermission
             });
           } else {
-            console.log('Component was unmounted, skipping state update');
+            logger.debug('Component was unmounted, skipping state update');
           }
         } else if (!isUserLoading && (!currentUser || !currentUser.role?.id || !currentUser.tenantId)) {
           // User data loaded but incomplete
-          console.log('User data loaded but incomplete, denying permissions');
-          console.log('Current user state:', { currentUser, hasRole: !!currentUser?.role?.id, hasTenant: !!currentUser?.tenantId });
+          logger.debug('User data loaded but incomplete, denying permissions');
+          logger.debug('Current user state:', { currentUser, hasRole: !!currentUser?.role?.id, hasTenant: !!currentUser?.tenantId });
           if (!isCancelledRef.current) {
             setCanView(false);
             setCanCreate(false);
@@ -159,11 +160,11 @@ export default function TenantsPage() {
             setCanBulkDelete(false)
           }
         } else {
-          console.log('Still loading user data or user data not available yet');
+          logger.debug('Still loading user data or user data not available yet');
         }
         // If still loading, do nothing
       } catch (error) {
-        console.error('Error checking permissions:', error);
+        logger.error('Error checking permissions:', error);
         // Deny access if there's an error
         if (!isCancelledRef.current) {
           setCanView(false);
@@ -174,14 +175,14 @@ export default function TenantsPage() {
         }
       } finally {
         isCheckingPermissions.current = false;
-        console.log('=== TENANT PERMISSION CHECKING FINISHED ===');
+        logger.debug('=== TENANT PERMISSION CHECKING FINISHED ===');
       }
     };
     
     checkPermissions();
     
     return () => {
-      console.log('Cleaning up permission checking');
+      logger.debug('Cleaning up permission checking');
       isCancelledRef.current = true;
       // Reset the permission checking flag when component unmounts
       isCheckingPermissions.current = false;
@@ -190,7 +191,7 @@ export default function TenantsPage() {
 
   // Show loading state while checking permissions
   if (canView === null || isUserLoading) {
-    console.log('Showing loading state:', { canView, isUserLoading });
+    logger.debug('Showing loading state:', { canView, isUserLoading });
     return (
       <div className="flex items-center justify-center h-52">
         <div className="text-center">
@@ -202,8 +203,8 @@ export default function TenantsPage() {
 
   // If user doesn't have view permission, show unauthorized message
   if (!canView) {
-    console.log('Showing unauthorized message. Permission state:', { canView, isUserLoading });
-    console.log('User data at time of denial:', currentUser);
+    logger.debug('Showing unauthorized message. Permission state:', { canView, isUserLoading });
+    logger.debug('User data at time of denial:', currentUser);
     return (
       <div className="flex items-center justify-center h-52">
         <div className="text-center">
@@ -232,7 +233,7 @@ export default function TenantsPage() {
       setEditingTenant(tenant)
       setIsDialogOpen(true)
     } catch (error) {
-      console.error('Error checking edit permissions:', error)
+      logger.error('Error checking edit permissions:', error)
       // Allow the action by default if there's an error
       setEditingTenant(tenant)
       setIsDialogOpen(true)
@@ -272,7 +273,7 @@ export default function TenantsPage() {
         }
       }
     } catch (error) {
-      console.error('Error in handleDelete:', error)
+      logger.error('Error in handleDelete:', error)
       toast.error(t('common.error') || 'An error occurred while checking permissions')
     }
   }
@@ -281,12 +282,12 @@ export default function TenantsPage() {
     if (!deleteTenantId) return
     
     try {
-      console.log('Sending delete request for tenant ID:', deleteTenantId);
+      logger.debug('Sending delete request for tenant ID:', deleteTenantId);
       await deleteMutation.mutateAsync(deleteTenantId)
       toast.success(t('tenants.delete.success') || 'Tenant deleted successfully')
       refetch()
     } catch (error: any) {
-      console.error('Delete error:', error);
+      logger.error('Delete error:', error);
       // Provide more specific error messages
       if (error.status === 404) {
         toast.error(t('tenants.delete.notFound') || 'Tenant not found. It may have already been deleted.')
@@ -306,13 +307,13 @@ export default function TenantsPage() {
 
   const confirmBulkDelete = async () => {
     try {
-      console.log('Sending bulk delete request with IDs:', bulkDeleteTenantIds);
+      logger.debug('Sending bulk delete request with IDs:', bulkDeleteTenantIds);
       await bulkDeleteMutation.mutateAsync({ ids: bulkDeleteTenantIds })
       toast.success(t('tenants.bulkDelete.success', '{0} tenants deleted successfully', bulkDeleteTenantIds.length.toString()) || 
                    `${bulkDeleteTenantIds.length} tenants deleted successfully`)
       refetch()
     } catch (error: any) {
-      console.error('Bulk delete error:', error);
+      logger.error('Bulk delete error:', error);
       // Provide more specific error messages for bulk delete
       if (error.status === 404) {
         toast.error(t('tenants.bulkDelete.notFound') || 'One or more tenants not found. They may have already been deleted.')

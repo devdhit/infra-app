@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 // GET /api/custom-fields/[id] - Get a specific custom field
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       headers: { 'Content-Type': 'application/json' }
     })
   } catch (error) {
-    console.error('Error fetching custom field:', error)
+    logger.error('Error fetching custom field:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -146,7 +147,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
     
-    console.error('Error updating custom field:', error)
+    logger.error('Error updating custom field:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -201,7 +202,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       })
     }
     
-    console.error('Error deleting custom field:', error)
+    logger.error('Error deleting custom field:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import logger from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       userTenantId: user.tenantId
     });
   } catch (error) {
-    console.error('Error checking permissions:', error);
+    logger.error('Error checking permissions:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

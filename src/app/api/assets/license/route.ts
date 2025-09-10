@@ -7,6 +7,7 @@ import {
   errorResponse
 } from '@/lib/api-utils'
 import { licenseHandler } from '@/lib/asset-api-handler'
+import logger from '@/lib/logger'
 
 // Define the License asset type
 interface LicenseAsset {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const queryParams = getQueryParams(request)
     return await licenseHandler.getAll(user, queryParams)
   } catch (error) {
-    console.error('Error in License GET route:', error)
+    logger.error('Error in License GET route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
     const body = await parseRequestBody<LicenseAsset>(request)
     return await licenseHandler.create(user, body)
   } catch (error) {
-    console.error('Error in License POST route:', error)
+    logger.error('Error in License POST route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -67,7 +68,7 @@ export async function DELETE(request: NextRequest) {
     const body = await parseRequestBody<{ ids: string[] }>(request)
     return await licenseHandler.bulkDelete(user, body.ids)
   } catch (error: any) {
-    console.error('Error in License bulk DELETE route:', error)
+    logger.error('Error in License bulk DELETE route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {

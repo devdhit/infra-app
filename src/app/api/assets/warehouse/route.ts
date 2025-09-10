@@ -7,6 +7,7 @@ import {
   errorResponse
 } from '@/lib/api-utils'
 import { warehouseHandler } from '@/lib/asset-api-handler'
+import logger from '@/lib/logger'
 
 // Define the WarehouseIT asset type
 interface WarehouseITAsset {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     const queryParams = getQueryParams(request)
     return await warehouseHandler.getAll(user, queryParams)
   } catch (error) {
-    console.error('Error in WarehouseIT GET route:', error)
+    logger.error('Error in WarehouseIT GET route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     const body = await parseRequestBody<WarehouseITAsset>(request)
     return await warehouseHandler.create(user, body)
   } catch (error) {
-    console.error('Error in WarehouseIT POST route:', error)
+    logger.error('Error in WarehouseIT POST route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -62,7 +63,7 @@ export async function DELETE(request: NextRequest) {
     const body = await parseRequestBody<{ ids: string[] }>(request)
     return await warehouseHandler.bulkDelete(user, body.ids)
   } catch (error: any) {
-    console.error('Error in WarehouseIT bulk DELETE route:', error)
+    logger.error('Error in WarehouseIT bulk DELETE route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {

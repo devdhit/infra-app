@@ -7,6 +7,7 @@ import {
   errorResponse
 } from '@/lib/api-utils'
 import { laptopHandler } from '@/lib/asset-api-handler'
+import logger from '@/lib/logger'
 
 // Define the Laptop asset type
 interface LaptopAsset {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     const queryParams = getQueryParams(request)
     return await laptopHandler.getAll(user, queryParams)
   } catch (error) {
-    console.error('Error in Laptop GET route:', error)
+    logger.error('Error in Laptop GET route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     const body = await parseRequestBody<LaptopAsset>(request)
     return await laptopHandler.create(user, body)
   } catch (error) {
-    console.error('Error in Laptop POST route:', error)
+    logger.error('Error in Laptop POST route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -64,7 +65,7 @@ export async function DELETE(request: NextRequest) {
     const body = await parseRequestBody<{ ids: string[] }>(request)
     return await laptopHandler.bulkDelete(user, body.ids)
   } catch (error: any) {
-    console.error('Error in Laptop bulk DELETE route:', error)
+    logger.error('Error in Laptop bulk DELETE route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {

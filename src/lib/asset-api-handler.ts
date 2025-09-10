@@ -10,6 +10,7 @@ import {
   errorResponse as apiErrorResponse
 } from './api-utils'
 import { emitAssetChange } from '@/lib/realtime'
+import logger from '@/lib/logger'
 import { hasPermission, ResourceType, PermissionAction } from './permissions'
 import { User } from '@/types/users'
 import { createAuditLog } from '@/lib/audit-logs'
@@ -322,16 +323,38 @@ export class AssetApiHandler<T> {
           [field]: { contains: search, mode: 'insensitive' }
         }));
         
-        // Create search condition for custom fields
-        const customFieldCondition = {
-          customFields: {
-            path: [],
-            string_contains: search
-          }
-        };
+        // For custom fields, we need to search each known custom field individually
+        // since Prisma's path: [] doesn't work for searching across all JSON fields
+        let customFieldConditions = [];
+        try {
+          // Get custom fields for this asset type and tenant
+          const customFields = await this.db.customField.findMany({
+            where: {
+              tenantId: user.tenantId,
+              modelType: this.operations.modelName
+            }
+          });
+          
+          // Create search conditions for each custom field
+          customFieldConditions = customFields.map(cf => ({
+            customFields: {
+              path: [cf.name],
+              string_contains: search
+            }
+          }));
+        } catch (error) {
+          console.warn('Failed to fetch custom fields for search, falling back to generic search:', error);
+          // Fallback to generic custom field search
+          customFieldConditions = [{
+            customFields: {
+              path: [],
+              string_contains: search
+            }
+          }];
+        }
         
         // Combine all search conditions
-        where.OR = [...standardFieldConditions, customFieldCondition];
+        where.OR = [...standardFieldConditions, ...customFieldConditions];
       }
 
       // Add status filter based on model-specific status fields
@@ -370,8 +393,8 @@ export class AssetApiHandler<T> {
         pagination: {
           page,
           limit,
-          total,
-          pages: Math.ceil(total / limit)
+          total: total !== undefined ? total : 0,
+          pages: Math.ceil((total !== undefined ? total : 0) / limit)
         }
       })
     } catch (error) {
@@ -792,13 +815,13 @@ export class AssetApiHandler<T> {
           (acc as any)[key] = body[key as keyof T];
         } else {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`Skipping field ${key} - not valid or undefined`);
+            logger.debug(`Skipping field ${key} - not valid or undefined`);
           }
         }
         return acc;
       }, {} as Partial<T>);
       
-      console.log("Update data to be sent to database:", updateData);
+      logger.debug("Update data to be sent to database:", updateData);
 
       const asset = await (this.db as any)[this.operations.modelName].update({
         where: { 
@@ -820,17 +843,17 @@ export class AssetApiHandler<T> {
       try {
         emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'update', asset);
       } catch (emitError) {
-        console.error('Failed to emit real-time event:', emitError);
+        logger.error('Failed to emit real-time event:', emitError);
       }
 
       return successResponse(asset)
     } catch (error: any) {
       if (error.code === 'P2025') {
-        console.log(`Asset ${id} not found during update`);
+        logger.debug(`Asset ${id} not found during update`);
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
       
-      console.error(`Error updating ${this.operations.modelName} asset:`, error)
+      logger.error(`Error updating ${this.operations.modelName} asset:`, error)
       
       // Handle Prisma-specific errors
       if (error.code === 'P2002') {
@@ -874,7 +897,7 @@ export class AssetApiHandler<T> {
           tenantId: user.tenantId
         }, 'delete')
       } catch (auditLogError) {
-        console.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError)
+        logger.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError)
         // Continue with the operation even if audit log creation fails
       }
 
@@ -889,7 +912,7 @@ export class AssetApiHandler<T> {
       try {
         emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
       } catch (emitError) {
-        console.error('Failed to emit real-time event:', emitError);
+        logger.error('Failed to emit real-time event:', emitError);
       }
 
       return successResponse<null>(null, 204)
@@ -898,9 +921,7 @@ export class AssetApiHandler<T> {
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error(`Error deleting ${this.operations.modelName} asset:`, error);
-      }
+      logger.error(`Error deleting ${this.operations.modelName} asset:`, error);
       return errorResponse('Failed to delete asset. Please try again later.')
     }
   }
@@ -958,9 +979,7 @@ export class AssetApiHandler<T> {
             userId: user.id,
             tenantId: user.tenantId
           }, 'bulkDelete').catch((auditLogError: any) => {
-            if (process.env.NODE_ENV === 'development') {
-              console.error(`Failed to create audit log for asset ${asset.id}:`, auditLogError);
-            }
+            logger.error(`Failed to create audit log for asset ${asset.id}:`, auditLogError);
             // Continue with deletion even if audit log creation fails
           })
         );
@@ -980,9 +999,7 @@ export class AssetApiHandler<T> {
       }
 
       // Log the number of deleted assets
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`Deleted ${totalDeleted} ${this.operations.modelName} assets in ${Math.ceil(ids.length/batchSize)} batches`);
-      }
+      logger.debug(`Deleted ${totalDeleted} ${this.operations.modelName} assets in ${Math.ceil(ids.length/batchSize)} batches`);
 
       // Create audit log entry for the bulk delete operation itself
       try {
@@ -999,7 +1016,7 @@ export class AssetApiHandler<T> {
           tenantId: user.tenantId
         }, 'bulkDelete')
       } catch (auditLogError) {
-        console.error(`Failed to create bulk delete audit log for ${this.operations.modelName}:`, auditLogError)
+        logger.error(`Failed to create bulk delete audit log for ${this.operations.modelName}:`, auditLogError)
         // Continue with the operation even if audit log creation fails
       }
 
@@ -1010,14 +1027,14 @@ export class AssetApiHandler<T> {
         });
       } catch (emitError) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to emit real-time events:', emitError);
+          logger.error('Failed to emit real-time events:', emitError);
         }
       }
 
       return successResponse<null>(null, 204)
     } catch (error: any) {
       if (process.env.NODE_ENV === 'development') {
-        console.error(`Error bulk deleting ${this.operations.modelName} assets:`, error);
+        logger.error(`Error bulk deleting ${this.operations.modelName} assets:`, error);
       }
       
       // Handle Prisma-specific errors
@@ -1035,7 +1052,7 @@ export const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'PC',
   requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
   uniqueField: 'cpuBarcode',
-  searchFields: ['cpuBarcode', 'pcName', 'dept', 'note']
+  searchFields: ['cpuBarcode', 'pcName', 'userName', 'dept', 'status']
   // Remove the include option as customFields is a scalar field, not a relation
 })
 
@@ -1044,7 +1061,7 @@ export const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
   modelName: 'Laptop',
   requiredFields: ['dept', 'barcode', 'status'],
   uniqueField: 'barcode',
-  searchFields: ['barcode', 'userName', 'dept', 'model']
+  searchFields: ['barcode', 'userName', 'dept', 'model', 'status']
 })
 
 // Create handler for Printer assets

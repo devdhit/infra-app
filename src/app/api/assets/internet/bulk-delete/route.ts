@@ -7,6 +7,7 @@ import {
   badRequestResponse
 } from '@/lib/api-utils'
 import { internetHandler } from '@/lib/asset-api-handler'
+import logger from '@/lib/logger'
 
 // POST /api/assets/internet/bulk-delete - Bulk delete Internet assets
 export async function POST(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await parseRequestBody<{ ids: string[] }>(request)
     return await internetHandler.bulkDelete(user, body.ids)
   } catch (error: any) {
-    console.error('Error in Internet bulk delete route:', error)
+    logger.error('Error in Internet bulk delete route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {

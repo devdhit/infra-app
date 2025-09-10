@@ -6,7 +6,7 @@ import {
   errorResponse
 } from '@/lib/api-utils'
 import { laptopHandler } from '@/lib/asset-api-handler'
-
+import logger from '@/lib/logger'
 
 // POST /api/assets/laptop/bulk-delete - Bulk delete Laptop assets
 export async function POST(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     
     return await laptopHandler.bulkDelete(user, body.ids)
   } catch (error) {
-    console.error('Error in Laptop bulk DELETE route:', error)
+    logger.error('Error in Laptop bulk DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

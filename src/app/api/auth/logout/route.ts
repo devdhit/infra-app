@@ -4,6 +4,7 @@ import {
   errorResponse 
 } from '@/lib/api-utils'
 import { getCurrentUser } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 // POST /api/auth/logout - User logout
 export async function POST(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     // The client will clear the token
     return successResponse(null)
   } catch (error) {
-    console.error('Error in logout route:', error)
+    logger.error('Error in logout route:', error)
     return errorResponse('Internal server error')
   }
 }

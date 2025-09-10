@@ -7,6 +7,7 @@ import {
   badRequestResponse,
   parseRequestBody
 } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // Define the Internet asset type based on the Prisma schema
 interface InternetAsset {
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return await internetHandler.getById(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in Internet GET by ID route:', error)
+    logger.error('Error in Internet GET by ID route:', error)
     return errorResponse('Failed to fetch Internet asset. Please try again later.')
   }
 }
@@ -53,7 +54,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await parseRequestBody<Partial<InternetAsset>>(request)
     return await internetHandler.update(user, resolvedParams.id, body)
   } catch (error: any) {
-    console.error('Error in Internet PUT route:', error)
+    logger.error('Error in Internet PUT route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {
@@ -77,7 +78,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return await internetHandler.delete(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in Internet DELETE route:', error)
+    logger.error('Error in Internet DELETE route:', error)
     return errorResponse('Failed to delete Internet asset. Please try again later.')
   }
 }

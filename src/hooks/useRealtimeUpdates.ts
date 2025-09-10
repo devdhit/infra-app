@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
+import logger from '@/lib/logger';
 
 export function useRealtimeUpdates(tenantId: string, assetType: string) {
   const queryClient = useQueryClient();
@@ -27,7 +28,7 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
     });
 
     socket.on('connect', () => {
-      console.log('Connected to Socket.IO server with ID:', socket.id);
+      logger.info('Connected to Socket.IO server with ID:', socket.id);
       setIsConnected(true);
       
       // Join tenant room
@@ -37,7 +38,7 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
     });
     
     socket.on('disconnect', (reason) => {
-      console.log('Disconnected from Socket.IO server. Reason:', reason);
+      logger.info('Disconnected from Socket.IO server. Reason:', reason);
       setIsConnected(false);
       
       // Handle specific disconnection reasons
@@ -48,11 +49,11 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
     });
     
     socket.on('connect_error', (error) => {
-      console.error('Socket.IO connection error:', error);
+      logger.error('Socket.IO connection error:', error);
       
       // Handle specific connection errors
       if (error.message.includes('xhr poll error')) {
-        console.log('XHR poll error detected. Will attempt to reconnect...');
+        logger.info('XHR poll error detected. Will attempt to reconnect...');
         // Socket.IO will automatically try to reconnect based on our reconnection settings
       }
     });
@@ -61,7 +62,7 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
     const handleAssetChange = (data: { assetType: string; action: string; data: any }) => {
       // Only process updates for the current asset type
       if (data.assetType === assetType) {
-        console.log(`Received real-time update for ${assetType}:`, data);
+        logger.info(`Received real-time update for ${assetType}:`, data);
         
         // Invalidate and refetch queries for this asset type
         queryClient.invalidateQueries({ queryKey: ['assets', assetType] });

@@ -1,12 +1,12 @@
 import { PrismaClient } from '../src/generated/prisma'
 import { getDefaultPermissions } from '../src/lib/permissions'
-
+import logger from '../src/lib/logger'
 
 const prisma = new PrismaClient()
 
 async function main() {
   // Clear existing data
-  console.log('Clearing existing data...')
+  logger.info('Clearing existing data...')
   await prisma.history.deleteMany({})
   await prisma.warehouseIT.deleteMany({})
   await prisma.license.deleteMany({})
@@ -20,7 +20,7 @@ async function main() {
   await prisma.user.deleteMany({})
   await prisma.role.deleteMany({})
   await prisma.tenant.deleteMany({})
-  console.log('Existing data cleared.')
+  logger.info('Existing data cleared.')
 
   // Create a sample tenant
   const tenant = await prisma.tenant.create({
@@ -30,7 +30,7 @@ async function main() {
     }
   })
 
-  console.log('Created tenant:', tenant)
+  logger.info('Created tenant:', tenant)
 
   // Create default roles
   const adminRole = await prisma.role.create({
@@ -51,7 +51,7 @@ async function main() {
     }
   })
 
-  console.log('Created roles:', { adminRole, userRole })
+  logger.info('Created roles:', { adminRole, userRole })
 
   // Create a sample admin user
   const adminUser = await prisma.user.create({
@@ -64,7 +64,7 @@ async function main() {
     }
   })
 
-  console.log('Created admin user:', adminUser)
+  logger.info('Created admin user:', adminUser)
 
   // Create a sample regular user
   const regularUser = await prisma.user.create({
@@ -215,11 +215,11 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error(e)
+    logger.error(e)
     process.exit(1)
   })
   .then(async () => {
     await prisma.$disconnect()
-    console.log('Seed completed successfully!')
+    logger.info('Seed completed successfully!')
     process.exit(0)
   })

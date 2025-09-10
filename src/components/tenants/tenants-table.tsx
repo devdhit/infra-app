@@ -15,6 +15,7 @@ import {
 import { Search, MoreHorizontal, Edit, Trash } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { Tenant } from "@/hooks/useApi"
+import logger from '@/lib/logger';
 // Remove the import for BulkDeleteDialog since we're not using it in this component
 // import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
 
@@ -182,7 +183,7 @@ export function TenantsTable({
       const saved = localStorage.getItem('tenantsColumnVisibility');
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
-      console.warn('Failed to load column visibility from localStorage:', e);
+      logger.warn('Failed to load column visibility from localStorage:', e);
       return null;
     }
   }, []);

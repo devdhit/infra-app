@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // GET /api/auth/me - Get current user information
 export async function GET(request: NextRequest) {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     
     return successResponse(userWithoutSensitiveData);
   } catch (error) {
-    console.error('Error fetching user data:', error)
+    logger.error('Error fetching user data:', error)
     return errorResponse('Internal server error');
   }
 }

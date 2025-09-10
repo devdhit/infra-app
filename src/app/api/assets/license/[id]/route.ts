@@ -7,6 +7,7 @@ import {
   badRequestResponse,
   parseRequestBody
 } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // Define the License asset type
 interface LicenseAsset {
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return await licenseHandler.getById(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in License GET by ID route:', error)
+    logger.error('Error in License GET by ID route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -62,7 +63,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     return await licenseHandler.update(user, resolvedParams.id, body)
   } catch (error) {
-    console.error('Error in License PUT route:', error)
+    logger.error('Error in License PUT route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -80,7 +81,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return await licenseHandler.delete(user, resolvedParams.id)
   } catch (error) {
-    console.error('Error in License DELETE route:', error)
+    logger.error('Error in License DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

@@ -36,6 +36,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { useTranslation } from "@/hooks/use-translation";
 import { getApplicationSettings } from '@/lib/api/application';
 import { usePermissions } from "@/hooks/use-permissions";
+import logger from '@/lib/logger';
 
 // Define navigation item structure
 interface NavigationItem {
@@ -190,7 +191,7 @@ export function Navigation({}: NavigationProps) {
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to load application name:', error);
+          logger.error('Failed to load application name:', error);
         }
         // Use default names if there's an error
         if (isMounted) {
@@ -298,7 +299,7 @@ export function Navigation({}: NavigationProps) {
             try {
               results[key] = await check();
             } catch (error) {
-              console.error(`Error checking permission for ${key}:`, error);
+              logger.error(`Error checking permission for ${key}:`, error);
               results[key] = false;
             }
           }

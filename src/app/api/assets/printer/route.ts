@@ -7,6 +7,7 @@ import {
   errorResponse
 } from '@/lib/api-utils'
 import { printerHandler } from '@/lib/asset-api-handler'
+import logger from '@/lib/logger'
 
 // Define the Printer asset type
 interface PrinterAsset {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     const queryParams = getQueryParams(request)
     return await printerHandler.getAll(user, queryParams)
   } catch (error) {
-    console.error('Error in Printer GET route:', error)
+    logger.error('Error in Printer GET route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     const body = await parseRequestBody<PrinterAsset>(request)
     return await printerHandler.create(user, body)
   } catch (error) {
-    console.error('Error in Printer POST route:', error)
+    logger.error('Error in Printer POST route:', error)
     return errorResponse('Internal server error')
   }
 }
@@ -65,7 +66,7 @@ export async function DELETE(request: NextRequest) {
     const body = await parseRequestBody<{ ids: string[] }>(request)
     return await printerHandler.bulkDelete(user, body.ids)
   } catch (error: any) {
-    console.error('Error in Printer bulk DELETE route:', error)
+    logger.error('Error in Printer bulk DELETE route:', error)
     
     // Handle JSON parsing errors
     if (error.message && error.message.includes('Invalid JSON')) {

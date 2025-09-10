@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { importFromExcelWithTemplate } from '@/lib/excel'
 import { emitAssetChange } from '@/lib/realtime'
 import { createAuditLog } from '@/lib/audit-logs'
+import logger from '@/lib/logger';
 
 // POST /api/assets/excel/import - Import assets from Excel
 export async function POST(request: NextRequest) {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
       try {
         columnMapping = JSON.parse(columnMappingJson)
       } catch (error) {
-        console.error('Error parsing column mapping:', error)
+        logger.error('Error parsing column mapping:', error)
       }
     }
 
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
             try {
               emitAssetChange(user.tenantId, 'pc', 'create', createdPC);
             } catch (emitError) {
-              console.error('Failed to emit real-time event for PC creation:', emitError);
+              logger.error(`Failed to emit real-time event for PC creation: ${emitError}`);
             }
             break
 
@@ -321,7 +322,7 @@ export async function POST(request: NextRequest) {
                   }
                 }
               } catch (e) {
-                console.error('Error parsing date:', e);
+                logger.error(`Error parsing date: ${e}`);
                 dateBuyValue = null;
               }
             }
@@ -425,7 +426,7 @@ export async function POST(request: NextRequest) {
             try {
               emitAssetChange(user.tenantId, 'laptop', 'create', createdLaptop);
             } catch (emitError) {
-              console.error('Failed to emit real-time event for Laptop creation:', emitError);
+              logger.error('Failed to emit real-time event for Laptop creation:', emitError);
             }
             break
 
@@ -448,7 +449,7 @@ export async function POST(request: NextRequest) {
                   printerDateValue = null;
                 }
               } catch (e) {
-                console.error('Error parsing date:', e);
+                logger.error('Error parsing date:', e);
                 printerDateValue = null;
               }
             }
@@ -530,9 +531,9 @@ export async function POST(request: NextRequest) {
             }
             
             // Debug logging
-            console.log(`Processing printer row with barcode: ${barcodeValue}`);
-            console.log(`Original row data:`, JSON.stringify(row, null, 2));
-            console.log(`Processed row data (printerRowData):`, JSON.stringify(printerRowData, null, 2));
+            logger.debug(`Processing printer row with barcode: ${barcodeValue}`);
+            logger.debug(`Original row data:`, JSON.stringify(row, null, 2));
+            logger.debug(`Processed row data (printerRowData):`, JSON.stringify(printerRowData, null, 2));
 
             try {
               // For "No Barcode" printers, we need to generate unique barcodes to avoid unique constraint violations
@@ -549,10 +550,10 @@ export async function POST(request: NextRequest) {
                 if (existingNoBarcodePrinter) {
                   // Generate a unique barcode by appending a timestamp
                   barcodeValue = `${barcodeValue}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-                  console.log(`Generated unique barcode for No Barcode printer: ${barcodeValue}`);
+                  logger.debug(`Generated unique barcode for No Barcode printer: ${barcodeValue}`);
                 }
                 
-                console.log(`Creating printer with generated unique barcode: ${barcodeValue}`);
+                logger.debug(`Creating printer with generated unique barcode: ${barcodeValue}`);
                 // Create the Printer record first
                 const createdPrinter = await db.printer.create({
                   data: {
@@ -580,10 +581,10 @@ export async function POST(request: NextRequest) {
                 try {
                   emitAssetChange(user.tenantId, 'printer', 'create', createdPrinter);
                 } catch (emitError) {
-                  console.error('Failed to emit real-time event for Printer creation:', emitError);
+                  logger.error('Failed to emit real-time event for Printer creation:', emitError);
                 }
               } else {
-                console.log(`Checking for existing printer with barcode: ${barcodeValue}`);
+                logger.debug(`Checking for existing printer with barcode: ${barcodeValue}`);
                 // For printers with actual barcodes, first check if one already exists in the database
                 const existingPrinter = await db.printer.findFirst({
                   where: {
@@ -594,7 +595,7 @@ export async function POST(request: NextRequest) {
 
                 if (existingPrinter) {
                   // Printer already exists in database, skip this row
-                  console.log(`Printer with barcode ${barcodeValue} already exists in database:`, existingPrinter);
+                  logger.debug(`Printer with barcode ${barcodeValue} already exists in database:`, existingPrinter);
                   errors.push(`Printer with Barcode ${barcodeValue} already exists in database (ID: ${existingPrinter.id})`)
                   continue
                 }
@@ -607,7 +608,7 @@ export async function POST(request: NextRequest) {
                     const prevBarcode = prevRow.barcode !== undefined && prevRow.barcode !== null ? String(prevRow.barcode) : '';
                     const isMatch = prevBarcode === barcodeValue && prevRow !== row;
                     if (isMatch) {
-                      console.log(`Found duplicate in batch: ${barcodeValue}`);
+                      logger.debug(`Found duplicate in batch: ${barcodeValue}`);
                     }
                     return isMatch;
                   }
@@ -618,9 +619,9 @@ export async function POST(request: NextRequest) {
                   continue
                 }
 
-                console.log(`Creating new printer with barcode: ${barcodeValue}`);
+                logger.debug(`Creating new printer with barcode: ${barcodeValue}`);
                 // Printer doesn't exist, create it
-                  console.log(`Printer data to create:`, JSON.stringify({
+                  logger.debug(`Printer data to create:`, JSON.stringify({
                     ...printerRowData,
                     barcode: barcodeValue,
                     date: printerDateValue,
@@ -650,7 +651,7 @@ export async function POST(request: NextRequest) {
               }
             } catch (printerError: any) {
               // More detailed error handling
-              console.error(`Error processing printer row with barcode ${barcodeValue}:`, printerError);
+              logger.error(`Error processing printer row with barcode ${barcodeValue}:`, printerError);
               if (printerError.code === 'P2002') {
                 // Prisma unique constraint error
                 errors.push(`Unique constraint error for barcode ${barcodeValue}: A printer with this barcode already exists`)
@@ -740,7 +741,7 @@ export async function POST(request: NextRequest) {
                   licenseDateValue = null;
                 }
               } catch (e) {
-                console.error('Error parsing date:', e);
+                logger.error('Error parsing date:', e);
                 licenseDateValue = null;
               }
             }
@@ -843,7 +844,7 @@ export async function POST(request: NextRequest) {
             try {
               emitAssetChange(user.tenantId, 'license', 'create', createdLicense);
             } catch (emitError) {
-              console.error('Failed to emit real-time event for License creation:', emitError);
+              logger.error('Failed to emit real-time event for License creation:', emitError);
             }
             break
 
@@ -957,7 +958,7 @@ export async function POST(request: NextRequest) {
             try {
               emitAssetChange(user.tenantId, 'warehouse', 'create', createdWarehouseIT);
             } catch (emitError) {
-              console.error('Failed to emit real-time event for WarehouseIT creation:', emitError);
+              logger.error('Failed to emit real-time event for WarehouseIT creation:', emitError);
             }
             break
 
@@ -1088,7 +1089,7 @@ export async function POST(request: NextRequest) {
             try {
               emitAssetChange(user.tenantId, 'internet', 'create', createdInternet);
             } catch (emitError) {
-              console.error('Failed to emit real-time event for Internet creation:', emitError);
+              logger.error('Failed to emit real-time event for Internet creation:', emitError);
             }
             break
 
@@ -1119,7 +1120,7 @@ export async function POST(request: NextRequest) {
     headers: { 'Content-Type': 'application/json' }
   })
 } catch (error: any) {
-  console.error('Error importing Excel file:', error)
+  logger.error('Error importing Excel file:', error)
   return new Response(JSON.stringify({ error: 'Internal server error' }), {
     status: 500,
     headers: { 'Content-Type': 'application/json' }

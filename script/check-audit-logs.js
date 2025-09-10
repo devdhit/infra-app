@@ -1,82 +1,61 @@
-// Script to check audit log functionality and settings
-const { PrismaClient } = require('../src/generated/prisma');
+const { PrismaClient } = require('@prisma/client');
+const logger = require('./logger');
 
 const prisma = new PrismaClient();
 
 async function checkAuditLogs() {
   try {
-    console.log('Checking audit log functionality...');
+    logger.info('Checking audit log functionality...');
     
     // Get all tenants
     const tenants = await prisma.tenant.findMany();
-    console.log(`Found ${tenants.length} tenants`);
+    logger.info(`Found ${tenants.length} tenants`);
     
+    // Check audit logs for each tenant
     for (const tenant of tenants) {
-      console.log(`\nChecking tenant: ${tenant.name} (${tenant.id})`);
+      logger.info(`\nChecking tenant: ${tenant.name} (${tenant.id})`);
       
-      // Check if audit logs settings exist for this tenant
-      let auditLogsSettings = await prisma.auditLogsSettings.findUnique({
-        where: {
-          tenantId: tenant.id
-        }
+      // Check if audit logs settings exist
+      const auditLogSettings = await prisma.auditLogSettings.findUnique({
+        where: { tenantId: tenant.id }
       });
       
-      if (!auditLogsSettings) {
-        console.log('  No audit logs settings found for this tenant');
+      if (!auditLogSettings) {
+        logger.info('  No audit logs settings found for this tenant');
       } else {
-        console.log('  Audit logs settings:', {
-          enabled: auditLogsSettings.enabled,
-          retentionPeriod: auditLogsSettings.retentionPeriod,
-          logAssetCreation: auditLogsSettings.logAssetCreation,
-          logAssetUpdates: auditLogsSettings.logAssetUpdates,
-          logAssetDeletion: auditLogsSettings.logAssetDeletion,
-          logUserLogin: auditLogsSettings.logUserLogin,
-          logUserLogout: auditLogsSettings.logUserLogout,
-          logPermissionChanges: auditLogsSettings.logPermissionChanges
+        logger.info('  Audit logs settings:', {
+          enabled: auditLogSettings.enabled,
+          retentionDays: auditLogSettings.retentionDays
         });
       }
       
-      // Check if there are any audit logs for this tenant
-      const auditLogCount = await prisma.history.count({
-        where: {
-          tenantId: tenant.id
-        }
+      // Get audit log count for this tenant
+      const auditLogCount = await prisma.auditLog.count({
+        where: { tenantId: tenant.id }
       });
       
-      console.log(`  Found ${auditLogCount} audit log entries for this tenant`);
+      logger.info(`  Found ${auditLogCount} audit log entries for this tenant`);
       
+      // Show some sample audit logs if they exist
       if (auditLogCount > 0) {
-        // Get a few sample audit logs
-        const sampleLogs = await prisma.history.findMany({
-          where: {
-            tenantId: tenant.id
-          },
-          orderBy: {
-            createdAt: 'desc'
-          },
+        const sampleLogs = await prisma.auditLog.findMany({
+          where: { tenantId: tenant.id },
           take: 3,
-          include: {
-            user: {
-              select: {
-                name: true,
-                email: true
-              }
-            }
-          }
+          orderBy: { createdAt: 'desc' },
+          include: { user: true }
         });
         
-        console.log('  Sample audit logs:');
+        logger.info('  Sample audit logs:');
         for (const log of sampleLogs) {
-          console.log(`    - ${log.action} ${log.modelType} by ${log.user?.name || 'System'} at ${log.createdAt}`);
+          logger.info(`    - ${log.action} ${log.modelType} by ${log.user?.name || 'System'} at ${log.createdAt}`);
         }
       }
     }
   } catch (error) {
-    console.error('Audit log check failed:', error);
+    logger.error('Audit log check failed:', error);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Run the check
 checkAuditLogs();

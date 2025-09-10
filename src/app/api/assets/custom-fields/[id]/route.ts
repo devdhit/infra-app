@@ -8,6 +8,7 @@ import {
   successResponse,
   notFoundResponse
 } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // PUT /api/assets/custom-fields/[id] - Update custom field values for an asset
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -43,7 +44,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                      assetType === 'License' ? 'License' : 
                      'WarehouseIT'
 
-    console.log(`Updating custom fields for ${assetType} asset ${resolvedParams.id} with data:`, body);
+    logger.debug(`Updating custom fields for ${assetType} asset ${resolvedParams.id} with data:`, body);
 
     // Check if asset exists and belongs to user's tenant
     const existingAsset = await (db as any)[modelName].findUnique({
@@ -84,7 +85,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     })
 
-    console.log("Update data to be sent to database:", updateData);
+    logger.debug("Update data to be sent to database:", updateData);
 
     // Update the asset
     const updatedAsset = await (db as any)[modelName].update({
@@ -101,7 +102,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return notFoundResponse('Asset not found')
     }
     
-    console.error('Error updating asset custom fields:', error)
+    logger.error('Error updating asset custom fields:', error)
     return errorResponse('Failed to update asset custom fields. Please try again later.')
   }
 }
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return successResponse(asset)
   } catch (error) {
-    console.error('Error fetching asset custom fields:', error)
+    logger.error('Error fetching asset custom fields:', error)
     return errorResponse('Failed to fetch asset custom fields. Please try again later.')
   }
 }

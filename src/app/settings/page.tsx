@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useTranslation } from "@/hooks/use-translation";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentUser } from '@/hooks/useApi';
+import logger from '@/lib/logger';
 
 // Define the structure of our permissions state
 interface PermissionsState {
@@ -131,7 +132,7 @@ export default function SettingsPage() {
         canViewCustomFields: customFieldsPermission ?? true
       });
     } catch (error) {
-      console.error('Error checking permissions:', error);
+      logger.error('Error checking permissions:', error);
       // Default to allowing access if there's an error to avoid blocking legitimate users
       setPermissions({
         canView: true,
@@ -367,8 +368,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-10">
-          {/* Show all sections while loading to avoid blocking access */}
-          {renderSettingsGroup(t('settings.groups.general') || "General Settings", generalSettings)}
+          {/* Show all sections while loading to avoid blocking access */
+          renderSettingsGroup(t('settings.groups.general') || "General Settings", generalSettings)}
           {renderSettingsGroup(t('settings.groups.security') || "Security & Data", securitySettings)}
           {renderSettingsGroup(t('settings.groups.management') || "User Management", userManagementSettings)}
           {renderSettingsGroup(t('settings.groups.customization') || "Customization", customFieldsSettings)}

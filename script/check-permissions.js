@@ -1,58 +1,44 @@
-// Simple script to check permissions without importing modules
-
 const { PrismaClient } = require('@prisma/client');
+const logger = require('./logger');
+
+const prisma = new PrismaClient();
 
 async function checkPermissions() {
-  const prisma = new PrismaClient();
-  
   try {
-    // Find an admin role
-    const adminRoles = await prisma.role.findMany({
-      where: {
-        name: 'admin'
+    logger.info('Checking permissions...');
+    
+    // Get all roles
+    const roles = await prisma.role.findMany({
+      include: {
+        users: true
       }
     });
-
-    console.log(`Found ${adminRoles.length} admin roles`);
     
-    for (const role of adminRoles) {
-      console.log('\n--- Role Details ---');
-      console.log('ID:', role.id);
-      console.log('Name:', role.name);
-      console.log('Tenant ID:', role.tenantId);
-      
-      // Check permissions
-      if (role.permissions) {
-        console.log('Permissions:', JSON.stringify(role.permissions, null, 2));
-        
-        // Check specific permissions
-        if (role.permissions.settings) {
-          console.log('Settings permissions:', role.permissions.settings);
-        } else {
-          console.log('No settings permissions found');
-        }
-        
-        if (role.permissions.auditLogs) {
-          console.log('Audit logs permissions:', role.permissions.auditLogs);
-        } else {
-          console.log('No audit logs permissions found');
-        }
-      }
+    logger.info(`Found ${roles.length} roles`);
+    
+    for (const role of roles) {
+      logger.info(`\nRole: ${role.name}`);
+      logger.info(`Description: ${role.description}`);
+      logger.info(`Permissions: ${JSON.stringify(role.permissions, null, 2)}`);
+      logger.info(`Users with this role: ${role.users.length}`);
     }
     
-    if (adminRoles.length === 0) {
-      console.log('Checking for any roles with audit logs permissions...');
-      
-      const allRoles = await prisma.role.findMany();
-      for (const role of allRoles) {
-        if (role.permissions && role.permissions.auditLogs && role.permissions.auditLogs.length > 0) {
-          console.log(`Role "${role.name}" has audit logs permissions:`, role.permissions.auditLogs);
-        }
+    // Get a sample user
+    const user = await prisma.user.findFirst({
+      include: {
+        role: true
       }
+    });
+    
+    if (user) {
+      logger.info('\nSample user:');
+      logger.info(`Name: ${user.name}`);
+      logger.info(`Email: ${user.email}`);
+      logger.info(`Role: ${user.role.name}`);
     }
-
+    
   } catch (error) {
-    console.error('Error checking permissions:', error);
+    logger.error('Error checking permissions:', error);
   } finally {
     await prisma.$disconnect();
   }

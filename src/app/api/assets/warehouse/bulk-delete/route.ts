@@ -6,6 +6,7 @@ import {
   errorResponse
 } from '@/lib/api-utils'
 import { warehouseHandler } from '@/lib/asset-api-handler'
+import logger from '@/lib/logger'
 
 // POST /api/assets/warehouse/bulk-delete - Bulk delete WarehouseIT assets
 export async function POST(request: NextRequest) {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     
     return await warehouseHandler.bulkDelete(user, body.ids)
   } catch (error) {
-    console.error('Error in WarehouseIT bulk DELETE route:', error)
+    logger.error('Error in WarehouseIT bulk DELETE route:', error)
     return errorResponse('Internal server error')
   }
 }

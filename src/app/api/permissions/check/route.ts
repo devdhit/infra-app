@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse } from '@/lib/api-utils'
+import logger from '@/lib/logger'
 
 // Define the request body structure
 interface PermissionCheckRequest {
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_TTL) {
       // For debugging in development only
       if (process.env.NODE_ENV === 'development') {
-        console.log('Permission check result (from cache):', {
+        logger.debug('Permission check result (from cache):', {
           roleId,
           tenantId,
           resource,
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     
     // For debugging in development only
     if (process.env.NODE_ENV === 'development') {
-      console.log('Permission check result:', {
+      logger.debug('Permission check result:', {
         roleId,
         tenantId,
         resource,
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error checking permissions:', error);
+      logger.error('Error checking permissions:', error);
     }
     
     // Handle abort errors specifically

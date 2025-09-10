@@ -4,7 +4,49 @@ const next = require('next');
 const { join, resolve } = require('path');
 const { existsSync } = require('fs');
 
-// Helper function to get formatted timestamp
+// Import our new logger with fallback mechanism
+let logger;
+try {
+  // Try to load the logger module from dist first, then fallback to src
+  const distPath = process.env.NODE_ENV === 'production' 
+    ? '/opt/itams/dist' 
+    : resolve(__dirname, 'dist');
+  const distLoggerPath = join(distPath, 'lib', 'logger');
+  
+  if (existsSync(distLoggerPath + '.js') || existsSync(distLoggerPath)) {
+    logger = require(distLoggerPath);
+    console.log(`[INFO] [${new Date().toISOString()}] Loaded logger module from dist: ${distLoggerPath}`);
+  } else {
+    // Fallback to src directory
+    const srcLoggerPath = join(__dirname, 'src', 'lib', 'logger');
+    if (existsSync(srcLoggerPath + '.ts') || existsSync(srcLoggerPath)) {
+      logger = require(srcLoggerPath);
+      console.log(`[INFO] [${new Date().toISOString()}] Loaded logger module from src: ${srcLoggerPath}`);
+    } else {
+      // Fallback to basic console logging if logger module is not found
+      console.warn(`[WARN] [${new Date().toISOString()}] Logger module not found at ${distLoggerPath} or ${srcLoggerPath}, using basic console logging`);
+      logger = {
+        debug: (...args) => process.env.NODE_ENV === 'development' && console.log('[DEBUG]', ...args),
+        info: (...args) => process.env.NODE_ENV === 'development' && console.log('[INFO]', ...args),
+        warn: (...args) => console.warn('[WARN]', ...args),
+        error: (...args) => console.error('[ERROR]', ...args),
+        emojiLog: (emoji, ...args) => process.env.NODE_ENV === 'development' && console.log(emoji, ...args)
+      };
+    }
+  }
+} catch (error) {
+  console.error(`[ERROR] [${new Date().toISOString()}] Failed to load logger module: ${error.message}`);
+  // Fallback to basic console logging if there's an error
+  logger = {
+    debug: (...args) => process.env.NODE_ENV === 'development' && console.log('[DEBUG]', ...args),
+    info: (...args) => process.env.NODE_ENV === 'development' && console.log('[INFO]', ...args),
+    warn: (...args) => console.warn('[WARN]', ...args),
+    error: (...args) => console.error('[ERROR]', ...args),
+    emojiLog: (emoji, ...args) => process.env.NODE_ENV === 'development' && console.log(emoji, ...args)
+  };
+}
+
+// Helper function to get formatted timestamp (keeping for backward compatibility)
 function getTimestamp() {
     return new Date().toISOString();
 }
@@ -19,20 +61,20 @@ try {
   
   if (existsSync(distModulePath + '.js') || existsSync(distModulePath)) {
     ({ initializeSocketIO } = require(distModulePath));
-    console.log(`[${getTimestamp()}] 📦 Loaded realtime module from dist: ${distModulePath}`);
+    logger.emojiLog('📦', `Loaded realtime module from dist: ${distModulePath}`);
   } else {
     // Fallback to src directory
     const srcModulePath = join(__dirname, 'src', 'lib', 'realtime');
     if (existsSync(srcModulePath + '.ts') || existsSync(srcModulePath)) {
       ({ initializeSocketIO } = require(srcModulePath));
-      console.log(`[${getTimestamp()}] 📦 Loaded realtime module from src: ${srcModulePath}`);
+      logger.emojiLog('📦', `Loaded realtime module from src: ${srcModulePath}`);
     } else {
-      console.warn(`[${getTimestamp()}] ⚠️  Realtime module not found at ${distModulePath} or ${srcModulePath}, Socket.IO will not be available`);
+      logger.warn(`Realtime module not found at ${distModulePath} or ${srcModulePath}, Socket.IO will not be available`);
       initializeSocketIO = null;
     }
   }
 } catch (error) {
-  console.warn(`[${getTimestamp()}] ⚠️  Failed to load realtime module:`, error.message);
+  logger.warn(`Failed to load realtime module: ${error.message}`);
   initializeSocketIO = null;
 }
 
@@ -53,18 +95,18 @@ function registerShutdownHandlers(server) {
   
   // Handle uncaught exceptions and unhandled rejections
   process.on('uncaughtException', (err) => {
-    console.error(`[${getTimestamp()}] ❌ Uncaught Exception:`, err);
+    logger.error(`Uncaught Exception: ${err}`);
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    console.error(`[${getTimestamp()}] ❌ Unhandled Rejection at:`, promise, 'reason:', reason);
+    logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
   });
   
   // Graceful shutdown
   const shutdownHandler = () => {
-    console.log(`[${getTimestamp()}] 🛑 Shutdown signal received, shutting down gracefully`);
+    logger.info('Shutdown signal received, shutting down gracefully');
     server.close(() => {
-      console.log(`[${getTimestamp()}] 🔌 Server closed`);
+      logger.info('Server closed');
       process.exit(0);
     });
   };
@@ -89,32 +131,32 @@ app.prepare().then(() => {
   if (initializeSocketIO) {
     try {
       const io = initializeSocketIO(server);
-      console.log(`[${getTimestamp()}] 🔄 Socket.IO initialized successfully`);
+      logger.emojiLog('🔄', 'Socket.IO initialized successfully');
       
       // Add error handling for the Socket.IO server
       server.on('error', (error) => {
-        console.error(`[${getTimestamp()}] ❌ Server error:`, error);
+        logger.error(`Server error: ${error}`);
       });
       
       server.on('clientError', (error, socket) => {
-        console.error(`[${getTimestamp()}] ❌ Client error:`, error);
+        logger.error(`Client error: ${error}`);
         socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
       });
     } catch (error) {
-      console.error(`[${getTimestamp()}] ❌ Failed to initialize Socket.IO:`, error);
+      logger.error(`Failed to initialize Socket.IO: ${error}`);
     }
   } else {
-    console.log(`[${getTimestamp()}] ℹ️  Socket.IO not available (realtime module not loaded)`);
+    logger.info('Socket.IO not available (realtime module not loaded)');
   }
 
   const port = process.env.PORT || 3001;
   
   server.listen(port, (err) => {
     if (err) {
-      console.error(`[${getTimestamp()}] ❌ Error starting server:`, err);
+      logger.error(`Error starting server: ${err}`);
       process.exit(1);
     }
-    console.log(`[${getTimestamp()}] 🚀 Server ready at http://localhost:${port}`);
+    logger.emojiLog('🚀', `Server ready at http://localhost:${port}`);
   });
   
   // Register shutdown handlers

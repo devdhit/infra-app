@@ -10,6 +10,7 @@ import {
 } from '@/lib/excel';
 import { z } from 'zod';
 import { calculateOptimalBatchSize, processArrayInChunks } from '@/lib/performance';
+import logger from '@/lib/logger';
 
 // Define strong TypeScript types with Zod for request validation
 const exportRequestSchema = z.object({
@@ -258,7 +259,7 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
       }
     });
   } catch (error) {
-    console.error(`Error exporting ${params.type} assets:`, error);
+    logger.error(`Error exporting ${params.type} assets:`, error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

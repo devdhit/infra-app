@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { hasPermission } from '@/lib/permissions'
 import { getCurrentUser } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 // POST route to check permissions
 export async function POST(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     
     return Response.json({ hasPermission: permission })
   } catch (error) {
-    console.error('Error checking permissions:', error)
+    logger.error('Error checking permissions:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

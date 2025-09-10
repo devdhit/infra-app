@@ -6,6 +6,7 @@ import { Navigation } from './navigation'
 import { Header } from './header'
 import { useEffect } from 'react'
 import { navigationMonitor } from '@/lib/navigation-performance'
+import logger from '@/lib/logger';
 
 interface ProtectedLayoutProps {
   children: React.ReactNode
@@ -26,7 +27,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
       
       // Log slow navigations
       if (duration && duration > 1000) {
-        console.warn(`[PERFORMANCE] Slow navigation detected: ${pathname} took ${duration.toFixed(2)}ms`);
+        logger.warn(`[PERFORMANCE] Slow navigation detected: ${pathname} took ${duration.toFixed(2)}ms`);
       }
     }, 50); // Small delay to ensure rendering is complete
     

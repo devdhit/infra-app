@@ -8,6 +8,7 @@ import { getAssetTypes } from "@/config/asset-types";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentUser } from '@/hooks/useApi';
 import { Suspense } from "react";
+import logger from '@/lib/logger';
 
 export default function InternetAssetsPage() {
   const { t, loading } = useTranslation();
@@ -47,19 +48,19 @@ export default function InternetAssetsPage() {
     const checkPermissions = async () => {
       // Prevent multiple simultaneous permission checks
       if (isCheckingPermissions.current) {
-        console.log('Permission check already in progress, skipping');
+        logger.debug('Permission check already in progress, skipping');
         return;
       }
       
       try {
         isCheckingPermissions.current = true;
-        console.log('=== INTERNET ASSETS PERMISSION CHECKING STARTED ===');
-        console.log('User loading state:', isUserLoading);
-        console.log('Current user data:', currentUser);
+        logger.debug('=== INTERNET ASSETS PERMISSION CHECKING STARTED ===');
+        logger.debug('User loading state:', isUserLoading);
+        logger.debug('Current user data:', currentUser);
         
         // Only check permissions if user data is fully loaded
         if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          console.log('User data fully loaded, checking permissions for user:', {
+          logger.debug('User data fully loaded, checking permissions for user:', {
             email: currentUser.email,
             role: currentUser.role.name,
             roleId: currentUser.role.id,
@@ -67,7 +68,7 @@ export default function InternetAssetsPage() {
           });
           
           // Check all permissions in parallel for better performance
-          console.log('Starting parallel permission checks...');
+          logger.debug('Starting parallel permission checks...');
           const startTime = Date.now();
           const [
             viewPermission,
@@ -85,7 +86,7 @@ export default function InternetAssetsPage() {
           const endTime = Date.now();
           const duration = endTime - startTime;
           
-          console.log('Permission results:', { 
+          logger.debug('Permission results:', { 
             viewPermission, 
             createPermission, 
             editPermission, 
@@ -96,13 +97,13 @@ export default function InternetAssetsPage() {
           
           // Only update state if component is still mounted
           if (!isCancelledRef.current) {
-            console.log('Updating permission states...');
+            logger.debug('Updating permission states...');
             setCanView(viewPermission);
             setCanCreate(createPermission);
             setCanEdit(editPermission);
             setCanDelete(deletePermission);
             setCanBulkDelete(bulkDeletePermission);
-            console.log('Permission states updated:', {
+            logger.debug('Permission states updated:', {
               canView: viewPermission,
               canCreate: createPermission,
               canEdit: editPermission,
@@ -110,12 +111,12 @@ export default function InternetAssetsPage() {
               canBulkDelete: bulkDeletePermission
             });
           } else {
-            console.log('Component was unmounted, skipping state update');
+            logger.debug('Component was unmounted, skipping state update');
           }
         } else if (!isUserLoading && (!currentUser || !currentUser.role?.id || !currentUser.tenantId)) {
           // User data loaded but incomplete
-          console.log('User data loaded but incomplete, denying permissions');
-          console.log('Current user state:', { currentUser, hasRole: !!currentUser?.role?.id, hasTenant: !!currentUser?.tenantId });
+          logger.debug('User data loaded but incomplete, denying permissions');
+          logger.debug('Current user state:', { currentUser, hasRole: !!currentUser?.role?.id, hasTenant: !!currentUser?.tenantId });
           if (!isCancelledRef.current) {
             setCanView(false);
             setCanCreate(false);
@@ -124,11 +125,11 @@ export default function InternetAssetsPage() {
             setCanBulkDelete(false);
           }
         } else {
-          console.log('Still loading user data or user data not available yet');
+          logger.debug('Still loading user data or user data not available yet');
         }
         // If still loading, do nothing
       } catch (error) {
-        console.error('Error checking permissions:', error);
+        logger.error('Error checking permissions:', error);
         // Deny access if there's an error
         if (!isCancelledRef.current) {
           setCanView(false);
@@ -139,14 +140,14 @@ export default function InternetAssetsPage() {
         }
       } finally {
         isCheckingPermissions.current = false;
-        console.log('=== INTERNET ASSETS PERMISSION CHECKING FINISHED ===');
+        logger.debug('=== INTERNET ASSETS PERMISSION CHECKING FINISHED ===');
       }
     };
     
     checkPermissions();
     
     return () => {
-      console.log('Cleaning up permission checking');
+      logger.debug('Cleaning up permission checking');
       isCancelledRef.current = true;
       // Reset the permission checking flag when component unmounts
       isCheckingPermissions.current = false;
@@ -163,7 +164,7 @@ export default function InternetAssetsPage() {
 
   // Show loading state while checking permissions
   if (canView === null || isUserLoading || loading) {
-    console.log('Showing loading state:', { canView, isUserLoading, loading });
+    logger.debug('Showing loading state:', { canView, isUserLoading, loading });
     return (
       <div className="flex items-center justify-center h-52">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -173,8 +174,8 @@ export default function InternetAssetsPage() {
 
   // If user doesn't have view permission, show unauthorized message
   if (!canView) {
-    console.log('Showing unauthorized message. Permission state:', { canView, isUserLoading });
-    console.log('User data at time of denial:', currentUser);
+    logger.debug('Showing unauthorized message. Permission state:', { canView, isUserLoading });
+    logger.debug('User data at time of denial:', currentUser);
     return (
       <div className="flex items-center justify-center h-52">
         <div className="text-center">
@@ -196,6 +197,7 @@ export default function InternetAssetsPage() {
   return (
     <Suspense fallback={<AssetListSkeleton />}>
       <AssetList
+        key="internet" // Add key prop to ensure proper re-rendering when switching asset types
         assetType="internet"
         title={t('assets.internet.title') || "Internet"}
         columns={internetAssetType.columns}

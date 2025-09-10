@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback, memo } from 'react'
+import { useState, useMemo, useEffect, useCallback, memo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates'
@@ -56,6 +56,7 @@ import { useCustomFields } from "@/hooks/useApi";
 import { getModelType, isCustomField, getFieldValue } from "@/lib/custom-fields";
 import { debounce } from '@/lib/performance';
 import { formatDisplayDate } from "@/lib/utils";
+import logger from '@/lib/logger';
 
 // Import the new separate Excel dialogs
 import { ExcelImportDialog } from "./excel-import-dialog";
@@ -334,6 +335,7 @@ export function AssetList({
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Map assetType to modelType for custom fields
   const modelType = getModelType(assetType);
@@ -374,7 +376,7 @@ export function AssetList({
       const key = `columnVisibility_${assetType}`;
       localStorage.setItem(key, JSON.stringify(visibility));
     } catch (e) {
-      console.warn('Failed to save column visibility to localStorage:', e);
+      logger.warn('Failed to save column visibility to localStorage:', e);
     }
   }, [assetType]);
   
@@ -385,7 +387,7 @@ export function AssetList({
       const saved = localStorage.getItem(key);
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
-      console.warn('Failed to load column visibility from localStorage:', e);
+      logger.warn('Failed to load column visibility from localStorage:', e);
       return null;
     }
   }, [assetType]);
@@ -396,7 +398,7 @@ export function AssetList({
       const key = `columnOrder_${assetType}`;
       localStorage.setItem(key, JSON.stringify(order));
     } catch (e) {
-      console.warn('Failed to save column order to localStorage:', e);
+      logger.warn('Failed to save column order to localStorage:', e);
     }
   }, [assetType]);
   
@@ -407,7 +409,7 @@ export function AssetList({
       const saved = localStorage.getItem(key);
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
-      console.warn('Failed to load column order from localStorage:', e);
+      logger.warn('Failed to load column order from localStorage:', e);
       return null;
     }
   }, [assetType]);
@@ -461,14 +463,42 @@ export function AssetList({
       // Try to load saved column visibility from localStorage
       const savedVisibility = loadColumnVisibility();
       
+      // Always initialize with a proper visibility object
+      const initialVisibility: Record<string, boolean> = {};
+      const allColumnKeys = allColumns.map(column => column.key);
+      
       if (savedVisibility) {
-        // Use saved visibility if available
-        setColumnVisibility(savedVisibility);
+        // Use saved visibility if available, but ensure all current columns are included
+        // and remove any columns that no longer exist
+        let visibilityChanged = false;
+        
+        // Add any missing columns with default visibility
+        allColumns.forEach(column => {
+          if (!(column.key in savedVisibility)) {
+            initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
+            visibilityChanged = true;
+          } else {
+            initialVisibility[column.key] = savedVisibility[column.key];
+          }
+        });
+        
+        // Remove any columns that no longer exist
+        Object.keys(savedVisibility).forEach(key => {
+          if (!allColumnKeys.includes(key)) {
+            visibilityChanged = true;
+            // Don't add this key to initialVisibility (effectively removing it)
+          }
+        });
+        
+        setColumnVisibility(initialVisibility);
+        
+        // Save the updated visibility to localStorage if we made changes
+        if (visibilityChanged) {
+          saveColumnVisibility(initialVisibility);
+        }
       } else {
         // Fallback to default visibility logic
-        const initialVisibility: Record<string, boolean> = {};
         allColumns.forEach(column => {
-          // Show columns by default, unless they're in the default hidden list OR have hide: true property
           initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
         });
         setColumnVisibility(initialVisibility);
@@ -476,14 +506,14 @@ export function AssetList({
         saveColumnVisibility(initialVisibility);
       }
     }
-  }, [allColumns, customFieldsData, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility]);
+  }, [allColumns, customFieldsData, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility, assetType]);
 
   // Toggle column visibility and save to localStorage
   const toggleColumnVisibility = (columnKey: string) => {
     setColumnVisibility(prev => {
       const newVisibility = {
         ...prev,
-        [columnKey]: !prev[columnKey]
+        [columnKey]: !(prev[columnKey] === true) // Toggle the value, defaulting to true if undefined
       };
       saveColumnVisibility(newVisibility);
       return newVisibility;
@@ -526,15 +556,15 @@ export function AssetList({
       // Save the initial order to localStorage
       saveColumnOrder(defaultOrder);
     }
-  }, [allColumns, customFieldsData, loadColumnOrder, saveColumnOrder]);
-  
+  }, [allColumns, customFieldsData, loadColumnOrder, saveColumnOrder, assetType]);
+
   // Optimize memoization with proper dependencies
   const filteredColumns = useMemo(() => {
     // Create a more efficient filtering mechanism
     return allColumns.filter(column => {
-      // Only show columns that are explicitly set to visible
-      // If columnVisibility is empty, show all columns by default
-      return Object.keys(columnVisibility).length === 0 || columnVisibility[column.key] === true;
+      // If columnVisibility has an explicit false value, hide the column
+      // Otherwise, show the column (default to true if not set)
+      return columnVisibility[column.key] !== false;
     });
   }, [allColumns, columnVisibility]);
 
@@ -586,32 +616,94 @@ export function AssetList({
     refetchCustomFields();
   }, [assetType, refetchCustomFields]);
   
+  // Reset column visibility and order when assetType changes
+  useEffect(() => {
+    // Reset column visibility state when assetType changes
+    setColumnVisibility({});
+    setColumnOrder(columns.map(column => column.key));
+    
+    // Load saved column visibility for the new assetType
+    const savedVisibility = loadColumnVisibility();
+    if (savedVisibility) {
+      setColumnVisibility(savedVisibility);
+    }
+    // Note: We'll let the other useEffect handle the case where there's no saved data
+    // since it also handles customFieldsData loading
+    
+    // Load saved column order for the new assetType
+    const savedOrder = loadColumnOrder();
+    if (savedOrder && Array.isArray(savedOrder)) {
+      // Validate that saved order contains all current columns
+      const currentColumnKeys = new Set(columns.map(column => column.key));
+      const validSavedOrder = savedOrder.filter(key => currentColumnKeys.has(key));
+      
+      // Only use saved order if it contains all current columns
+      if (validSavedOrder.length === columns.length) {
+        setColumnOrder(validSavedOrder);
+      } else {
+        // Fallback to default order
+        setColumnOrder(columns.map(column => column.key));
+      }
+    } else {
+      // Fallback to default order
+      setColumnOrder(columns.map(column => column.key));
+    }
+  }, [assetType, columns, loadColumnVisibility, loadColumnOrder]);
+  
   // Re-initialize column visibility and order when custom fields data becomes available
   useEffect(() => {
     // Only re-initialize when custom fields data is loaded (not undefined) and we have all columns
     if (customFieldsData !== undefined && allColumns.length > 0) {
-      // Re-initialize column visibility if not already set or if it's empty
-      if (Object.keys(columnVisibility).length === 0) {
+      // Check if we need to update column visibility to include new custom fields
+      // or remove columns that no longer exist
+      const allColumnKeys = allColumns.map(column => column.key);
+      const currentVisibilityKeys = Object.keys(columnVisibility);
+      
+      // Check if we have the correct columns in visibility state
+      const hasAllColumns = allColumnKeys.every(key => currentVisibilityKeys.includes(key));
+      const hasOnlyValidColumns = currentVisibilityKeys.every(key => allColumnKeys.includes(key));
+      
+      // If we don't have all columns or have invalid columns, update the visibility state
+      if (!hasAllColumns || !hasOnlyValidColumns) {
         const savedVisibility = loadColumnVisibility();
+        const updatedVisibility: Record<string, boolean> = {};
+        let visibilityChanged = false;
         
         if (savedVisibility) {
-          // Use saved visibility if available
-          setColumnVisibility(savedVisibility);
-        } else {
-          // Fallback to default visibility logic
-          const initialVisibility: Record<string, boolean> = {};
+          // Use saved visibility but ensure consistency with current columns
           allColumns.forEach(column => {
-            // Show columns by default, unless they're in the default hidden list OR have hide: true property
-            initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
+            if (column.key in savedVisibility) {
+              updatedVisibility[column.key] = savedVisibility[column.key];
+            } else {
+              // Add missing column with default visibility
+              updatedVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
+              visibilityChanged = true;
+            }
           });
-          setColumnVisibility(initialVisibility);
-          // Save the initial visibility to localStorage
-          saveColumnVisibility(initialVisibility);
+          
+          // Remove columns that no longer exist
+          Object.keys(savedVisibility).forEach(key => {
+            if (!allColumnKeys.includes(key)) {
+              visibilityChanged = true;
+              // Don't add this key to updatedVisibility (effectively removing it)
+            }
+          });
+        } else {
+          // No saved visibility, use default visibility for all columns
+          allColumns.forEach(column => {
+            updatedVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
+          });
+          visibilityChanged = true;
+        }
+        
+        if (visibilityChanged || !hasAllColumns || !hasOnlyValidColumns) {
+          setColumnVisibility(updatedVisibility);
+          saveColumnVisibility(updatedVisibility);
         }
       }
       
       // Re-initialize column order if not already set or if it's empty
-      if (columnOrder.length === 0 || Object.keys(columnVisibility).length === 0) {
+      if (columnOrder.length === 0) {
         const savedOrder = loadColumnOrder();
         
         if (savedOrder && Array.isArray(savedOrder)) {
@@ -633,8 +725,8 @@ export function AssetList({
         saveColumnOrder(defaultOrder);
       }
     }
-  }, [customFieldsData, allColumns, columnVisibility, columnOrder, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility, loadColumnOrder, saveColumnOrder]);
-  
+  }, [customFieldsData, allColumns, columnVisibility, columnOrder, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility, loadColumnOrder, saveColumnOrder, assetType]);
+
   // Dialog states
   const [viewAsset, setViewAsset] = useState<Asset | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -655,8 +747,21 @@ export function AssetList({
     if (statusFilter) params.set("status", statusFilter);
     
     const newPath = `${window.location.pathname}?${params.toString()}`;
-    router.replace(newPath);
+    router.replace(newPath, { scroll: false }); // Prevent scrolling when updating URL
   }, [currentPage, search, statusFilter, router]);
+  
+  // Maintain focus on search input after URL updates
+  useEffect(() => {
+    // Only refocus if the search input is already focused
+    if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+      // Small delay to ensure the DOM has updated
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }, 0);
+    }
+  }, [currentPage, search, statusFilter]);
   
   // Query assets with current parameters
   // Optimize asset fetching with better caching and pagination
@@ -667,11 +772,11 @@ export function AssetList({
     status: statusFilter
   }, {
     // Optimize caching for better performance
-    staleTime: 60 * 1000, // Increased from 30 seconds to 1 minute
+    staleTime: search || statusFilter ? 0 : 60 * 1000, // No caching when searching or filtering
     gcTime: 10 * 60 * 1000, // Increased from 5 minutes to 10 minutes
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    refetchOnMount: false // Disable refetch on mount to reduce API calls
+    refetchOnMount: search || statusFilter ? 'always' : false // Always refetch when searching or filtering
   });
   
   // Memoize assets to prevent unnecessary re-renders
@@ -709,7 +814,7 @@ export function AssetList({
     () => debounce((value: string) => {
       setSearch(value);
       setIsSearching(true);
-    }, 50), // Reduced from 500ms to 300ms for more responsive feel
+    }, 300), // Use 300ms debounce for better user experience
     []
   );
   
@@ -721,21 +826,15 @@ export function AssetList({
       return;
     }
     
-    // Show loading indicator immediately for better UX
-    setIsSearching(true);
-    
-    // Trigger search immediately for the first character for better responsiveness
-    // But still use debounce for subsequent typing to reduce API calls
-    if (value.length === 1) {
+    // For very short search terms, update immediately for better responsiveness
+    if (value.length <= 2) {
       setSearch(value);
-    } else if (value.length > 1) {
+      setIsSearching(true);
+    } else {
       // Use debounce for longer search terms to reduce API calls
       debouncedSearch(value);
-    } else if (search !== '') {
-      // Clear search if user deletes to less than 1 character
-      setSearch('');
     }
-  }, [debouncedSearch, search]);
+  }, [debouncedSearch]);
   
   const handleStatusFilterChange = useCallback((status: string) => {
     setStatusFilter(status);
@@ -758,7 +857,7 @@ export function AssetList({
       setDeleteAssetId(null);
       refetch();
     } catch (error: any) {
-      console.error("Delete error:", error);
+      logger.error("Delete error:", error);
       const apiError = error as ApiError;
       let message = t('assets.delete.error', `Failed to delete {0}`, title);
       
@@ -795,7 +894,7 @@ export function AssetList({
       // Refetch the data to ensure UI updates
       await refetch();
     } catch (error: any) {
-      console.error("Bulk delete error:", error);
+      logger.error("Bulk delete error:", error);
       const apiError = error as ApiError;
       let message = t('assets.bulkDelete.error', `Failed to delete {0} assets`, title);
       
@@ -1131,6 +1230,7 @@ export function AssetList({
               <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
+                  ref={searchInputRef}
                   placeholder={t('common.search.placeholder', "Search assets...")}
                   value={search}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
@@ -1233,7 +1333,7 @@ export function AssetList({
               pagination={false}
               pageSize={10}
               onRowSelectionChange={handleRowSelectionChange}
-              loading={isLoading && (!data || assets.length === 0)}
+              loading={isLoading} // Show loading indicator when isLoading is true
               error={isError ? (error as ApiError).message : null}
               onRefresh={refetch}
               disableBuiltInFeatures={false} // Enable built-in features for sorting
