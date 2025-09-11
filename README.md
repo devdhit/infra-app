@@ -356,6 +356,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Migate prima
 npx prisma migrate reset --force
 npx prisma migrate status
+npx prisma migrate dev
 npx prisma migrate deploy
 npx prisma migrate resolve --rolled-back "20250904080237_add_internet_assets"
 npx prisma migrate dev --name add_custom_fields_index --create-only

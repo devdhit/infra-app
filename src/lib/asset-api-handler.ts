@@ -270,7 +270,7 @@ export class AssetApiHandler<T> {
   // Get all assets with pagination and filtering
   async getAll(
     user: User, 
-    queryParams: { page: number; limit: number; search: string; status: string }
+    queryParams: { page: number; limit: number; search: string | undefined; status: string | undefined }
   ) {
     try {
       // Check permissions
@@ -281,125 +281,179 @@ export class AssetApiHandler<T> {
 
       const { page, limit, search, status } = queryParams
 
-      const where: any = {
-        tenantId: user.tenantId
-      }
-
-      // Add search filter with optimized indexing
+      // For full-text search, we need to use raw SQL queries
       if (search && this.operations.searchFields) {
-        // Get indexed fields appropriate for this model
-        const modelAppropriateSearchFields = (field: any) => {
-          // Handle model-specific field availability
-          if (this.operations.modelName === 'Printer' && field === 'status') {
-            return false;
-          }
-          
-          // Handle License model which uses updateStatus instead of status
-          if (this.operations.modelName === 'License' && field === 'status') {
-            return false;
-          }
-          
-          // Map of indexed fields by model
-          const indexedFieldsByModel: Record<string, string[]> = {
-            'PC': ['userName', 'dept', 'status', 'cpuBarcode'],
-            'Laptop': ['userName', 'dept', 'status', 'barcode'],
-            'Printer': ['dept', 'barcode'],
-            'License': ['userName', 'dept', 'updateStatus', 'productKey'],
-            'WarehouseIT': ['status', 'barcode', 'sapCode'],
-            'Internet': ['userName', 'dept', 'status', 'ipAddress']  // Add indexed fields for Internet
-          };
-          
-          // Get indexed fields for this model
-          const modelIndexedFields = indexedFieldsByModel[this.operations.modelName] || ['status'];  // Changed default to 'status'
-          
-          return modelIndexedFields.includes(field as string);
+        // Use raw SQL for full-text search with search_vector
+        const offset = (page - 1) * limit;
+        const tableName = this.operations.modelName;
+        
+        // Map model names to actual table names
+        const tableNames: Record<string, string> = {
+          'PC': 'PC',
+          'Laptop': 'Laptop',
+          'Printer': 'Printer',
+          'License': 'License',
+          'WarehouseIT': 'WarehouseIT',
+          'Internet': 'Internet'
         };
         
-        // Use indexed fields for better performance
-        const indexedSearchFields = this.operations.searchFields.filter(modelAppropriateSearchFields);
+        const actualTableName = tableNames[tableName] || tableName;
         
-        // Create search conditions for standard fields
-        const standardFieldConditions = indexedSearchFields.map((field: any) => ({
-          [field]: { contains: search, mode: 'insensitive' }
-        }));
+        // Build the search query using websearch_to_tsquery for better search experience
+        const searchQuery = search.trim();
         
-        // For custom fields, we need to search each known custom field individually
-        // since Prisma's path: [] doesn't work for searching across all JSON fields
-        let customFieldConditions = [];
-        try {
-          // Get custom fields for this asset type and tenant
-          const customFields = await this.db.customField.findMany({
-            where: {
-              tenantId: user.tenantId,
-              modelType: this.operations.modelName
-            }
-          });
-          
-          // Create search conditions for each custom field
-          customFieldConditions = customFields.map(cf => ({
-            customFields: {
-              path: [cf.name],
-              string_contains: search
-            }
-          }));
-        } catch (error) {
-          console.warn('Failed to fetch custom fields for search, falling back to generic search:', error);
-          // Fallback to generic custom field search
-          customFieldConditions = [{
-            customFields: {
-              path: [],
-              string_contains: search
-            }
-          }];
-        }
-        
-        // Combine all search conditions
-        where.OR = [...standardFieldConditions, ...customFieldConditions];
-      }
-
-      // Add status filter based on model-specific status fields
-      if (status) {
-        if (this.operations.modelName === 'License') {
-          where.updateStatus = status; // License uses updateStatus instead of status
-        } else if (this.operations.modelName !== 'Printer') {
-          where.status = status; // Other models use status (except Printer which has no status)
-        }
-      }
-
-      // Optimize query by only selecting necessary fields
-      const selectFields = {
-        id: true,
-        createdAt: true,
-        updatedAt: true,
-        // Add other commonly used fields based on asset type
-        ...this.getSelectFieldsForAssetType()
-      };
-
-      const [assets, total] = await Promise.all([
-        (this.db as any)[this.operations.modelName].findMany({
-          where,
-          select: selectFields,
-          skip: (page - 1) * limit,
-          take: Math.min(limit, 100), // Limit maximum page size
-          orderBy: {
-            createdAt: 'desc'
+        // Status filter
+        let statusCondition = '';
+        let statusValue = '';
+        if (status) {
+          if (this.operations.modelName === 'License') {
+            statusCondition = `AND "updateStatus" = $3`;
+            statusValue = status;
+          } else if (this.operations.modelName !== 'Printer') {
+            statusCondition = `AND "status" = $3`;
+            statusValue = status;
           }
-        }),
-        (this.db as any)[this.operations.modelName].count({ where })
-      ])
-
-      return successResponse({
-        data: assets,
-        pagination: {
-          page,
-          limit,
-          total: total !== undefined ? total : 0,
-          pages: Math.ceil((total !== undefined ? total : 0) / limit)
         }
-      })
+        
+        // Get select fields for this asset type
+        const selectFields = this.getSelectFieldsForAssetType();
+        const fieldList = ['id', 'createdAt', 'updatedAt', ...Object.keys(selectFields)].map(field => `"${field}"`).join(', ');
+        
+        let assetsResult, countResult;
+        
+        if (statusValue) {
+          // With status filter - 6 parameters: tenantId, searchQuery, statusValue, limit, offset
+          const assetsQuery = `
+            SELECT ${fieldList},
+                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
+            FROM "${actualTableName}"
+            WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
+            ${statusCondition}
+            ORDER BY rank DESC, "createdAt" DESC
+            LIMIT $4 OFFSET $5
+          `;
+          
+          const countQuery = `
+            SELECT COUNT(*) as count
+            FROM "${actualTableName}"
+            WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
+            ${statusCondition}
+          `;
+          
+          [assetsResult, countResult] = await Promise.all([
+            this.db.$queryRawUnsafe(assetsQuery, user.tenantId, searchQuery, statusValue, limit, offset),
+            this.db.$queryRawUnsafe(countQuery, user.tenantId, searchQuery, statusValue)
+          ]);
+        } else {
+          // Without status filter - 5 parameters: tenantId, searchQuery, limit, offset
+          const assetsQuery = `
+            SELECT ${fieldList},
+                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
+            FROM "${actualTableName}"
+            WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
+            ORDER BY rank DESC, "createdAt" DESC
+            LIMIT $3 OFFSET $4
+          `;
+          
+          const countQuery = `
+            SELECT COUNT(*) as count
+            FROM "${actualTableName}"
+            WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
+          `;
+          
+          [assetsResult, countResult] = await Promise.all([
+            this.db.$queryRawUnsafe(assetsQuery, user.tenantId, searchQuery, limit, offset),
+            this.db.$queryRawUnsafe(countQuery, user.tenantId, searchQuery)
+          ]);
+        }
+        
+        // Remove rank from results before sending to client
+        const cleanAssetsResult = (assetsResult as any[]).map(asset => {
+          const { rank, ...cleanAsset } = asset;
+          return cleanAsset;
+        });
+        
+        const total = parseInt((countResult as any)[0].count, 10);
+        
+        return successResponse({
+          data: cleanAssetsResult,
+          pagination: {
+            page,
+            limit,
+            total,
+            pages: Math.ceil(total / limit)
+          }
+        });
+      } else {
+        // Standard query without search
+        const where: any = {
+          tenantId: user.tenantId
+        };
+
+        // Add status filter based on model-specific status fields
+        if (status) {
+          if (this.operations.modelName === 'License') {
+            where.updateStatus = status; // License uses updateStatus instead of status
+          } else if (this.operations.modelName !== 'Printer') {
+            where.status = status; // Other models use status (except Printer which has no status)
+          }
+        }
+
+        // Optimize query by only selecting necessary fields
+        const selectFields = {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          // Add other commonly used fields based on asset type
+          ...this.getSelectFieldsForAssetType()
+        };
+
+        const [assets, total] = await Promise.all([
+          (this.db as any)[this.operations.modelName].findMany({
+            where,
+            select: selectFields,
+            skip: (page - 1) * limit,
+            take: Math.min(limit, 100), // Limit maximum page size
+            orderBy: {
+              createdAt: 'desc'
+            }
+          }),
+          (this.db as any)[this.operations.modelName].count({ where })
+        ]);
+
+        return successResponse({
+          data: assets,
+          pagination: {
+            page,
+            limit,
+            total: total !== undefined ? total : 0,
+            pages: Math.ceil((total !== undefined ? total : 0) / limit)
+          }
+        });
+      }
     } catch (error) {
-      console.error(`Error fetching ${this.operations.modelName} assets:`, error)
-      return errorResponse('Failed to fetch assets. Please try again later.')
+      console.error(`Error fetching ${this.operations.modelName} assets:`, error);
+      return errorResponse('Failed to fetch assets. Please try again later.');
     }
   }
 
@@ -436,7 +490,7 @@ export class AssetApiHandler<T> {
 
       return successResponse(asset)
     } catch (error) {
-      console.error(`Error fetching ${this.operations.modelName} asset:`, error)
+      logger.error(`Error fetching ${this.operations.modelName} asset:`, error)
       return errorResponse('Failed to fetch asset details. Please try again later.')
     }
   }
@@ -587,7 +641,7 @@ export class AssetApiHandler<T> {
           tenantId: user.tenantId
         }, 'create')
       } catch (auditLogError) {
-        console.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError)
+        logger.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError)
         // Continue with the operation even if audit log creation fails
       }
 
@@ -595,13 +649,13 @@ export class AssetApiHandler<T> {
       try {
         emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'create', asset);
       } catch (emitError) {
-        console.error('Failed to emit real-time event:', emitError);
+        logger.error('Failed to emit real-time event:', emitError);
       }
 
       return successResponse(asset, 201)
     } catch (error: any) {
       if (process.env.NODE_ENV === 'development') {
-        console.error(`Error creating ${this.operations.modelName} asset:`, error);
+        logger.error(`Error creating ${this.operations.modelName} asset:`, error);
       }
       
       // Handle Prisma-specific errors
@@ -618,7 +672,7 @@ export class AssetApiHandler<T> {
   async update(user: User, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
+        logger.info(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
       }
       
       // Check permissions
@@ -637,7 +691,7 @@ export class AssetApiHandler<T> {
 
       if (!existingAsset) {
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Asset ${id} not found for tenant ${user.tenantId}`);
+          logger.info(`Asset ${id} not found for tenant ${user.tenantId}`);
         }
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
@@ -726,7 +780,7 @@ export class AssetApiHandler<T> {
       // Return validation errors if any
       if (Object.keys(validationErrors).length > 0) {
         if (process.env.NODE_ENV === 'development') {
-          console.log("Validation errors:", validationErrors);
+          logger.info("Validation errors:", validationErrors);
         }
         return validationErrorResponse(validationErrors)
       }
@@ -755,7 +809,7 @@ export class AssetApiHandler<T> {
 
         if (existingAssetWithUniqueField) {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`Asset with ${String(this.operations.uniqueField)} ${body[this.operations.uniqueField]} already exists`);
+            logger.info(`Asset with ${String(this.operations.uniqueField)} ${body[this.operations.uniqueField]} already exists`);
           }
           return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`);
         }
@@ -786,7 +840,7 @@ export class AssetApiHandler<T> {
           }, 'update')
         } catch (auditLogError) {
           if (process.env.NODE_ENV === 'development') {
-            console.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError);
+            logger.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError);
           }
           // Continue with the operation even if audit log creation fails
         }
@@ -805,7 +859,7 @@ export class AssetApiHandler<T> {
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
+        logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
 
       const updateData = Object.keys(body || {}).reduce((acc, key) => {

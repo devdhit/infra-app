@@ -54,7 +54,7 @@ import { ApiError } from "@/lib/api";
 import { InlineEditCell } from "./inline-edit-cell";
 import { useCustomFields } from "@/hooks/useApi";
 import { getModelType, isCustomField, getFieldValue } from "@/lib/custom-fields";
-import { debounce } from '@/lib/performance';
+
 import { formatDisplayDate } from "@/lib/utils";
 import logger from '@/lib/logger';
 
@@ -347,6 +347,7 @@ export function AssetList({
   
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [search, setSearch] = useState(initialSearch);
+  const [searchInputValue, setSearchInputValue] = useState(initialSearch); // Add this line
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -763,6 +764,11 @@ export function AssetList({
     }
   }, [currentPage, search, statusFilter]);
   
+  // Sync searchInputValue with search state when search changes externally
+  useEffect(() => {
+    setSearchInputValue(search);
+  }, [search]);
+  
   // Query assets with current parameters
   // Optimize asset fetching with better caching and pagination
   const { data, isLoading, isError, error, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
@@ -776,7 +782,10 @@ export function AssetList({
     gcTime: 10 * 60 * 1000, // Increased from 5 minutes to 10 minutes
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    refetchOnMount: search || statusFilter ? 'always' : false // Always refetch when searching or filtering
+    refetchOnMount: search || statusFilter ? 'always' : false, // Always refetch when searching or filtering
+    retry: false, // Disable retry to prevent unnecessary delays
+    refetchInterval: false, // Disable automatic refetching
+    refetchIntervalInBackground: false // Disable background refetching
   });
   
   // Memoize assets to prevent unnecessary re-renders
@@ -809,32 +818,57 @@ export function AssetList({
     }
   }, [isError, error, t]);
   
-  // Optimized search with instant feedback and smart debouncing
-  const debouncedSearch = useMemo(
-    () => debounce((value: string) => {
-      setSearch(value);
-      setIsSearching(true);
-    }, 300), // Use 300ms debounce for better user experience
-    []
-  );
+  // Optimized search with smart debouncing that waits for user to finish typing
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleSearchChange = useCallback((value: string) => {
-    // Immediately clear search if empty to avoid unnecessary API calls
+    // Update the input value immediately for UI responsiveness
+    setSearchInputValue(value);
+    
+    // Clear any existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // If value is empty, trigger search immediately
     if (value === '') {
-      setSearch('');
+      setSearch(value);
       setIsSearching(true);
       return;
     }
     
-    // For very short search terms, update immediately for better responsiveness
-    if (value.length <= 2) {
+    // Only set timeout for non-empty values
+    searchTimeoutRef.current = setTimeout(() => {
       setSearch(value);
       setIsSearching(true);
-    } else {
-      // Use debounce for longer search terms to reduce API calls
-      debouncedSearch(value);
+    }, 500); // Wait 500ms after user stops typing
+  }, []);
+  
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // Better focus management
+  const handleSearchFocus = useCallback(() => {
+    // Clear any pending searches when focusing
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
-  }, [debouncedSearch]);
+  }, []);
+  
+  const handleSearchBlur = useCallback(() => {
+    // Trigger search immediately when losing focus if there's a pending search
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+      setSearch(searchInputValue);
+      setIsSearching(true);
+    }
+  }, [searchInputValue]);
   
   const handleStatusFilterChange = useCallback((status: string) => {
     setStatusFilter(status);
@@ -1229,12 +1263,19 @@ export function AssetList({
             <div className="flex flex-col sm:flex-row gap-2 w-full">
               <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                {isSearching && (
+                  <div className="absolute right-2.5 top-2.5 h-4 w-4">
+                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground border-r-transparent animate-spin" />
+                  </div>
+                )}
                 <Input
                   ref={searchInputRef}
                   placeholder={t('common.search.placeholder', "Search assets...")}
-                  value={search}
+                  value={searchInputValue}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
-                  className="pl-8 w-full sm:w-64"
+                  onFocus={handleSearchFocus}
+                  onBlur={handleSearchBlur}
+                  className="pl-8 w-full sm:w-64 pr-8"
                   disabled={canView === false}
                 />
               </div>

@@ -79,12 +79,14 @@ model PC {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  search_vector     Unsupported("tsvector")?
 
   @@index([tenantId])
   @@index([status])
   @@index([userName])
   @@index([dept])
   @@index([createdAt])
+  @@index([search_vector], type: Gin)
 }
 
 model Laptop {
@@ -102,6 +104,7 @@ model Laptop {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
   @@index([status])
@@ -109,6 +112,7 @@ model Laptop {
   @@index([dept])
   @@index([createdAt])
   @@index([dateBuy])
+  @@index([search_vector], type: Gin)
 }
 
 model Printer {
@@ -127,11 +131,13 @@ model Printer {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
   @@index([dept])
   @@index([createdAt])
   @@index([barcode])
+  @@index([search_vector], type: Gin)
 }
 
 model License {
@@ -152,6 +158,7 @@ model License {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
   @@index([updateStatus])
@@ -159,6 +166,7 @@ model License {
   @@index([dept])
   @@index([createdAt])
   @@index([productType])
+  @@index([search_vector], type: Gin)
 }
 
 model WarehouseIT {
@@ -172,10 +180,12 @@ model WarehouseIT {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
   @@index([status])
   @@index([createdAt])
+  @@index([search_vector], type: Gin)
 }
 
 model Internet {
@@ -193,6 +203,7 @@ model Internet {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  search_vector  Unsupported("tsvector")?
 
   @@index([tenantId])
   @@index([status])
@@ -201,6 +212,7 @@ model Internet {
   @@index([email])
   @@index([ipAddress])
   @@index([createdAt])
+  @@index([search_vector], type: Gin)
 }
 
 model CustomField {

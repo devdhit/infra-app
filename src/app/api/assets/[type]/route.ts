@@ -9,8 +9,8 @@ import logger from '@/lib/logger';
 const assetQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().optional().default(10),
-  search: z.string().optional(),
-  status: z.string().optional(),
+  search: z.string().optional(), // Allow undefined/null
+  status: z.string().optional(), // Allow undefined/null
 });
 
 // Valid asset types
@@ -205,74 +205,140 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       switch (assetType) {
         case 'pc':
           baseQuery = `
-            SELECT id, "cpuBarcode", "pcName", "userName", "dept", "status", "updatedAt", "customFields"
+            SELECT id, "cpuBarcode", "pcName", "userName", "dept", "status", "updatedAt", "customFields",
+                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
             FROM "PC"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           countQuery = `
             SELECT COUNT(*) as count
             FROM "PC"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           break;
         case 'laptop':
           baseQuery = `
-            SELECT id, "barcode", "userName", "dept", "status", "updatedAt", "customFields"
+            SELECT id, "barcode", "userName", "dept", "status", "updatedAt", "customFields",
+                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
             FROM "Laptop"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           countQuery = `
             SELECT COUNT(*) as count
             FROM "Laptop"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           break;
         case 'printer':
           baseQuery = `
-            SELECT id, "barcode", "dept", "updatedAt", "customFields"
+            SELECT id, "barcode", "dept", "updatedAt", "customFields",
+                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
             FROM "Printer"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           countQuery = `
             SELECT COUNT(*) as count
             FROM "Printer"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           break;
         case 'license':
           baseQuery = `
-            SELECT id, "userName", "dept", "updateStatus", "updatedAt", "customFields"
+            SELECT id, "userName", "dept", "updateStatus", "updatedAt", "customFields",
+                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
             FROM "License"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           countQuery = `
             SELECT COUNT(*) as count
             FROM "License"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           break;
         case 'warehouse':
           baseQuery = `
-            SELECT id, "barcode", "sapCode", "status", "updatedAt", "customFields"
+            SELECT id, "barcode", "sapCode", "status", "updatedAt", "customFields",
+                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
             FROM "WarehouseIT"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           countQuery = `
             SELECT COUNT(*) as count
             FROM "WarehouseIT"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           break;
         case 'internet':
           baseQuery = `
-            SELECT id, "dept", "manager", "userName", "email", "ipAddress", "internetAccess", "status", "updatedAt", "customFields"
+            SELECT id, "dept", "manager", "userName", "email", "ipAddress", "internetAccess", "status", "updatedAt", "customFields",
+                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
             FROM "Internet"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           countQuery = `
             SELECT COUNT(*) as count
             FROM "Internet"
             WHERE "tenantId" = $1
+            AND (
+              "search_vector" @@ websearch_to_tsquery('english', $2)
+              OR
+              "search_vector" @@ plainto_tsquery('english', $2)
+            )
           `;
           break;
         default:
@@ -282,20 +348,8 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
           });
       }
       
-      // Add search conditions if search term is provided
-      if (search) {
-        // Add search parameter to args
-        queryArgs.push(`%${search}%`);
-        const searchParamIndex = queryArgs.length; // This will be $2
-        
-        // Add search conditions for standard fields
-        const searchConditions = searchFields.map((field) => `"${field}" ILIKE $${searchParamIndex}`).join(' OR ');
-        
-        // Add custom field search condition using jsonb_each_text for proper JSON value searching
-        baseQuery += ` AND (${searchConditions} OR EXISTS (SELECT 1 FROM jsonb_each_text("customFields") AS kv WHERE kv.value ILIKE $${searchParamIndex}))`;
-        
-        countQuery += ` AND (${searchConditions} OR EXISTS (SELECT 1 FROM jsonb_each_text("customFields") AS kv WHERE kv.value ILIKE $${searchParamIndex}))`;
-      }
+      // Add search parameter to args
+      queryArgs.push(search);
       
       // Add status filter if provided
       if (status) {
@@ -305,25 +359,13 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
         countQuery += ` AND "${statusField}" = $${queryArgs.length}`;
       }
       
-      // Add ordering and pagination
-      let orderByClause = '';
-      switch (assetType) {
-        case 'pc':
-        case 'laptop':
-        case 'printer':
-        case 'license':
-          orderByClause = ' ORDER BY "dept" ASC';
-          break;
-        case 'warehouse':
-        case 'internet':
-          orderByClause = ' ORDER BY "updatedAt" DESC';
-          break;
-      }
+      // Add ordering by rank and then by update time
+      baseQuery += ' ORDER BY rank DESC, "updatedAt" DESC';
       
       // Add limit and skip to the query string
       const limitIndex = queryArgs.length + 1;
       const offsetIndex = queryArgs.length + 2;
-      baseQuery += `${orderByClause} LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
+      baseQuery += ` LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
       
       // Add limit and skip parameters to queryArgs
       queryArgs.push(limit, skip);
@@ -344,6 +386,12 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       totalCount = countArray && countArray.length > 0 && countArray[0] ? 
         parseInt(countArray[0].count.toString()) : 0;
       assets = assetsResult as any[];
+      
+      // Remove rank from results before sending to client
+      assets = assets.map(asset => {
+        const { rank, ...cleanAsset } = asset;
+        return cleanAsset;
+      });
 
     } else {
       // For non-search queries, use the existing Prisma queries
