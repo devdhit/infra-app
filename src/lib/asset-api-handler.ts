@@ -12,8 +12,22 @@ import {
 import { emitAssetChange } from '@/lib/realtime'
 import logger from '@/lib/logger'
 import { hasPermission, ResourceType, PermissionAction } from './permissions'
-import { User } from '@/types/users'
-import { createAuditLog } from '@/lib/audit-logs'
+
+// Only import Redis cache on the server side
+let redisCache: any = null;
+let CACHE_PREFIXES: any = null;
+let CACHE_TTL: any = null;
+
+if (typeof window === 'undefined') {
+  try {
+    const redisModule = require('./redis-cache');
+    redisCache = redisModule.default;
+    CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
+    CACHE_TTL = redisModule.CACHE_TTL;
+  } catch (error) {
+    console.warn('Redis cache not available, using fallback:', error);
+  }
+}
 
 // Define the asset types based on the Prisma schema and route files
 interface PCAsset {
@@ -253,7 +267,7 @@ export class AssetApiHandler<T> {
   }
 
   // Check if user has permission for an action
-  private async checkPermission(user: User, action: PermissionAction) {
+  private async checkPermission(user: any, action: PermissionAction) {
     // Handle case where role is null
     if (!user.role?.id) {
       return false;
@@ -269,7 +283,7 @@ export class AssetApiHandler<T> {
 
   // Get all assets with pagination and filtering
   async getAll(
-    user: User, 
+    user: any, 
     queryParams: { page: number; limit: number; search: string | undefined; status: string | undefined }
   ) {
     try {
@@ -280,6 +294,30 @@ export class AssetApiHandler<T> {
       }
 
       const { page, limit, search, status } = queryParams
+
+      // Create cache key for this specific query if Redis is available
+      let cacheKey: string | null = null;
+      if (redisCache && CACHE_PREFIXES) {
+        cacheKey = redisCache.createKey(
+          CACHE_PREFIXES.ASSET_LIST,
+          this.operations.modelName,
+          user.tenantId,
+          page,
+          limit,
+          search || 'no-search',
+          status || 'no-status'
+        );
+      }
+
+      // Try to get cached result first if Redis is available
+      if (redisCache && cacheKey) {
+        // Fix the type issue by not using type arguments
+        const cachedResult = await redisCache.get(cacheKey);
+        if (cachedResult) {
+          logger.debug(`Cache hit for asset list: ${cacheKey}`);
+          return successResponse(cachedResult);
+        }
+      }
 
       // For full-text search, we need to use raw SQL queries
       if (search && this.operations.searchFields) {
@@ -395,7 +433,7 @@ export class AssetApiHandler<T> {
         
         const total = parseInt((countResult as any)[0].count, 10);
         
-        return successResponse({
+        const result = {
           data: cleanAssetsResult,
           pagination: {
             page,
@@ -403,7 +441,14 @@ export class AssetApiHandler<T> {
             total,
             pages: Math.ceil(total / limit)
           }
-        });
+        };
+        
+        // Cache the result if Redis is available
+        if (redisCache && cacheKey) {
+          await redisCache.set(cacheKey, result, CACHE_TTL ? CACHE_TTL.ASSET_LIST : 120);
+        }
+        
+        return successResponse(result);
       } else {
         // Standard query without search
         const where: any = {
@@ -441,7 +486,7 @@ export class AssetApiHandler<T> {
           (this.db as any)[this.operations.modelName].count({ where })
         ]);
 
-        return successResponse({
+        const result = {
           data: assets,
           pagination: {
             page,
@@ -449,7 +494,14 @@ export class AssetApiHandler<T> {
             total: total !== undefined ? total : 0,
             pages: Math.ceil((total !== undefined ? total : 0) / limit)
           }
-        });
+        };
+        
+        // Cache the result if Redis is available
+        if (redisCache && cacheKey) {
+          await redisCache.set(cacheKey, result, CACHE_TTL ? CACHE_TTL.ASSET_LIST : 120);
+        }
+
+        return successResponse(result);
       }
     } catch (error) {
       console.error(`Error fetching ${this.operations.modelName} assets:`, error);
@@ -458,12 +510,33 @@ export class AssetApiHandler<T> {
   }
 
   // Get a specific asset by ID
-  async getById(user: User, id: string) {
+  async getById(user: any, id: string) {
     try {
       // Check permissions
       const hasViewPermission = await this.checkPermission(user, 'view');
       if (!hasViewPermission) {
         return apiErrorResponse('Forbidden: Insufficient permissions to view asset', 403);
+      }
+
+      // Create cache key for this specific asset if Redis is available
+      let cacheKey: string | null = null;
+      if (redisCache && CACHE_PREFIXES) {
+        cacheKey = redisCache.createKey(
+          CACHE_PREFIXES.ASSETS,
+          this.operations.modelName,
+          user.tenantId,
+          id
+        );
+      }
+
+      // Try to get cached result first if Redis is available
+      if (redisCache && cacheKey) {
+        // Fix the type issue by not using type arguments
+        const cachedAsset = await redisCache.get(cacheKey);
+        if (cachedAsset) {
+          logger.debug(`Cache hit for asset: ${cacheKey}`);
+          return successResponse(cachedAsset);
+        }
       }
 
       // Get select fields for this asset type
@@ -488,6 +561,11 @@ export class AssetApiHandler<T> {
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
 
+      // Cache the asset if Redis is available
+      if (redisCache && cacheKey) {
+        await redisCache.set(cacheKey, asset, CACHE_TTL ? CACHE_TTL.ASSETS : 300);
+      }
+
       return successResponse(asset)
     } catch (error) {
       logger.error(`Error fetching ${this.operations.modelName} asset:`, error)
@@ -496,7 +574,7 @@ export class AssetApiHandler<T> {
   }
 
   // Create a new asset
-  async create(user: User, body: T & { customFields?: Record<string, any> }) {
+  async create(user: any, body: T & { customFields?: Record<string, any> }) {
     try {
       // Check permissions
       const hasCreatePermission = await this.checkPermission(user, 'create');
@@ -632,6 +710,8 @@ export class AssetApiHandler<T> {
 
       // Create audit log entry after asset creation
       try {
+        // Import audit logs dynamically to avoid circular dependencies
+        const { createAuditLog } = await import('./audit-logs');
         await createAuditLog(user.tenantId, {
           action: 'create',
           modelType: this.operations.modelName,
@@ -652,6 +732,12 @@ export class AssetApiHandler<T> {
         logger.error('Failed to emit real-time event:', emitError);
       }
 
+      // Invalidate cache for this asset type and tenant if Redis is available
+      if (redisCache) {
+        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:${this.operations.modelName}:${user.tenantId}:*`);
+        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
+      }
+
       return successResponse(asset, 201)
     } catch (error: any) {
       if (process.env.NODE_ENV === 'development') {
@@ -669,7 +755,7 @@ export class AssetApiHandler<T> {
   }
 
   // Update an existing asset
-  async update(user: User, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
+  async update(user: any, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
     try {
       if (process.env.NODE_ENV === 'development') {
         logger.info(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
@@ -830,6 +916,8 @@ export class AssetApiHandler<T> {
 
       if (Object.keys(changes).length > 0) {
         try {
+          // Import audit logs dynamically to avoid circular dependencies
+          const { createAuditLog } = await import('./audit-logs');
           await createAuditLog(user.tenantId, {
             action: 'update',
             modelType: this.operations.modelName,
@@ -900,6 +988,18 @@ export class AssetApiHandler<T> {
         logger.error('Failed to emit real-time event:', emitError);
       }
 
+      // Invalidate cache for this specific asset and asset lists if Redis is available
+      if (redisCache) {
+        const assetCacheKey = redisCache.createKey(
+          CACHE_PREFIXES.ASSETS,
+          this.operations.modelName,
+          user.tenantId,
+          id
+        );
+        await redisCache.del(assetCacheKey);
+        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
+      }
+
       return successResponse(asset)
     } catch (error: any) {
       if (error.code === 'P2025') {
@@ -920,7 +1020,7 @@ export class AssetApiHandler<T> {
   }
 
   // Delete an asset
-  async delete(user: User, id: string) {
+  async delete(user: any, id: string) {
     try {
       // Check permissions
       const hasDeletePermission = await this.checkPermission(user, 'delete');
@@ -942,6 +1042,8 @@ export class AssetApiHandler<T> {
 
       // Create audit log entry
       try {
+        // Import audit logs dynamically to avoid circular dependencies
+        const { createAuditLog } = await import('./audit-logs');
         await createAuditLog(user.tenantId, {
           action: 'delete',
           modelType: this.operations.modelName,
@@ -969,6 +1071,18 @@ export class AssetApiHandler<T> {
         logger.error('Failed to emit real-time event:', emitError);
       }
 
+      // Invalidate cache for this specific asset and asset lists if Redis is available
+      if (redisCache) {
+        const assetCacheKey = redisCache.createKey(
+          CACHE_PREFIXES.ASSETS,
+          this.operations.modelName,
+          user.tenantId,
+          id
+        );
+        await redisCache.del(assetCacheKey);
+        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
+      }
+
       return successResponse<null>(null, 204)
     } catch (error: any) {
       if (error.code === 'P2025') {
@@ -981,7 +1095,7 @@ export class AssetApiHandler<T> {
   }
 
   // Bulk delete assets with optimized batch processing
-  async bulkDelete(user: User, ids: string[]) {
+  async bulkDelete(user: any, ids: string[]) {
     try {
       // Check permissions
       const hasBulkDeletePermission = await this.checkPermission(user, 'bulkDelete');
@@ -1025,17 +1139,20 @@ export class AssetApiHandler<T> {
         // Create audit log entries for each asset in batch
         // Use Promise.all for parallel processing
         const auditLogPromises = existingAssets.map((asset: any) => 
-          createAuditLog(user.tenantId, {
-            action: 'delete',
-            modelType: this.operations.modelName,
-            recordId: asset.id,
-            changes: asset,
-            userId: user.id,
-            tenantId: user.tenantId
-          }, 'bulkDelete').catch((auditLogError: any) => {
-            logger.error(`Failed to create audit log for asset ${asset.id}:`, auditLogError);
-            // Continue with deletion even if audit log creation fails
-          })
+          // Import audit logs dynamically to avoid circular dependencies
+          import('./audit-logs').then(({ createAuditLog }) => 
+            createAuditLog(user.tenantId, {
+              action: 'delete',
+              modelType: this.operations.modelName,
+              recordId: asset.id,
+              changes: asset,
+              userId: user.id,
+              tenantId: user.tenantId
+            }, 'bulkDelete').catch((auditLogError: any) => {
+              logger.error(`Failed to create audit log for asset ${asset.id}:`, auditLogError);
+              // Continue with deletion even if audit log creation fails
+            })
+          )
         );
         
         // Wait for all audit log entries to be created
@@ -1057,6 +1174,8 @@ export class AssetApiHandler<T> {
 
       // Create audit log entry for the bulk delete operation itself
       try {
+        // Import audit logs dynamically to avoid circular dependencies
+        const { createAuditLog } = await import('./audit-logs');
         await createAuditLog(user.tenantId, {
           action: 'bulkDelete',
           modelType: this.operations.modelName,
@@ -1083,6 +1202,12 @@ export class AssetApiHandler<T> {
         if (process.env.NODE_ENV === 'development') {
           logger.error('Failed to emit real-time events:', emitError);
         }
+      }
+
+      // Invalidate cache for all assets of this type and tenant if Redis is available
+      if (redisCache) {
+        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:${this.operations.modelName}:${user.tenantId}:*`);
+        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
       }
 
       return successResponse<null>(null, 204)

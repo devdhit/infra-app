@@ -1,9 +1,23 @@
-// Only import and use PrismaClient on the server side
-import { db } from './db';
+// Only import and use PrismaClient and Redis on the server side
+let db: any = null;
+let redisCache: any = null;
+let CACHE_PREFIXES: any = null;
+let CACHE_TTL: any = null;
 
-// Simple in-memory cache for role permissions (in production, you might want to use Redis)
-const roleCache: Record<string, { role: any; timestamp: number }> = {};
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+if (typeof window === 'undefined') {
+  // Server-side only imports
+  const dbModule = require('./db');
+  db = dbModule.db;
+  
+  try {
+    const redisModule = require('./redis-cache');
+    redisCache = redisModule.default;
+    CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
+    CACHE_TTL = redisModule.CACHE_TTL;
+  } catch (error) {
+    console.warn('Redis cache not available, using fallback:', error);
+  }
+}
 
 // Define permission actions with more flexible typing
 export type PermissionAction = string;
@@ -87,6 +101,12 @@ export async function hasPermission(
     return false;
   }
   
+  // Check if required modules are available
+  if (!db) {
+    console.error('Database module not available');
+    return false;
+  }
+  
   try {
     // Validate inputs
     if (!roleId || !tenantId || !resource || !action) {
@@ -96,15 +116,23 @@ export async function hasPermission(
       return false;
     }
 
-    // Create cache key
-    const cacheKey = `${roleId}-${tenantId}`;
+    // Create cache key if Redis is available
+    let cacheKey: string | null = null;
+    if (redisCache && CACHE_PREFIXES) {
+      cacheKey = redisCache.createKey(CACHE_PREFIXES.PERMISSIONS, roleId, tenantId);
+    }
     
     // Check if we have a cached role that's still valid
     let role = null;
-    const cachedRole = roleCache[cacheKey];
-    if (cachedRole && (Date.now() - cachedRole.timestamp) < CACHE_TTL) {
-      role = cachedRole.role;
-    } else {
+    if (redisCache && cacheKey) {
+      // Fix the type issue by not using type arguments
+      const cachedRole = await redisCache.get(cacheKey);
+      if (cachedRole) {
+        role = cachedRole;
+      }
+    }
+    
+    if (!role) {
       // Get the role with its permissions
       role = await db.role.findUnique({
         where: {
@@ -113,12 +141,9 @@ export async function hasPermission(
         }
       });
       
-      // Cache the role
-      if (role) {
-        roleCache[cacheKey] = {
-          role,
-          timestamp: Date.now()
-        };
+      // Cache the role if Redis is available
+      if (redisCache && cacheKey && role) {
+        await redisCache.set(cacheKey, role, CACHE_TTL ? CACHE_TTL.PERMISSIONS : 300);
       }
     }
 
@@ -294,10 +319,15 @@ export async function createRoleWithDefaultPermissions(
     throw new Error('This function can only be called on the server side');
   }
   
+  // Check if required modules are available
+  if (!db) {
+    throw new Error('Database module not available');
+  }
+  
   try {
     const permissions = getDefaultPermissions(name);
     
-    return await db.role.create({
+    const role = await db.role.create({
       data: {
         name,
         description,
@@ -305,6 +335,13 @@ export async function createRoleWithDefaultPermissions(
         tenantId
       }
     });
+    
+    // Invalidate cache for this tenant's roles if Redis is available
+    if (redisCache) {
+      await redisCache.delByPattern(`${CACHE_PREFIXES.PERMISSIONS}:*:${tenantId}`);
+    }
+    
+    return role;
   } catch (error) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
@@ -376,19 +413,53 @@ export function removePermissions(
   return result;
 }
 
-// Cleanup function to clear expired cache entries periodically
-function cleanupRoleCache() {
-  const now = Date.now();
-  for (const key in roleCache) {
-    const cachedItem = roleCache[key];
-    if (cachedItem && (now - cachedItem.timestamp) >= CACHE_TTL) {
-      delete roleCache[key];
+/**
+ * Invalidate role cache for a specific tenant
+ * @param tenantId - Tenant ID
+ */
+export async function invalidateTenantRoleCache(tenantId: string): Promise<void> {
+  if (typeof window !== 'undefined') {
+    return;
+  }
+  
+  // Check if Redis is available
+  if (!redisCache) {
+    return;
+  }
+  
+  try {
+    await redisCache.delByPattern(`${CACHE_PREFIXES.PERMISSIONS}:*:${tenantId}`);
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error invalidating tenant role cache:', error);
     }
   }
 }
 
-// Run cache cleanup every 10 minutes
-setInterval(cleanupRoleCache, 10 * 60 * 1000);
+/**
+ * Invalidate role cache for a specific role
+ * @param roleId - Role ID
+ * @param tenantId - Tenant ID
+ */
+export async function invalidateRoleCache(roleId: string, tenantId: string): Promise<void> {
+  if (typeof window !== 'undefined') {
+    return;
+  }
+  
+  // Check if Redis is available
+  if (!redisCache || !CACHE_PREFIXES) {
+    return;
+  }
+  
+  try {
+    const cacheKey = redisCache.createKey(CACHE_PREFIXES.PERMISSIONS, roleId, tenantId);
+    await redisCache.del(cacheKey);
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error invalidating role cache:', error);
+    }
+  }
+}
 
 // Cleanup function to disconnect the database when needed
 export async function cleanupPermissions() {
