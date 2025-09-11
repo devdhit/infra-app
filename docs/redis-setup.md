@@ -1,113 +1,268 @@
-# Redis Setup for IT Asset Management System
+# Redis Setup and Troubleshooting Guide
 
-This document explains how to set up Redis caching for the ITAMS application to improve performance.
+## Overview
+
+This document explains how to set up and troubleshoot Redis for the IT Asset Management System (ITAMS).
 
 ## Prerequisites
 
-- Docker (recommended) or a Redis server installation
+- Ubuntu 20.04 or later
+- Node.js 18+
+- npm package manager
 
-## Setup Options
+## Installation
 
-### Option 1: Using Docker (Recommended)
+### Automatic Installation (Recommended)
 
-1. Make sure Docker Desktop is running
-2. Run the following command to start a Redis container:
-
-```bash
-docker run -d -p 6379:6379 --name redis-cache redis
-```
-
-3. Verify Redis is running:
+The setup script will automatically install Redis:
 
 ```bash
-docker ps
+sudo ./scripts/setup-ubuntu.sh
 ```
 
-You should see the redis-cache container in the list.
+### Manual Installation
 
-### Option 2: Using Redis on Windows
+If you need to install Redis manually:
 
-1. Download Redis for Windows from: https://github.com/microsoftarchive/redis/releases
-2. Extract and run `redis-server.exe`
-3. Redis will start on port 6379 by default
+```bash
+# Update package list
+sudo apt update
 
-### Option 3: Using Redis on Linux/macOS
+# Install Redis
+sudo apt install redis-server
 
-1. Install Redis using your package manager:
-   
-   **Ubuntu/Debian:**
-   ```bash
-   sudo apt update
-   sudo apt install redis-server
-   ```
+# Start Redis service
+sudo systemctl start redis-server
 
-   **macOS:**
-   ```bash
-   brew install redis
-   brew services start redis
-   ```
-
-2. Start Redis service if not automatically started
+# Enable Redis to start on boot
+sudo systemctl enable redis-server
+```
 
 ## Configuration
 
-1. Create a `.env` file in the project root based on `.env.example`:
+### Environment Variables
+
+The application expects the following environment variables:
+
+- `REDIS_URL`: Redis connection URL (default: `redis://localhost:6379`)
+
+These are automatically configured in the `ecosystem.config.js` file.
+
+### Verifying Redis Installation
+
+To verify Redis is running:
 
 ```bash
-cp .env.example .env
+# Check if Redis service is active
+sudo systemctl status redis-server
+
+# Test Redis connectivity
+redis-cli ping
 ```
 
-2. Update the Redis URL in your `.env` file if needed:
-
-```env
-REDIS_URL=redis://localhost:6379
-```
-
-## Cache Structure
-
-The application uses the following cache key structure:
-
-- `permissions:{roleId}:{tenantId}` - Role permissions
-- `assets:{modelType}:{tenantId}:{assetId}` - Individual assets
-- `asset_list:{modelType}:{tenantId}:{page}:{limit}:{search}:{status}` - Asset lists
-- `custom_fields:{tenantId}:{modelType}` - Custom fields for a model type
-
-## Cache TTL (Time To Live)
-
-- Assets: 5 minutes
-- Asset lists: 2 minutes
-- Permissions: 5 minutes
-- Custom fields: 10 minutes
-- Search results: 1 minute
-
-## Testing Redis Connection
-
-Run the test script to verify Redis is working:
-
-```bash
-npx tsx script/test-redis-cache.ts
-```
+You should see `PONG` as the response.
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Connection Refused**: Make sure Redis is running and accessible on port 6379
-2. **Permission Denied**: Check Redis configuration for binding to localhost
-3. **Docker Issues**: Ensure Docker Desktop is running properly
+1. **Redis not starting**
+   ```bash
+   # Check Redis service status
+   sudo systemctl status redis-server
+   
+   # Check Redis logs
+   sudo journalctl -u redis-server
+   
+   # Try to start Redis manually
+   sudo systemctl start redis-server
+   ```
 
-### Checking Redis Status
+2. **Connection refused errors**
+   ```bash
+   # Check if Redis is listening on the correct port
+   netstat -tlnp | grep 6379
+   
+   # Check Redis configuration
+   sudo nano /etc/redis/redis.conf
+   ```
+
+3. **Application not connecting to Redis**
+   ```bash
+   # Test Redis connection with the application's test script
+   npm run test:redis
+   
+   # Check application logs for Redis-related errors
+   pm2 logs itams
+   ```
+
+### Testing Redis Connectivity
+
+You can test Redis connectivity with the provided test script:
 
 ```bash
-# If using Docker
-docker ps | grep redis
-
-# If Redis CLI is available
-redis-cli ping
+npm run test:redis
 ```
 
-The response should be `PONG` if Redis is running correctly.
+This will:
+1. Connect to Redis using the configured URL
+2. Set a test key-value pair
+3. Retrieve the value
+4. Clean up and disconnect
 
-## Disabling Redis
+### Debugging Cache Issues
 
-If you want to disable Redis caching, simply remove or comment out the `REDIS_URL` from your `.env` file. The application will fall back to database queries only.
+To debug cache issues:
+
+1. **Enable verbose logging**
+   ```bash
+   # Set NODE_ENV to development for more detailed logs
+   export NODE_ENV=development
+   pm2 restart itams
+   ```
+
+2. **Check PM2 logs**
+   ```bash
+   pm2 logs itams
+   ```
+
+   Look for messages like:
+   - "Redis Client Connected"
+   - "Redis Client Ready"
+   - "Cache hit for key: ..."
+   - "Cache miss for key: ..."
+   - "Cache set for key: ..."
+
+3. **Manually inspect Redis**
+   ```bash
+   # Connect to Redis CLI
+   redis-cli
+   
+   # List all keys
+   KEYS *
+   
+   # Get a specific key
+   GET "asset_list:PC:tenant-123:1:10:search-term:active"
+   
+   # Exit
+   QUIT
+   ```
+
+## Performance Tuning
+
+### Memory Configuration
+
+Edit `/etc/redis/redis.conf` to adjust memory settings:
+
+```bash
+# Set maximum memory (example: 256MB)
+maxmemory 268435456
+
+# Set eviction policy
+maxmemory-policy allkeys-lru
+```
+
+### Persistence
+
+For production environments, consider enabling persistence:
+
+```bash
+# Enable RDB snapshots
+save 900 1
+save 300 10
+save 60 10000
+
+# Enable AOF
+appendonly yes
+```
+
+After making changes, restart Redis:
+```bash
+sudo systemctl restart redis-server
+```
+
+## Security
+
+### Password Protection
+
+To secure Redis with a password:
+
+1. Edit `/etc/redis/redis.conf`:
+   ```bash
+   requirepass your_secure_password
+   ```
+
+2. Update the application configuration in `ecosystem.config.js`:
+   ```javascript
+   env: {
+     REDIS_URL: 'redis://:your_secure_password@localhost:6379'
+   }
+   ```
+
+3. Restart Redis and the application:
+   ```bash
+   sudo systemctl restart redis-server
+   pm2 restart itams
+   ```
+
+## Monitoring
+
+### Built-in Monitoring
+
+The application logs Redis connection status and cache operations. Check the logs with:
+
+```bash
+pm2 logs itams
+```
+
+### External Monitoring
+
+For production environments, consider using:
+
+1. **Redis CLI monitoring**
+   ```bash
+   redis-cli monitor
+   ```
+
+2. **Redis statistics**
+   ```bash
+   redis-cli info
+   ```
+
+3. **Third-party monitoring tools** like RedisInsight or Datadog
+
+## Backup and Recovery
+
+### Backup
+
+To create a backup of Redis data:
+
+```bash
+redis-cli BGSAVE
+```
+
+The backup will be saved to the Redis data directory (usually `/var/lib/redis/dump.rdb`).
+
+### Recovery
+
+To restore from a backup:
+
+1. Stop Redis:
+   ```bash
+   sudo systemctl stop redis-server
+   ```
+
+2. Replace the dump file:
+   ```bash
+   sudo cp /path/to/backup/dump.rdb /var/lib/redis/dump.rdb
+   ```
+
+3. Set proper permissions:
+   ```bash
+   sudo chown redis:redis /var/lib/redis/dump.rdb
+   ```
+
+4. Start Redis:
+   ```bash
+   sudo systemctl start redis-server
+   ```

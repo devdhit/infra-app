@@ -13,6 +13,7 @@ A comprehensive IT asset management solution built with modern web technologies.
 - [API Documentation](#api-documentation)
 - [Excel Export Functionality](#excel-export-functionality)
 - [Role-Based Access Control](#role-based-access-control)
+- [Caching with Redis](#caching-with-redis)
 - [Deployment](#deployment)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
@@ -86,6 +87,7 @@ The IT Asset Management System (ITAMS) is a comprehensive solution for organizat
 - **Prisma ORM** - Database toolkit and ORM
 - **PostgreSQL 17** - Relational database
 - **Axios** - HTTP client
+- **Redis** - Caching layer for improved performance
 
 ### Development & Deployment
 - **Node.js** - JavaScript runtime
@@ -131,6 +133,7 @@ The IT Asset Management System (ITAMS) is a comprehensive solution for organizat
 
 - Node.js 18+ installed
 - PostgreSQL 17 installed
+- Redis server installed
 - npm or yarn package manager
 
 ### Steps
@@ -151,6 +154,7 @@ The IT Asset Management System (ITAMS) is a comprehensive solution for organizat
    ```env
    DATABASE_URL="postgresql://postgres:Abcd_2025@localhost:5432/infrasys_db?schema=public"
    JWT_SECRET="your-secret-key"
+   REDIS_URL="redis://localhost:6379"
    ```
 
 4. **Set up the database**
@@ -159,12 +163,17 @@ The IT Asset Management System (ITAMS) is a comprehensive solution for organizat
    npx prisma generate
    ```
 
-5. **Start the development server**
+5. **Start Redis server**
+   ```bash
+   sudo systemctl start redis-server
+   ```
+
+6. **Start the development server**
    ```bash
    npm run dev
    ```
 
-6. **Access the application**
+7. **Access the application**
    Open your browser and navigate to `http://localhost:3000`
 
 ## Database Schema
@@ -259,6 +268,36 @@ The RBAC system is implemented through:
 
 For detailed implementation information, see `docs/role-based-access-control.md`.
 
+## Caching with Redis
+
+The ITAMS uses Redis as a caching layer to improve performance and reduce database load.
+
+### Cache Implementation
+
+- **Asset Lists**: Cached with 2-minute TTL for frequently accessed asset lists
+- **Individual Assets**: Cached with 5-minute TTL for detailed asset views
+- **Permissions**: Cached with 5-minute TTL for role-based access control
+- **Custom Fields**: Cached with 10-minute TTL for tenant-specific configurations
+
+### Cache Invalidation
+
+The system automatically invalidates cache entries when:
+- Assets are created, updated, or deleted
+- Permissions are modified
+- Custom fields are updated
+
+### Redis Setup
+
+For detailed Redis setup and troubleshooting information, see `docs/redis-setup.md`.
+
+### Testing Redis Connectivity
+
+You can test Redis connectivity with the provided test script:
+
+```bash
+npm run test:redis
+```
+
 ## Deployment
 
 ### Production Build
@@ -282,6 +321,7 @@ Ensure the following environment variables are set in production:
 ```env
 DATABASE_URL="your-production-database-url"
 JWT_SECRET="your-production-secret"
+REDIS_URL="redis://localhost:6379"
 NODE_ENV="production"
 ```
 

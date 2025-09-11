@@ -13,7 +13,9 @@
     "seed": "tsx prisma/seed.ts",
     "test": "jest",
     "build:optimized": "next build && next export",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "postinstall": "npm run build:server",
+    "test:redis": "node scripts/test-redis.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

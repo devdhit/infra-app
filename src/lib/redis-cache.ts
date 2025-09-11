@@ -34,6 +34,7 @@ type RedisClientType = {
 class RedisCache {
   private client: RedisClientType | null = null;
   private isConnected = false;
+  private isConnecting = false;
 
   constructor() {
     // Only initialize Redis on the server side
@@ -52,6 +53,8 @@ class RedisCache {
         logger.info('Redis cache disabled - REDIS_URL not set');
         return;
       }
+
+      logger.info(`Initializing Redis cache with URL: ${process.env.REDIS_URL}`);
 
       // Dynamic import to avoid bundling Redis client in client-side code
       const { createClient } = await import('redis');
@@ -98,6 +101,40 @@ class RedisCache {
   }
 
   /**
+   * Ensure Redis connection is established
+   */
+  private async ensureConnection(): Promise<boolean> {
+    // If already connected, return true
+    if (this.isConnected && this.client) {
+      return true;
+    }
+
+    // If already connecting, wait a bit and check again
+    if (this.isConnecting) {
+      // Wait up to 5 seconds for connection to be established
+      for (let i = 0; i < 50; i++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (this.isConnected) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // If not connected and not connecting, try to initialize
+    this.isConnecting = true;
+    try {
+      await this.initializeClient();
+      this.isConnecting = false;
+      return this.isConnected;
+    } catch (error) {
+      logger.error('Failed to establish Redis connection:', error);
+      this.isConnecting = false;
+      return false;
+    }
+  }
+
+  /**
    * Check if Redis is connected and ready
    */
   public isReady(): boolean {
@@ -119,6 +156,11 @@ class RedisCache {
       return null;
     }
     
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      return null;
+    }
+
     if (!this.isReady()) {
       return null;
     }
@@ -126,9 +168,11 @@ class RedisCache {
     try {
       const value = await this.client!.get(key);
       if (value === null) {
+        logger.debug(`Cache miss for key: ${key}`);
         return null;
       }
       
+      logger.debug(`Cache hit for key: ${key}`);
       return JSON.parse(value) as T;
     } catch (error) {
       logger.error(`Error getting cache key ${key}:`, error);
@@ -148,6 +192,11 @@ class RedisCache {
       return false;
     }
     
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      return false;
+    }
+
     if (!this.isReady()) {
       return false;
     }
@@ -159,6 +208,7 @@ class RedisCache {
       } else {
         await this.client!.set(key, serializedValue);
       }
+      logger.debug(`Cache set for key: ${key}`);
       return true;
     } catch (error) {
       logger.error(`Error setting cache key ${key}:`, error);
@@ -176,12 +226,18 @@ class RedisCache {
       return false;
     }
     
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      return false;
+    }
+
     if (!this.isReady()) {
       return false;
     }
 
     try {
       await this.client!.del(key);
+      logger.debug(`Cache deleted for key: ${key}`);
       return true;
     } catch (error) {
       logger.error(`Error deleting cache key ${key}:`, error);
@@ -199,6 +255,11 @@ class RedisCache {
       return 0;
     }
     
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      return 0;
+    }
+
     if (!this.isReady()) {
       return 0;
     }
@@ -208,6 +269,7 @@ class RedisCache {
       if (keys.length > 0) {
         // Fix: spread the keys array as individual arguments
         await this.client!.del(...keys);
+        logger.debug(`Cache deleted ${keys.length} keys by pattern: ${pattern}`);
       }
       return keys.length;
     } catch (error) {
@@ -234,12 +296,18 @@ class RedisCache {
       return false;
     }
     
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      return false;
+    }
+
     if (!this.isReady()) {
       return false;
     }
 
     try {
       await this.client!.flushAll();
+      logger.info('Cache flushed successfully');
       return true;
     } catch (error) {
       logger.error('Error flushing all cache:', error);
