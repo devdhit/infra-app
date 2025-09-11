@@ -1,6 +1,6 @@
 /**
  * Environment-aware logging utility
- * Only logs in development environment unless it's an error
+ * Logs info, warnings, and errors in production, debug only in development
  */
 
 // Helper function to get formatted timestamp
@@ -21,8 +21,8 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
  * @param optionalParams Additional parameters to log
  */
 function log(level: LogLevel, message: any, ...optionalParams: any[]) {
-  // In production, only log errors and warnings
-  if (!isDevelopment && level !== 'error' && level !== 'warn' && level !== 'info') {
+  // In production, only log info, warnings, and errors (not debug)
+  if (!isDevelopment && level === 'debug') {
     return;
   }
 
@@ -74,7 +74,7 @@ export function error(message: any, ...optionalParams: any[]) {
 }
 
 /**
- * Log with emoji prefix for better visual identification (only in development)
+ * Log with emoji prefix for better visual identification
  */
 export function emojiLog(emoji: string, message: any, ...optionalParams: any[]) {
   if (isDevelopment) {
