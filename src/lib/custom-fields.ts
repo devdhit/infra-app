@@ -11,7 +11,8 @@ export const getModelType = (assetType: string): string => {
     laptop: "Laptop",
     printer: "Printer",
     license: "License",
-    warehouse: "WarehouseIT"
+    warehouse: "WarehouseIT",
+    internet: "Internet"
   };
   
   return modelTypeMap[assetType] || assetType;
@@ -98,4 +99,83 @@ export const createUpdateData = (
     // For standard fields, send the field directly
     return { [fieldName]: value };
   }
+};
+
+// Conditional imports for server-side only functionality
+let redisCache: any = null;
+let CACHE_PREFIXES: any = null;
+let CACHE_TTL: any = null;
+let db: any = null;
+
+// Only import and use Redis cache on the server side
+if (typeof window === 'undefined') {
+  try {
+    // Server-side only imports
+    const redisModule = require('./redis-cache');
+    redisCache = redisModule.default;
+    CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
+    CACHE_TTL = redisModule.CACHE_TTL;
+    
+    const dbModule = require('./db');
+    db = dbModule.db;
+  } catch (error) {
+    console.warn('Server-side modules not available:', error);
+  }
+}
+
+/**
+ * Get custom fields for a specific tenant and model type with caching
+ * @param tenantId - The tenant ID
+ * @param modelType - The model type (e.g., "PC", "Laptop")
+ * @returns Array of custom fields
+ */
+export const getCustomFieldsForModel = async (tenantId: string, modelType: string) => {
+  // Check if we're on the server side and have the required modules
+  if (typeof window !== 'undefined' || !redisCache || !db) {
+    // This should never be called on the client side, but we need to provide a fallback
+    console.warn('getCustomFieldsForModel called on client side or missing modules');
+    return [];
+  }
+  
+  // Create cache key
+  const cacheKey = redisCache.createKey(CACHE_PREFIXES.CUSTOM_FIELDS, tenantId, modelType);
+  
+  // Try to get from cache first
+  const cachedFields = await redisCache.get(cacheKey);
+  if (cachedFields) {
+    return cachedFields;
+  }
+  
+  // Fetch from database if not in cache
+  const customFields = await db.customField.findMany({
+    where: {
+      tenantId,
+      modelType
+    },
+    orderBy: {
+      createdAt: 'asc'
+    }
+  });
+  
+  // Cache the result
+  await redisCache.set(cacheKey, customFields, CACHE_TTL.CUSTOM_FIELDS);
+  
+  return customFields;
+};
+
+/**
+ * Invalidate custom fields cache for a tenant and model type
+ * @param tenantId - The tenant ID
+ * @param modelType - The model type (e.g., "PC", "Laptop")
+ */
+export const invalidateCustomFieldsCache = async (tenantId: string, modelType: string) => {
+  // Check if we're on the server side and have the required modules
+  if (typeof window !== 'undefined' || !redisCache) {
+    // This should never be called on the client side, but we need to provide a fallback
+    console.warn('invalidateCustomFieldsCache called on client side or missing modules');
+    return;
+  }
+  
+  const cacheKey = redisCache.createKey(CACHE_PREFIXES.CUSTOM_FIELDS, tenantId, modelType);
+  await redisCache.del(cacheKey);
 };

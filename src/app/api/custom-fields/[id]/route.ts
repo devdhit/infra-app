@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import logger from '@/lib/logger'
+import { successResponse, errorResponse, notFoundResponse, badRequestResponse, conflictResponse } from '@/lib/api-utils'
+import { invalidateCustomFieldsCache } from '@/lib/custom-fields'
 
 // GET /api/custom-fields/[id] - Get a specific custom field
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -25,22 +27,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!customField) {
-      return new Response(JSON.stringify({ error: 'Custom field not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('Custom field not found')
     }
 
-    return new Response(JSON.stringify(customField), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return successResponse(customField)
   } catch (error) {
     logger.error('Error fetching custom field:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }
 
@@ -69,22 +62,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingCustomField) {
-      return new Response(JSON.stringify({ error: 'Custom field not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('Custom field not found')
     }
 
     // Validate field name format if provided
     if (body.name) {
       const fieldNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/
       if (!fieldNameRegex.test(body.name)) {
-        return new Response(JSON.stringify({ 
-          error: 'Field name must start with a letter or underscore and contain only letters, numbers, and underscores' 
-        }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        })
+        return badRequestResponse('Field name must start with a letter or underscore and contain only letters, numbers, and underscores')
       }
     }
 
@@ -92,12 +77,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.type) {
       const validTypes = ['text', 'number', 'date', 'boolean', 'select', 'textarea']
       if (!validTypes.includes(body.type)) {
-        return new Response(JSON.stringify({ 
-          error: `Invalid field type. Must be one of: ${validTypes.join(', ')}` 
-        }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        })
+        return badRequestResponse(`Invalid field type. Must be one of: ${validTypes.join(', ')}`)
       }
     }
 
@@ -113,12 +93,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
 
       if (duplicateField) {
-        return new Response(JSON.stringify({ 
-          error: `A custom field with name "${body.name}" already exists for ${existingCustomField.modelType}` 
-        }), {
-          status: 409,
-          headers: { 'Content-Type': 'application/json' }
-        })
+        return conflictResponse(`A custom field with name "${body.name}" already exists for ${existingCustomField.modelType}`)
       }
     }
 
@@ -135,23 +110,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     })
 
-    return new Response(JSON.stringify(customField), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    // Invalidate cache for this model type
+    await invalidateCustomFieldsCache(user.tenantId, existingCustomField.modelType)
+
+    return successResponse(customField)
   } catch (error: any) {
     if (error.code === 'P2025') {
-      return new Response(JSON.stringify({ error: 'Custom field not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('Custom field not found')
     }
     
     logger.error('Error updating custom field:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }
 
@@ -178,10 +147,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     })
 
     if (!existingCustomField) {
-      return new Response(JSON.stringify({ error: 'Custom field not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('Custom field not found')
     }
 
     await db.customField.delete({
@@ -191,21 +157,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       }
     })
 
-    return new Response(null, {
-      status: 204
-    })
+    // Invalidate cache for this model type
+    await invalidateCustomFieldsCache(user.tenantId, existingCustomField.modelType)
+
+    return successResponse(null, 204)
   } catch (error: any) {
     if (error.code === 'P2025') {
-      return new Response(JSON.stringify({ error: 'Custom field not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return notFoundResponse('Custom field not found')
     }
     
     logger.error('Error deleting custom field:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Internal server error')
   }
 }
