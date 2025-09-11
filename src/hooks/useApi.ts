@@ -91,6 +91,7 @@ export function useApiDeleteWithId<T>(url: string, options = {}) {
 // Asset-specific hooks
 export function useAssets<T>(assetType: string, params: Record<string, any> = {}, options: ApiQueryOptions<T> = {}) {
   const queryString = new URLSearchParams(params).toString()
+  // Use the specific asset type routes that use the optimized search implementation
   const url = `/assets/${assetType}${queryString ? `?${queryString}` : ''}`
   
   // Convert params object to a string for the query key to ensure it's serializable

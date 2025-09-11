@@ -87,7 +87,7 @@ export function getQueryParams(request: NextRequest) {
   return {
     page: parseInt(searchParams.get('page') || '1'),
     limit: parseInt(searchParams.get('limit') || '10'),
-    search: searchParams.get('search') || '',
-    status: searchParams.get('status') || ''
+    search: searchParams.get('search') || undefined, // Use undefined instead of empty string
+    status: searchParams.get('status') || undefined  // Use undefined instead of empty string
   }
 }
