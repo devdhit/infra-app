@@ -20,7 +20,6 @@ import {
   Shield,
   FileText,
   Palette,
-  Bell,
   Database,
   AppWindow,
   ShieldAlert
@@ -95,12 +94,6 @@ const navigationItems: NavigationItem[] = [
         nameKey: "settings.appearance.title", 
         href: "/settings/appearance", 
         icon: Palette,
-        requiredPermission: { resource: 'settings', action: 'view' }
-      },
-      { 
-        nameKey: "settings.notifications.title", 
-        href: "/settings/notifications", 
-        icon: Bell,
         requiredPermission: { resource: 'settings', action: 'view' }
       },
       { 
