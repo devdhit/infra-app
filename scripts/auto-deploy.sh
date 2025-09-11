@@ -6,9 +6,9 @@
 # Configuration
 REPO_URL="https://github.com/ddthien-coder/infra-app"
 DEPLOY_BRANCH="deploy"
-LOCAL_REPO_DIR="/opt/itams"
+LOCAL_REPO_DIR="${ITAMS_PATH:-/opt/itams}"
 LOG_FILE="/var/log/itams-auto-deploy.log"
-LAST_COMMIT_FILE="/opt/itams/.last_commit"
+LAST_COMMIT_FILE="$LOCAL_REPO_DIR/.last_commit"
 LOCK_FILE="/var/run/itams-auto-deploy.lock"
 
 # Logging function
@@ -57,6 +57,21 @@ log "Starting auto-deployment check..."
 # Create log directory if it doesn't exist
 mkdir -p $(dirname $LOG_FILE)
 
+# Create logs directory in the app directory
+mkdir -p $LOCAL_REPO_DIR/logs
+
+# Check if Redis is installed and running
+if ! command -v redis-server &> /dev/null; then
+    log "Redis is not installed. Installing Redis..."
+    apt update && apt install -y redis-server || error_exit "Failed to install Redis"
+fi
+
+# Start Redis if not running
+if ! systemctl is-active --quiet redis-server; then
+    log "Starting Redis server..."
+    systemctl start redis-server || error_exit "Failed to start Redis server"
+fi
+
 # Check if local repository exists
 if [ ! -d "$LOCAL_REPO_DIR" ]; then
     log "Local repository directory does not exist. Cloning repository..."
@@ -97,7 +112,7 @@ if [ ! -d "$LOCAL_REPO_DIR" ]; then
     
     # Start the application with PM2
     log "Starting application with PM2..."
-    pm2 start $LOCAL_REPO_DIR/ecosystem.config.js || error_exit "Failed to start application with PM2"
+    ITAMS_PATH=$LOCAL_REPO_DIR REDIS_URL=redis://localhost:6379 pm2 start $LOCAL_REPO_DIR/ecosystem.config.js || error_exit "Failed to start application with PM2"
     
     log "Initial deployment completed successfully!"
 else
@@ -169,7 +184,11 @@ else
         
         # Restart the application with PM2
         log "Restarting application with PM2..."
-        pm2 restart itams || error_exit "Failed to restart application with PM2"
+        ITAMS_PATH=$LOCAL_REPO_DIR REDIS_URL=redis://localhost:6379 pm2 restart itams || {
+            log "Failed to restart application. Trying to start fresh..."
+            pm2 delete itams 2>/dev/null || true
+            ITAMS_PATH=$LOCAL_REPO_DIR REDIS_URL=redis://localhost:6379 pm2 start $LOCAL_REPO_DIR/ecosystem.config.js || error_exit "Failed to start application with PM2"
+        }
         
         log "Deployment completed successfully!"
         

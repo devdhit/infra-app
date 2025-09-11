@@ -9,7 +9,7 @@ let logger;
 try {
   // Try to load the logger module from dist first, then fallback to src
   const distPath = process.env.NODE_ENV === 'production' 
-    ? '/opt/itams/dist' 
+    ? process.env.ITAMS_DIST_PATH || '/opt/itams/dist' 
     : resolve(__dirname, 'dist');
   const distLoggerPath = join(distPath, 'lib', 'logger');
   
@@ -55,7 +55,7 @@ let initializeSocketIO;
 try {
   // Try to load the realtime module from dist first, then fallback to src
   const distPath = process.env.NODE_ENV === 'production' 
-    ? '/opt/itams/dist' 
+    ? process.env.ITAMS_DIST_PATH || '/opt/itams/dist' 
     : resolve(__dirname, 'dist');
   const distModulePath = join(distPath, 'lib', 'realtime');
   
@@ -135,12 +135,22 @@ app.prepare().then(() => {
       
       // Add error handling for the Socket.IO server
       server.on('error', (error) => {
-        logger.error(`Server error: ${error}`);
+        // Handle EPIPE errors specifically
+        if (error.code === 'EPIPE') {
+          logger.warn('EPIPE error caught - client likely disconnected abruptly');
+        } else {
+          logger.error(`Server error: ${error}`);
+        }
       });
       
       server.on('clientError', (error, socket) => {
-        logger.error(`Client error: ${error}`);
-        socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+        // Handle EPIPE errors specifically
+        if (error.code === 'EPIPE') {
+          logger.warn('EPIPE error on client connection - client likely disconnected abruptly');
+        } else {
+          logger.error(`Client error: ${error}`);
+          socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+        }
       });
     } catch (error) {
       logger.error(`Failed to initialize Socket.IO: ${error}`);

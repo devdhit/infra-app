@@ -1,21 +1,19 @@
 [Unit]
-Description=IT Asset Management System (ITAMS)
+Description=IT Asset Management System
 After=network.target
 
 [Service]
-Type=simple
+Type=forking
 User=www-data
 WorkingDirectory=/opt/itams
-Environment=NODE_ENV=production
-Environment=PORT=3000
-Environment=DATABASE_URL=postgresql://itams_user:Abcd_2025@localhost:5432/itams_db?schema=public
-Environment=JWT_SECRET=itams-infra-system-production-security-key
-ExecStart=/usr/bin/node /opt/itams/node_modules/next/dist/bin/next start
+ExecStart=/usr/local/bin/pm2 start /opt/itams/ecosystem.config.js
+ExecReload=/usr/local/bin/pm2 reload itams
+ExecStop=/usr/local/bin/pm2 stop itams
 Restart=always
 RestartSec=10
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=itams
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+Environment=ITAMS_PATH=/opt/itams
 
 [Install]
 WantedBy=multi-user.target

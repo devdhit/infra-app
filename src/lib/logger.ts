@@ -22,7 +22,7 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
  */
 function log(level: LogLevel, message: any, ...optionalParams: any[]) {
   // In production, only log errors and warnings
-  if (!isDevelopment && level !== 'error' && level !== 'warn') {
+  if (!isDevelopment && level !== 'error' && level !== 'warn' && level !== 'info') {
     return;
   }
 
@@ -31,6 +31,8 @@ function log(level: LogLevel, message: any, ...optionalParams: any[]) {
   
   switch (level) {
     case 'debug':
+      console.log(formattedMessage, ...optionalParams);
+      break;
     case 'info':
       console.log(formattedMessage, ...optionalParams);
       break;
@@ -51,7 +53,7 @@ export function debug(message: any, ...optionalParams: any[]) {
 }
 
 /**
- * Log info messages (only in development)
+ * Log info messages (in both development and production)
  */
 export function info(message: any, ...optionalParams: any[]) {
   log('info', message, ...optionalParams);
@@ -77,6 +79,9 @@ export function error(message: any, ...optionalParams: any[]) {
 export function emojiLog(emoji: string, message: any, ...optionalParams: any[]) {
   if (isDevelopment) {
     console.log(`[${getTimestamp()}] ${emoji} ${message}`, ...optionalParams);
+  } else {
+    // In production, still log but without emoji
+    info(`${emoji} ${message}`, ...optionalParams);
   }
 }
 
