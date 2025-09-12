@@ -300,6 +300,14 @@ export function AssetList({
   // Real-time updates
   const { subscribeToUpdates } = useRealtimeUpdates();
   
+  // Fetch assets with current parameters
+  const { data: assetsData, isLoading: assetsLoading, error: assetsApiError, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
+    page: currentPage,
+    limit: 20,
+    search,
+    status: statusFilter
+  });
+  
   // Subscribe to real-time updates
   useEffect(() => {
     const unsubscribe = subscribeToUpdates(assetType, () => {
@@ -312,15 +320,7 @@ export function AssetList({
         unsubscribe();
       }
     };
-  }, [subscribeToUpdates, assetType]);
-  
-  // Fetch assets with current parameters
-  const { data: assetsData, isLoading: assetsLoading, error: assetsApiError, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
-    page: currentPage,
-    limit: 20,
-    search,
-    status: statusFilter
-  });
+  }, [subscribeToUpdates, assetType, refetch]);
   
   // Update state when assets data changes
   useEffect(() => {
@@ -568,7 +568,7 @@ export function AssetList({
         }
       }, 0);
     }
-  }, [currentPage, search, statusFilter]);
+  }, [currentPage, search, statusFilter, searchInputRef]);
   
   // Sync searchInputValue with search state when search changes externally
   useEffect(() => {

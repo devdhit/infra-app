@@ -740,7 +740,8 @@ export function useCurrentUser() {
   const hasToken = typeof window !== 'undefined' && 
     (localStorage.getItem('auth-token') || api.getToken());
   
-  return useApiCall<User>('/auth/me', { enabled: !!hasToken })
+  // Ensure we only enable the query if we have a token
+  return useApiCall<User>('/auth/me', { enabled: !!hasToken && hasToken.length > 0 })
 }
 
 // Custom Fields hooks

@@ -47,9 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Only update state if we've finished checking local storage
     if (!isCheckingAuth) {
-      if (status === 'success' && user) {
+      // If we have user data, we're authenticated
+      if (user) {
         setIsAuthenticated(true);
-      } else if (status === 'error') {
+      } else if (error) {
         // Only clear token if it's actually invalid (401)
         if (error && 'status' in error && error.status === 401) {
           setIsAuthenticated(false);
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [user, status, error, isCheckingAuth, router]);
+  }, [user, error, isCheckingAuth, router]);
 
   // Handle redirects based on auth state
   useEffect(() => {
