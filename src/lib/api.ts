@@ -35,6 +35,14 @@ const apiClient: AxiosInstance = axios.create({
   },
 })
 
+// Initialize token from localStorage if available
+if (typeof window !== 'undefined') {
+  const token = localStorage.getItem('auth-token')
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  }
+}
+
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -64,11 +72,16 @@ apiClient.interceptors.response.use(
     // Handle common error responses
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 401) {
-        // Clear token and redirect to login if unauthorized
+        // Only clear token and redirect to login if we're not already on the login page
+        // and if we're in the browser environment
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth-token');
-          // Only redirect if we're not already on the login page
+          // Check if we're not already on the login page
           if (window.location.pathname !== '/auth/login') {
+            // Clear the token
+            localStorage.removeItem('auth-token');
+            // Clear the token from the API client
+            delete apiClient.defaults.headers.common['Authorization'];
+            // Redirect to login
             window.location.href = '/auth/login';
           }
         }

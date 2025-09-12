@@ -4,9 +4,10 @@ import { useCurrentUser } from '@/hooks/useApi'
 import { usePathname, useRouter } from 'next/navigation'
 import { Navigation } from './navigation'
 import { Header } from './header'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { navigationMonitor } from '@/lib/navigation-performance'
 import logger from '@/lib/logger';
+import { api } from '@/lib/api'; // Import the api client
 
 interface ProtectedLayoutProps {
   children: React.ReactNode
@@ -16,6 +17,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { data: user, isLoading, error } = useCurrentUser()
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
   // Monitor navigation performance
   useEffect(() => {
@@ -40,6 +42,33 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     return () => {};
   }, [pathname]);
 
+  // Handle authentication state - initialize token from localStorage
+  useEffect(() => {
+    // Initialize token from localStorage when component mounts
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth-token');
+      if (token) {
+        api.setToken(token); // Set token in API client
+      }
+    }
+    
+    // Check if we're still in the initial loading phase
+    const hasToken = typeof window !== 'undefined' && 
+      (localStorage.getItem('auth-token') || api.getToken());
+    
+    // If there's no token, we're not checking auth
+    if (!hasToken) {
+      setIsCheckingAuth(false);
+      return;
+    }
+    
+    // If we have user data or an error, we're done checking auth
+    if (user !== null || error) {
+      setIsCheckingAuth(false);
+    }
+    // Otherwise, we're still checking auth (user is null and no error yet)
+  }, [user, error]);
+
   // Handle token expiration
   useEffect(() => {
     // If we get a 401 error, redirect to login
@@ -54,10 +83,11 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   // Handle authentication redirect
   useEffect(() => {
     // If not authenticated or there's an error, redirect to login
-    if ((!user || error) && !isLoading) {
+    // But only after we've finished checking auth
+    if (!isCheckingAuth && (!user || error) && !isLoading) {
       router.push('/auth/login');
     }
-  }, [user, error, isLoading, router]);
+  }, [user, error, isLoading, isCheckingAuth, router]);
 
   // For auth routes, don't show the navigation layout
   if (pathname.startsWith('/auth/')) {
@@ -65,7 +95,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   }
 
   // Show loading state while checking auth
-  if (isLoading) {
+  if (isCheckingAuth || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
