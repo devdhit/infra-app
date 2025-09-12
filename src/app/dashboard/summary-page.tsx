@@ -214,11 +214,11 @@ export default function DashboardSummaryPage() {
           <p className="text-muted-foreground">{t('dashboard.welcome')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="rounded-lg">
+          <Button variant="outline" size="sm" className="rounded-lg w-full sm:w-auto">
             <TrendingUp className="h-4 w-4 mr-2" />
             {t('common.export')}
           </Button>
-          <Button size="sm" className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-700 dark:hover:from-blue-700 dark:hover:to-indigo-800">
+          <Button size="sm" className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-700 dark:hover:from-blue-700 dark:hover:to-indigo-800 w-full sm:w-auto">
             <Settings className="h-4 w-4 mr-2" />
             {t('settings.configure')}
           </Button>
@@ -226,7 +226,7 @@ export default function DashboardSummaryPage() {
       </div>
 
       {/* Asset Type Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         {assetTypeData.map((asset, index) => (
           <SummaryCard 
             key={index}
@@ -239,7 +239,7 @@ export default function DashboardSummaryPage() {
       </div>
 
       {/* PC Component Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {pcComponentData.map((component, index) => (
           <SummaryCard 
             key={index}
@@ -252,7 +252,7 @@ export default function DashboardSummaryPage() {
       </div>
 
       {/* License Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
         {licenseStatisticsData.map((stat, index) => (
           <SummaryCard 
             key={`license-stat-${index}`}
@@ -271,7 +271,7 @@ export default function DashboardSummaryPage() {
           description={t('dashboard.licenseProductTypeDistribution') || 'Distribution of license product types'}
           icon={Key}
         >
-          <div className="h-64">
+          <div className="h-64 md:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={productTypeData}
@@ -314,7 +314,7 @@ export default function DashboardSummaryPage() {
       {pcCustomFields.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.pc.title')}</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {pcCustomFields.map((field, index) => {
               const chartData = prepareCustomFieldChartData(field.name, 'PC')
               const key = `PC_${field.name}`
@@ -374,7 +374,7 @@ export default function DashboardSummaryPage() {
       {laptopCustomFields.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.laptop.title')}</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {laptopCustomFields.map((field, index) => {
               const chartData = prepareCustomFieldChartData(field.name, 'Laptop')
               const key = `Laptop_${field.name}`
@@ -434,7 +434,7 @@ export default function DashboardSummaryPage() {
       {printerCustomFields.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.printer.title')}</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {printerCustomFields.map((field, index) => {
               const chartData = prepareCustomFieldChartData(field.name, 'Printer')
               const key = `Printer_${field.name}`
@@ -494,7 +494,7 @@ export default function DashboardSummaryPage() {
       {licenseCustomFields.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.license.title')}</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {licenseCustomFields.map((field, index) => {
               const chartData = prepareCustomFieldChartData(field.name, 'License')
               const key = `License_${field.name}`
@@ -554,7 +554,7 @@ export default function DashboardSummaryPage() {
       {warehouseCustomFields.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.warehouse.title')}</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {warehouseCustomFields.map((field, index) => {
               const chartData = prepareCustomFieldChartData(field.name, 'WarehouseIT')
               const key = `WarehouseIT_${field.name}`
@@ -614,7 +614,7 @@ export default function DashboardSummaryPage() {
       {internetCustomFields.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('dashboard.customFieldStatistics')} - {t('assets.internet.title')}</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {internetCustomFields.map((field, index) => {
               const chartData = prepareCustomFieldChartData(field.name, 'Internet')
               const key = `Internet_${field.name}`

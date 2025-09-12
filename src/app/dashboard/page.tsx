@@ -1,5 +1,5 @@
-import DashboardSummaryPage from './summary-page';
+import EnhancedDashboard from '@/components/dashboard/enhanced-dashboard';
 
 export default function DashboardPage() {
-  return <DashboardSummaryPage />;
+  return <EnhancedDashboard />;
 }

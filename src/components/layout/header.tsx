@@ -37,24 +37,36 @@ export function Header() {
   useEffect(() => {
     const loadApplicationName = async () => {
       try {
-        const settings = await getApplicationSettings();
-        setShortName(settings.shortName);
+        // Only run on client side
+        if (typeof window !== 'undefined') {
+          const settings = await getApplicationSettings();
+          setShortName(settings.shortName);
+        }
       } catch (error) {
         logger.error('Failed to load application name:', error);
       }
     };
 
-    loadApplicationName();
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      loadApplicationName();
+    }
 
     // Listen for application name updates
     const handleApplicationNameUpdate = (event: CustomEvent) => {
       setShortName(event.detail.shortName);
     };
 
-    window.addEventListener('applicationNameUpdated', handleApplicationNameUpdate as EventListener);
+    // Only add event listener on client side
+    if (typeof window !== 'undefined') {
+      window.addEventListener('applicationNameUpdated', handleApplicationNameUpdate as EventListener);
+    }
     
     return () => {
-      window.removeEventListener('applicationNameUpdated', handleApplicationNameUpdate as EventListener);
+      // Only remove event listener on client side
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('applicationNameUpdated', handleApplicationNameUpdate as EventListener);
+      }
     };
   }, []);
   

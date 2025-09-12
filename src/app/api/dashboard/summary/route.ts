@@ -4,15 +4,50 @@ import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import logger from '@/lib/logger'
 
+// Add better error handling utility
+function createErrorResponse(message: string, status: number = 500, details?: any) {
+  const errorResponse = {
+    error: message,
+    status,
+    timestamp: new Date().toISOString(),
+    ...(details && { details })
+  };
+  
+  return new Response(JSON.stringify(errorResponse), {
+    status,
+    headers: { 
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store'
+    }
+  });
+}
+
+// Add success response utility
+function createSuccessResponse(data: any, status: number = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 
+      'Content-Type': 'application/json',
+      // Add caching headers for better performance
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=30',
+      // Add CORS headers for better security
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  });
+}
+
+// Simple in-memory cache for dashboard data
+const dashboardCache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_DURATION = 60 * 1000 // 60 seconds
+
 // GET /api/dashboard/summary - Get dashboard summary statistics by asset type with optimized performance
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return createErrorResponse('Unauthorized', 401);
     }
 
     // Check if user has permission to view assets dashboard
@@ -24,10 +59,17 @@ export async function GET(request: NextRequest) {
     )
     
     if (!hasViewPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return createErrorResponse('Forbidden: Insufficient permissions', 403);
+    }
+
+    // Check cache first
+    const cacheKey = `${user.tenantId}-dashboard-summary`
+    const cached = dashboardCache.get(cacheKey)
+    const now = Date.now()
+    
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      // Return cached data
+      return createSuccessResponse(cached.data);
     }
 
     // Get PC summary data: total counts for CPU, Monitor, UPS
@@ -35,73 +77,97 @@ export async function GET(request: NextRequest) {
       by: ['cpuBarcode', 'monitorBarcode', 'upsBarcode'],
       where: { tenantId: user.tenantId },
       _count: true
-    })
+    }).catch(error => {
+      logger.error('Error fetching PC summary data:', error);
+      throw new Error('Failed to fetch PC data');
+    });
 
     // Calculate total quantities for PC components (only totals, not per code)
     const totalPcs = await db.pC.count({
       where: { tenantId: user.tenantId }
-    })
+    }).catch(error => {
+      logger.error('Error counting PCs:', error);
+      throw new Error('Failed to count PCs');
+    });
     
     // Count only non-null and non-'N/A' values
     const totalCpus = pcSummary.filter((pc: any) => 
       pc.cpuBarcode && 
       pc.cpuBarcode !== 'N/A' && 
       String(pc.cpuBarcode).trim() !== ''
-    ).length
+    ).length;
     
     const totalMonitors = pcSummary.filter((pc: any) => 
       pc.monitorBarcode && 
       pc.monitorBarcode !== 'N/A' && 
       String(pc.monitorBarcode).trim() !== ''
-    ).length
+    ).length;
     
     const totalUps = pcSummary.filter((pc: any) => 
       pc.upsBarcode && 
       pc.upsBarcode !== 'N/A' && 
       String(pc.upsBarcode).trim() !== ''
-    ).length
+    ).length;
 
     // Get Laptop summary data: total by status, by model, and custom-fields fields
     const laptopSummary = await db.laptop.groupBy({
       by: ['status', 'model'],
       where: { tenantId: user.tenantId },
       _count: true
-    })
+    }).catch(error => {
+      logger.error('Error fetching laptop summary data:', error);
+      throw new Error('Failed to fetch laptop data');
+    });
 
     // Get Printer summary data: total by color, Model, by Location, and custom-fields fields
     const printerSummary = await db.printer.groupBy({
       by: ['color', 'model', 'location'],
       where: { tenantId: user.tenantId },
       _count: true
-    })
+    }).catch(error => {
+      logger.error('Error fetching printer summary data:', error);
+      throw new Error('Failed to fetch printer data');
+    });
 
     // Get License summary data: total Software Name Product Type License Key and custom-fields fields
     const licenseSummary = await db.license.groupBy({
       by: ['productType', 'productKey'],
       where: { tenantId: user.tenantId },
       _count: true
-    })
+    }).catch(error => {
+      logger.error('Error fetching license summary data:', error);
+      throw new Error('Failed to fetch license data');
+    });
 
     // Get WarehouseIT summary data: total by barcode, sapCode, status
     const warehouseITSummary = await db.warehouseIT.groupBy({
       by: ['barcode', 'sapCode', 'status'],
       where: { tenantId: user.tenantId },
       _count: true
-    })
+    }).catch(error => {
+      logger.error('Error fetching warehouse IT summary data:', error);
+      throw new Error('Failed to fetch warehouse IT data');
+    });
 
     // Get Internet summary data: total by department, manager, status
     const internetSummary = await db.internet.groupBy({
       by: ['dept', 'manager', 'status'],
       where: { tenantId: user.tenantId },
       _count: true
-    })
+    }).catch(error => {
+      logger.error('Error fetching internet summary data:', error);
+      throw new Error('Failed to fetch internet data');
+    });
 
     // Get custom fields for all asset types
     const customFields = await db.customField.findMany({
       where: {
         tenantId: user.tenantId
       }
-    })
+    }).catch(error => {
+      logger.error('Error fetching custom fields:', error);
+      throw new Error('Failed to fetch custom fields');
+    });
 
     // Get all assets to calculate custom field statistics with optimized queries
     // Only fetch customFields column to reduce data transfer
@@ -109,28 +175,46 @@ export async function GET(request: NextRequest) {
       db.pC.findMany({
         where: { tenantId: user.tenantId },
         select: { customFields: true }
+      }).catch(error => {
+        logger.error('Error fetching PCs for custom field stats:', error);
+        throw new Error('Failed to fetch PCs for custom field statistics');
       }),
       db.laptop.findMany({
         where: { tenantId: user.tenantId },
         select: { customFields: true }
+      }).catch(error => {
+        logger.error('Error fetching laptops for custom field stats:', error);
+        throw new Error('Failed to fetch laptops for custom field statistics');
       }),
       db.printer.findMany({
         where: { tenantId: user.tenantId },
         select: { customFields: true }
+      }).catch(error => {
+        logger.error('Error fetching printers for custom field stats:', error);
+        throw new Error('Failed to fetch printers for custom field statistics');
       }),
       db.license.findMany({
         where: { tenantId: user.tenantId },
         select: { customFields: true }
+      }).catch(error => {
+        logger.error('Error fetching licenses for custom field stats:', error);
+        throw new Error('Failed to fetch licenses for custom field statistics');
       }),
       db.warehouseIT.findMany({
         where: { tenantId: user.tenantId },
         select: { customFields: true }
+      }).catch(error => {
+        logger.error('Error fetching warehouse items for custom field stats:', error);
+        throw new Error('Failed to fetch warehouse items for custom field statistics');
       }),
       db.internet.findMany({
         where: { tenantId: user.tenantId },
         select: { customFields: true }
+      }).catch(error => {
+        logger.error('Error fetching internet items for custom field stats:', error);
+        throw new Error('Failed to fetch internet items for custom field statistics');
       })
-    ])
+    ]);
 
     // Calculate custom field statistics
     const customFieldStats: Record<string, { count: number, values: Record<string, number> }> = {}
@@ -226,19 +310,35 @@ export async function GET(request: NextRequest) {
       customFieldStats
     }
 
-    return new Response(JSON.stringify(responseData), {
-      status: 200,
-      headers: { 
-        'Content-Type': 'application/json',
-        // Add caching headers for better performance
-        'Cache-Control': 'public, max-age=60, stale-while-revalidate=30'
-      }
+    // Cache the response data
+    dashboardCache.set(cacheKey, {
+      data: responseData,
+      timestamp: now
     })
-  } catch (error) {
+
+    return createSuccessResponse(responseData);
+  } catch (error: any) {
     logger.error('Error fetching dashboard summary data:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return createErrorResponse(
+      'Internal server error', 
+      500, 
+      { 
+        message: error.message || 'Unknown error occurred',
+        // Don't expose sensitive information in production
+        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+      }
+    );
   }
+}
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  })
 }
