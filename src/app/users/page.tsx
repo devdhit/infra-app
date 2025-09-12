@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 // FIX: Remove unused imports
-import { useUsers, useCreateUser, useTenants, useBulkDeleteUsers, useDeleteUser } from "@/hooks/useApi"
+import { useUsers, useCreateUser, useTenants, useBulkDeleteUsers, useDeleteUser, useUpdateUser } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
@@ -18,135 +18,151 @@ import { UsersTable } from "@/components/users/users-table"
 import { UserForm } from "@/components/users/user-form"
 import { ConfirmDialog } from "@/components/users/confirm-dialog"
 import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"
-import { UserFormValues, User } from "@/types/users"
-import { useQueryClient } from '@tanstack/react-query'
+import { User, UserCreateUpdate } from "@/types/users"
 import { Plus} from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
 import logger from '@/lib/logger'
 
-export default function UsersPage() {
-  const { t } = useTranslation()
-  const { 
-    userRole,
-    canViewUsers, 
-    canCreateUsers, 
-    canEditUsers, 
-    canDeleteUsers, 
-    canBulkDeleteUsers 
-  } = usePermissions()
+const Page = () => {
+  const { t } = useTranslation();
+  const { data: currentUser } = useCurrentUser();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [bulkDeleteUserIds, setBulkDeleteUserIds] = useState<string[]>([]);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   
-  const { data: currentUser, isLoading: isUserLoading } = useCurrentUser()
+  // Fetch users and tenants
+  const { data: usersData, refetch: refetchUsers } = useUsers();
+  const { data: tenantsData } = useTenants();
   
-  const queryClient = useQueryClient()
-  const { data: users = [], refetch } = useUsers()
-  const { data: tenants = [] } = useTenants()
-  const createUserMutation = useCreateUser()
-  const deleteUserMutation = useDeleteUser('') // Use empty string as placeholder
-  const bulkDeleteMutation = useBulkDeleteUsers()
+  // User mutations
+  const { createUser } = useCreateUser();
+  const { updateUser } = useUpdateUser(editingUser?.id || '');
+  const { deleteUser } = useDeleteUser(deleteUserId || '');
+  const { bulkDeleteUsers } = useBulkDeleteUsers();
   
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<User | null>(null)
-  
-  // Manage the ID for delete operations in state
-  const [deleteUserId, setDeleteUserId] = useState<string | null>(null)
-  const [userToDelete, setUserToDelete] = useState<User | null>(null)
-  
-  // State for bulk delete operations
-  const [bulkDeleteUserIds, setBulkDeleteUserIds] = useState<string[]>([])
-  
-  // State for update user ID
-  const [updateUserId, setUpdateUserId] = useState<string | null>(null)
-  
-  // Confirmation dialog states
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
-  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false)
-  
-  // Permission states
-  const [canView, setCanView] = useState<boolean | null>(null) // null means still checking
-  const [canCreate, setCanCreate] = useState<boolean | null>(null)
-  const [canEdit, setCanEdit] = useState<boolean | null>(null)
-  const [canDelete, setCanDelete] = useState<boolean | null>(null)
-  const [canBulkDelete, setCanBulkDelete] = useState<boolean | null>(null)
-  
-  // Ref to track if permission check is in progress
-  const isCheckingPermissions = useRef(false)
-
   // Check permissions
+  const { canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers, isLoading: isUserLoading } = usePermissions();
+  
+  const [canView, setCanView] = useState<boolean | null>(null);
+  const [canCreate, setCanCreate] = useState<boolean | null>(null);
+  const [canEdit, setCanEdit] = useState<boolean | null>(null);
+  const [canDelete, setCanDelete] = useState<boolean | null>(null);
+  const [canBulkDelete, setCanBulkDelete] = useState<boolean | null>(null);
+  
   useEffect(() => {
-    const isCancelledRef = { current: false };
-    
     const checkPermissions = async () => {
-      // Prevent multiple simultaneous permission checks
-      if (isCheckingPermissions.current) {
-        return;
-      }
-      
       try {
-        isCheckingPermissions.current = true;
+        const viewResult = await canViewUsers();
+        setCanView(viewResult);
         
-        // Only check permissions if user data is fully loaded
-        if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          // Check all permissions in parallel for better performance
-          const [
-            viewPermission,
-            createPermission,
-            editPermission,
-            deletePermission,
-            bulkDeletePermission
-          ] = await Promise.all([
-            canViewUsers(),
-            canCreateUsers(),
-            canEditUsers(),
-            canDeleteUsers(),
-            canBulkDeleteUsers()
-          ]);
-          
-          // Only update state if component is still mounted
-          if (!isCancelledRef.current) {
-            setCanView(viewPermission);
-            setCanCreate(createPermission);
-            setCanEdit(editPermission);
-            setCanDelete(deletePermission);
-            setCanBulkDelete(bulkDeletePermission);
-          }
-        } else if (!isUserLoading && (!currentUser || !currentUser.role?.id || !currentUser.tenantId)) {
-          // User data loaded but incomplete
-          if (!isCancelledRef.current) {
-            setCanView(false);
-            setCanCreate(false);
-            setCanEdit(false);
-            setCanDelete(false);
-            setCanBulkDelete(false);
-          }
-        }
-        // If still loading, do nothing
+        const createResult = await canCreateUsers();
+        setCanCreate(createResult);
+        
+        const editResult = await canEditUsers();
+        setCanEdit(editResult);
+        
+        const deleteResult = await canDeleteUsers();
+        setCanDelete(deleteResult);
+        
+        const bulkDeleteResult = await canBulkDeleteUsers();
+        setCanBulkDelete(bulkDeleteResult);
       } catch (error) {
-        // Log errors only in development
-        if (process.env.NODE_ENV === 'development') {
-          logger.error('Error checking permissions:', error);
-        }
-        // Deny access if there's an error
-        if (!isCancelledRef.current) {
-          setCanView(false);
-          setCanCreate(false);
-          setCanEdit(false);
-          setCanDelete(false);
-          setCanBulkDelete(false);
-        }
-      } finally {
-        isCheckingPermissions.current = false;
+        logger.error('Error checking permissions:', error);
+        setCanView(false);
+        setCanCreate(false);
+        setCanEdit(false);
+        setCanDelete(false);
+        setCanBulkDelete(false);
       }
     };
     
-    // Check permissions when dependencies change
     checkPermissions();
+  }, [canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers]);
+  
+  // Get the user to delete for confirmation dialog
+  const userToDelete = usersData?.find(user => user.id === deleteUserId) || null;
+  
+  const users = usersData || [];
+  const tenants = tenantsData || [];
+  
+  const handleEdit = (user: User | null) => {
+    setEditingUser(user);
+    setIsDialogOpen(true);
+  };
+  
+  const handleDelete = (id: string | string[]) => {
+    if (typeof id === 'string') {
+      setDeleteUserId(id);
+      setIsDeleteConfirmOpen(true);
+    }
+  };
+  
+  const confirmDelete = async () => {
+    if (!deleteUserId) return;
     
-    return () => {
-      isCancelledRef.current = true;
-      // Reset the permission checking flag when component unmounts
-      isCheckingPermissions.current = false;
-    };
-  }, [userRole, canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers, currentUser, isUserLoading]);
+    try {
+      await deleteUser();
+      toast.success(t('users.delete.success') || 'User deleted successfully');
+      setIsDeleteConfirmOpen(false);
+      setDeleteUserId(null);
+      refetchUsers();
+    } catch (error: any) {
+      toast.error(error.message || t('users.delete.error') || 'Failed to delete user');
+    }
+  };
+  
+  const confirmBulkDelete = async () => {
+    try {
+      await bulkDeleteUsers(bulkDeleteUserIds);
+      toast.success(t('users.bulkDelete.success') || 'Users deleted successfully');
+      setIsBulkDeleteConfirmOpen(false);
+      setBulkDeleteUserIds([]);
+      refetchUsers();
+    } catch (error: any) {
+      toast.error(error.message || t('users.bulkDelete.error') || 'Failed to delete users');
+    }
+  };
+  
+  const handleSubmit = async (data: Partial<UserCreateUpdate>) => {
+    try {
+      if (editingUser) {
+        try {
+          await updateUser(data);
+          toast.success(t('users.update.success') || 'User updated successfully');
+          setIsDialogOpen(false);
+          setEditingUser(null);
+          refetchUsers();
+        } catch (error: any) {
+          toast.error(error.message || t('users.update.error') || 'Failed to update user');
+        }
+      } else {
+        try {
+          await createUser(data);
+          toast.success(t('users.create.success') || 'User created successfully');
+          setIsDialogOpen(false);
+          refetchUsers();
+        } catch (error: any) {
+          toast.error(error.message || t('users.create.error') || 'Failed to create user');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || (editingUser 
+        ? t('users.update.error') || 'Failed to update user' 
+        : t('users.create.error') || 'Failed to create user'));
+    }
+  };
+
+  // Reset editing state when dialog is closed
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingUser(null);
+      setDeleteUserId(null);
+    }
+  };
 
   // Show loading state while checking permissions
   if (canView === null || isUserLoading) {
@@ -168,194 +184,6 @@ export default function UsersPage() {
         </div>
       </div>
     )
-  }
-
-  const handleEdit = async (user: User | null) => {
-    try {
-      // Only check permissions if user data is fully loaded
-      if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-        const hasEditPermission = await canEditUsers()
-        const hasCreatePermission = await canCreateUsers()
-        
-        if (user && !hasEditPermission) {
-          toast.error(t('users.edit.unauthorized') || 'You do not have permission to edit users')
-          return
-        }
-        if (!user && !hasCreatePermission) {
-          toast.error(t('users.create.unauthorized') || 'You do not have permission to create users')
-          return
-        }
-      }
-      setEditingUser(user)
-      setIsDialogOpen(true)
-    } catch (error) {
-      // Log errors only in development
-      if (process.env.NODE_ENV === 'development') {
-        logger.error('Error checking edit permissions:', error)
-      }
-      // Allow the action by default if there's an error
-      setEditingUser(user)
-      setIsDialogOpen(true)
-    }
-  }
-
-  const handleDelete = async (id: string | string[]) => {
-    try {
-      // Only check permissions if user data is fully loaded
-      if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-        // Check if it's a bulk delete (array of IDs)
-        if (Array.isArray(id)) {
-          const hasBulkDeletePermission = await canBulkDeleteUsers()
-          
-          if (!hasBulkDeletePermission) {
-            toast.error(t('users.bulkDelete.unauthorized') || 'You do not have permission to bulk delete users')
-            return
-          }
-          
-          // Handle bulk delete
-          setBulkDeleteUserIds(id)
-          setIsBulkDeleteConfirmOpen(true)
-        } else {
-          const hasDeletePermission = await canDeleteUsers()
-          
-          if (!hasDeletePermission) {
-            toast.error(t('users.delete.unauthorized') || 'You do not have permission to delete users')
-            return
-          }
-          
-          // Handle single delete
-          setDeleteUserId(id)
-          // Find the user to display in the confirmation dialog
-          const user = users.find(u => u.id === id)
-          setUserToDelete(user || null)
-          setIsDeleteConfirmOpen(true)
-        }
-      }
-    } catch (error) {
-      // Log errors only in development
-      if (process.env.NODE_ENV === 'development') {
-        logger.error('Error checking delete permissions:', error)
-      }
-      toast.error(t('common.error') || 'An error occurred while checking permissions')
-    }
-  }
-
-  const confirmDelete = async () => {
-    if (!deleteUserId) return
-    
-    try {
-      // Use the deleteUserMutation hook instead of direct fetch
-      await deleteUserMutation.mutateAsync(deleteUserId)
-      toast.success(t('users.delete.success') || 'User deleted successfully')
-      refetch()
-    } catch (error: any) {
-      toast.error(error.message || t('users.delete.error') || 'Failed to delete user')
-    } finally {
-      setIsDeleteConfirmOpen(false)
-      setDeleteUserId(null)
-      setUserToDelete(null)
-    }
-  }
-
-  const confirmBulkDelete = async () => {
-    try {
-      await bulkDeleteMutation.mutateAsync({ ids: bulkDeleteUserIds })
-      toast.success(t('users.bulkDelete.success', '{0} users deleted successfully', bulkDeleteUserIds.length.toString()) || 
-                   `${bulkDeleteUserIds.length} users deleted successfully`)
-      refetch()
-    } catch (error: any) {
-      toast.error(error.message || t('users.bulkDelete.error') || 'Failed to delete users')
-    } finally {
-      setIsBulkDeleteConfirmOpen(false)
-      setBulkDeleteUserIds([])
-    }
-  }
-
-  const handleSubmit = async (data: UserFormValues) => {
-    try {
-      if (editingUser) {
-        // Only check permissions if user data is fully loaded
-        if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          const hasEditPermission = await canEditUsers()
-          if (!hasEditPermission) {
-            toast.error(t('users.update.unauthorized') || 'You do not have permission to update users')
-            return
-          }
-        }
-        // Update existing user using mutation
-        try {
-          setUpdateUserId(editingUser.id)
-          // Instead of calling the hook directly, we'll use the API client directly
-          const response = await fetch(`/api/users/${editingUser.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: data.email,
-              name: data.name,
-              role: data.role,
-              tenantId: data.tenantId,
-              ...(data.password ? { password: data.password } : {})
-            })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to update user');
-          }
-          
-          toast.success(t('users.update.success') || 'User updated successfully')
-          setIsDialogOpen(false)
-          setEditingUser(null) // Clear the editing user state
-          setUpdateUserId(null) // Clear the update user ID
-          refetch(); // Refresh the user list
-        } catch (error: any) {
-          toast.error(error.message || t('users.update.error') || 'Failed to update user')
-        }
-      } else {
-        // Only check permissions if user data is fully loaded
-        if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          const hasCreatePermission = await canCreateUsers()
-          if (!hasCreatePermission) {
-            toast.error(t('users.create.unauthorized') || 'You do not have permission to create users')
-            return
-          }
-        }
-        // Create new user
-        try {
-          await createUserMutation.mutateAsync({
-            email: data.email,
-            name: data.name,
-            password: data.password || '',
-            role: data.role,
-            tenantId: data.tenantId
-          })
-          toast.success(t('users.create.success') || 'User created successfully')
-          setIsDialogOpen(false)
-          // Invalidate the users query to force a refresh
-          await queryClient.invalidateQueries({ queryKey: ['users'] })
-        } catch (error: any) {
-          toast.error(error.message || t('users.create.error') || 'Failed to create user')
-        }
-      }
-    } catch (error: any) {
-      toast.error(error.message || (editingUser 
-        ? t('users.update.error') || 'Failed to update user' 
-        : t('users.create.error') || 'Failed to create user'))
-    }
-  }
-
-  // Reset editing state when dialog is closed
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsDialogOpen(open)
-    if (!open) {
-      setEditingUser(null)
-      // Reset the delete user ID when closing the dialog
-      setDeleteUserId(null)
-      // Reset the update user ID when closing the dialog
-      setUpdateUserId(null)
-    }
   }
 
   return (
@@ -387,8 +215,8 @@ export default function UsersPage() {
             users={users}
             tenants={tenants}
             onEdit={canEdit || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) ? handleEdit : undefined}
-            onDelete={canDelete || canBulkDelete || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) ? handleDelete : undefined}
-            isDeleting={deleteUserMutation.isPending || bulkDeleteMutation.isPending}
+            onDelete={(canDelete || canBulkDelete || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId)) ? handleDelete : undefined}
+            isDeleting={false}
             deletingUserId={deleteUserId}
           />
         </CardContent>
@@ -400,7 +228,7 @@ export default function UsersPage() {
         editingUser={editingUser}
         tenants={tenants}
         onSubmit={handleSubmit}
-        isSubmitting={createUserMutation.isPending || (editingUser && updateUserId ? true : false)}
+        isSubmitting={false}
       />
       
       <ConfirmDialog
@@ -419,10 +247,12 @@ export default function UsersPage() {
         title={t('users.title') || 'Users'}
         count={bulkDeleteUserIds.length}
         isOpen={isBulkDeleteConfirmOpen}
-        isDeleting={bulkDeleteMutation.isPending}
+        isDeleting={false}
         onClose={() => setIsBulkDeleteConfirmOpen(false)}
         onConfirm={confirmBulkDelete}
       />
     </div>
   )
 }
+
+export default Page;

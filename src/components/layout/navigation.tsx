@@ -20,7 +20,6 @@ import {
   Shield,
   FileText,
   Palette,
-  Bell,
   Database,
   AppWindow,
   ShieldAlert
@@ -95,12 +94,6 @@ const navigationItems: NavigationItem[] = [
         nameKey: "settings.appearance.title", 
         href: "/settings/appearance", 
         icon: Palette,
-        requiredPermission: { resource: 'settings', action: 'view' }
-      },
-      { 
-        nameKey: "settings.notifications.title", 
-        href: "/settings/notifications", 
-        icon: Bell,
         requiredPermission: { resource: 'settings', action: 'view' }
       },
       { 
@@ -234,6 +227,22 @@ export function Navigation({}: NavigationProps) {
     'auditLogs': false
   });
   
+  // Memoize the permission checks to prevent unnecessary re-renders
+  const permissionChecks = useMemo(() => [
+    { key: 'assets', check: () => canViewAssets() },
+    { key: 'pc', check: () => canViewPC() },
+    { key: 'laptop', check: () => canViewLaptop() },
+    { key: 'printer', check: () => canViewPrinter() },
+    { key: 'license', check: () => canViewLicense() },
+    { key: 'warehouse', check: () => canViewWarehouse() },
+    { key: 'internet', check: () => canViewInternet() },
+    { key: 'users', check: () => canViewUsers() },
+    { key: 'tenants', check: () => canViewTenants() },
+    { key: 'roles', check: () => canViewRoles() },
+    { key: 'settings', check: () => canViewSettings() },
+    { key: 'auditLogs', check: () => canViewAuditLogs() }
+  ], [canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAuditLogs]);
+  
   // Ref to track if we've already checked permissions for the current user
   const permissionCheckRef = useRef<{userRole: string | null, checked: boolean}>({userRole: null, checked: false});
 
@@ -274,23 +283,7 @@ export function Navigation({}: NavigationProps) {
       const checkPermissions = async () => {
         const results: Record<string, boolean> = {};
         
-        // Define the permissions we need to check in order
-        const permissionChecks: { key: string; check: () => Promise<boolean> }[] = [
-          { key: 'assets', check: () => canViewAssets() },
-          { key: 'pc', check: () => canViewPC() },
-          { key: 'laptop', check: () => canViewLaptop() },
-          { key: 'printer', check: () => canViewPrinter() },
-          { key: 'license', check: () => canViewLicense() },
-          { key: 'warehouse', check: () => canViewWarehouse() },
-          { key: 'internet', check: () => canViewInternet() },
-          { key: 'users', check: () => canViewUsers() },
-          { key: 'tenants', check: () => canViewTenants() },
-          { key: 'roles', check: () => canViewRoles() },
-          { key: 'settings', check: () => canViewSettings() },
-          { key: 'auditLogs', check: () => canViewAuditLogs() }
-        ];
-        
-        // Process permissions one at a time with delays
+        // Process permissions one at a time with reduced delays for better performance
         for (let i = 0; i < permissionChecks.length; i++) {
           const permissionCheck = permissionChecks[i];
           // Add a type guard to ensure permissionCheck is not undefined
@@ -304,9 +297,9 @@ export function Navigation({}: NavigationProps) {
             }
           }
           
-          // Add a delay between requests to avoid overwhelming the server
+          // Reduce delay between requests to 25ms for better performance
           if (i < permissionChecks.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 25));
           }
         }
         
@@ -319,7 +312,7 @@ export function Navigation({}: NavigationProps) {
       // Reset permission check ref when userRole becomes null
       permissionCheckRef.current = {userRole: null, checked: false};
     }
-  }, [userRole, isLoading, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAuditLogs]);
+  }, [userRole, isLoading, permissionChecks]);
 
   // Filter navigation items
   const filteredNavigationItems = useMemo(() => {
@@ -363,7 +356,7 @@ export function Navigation({}: NavigationProps) {
 
   const handleLogout = useCallback(async () => {
     try {
-      await logoutMutation.mutateAsync();
+      await logoutMutation.logout();
       localStorage.removeItem('auth-token');
       // Use router.push instead of window.location for SPA navigation
       router.push('/auth/login');

@@ -2,23 +2,37 @@ import { NextRequest } from 'next/server'
 
 // Standardized API response helper functions
 export function successResponse<T>(data: T, status = 200) {
-  // For 204 No Content, don't send a body
-  if (status === 204) {
-    return new Response(null, {
+  try {
+    console.log('Creating success response', { status, hasData: !!data });
+    
+    // For 204 No Content, don't send a body
+    if (status === 204) {
+      return new Response(null, {
+        status,
+        headers: {}
+      })
+    }
+    
+    const jsonData = JSON.stringify(data);
+    console.log('Success response JSON created', { status, dataLength: jsonData.length });
+    
+    return new Response(jsonData, {
       status,
-      headers: {}
+      headers: { 'Content-Type': 'application/json' }
     })
+  } catch (error: any) {
+    console.error('Error creating success response', { error: error.message, stack: error.stack });
+    throw error;
   }
-  
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  })
 }
 
-export function errorResponse(message: string, status = 500, options?: { quiet?: boolean, details?: any }) {
-  if (!options?.quiet && process.env.NODE_ENV === 'development') {
-    console.error(`API Error [${status}]: ${message}`, options?.details || '');
+export function errorResponse(message: string, status = 500, options?: { quiet?: boolean, details?: any, requestId?: string }) {
+  // Log the error with request ID if available
+  if (process.env.NODE_ENV === 'development' || process.env.LOG_LEVEL === 'debug') {
+    const logMessage = options?.requestId 
+      ? `API Error [${status}] [Request: ${options.requestId}]: ${message}` 
+      : `API Error [${status}]: ${message}`;
+    console.error(logMessage, options?.details || '');
   }
   
   // Check if we're in a Next.js environment where Response is available
@@ -26,6 +40,7 @@ export function errorResponse(message: string, status = 500, options?: { quiet?:
     return new Response(JSON.stringify({ 
       error: message,
       status,
+      ...(options?.requestId && { requestId: options.requestId }),
       ...(options?.details && { details: options.details })
     }), {
       status,
@@ -37,6 +52,7 @@ export function errorResponse(message: string, status = 500, options?: { quiet?:
   return {
     error: message,
     status,
+    ...(options?.requestId && { requestId: options.requestId }),
     ...(options?.details && { details: options.details })
   } as any;
 }

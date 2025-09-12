@@ -1,4 +1,4 @@
-import logger from '@/lib/logger';
+import logger, { LogData } from '@/lib/logger';
 
 // Define cache key prefixes for different types of data
 export const CACHE_PREFIXES = {
@@ -29,12 +29,16 @@ type RedisClientType = {
   connect: () => Promise<void>;
   quit: () => Promise<void>;
   on: (event: string, callback: (...args: any[]) => void) => void;
+  ping: () => Promise<string>;
 };
 
 class RedisCache {
   private client: RedisClientType | null = null;
   private isConnected = false;
   private isConnecting = false;
+  private connectionAttempts = 0;
+  private maxConnectionAttempts = 5;
+  private retryDelay = 1000; // 1 second initial delay
 
   constructor() {
     // Only initialize Redis on the server side
@@ -44,17 +48,19 @@ class RedisCache {
   }
 
   /**
-   * Initialize the Redis client
+   * Initialize the Redis client with enhanced error handling and retry mechanism
    */
   private async initializeClient(): Promise<void> {
+    const context: LogData = { component: 'redis-cache' };
+    
     try {
       // Only initialize if Redis is enabled
       if (!process.env.REDIS_URL) {
-        logger.info('Redis cache disabled - REDIS_URL not set');
+        logger.info('Redis cache disabled - REDIS_URL not set', context);
         return;
       }
 
-      logger.info(`Initializing Redis cache with URL: ${process.env.REDIS_URL}`);
+      logger.info(`Initializing Redis cache with URL: ${process.env.REDIS_URL}`, context);
 
       // Dynamic import to avoid bundling Redis client in client-side code
       const { createClient } = await import('redis');
@@ -64,49 +70,86 @@ class RedisCache {
         socket: {
           reconnectStrategy: (retries: number) => {
             if (retries > 20) {
-              logger.error('Redis reconnect strategy: Too many retries, giving up');
+              logger.error('Redis reconnect strategy: Too many retries, giving up', context);
               return new Error('Redis max retries exceeded');
             }
             // Exponential backoff: 100ms, 200ms, 400ms, ... up to 30 seconds
             return Math.min(retries * 100, 30000);
-          }
-        }
+          },
+          connectTimeout: 10000, // 10 second connection timeout
+        },
+        // Add performance optimizations
+        disableOfflineQueue: true, // Disable offline queue to prevent memory issues
       }) as unknown as RedisClientType;
 
-      this.client.on('error', (err) => {
-        logger.error('Redis Client Error:', err);
+      this.client.on('error', (err: any) => {
+        logger.error('Redis Client Error', { 
+          ...context, 
+          error: err.message, 
+          stack: err.stack 
+        });
         this.isConnected = false;
       });
 
       this.client.on('connect', () => {
-        logger.info('Redis Client Connected');
+        logger.info('Redis Client Connected', context);
         this.isConnected = true;
+        this.connectionAttempts = 0; // Reset connection attempts on successful connection
       });
 
       this.client.on('reconnecting', () => {
-        logger.info('Redis Client Reconnecting');
+        logger.info('Redis Client Reconnecting', context);
       });
 
       this.client.on('ready', () => {
-        logger.info('Redis Client Ready');
+        logger.info('Redis Client Ready', context);
         this.isConnected = true;
+        this.connectionAttempts = 0; // Reset connection attempts on successful connection
       });
 
       await this.client.connect();
-      logger.info('Redis cache initialized successfully');
-    } catch (error) {
-      logger.error('Failed to initialize Redis cache:', error);
+      logger.info('Redis cache initialized successfully', context);
+    } catch (error: any) {
+      logger.error('Failed to initialize Redis cache', { 
+        ...context, 
+        error: error.message, 
+        stack: error.stack 
+      });
       this.isConnected = false;
+      
+      // Implement retry mechanism with exponential backoff
+      if (this.connectionAttempts < this.maxConnectionAttempts) {
+        this.connectionAttempts++;
+        const delay = Math.min(this.retryDelay * Math.pow(2, this.connectionAttempts - 1), 30000); // Max 30 seconds
+        logger.info(`Retrying Redis connection in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxConnectionAttempts})`, context);
+        setTimeout(() => {
+          this.initializeClient();
+        }, delay);
+      } else {
+        logger.error('Max Redis connection attempts reached. Giving up.', context);
+      }
     }
   }
 
   /**
-   * Ensure Redis connection is established
+   * Ensure Redis connection is established with health check
    */
   private async ensureConnection(): Promise<boolean> {
-    // If already connected, return true
+    const context: LogData = { component: 'redis-cache' };
+    
+    // If already connected, perform a health check
     if (this.isConnected && this.client) {
-      return true;
+      try {
+        // Perform a simple ping to check if the connection is still alive
+        await this.client.ping();
+        return true;
+      } catch (error: any) {
+        logger.warn('Redis connection health check failed', { 
+          ...context, 
+          error: error.message 
+        });
+        this.isConnected = false;
+      }
     }
 
     // If already connecting, wait a bit and check again
@@ -127,8 +170,12 @@ class RedisCache {
       await this.initializeClient();
       this.isConnecting = false;
       return this.isConnected;
-    } catch (error) {
-      logger.error('Failed to establish Redis connection:', error);
+    } catch (error: any) {
+      logger.error('Failed to establish Redis connection', { 
+        ...context, 
+        error: error.message, 
+        stack: error.stack 
+      });
       this.isConnecting = false;
       return false;
     }
@@ -146,7 +193,7 @@ class RedisCache {
   }
 
   /**
-   * Get a value from cache
+   * Get a value from cache with enhanced error handling
    * @param key - Cache key
    * @returns Cached value or null if not found
    */
@@ -158,30 +205,38 @@ class RedisCache {
     
     // Ensure connection before proceeding
     if (!(await this.ensureConnection())) {
+      logger.warn(`Unable to get cache key ${key}: Redis not connected`);
       return null;
     }
 
     if (!this.isReady()) {
+      logger.warn(`Unable to get cache key ${key}: Redis not ready`);
       return null;
     }
 
     try {
       const value = await this.client!.get(key);
       if (value === null) {
-        logger.debug(`Cache miss for key: ${key}`);
+        logger.debug(`Cache miss for key: ${key}`, { component: 'redis-cache' });
         return null;
       }
       
-      logger.debug(`Cache hit for key: ${key}`);
+      logger.debug(`Cache hit for key: ${key}`, { component: 'redis-cache' });
       return JSON.parse(value) as T;
-    } catch (error) {
-      logger.error(`Error getting cache key ${key}:`, error);
+    } catch (error: any) {
+      logger.error(`Error getting cache key ${key}`, { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
       return null;
     }
   }
 
   /**
-   * Set a value in cache
+   * Set a value in cache with enhanced error handling
    * @param key - Cache key
    * @param value - Value to cache
    * @param ttl - Time to live in seconds (optional)
@@ -194,10 +249,12 @@ class RedisCache {
     
     // Ensure connection before proceeding
     if (!(await this.ensureConnection())) {
+      logger.warn(`Unable to set cache key ${key}: Redis not connected`);
       return false;
     }
 
     if (!this.isReady()) {
+      logger.warn(`Unable to set cache key ${key}: Redis not ready`);
       return false;
     }
 
@@ -208,16 +265,22 @@ class RedisCache {
       } else {
         await this.client!.set(key, serializedValue);
       }
-      logger.debug(`Cache set for key: ${key}`);
+      logger.debug(`Cache set for key: ${key}`, { component: 'redis-cache' });
       return true;
-    } catch (error) {
-      logger.error(`Error setting cache key ${key}:`, error);
+    } catch (error: any) {
+      logger.error(`Error setting cache key ${key}`, { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
       return false;
     }
   }
 
   /**
-   * Delete a value from cache
+   * Delete a value from cache with enhanced error handling
    * @param key - Cache key
    */
   public async del(key: string): Promise<boolean> {
@@ -228,25 +291,33 @@ class RedisCache {
     
     // Ensure connection before proceeding
     if (!(await this.ensureConnection())) {
+      logger.warn(`Unable to delete cache key ${key}: Redis not connected`);
       return false;
     }
 
     if (!this.isReady()) {
+      logger.warn(`Unable to delete cache key ${key}: Redis not ready`);
       return false;
     }
 
     try {
       await this.client!.del(key);
-      logger.debug(`Cache deleted for key: ${key}`);
+      logger.debug(`Cache deleted for key: ${key}`, { component: 'redis-cache' });
       return true;
-    } catch (error) {
-      logger.error(`Error deleting cache key ${key}:`, error);
+    } catch (error: any) {
+      logger.error(`Error deleting cache key ${key}`, { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
       return false;
     }
   }
 
   /**
-   * Delete multiple keys by pattern
+   * Delete multiple keys by pattern with enhanced error handling
    * @param pattern - Pattern to match keys (e.g., "assets:*")
    */
   public async delByPattern(pattern: string): Promise<number> {
@@ -257,10 +328,12 @@ class RedisCache {
     
     // Ensure connection before proceeding
     if (!(await this.ensureConnection())) {
+      logger.warn(`Unable to delete cache keys by pattern ${pattern}: Redis not connected`);
       return 0;
     }
 
     if (!this.isReady()) {
+      logger.warn(`Unable to delete cache keys by pattern ${pattern}: Redis not ready`);
       return 0;
     }
 
@@ -269,11 +342,17 @@ class RedisCache {
       if (keys.length > 0) {
         // Fix: spread the keys array as individual arguments
         await this.client!.del(...keys);
-        logger.debug(`Cache deleted ${keys.length} keys by pattern: ${pattern}`);
+        logger.debug(`Cache deleted ${keys.length} keys by pattern: ${pattern}`, { component: 'redis-cache' });
       }
       return keys.length;
-    } catch (error) {
-      logger.error(`Error deleting cache keys by pattern ${pattern}:`, error);
+    } catch (error: any) {
+      logger.error(`Error deleting cache keys by pattern ${pattern}`, { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
       return 0;
     }
   }
@@ -288,7 +367,7 @@ class RedisCache {
   }
 
   /**
-   * Clear all cache entries
+   * Clear all cache entries with enhanced error handling
    */
   public async flushAll(): Promise<boolean> {
     // Always return false on client side
@@ -298,19 +377,27 @@ class RedisCache {
     
     // Ensure connection before proceeding
     if (!(await this.ensureConnection())) {
+      logger.warn('Unable to flush cache: Redis not connected');
       return false;
     }
 
     if (!this.isReady()) {
+      logger.warn('Unable to flush cache: Redis not ready');
       return false;
     }
 
     try {
       await this.client!.flushAll();
-      logger.info('Cache flushed successfully');
+      logger.info('Cache flushed successfully', { component: 'redis-cache' });
       return true;
-    } catch (error) {
-      logger.error('Error flushing all cache:', error);
+    } catch (error: any) {
+      logger.error('Error flushing all cache', { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
       return false;
     }
   }
@@ -328,9 +415,13 @@ class RedisCache {
       try {
         await this.client.quit();
         this.isConnected = false;
-        logger.info('Redis client disconnected');
-      } catch (error) {
-        logger.error('Error disconnecting Redis client:', error);
+        logger.info('Redis client disconnected', { component: 'redis-cache' });
+      } catch (error: any) {
+        logger.error('Error disconnecting Redis client', { 
+          component: 'redis-cache', 
+          error: error.message, 
+          stack: error.stack 
+        });
       }
     }
   }

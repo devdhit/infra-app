@@ -19,7 +19,6 @@ import { Badge } from "@/components/ui/badge"
 import { Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { getModelType, isCustomField, createUpdateData } from "@/lib/custom-fields"
-import { useQueryClient } from "@tanstack/react-query"
 
 interface InlineEditCellProps {
   asset: Asset
@@ -33,7 +32,6 @@ interface InlineEditCellProps {
 
 export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField, customFieldsData }: InlineEditCellProps) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value || '')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -101,7 +99,12 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
       const updateData = createUpdateData(field.name, processedValue, isCustom, asset);
       
       // Send the update to the server
-      await updateMutation.mutateAsync(updateData)
+      // Check which type of mutation we have
+      if ('updateAssetCustomFields' in updateMutation) {
+        await updateMutation.updateAssetCustomFields(updateData);
+      } else if ('updateAsset' in updateMutation) {
+        await updateMutation.updateAsset(updateData);
+      }
       
       // Exit edit mode first for better UX
       setIsEditing(false)
@@ -114,26 +117,10 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
       onUpdate(processedValue)
       
       // Force refresh the data after a short delay to ensure the server has processed the update
-      if (queryClient) {
-        setTimeout(() => {
-          // Force direct refetch to get fresh data from the server
-          queryClient.refetchQueries({ 
-            queryKey: ['assets', assetType],
-            type: 'active',
-            exact: false
-          });
-          
-          // Also refetch the specific asset to ensure custom fields are updated
-          if (isCustom) {
-            const modelType = getModelType(assetType);
-            queryClient.refetchQueries({ 
-              queryKey: ['asset-custom-fields', modelType, asset.id],
-              type: 'active',
-              exact: true
-            });
-          }
-        }, 100);
-      }
+      // Since we're removing React Query, we'll rely on the parent component to handle refresh
+      setTimeout(() => {
+        // The parent component should handle data refresh
+      }, 100);
     } catch (error: any) {
       console.error("Inline edit error:", error)
       let message = t('assets.update.error', 'Failed to update {0}', field.label)
@@ -230,15 +217,15 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
               <Button 
                 variant="outline" 
                 onClick={handleCancel}
-                disabled={updateMutation.isPending}
+                disabled={updateMutation.isLoading}
               >
                 {t('common.cancel', "Cancel")}
               </Button>
               <Button 
                 onClick={handleSave}
-                disabled={updateMutation.isPending}
+                disabled={updateMutation.isLoading}
               >
-                {updateMutation.isPending ? (
+                {updateMutation.isLoading ? (
                   <div className="flex items-center">
                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                     {t('common.saving', "Saving...")}

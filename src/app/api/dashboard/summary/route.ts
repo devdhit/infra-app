@@ -2,9 +2,9 @@ import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
-import logger from '@/lib/logger';
+import logger from '@/lib/logger'
 
-// GET /api/dashboard/summary - Get dashboard summary statistics by asset type
+// GET /api/dashboard/summary - Get dashboard summary statistics by asset type with optimized performance
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
@@ -103,49 +103,34 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Get all assets to calculate custom field statistics
-    const allPcs = await db.pC.findMany({
-      where: { tenantId: user.tenantId },
-      select: {
-        customFields: true
-      }
-    })
-
-    const allLaptops = await db.laptop.findMany({
-      where: { tenantId: user.tenantId },
-      select: {
-        customFields: true
-      }
-    })
-
-    const allPrinters = await db.printer.findMany({
-      where: { tenantId: user.tenantId },
-      select: {
-        customFields: true
-      }
-    })
-
-    const allLicenses = await db.license.findMany({
-      where: { tenantId: user.tenantId },
-      select: {
-        customFields: true
-      }
-    })
-
-    const allWarehouseItems = await db.warehouseIT.findMany({
-      where: { tenantId: user.tenantId },
-      select: {
-        customFields: true
-      }
-    })
-
-    // Get all Internet assets to calculate custom field statistics
-    const allInternetItems = await db.internet.findMany({
-      where: { tenantId: user.tenantId },
-      select: {
-        customFields: true
-      }
-    })
+    // Get all assets to calculate custom field statistics with optimized queries
+    // Only fetch customFields column to reduce data transfer
+    const [allPcs, allLaptops, allPrinters, allLicenses, allWarehouseItems, allInternetItems] = await Promise.all([
+      db.pC.findMany({
+        where: { tenantId: user.tenantId },
+        select: { customFields: true }
+      }),
+      db.laptop.findMany({
+        where: { tenantId: user.tenantId },
+        select: { customFields: true }
+      }),
+      db.printer.findMany({
+        where: { tenantId: user.tenantId },
+        select: { customFields: true }
+      }),
+      db.license.findMany({
+        where: { tenantId: user.tenantId },
+        select: { customFields: true }
+      }),
+      db.warehouseIT.findMany({
+        where: { tenantId: user.tenantId },
+        select: { customFields: true }
+      }),
+      db.internet.findMany({
+        where: { tenantId: user.tenantId },
+        select: { customFields: true }
+      })
+    ])
 
     // Calculate custom field statistics
     const customFieldStats: Record<string, { count: number, values: Record<string, number> }> = {}
@@ -223,7 +208,8 @@ export async function GET(request: NextRequest) {
     processCustomFields(allWarehouseItems, warehouseCustomFields, 'WarehouseIT')
     processCustomFields(allInternetItems, internetCustomFields, 'Internet')
 
-    return new Response(JSON.stringify({
+    // Prepare response data with optimized structure
+    const responseData = {
       pc: {
         total: totalPcs,
         totalCpus,
@@ -238,9 +224,15 @@ export async function GET(request: NextRequest) {
       internet: internetSummary,
       customFields,
       customFieldStats
-    }), {
+    }
+
+    return new Response(JSON.stringify(responseData), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        // Add caching headers for better performance
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=30'
+      }
     })
   } catch (error) {
     logger.error('Error fetching dashboard summary data:', error)

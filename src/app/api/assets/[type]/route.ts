@@ -2,8 +2,27 @@ import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
-import { CacheManager } from '@/lib/performance'
+// Remove the CacheManager import as we'll use Redis instead
 import logger from '@/lib/logger';
+
+// Only import Redis cache on the server side
+let redisCache: any = null;
+let CACHE_PREFIXES: any = null;
+let CACHE_TTL: any = null;
+
+if (typeof window === 'undefined') {
+  try {
+    const redisModule = require('@/lib/redis-cache');
+    redisCache = redisModule.default;
+    CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
+    CACHE_TTL = redisModule.CACHE_TTL;
+  } catch (error: any) {
+    logger.warn('Redis cache not available, using fallback', { 
+      component: 'assets-list-route', 
+      error: error.message 
+    });
+  }
+}
 
 // Define strong TypeScript types with Zod for request validation
 const assetQuerySchema = z.object({
@@ -21,9 +40,6 @@ type AssetType = typeof validAssetTypes[number];
 function isValidAssetType(type: string): type is AssetType {
   return validAssetTypes.includes(type as AssetType);
 }
-
-// Create a cache manager for asset data with 5 minute TTL
-const assetCache = new CacheManager<string, any>(5 * 60 * 1000);
 
 // Optimize database query with select and pagination
 export async function GET(request: NextRequest, { params }: { params: { type: string } }) {
@@ -73,20 +89,33 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       });
     }
 
-    // Create a cache key based on parameters
-    const cacheKey = `${assetType}-${user.tenantId}-${page}-${limit}-${search || 'no-search'}-${status || 'no-status'}`;
+    // Create a cache key based on parameters using Redis cache if available
+    let cacheKey: string | null = null;
+    if (redisCache && CACHE_PREFIXES) {
+      cacheKey = redisCache.createKey(
+        CACHE_PREFIXES.ASSET_LIST,
+        assetType,
+        user.tenantId,
+        page,
+        limit,
+        search || 'no-search',
+        status || 'no-status'
+      );
+    }
     
-    // Try to get data from cache first
-    const cachedData = assetCache.get(cacheKey);
-    if (cachedData) {
-      logger.debug(`Returning cached data for key: ${cacheKey}`);
-      return new Response(JSON.stringify(cachedData), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': search || status ? 'no-cache' : 'max-age=60, stale-while-revalidate=59'
-        }
-      });
+    // Try to get data from Redis cache first if available
+    if (redisCache && cacheKey) {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        logger.debug(`Returning cached data for key: ${cacheKey}`);
+        return new Response(JSON.stringify(cachedData), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': search || status ? 'no-cache' : 'max-age=60, stale-while-revalidate=59'
+          }
+        });
+      }
     }
 
     // Optimize database query with proper indexing and select
@@ -544,9 +573,11 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       }
     };
 
-    // Cache the result
-    assetCache.set(cacheKey, result);
-    logger.debug(`Caching data for key: ${cacheKey}`);
+    // Cache the result in Redis if available
+    if (redisCache && cacheKey) {
+      await redisCache.set(cacheKey, result, CACHE_TTL ? CACHE_TTL.ASSET_LIST : 120);
+      logger.debug(`Caching data for key: ${cacheKey}`);
+    }
 
     return new Response(JSON.stringify(result), {
       status: 200,

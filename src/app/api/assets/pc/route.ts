@@ -6,24 +6,8 @@ import {
   parseRequestBody,
   errorResponse
 } from '@/lib/api-utils'
-import { pcHandler } from '@/lib/asset-api-handler'
+import { pcHandler, PCAsset } from '@/lib/asset-api-handler'
 import logger from '@/lib/logger'
-
-// Define the PC asset type based on the Prisma schema
-interface PCAsset {
-  dept: string
-  cpuBarcode: string
-  cpuSapBarcode?: string
-  monitorBarcode?: string
-  monitorSapBarcode?: string
-  upsBarcode?: string
-  upsSapBarcode?: string
-  pcName: string
-  userName?: string
-  status: string
-  note?: string
-  customFields?: any
-}
 
 // GET /api/assets/pc - Get all PC assets for the user's tenant
 export async function GET(request: NextRequest) {
@@ -49,7 +33,7 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse()
     }
 
-    const body = await parseRequestBody<PCAsset>(request)
+    const body = await parseRequestBody<Omit<PCAsset, 'id' | 'createdAt' | 'updatedAt' | 'tenantId'>>(request)
     return await pcHandler.create(user, body)
   } catch (error: any) {
     logger.error('Error in PC POST route:', error)
@@ -60,27 +44,5 @@ export async function POST(request: NextRequest) {
     }
     
     return errorResponse('Failed to create PC asset. Please try again later.')
-  }
-}
-
-// DELETE /api/assets/pc - Bulk delete PC assets
-export async function DELETE(request: NextRequest) {
-  try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return unauthorizedResponse()
-    }
-
-    const body = await parseRequestBody<{ ids: string[] }>(request)
-    return await pcHandler.bulkDelete(user, body.ids)
-  } catch (error: any) {
-    logger.error('Error in PC bulk DELETE route:', error)
-    
-    // Handle JSON parsing errors
-    if (error.message && error.message.includes('Invalid JSON')) {
-      return errorResponse('Invalid request body. Please ensure the request is valid JSON.', 400)
-    }
-    
-    return errorResponse('Failed to delete PC assets. Please try again later.')
   }
 }

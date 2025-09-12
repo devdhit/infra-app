@@ -42,9 +42,9 @@ async function processPermissionQueue() {
   isProcessingQueue = true;
 
   try {
-    // Process queue in batches of 10 to avoid overwhelming the server
+    // Process queue in larger batches of 20 to reduce API calls for users with many permissions
     while (permissionQueue.length > 0) {
-      const batch = permissionQueue.splice(0, 10);
+      const batch = permissionQueue.splice(0, 20);
       
       // Create batch request
       const permissionsToCheck: PermissionCheck[] = batch.map(item => ({
@@ -53,9 +53,9 @@ async function processPermissionQueue() {
       }));
 
       try {
-        // Add timeout to the API call
+        // Increase timeout to 15 seconds for larger batches
         const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Permission check timeout')), 10000)
+          setTimeout(() => reject(new Error('Permission check timeout')), 15000)
         );
         
         // Make batch API call using the existing API client with proper authentication
@@ -102,8 +102,9 @@ async function processPermissionQueue() {
       }
 
       // Add a small delay between batches to avoid overwhelming the server
+      // Reduce delay to 25ms for better performance
       if (permissionQueue.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 25));
       }
     }
   } finally {

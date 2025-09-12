@@ -27,17 +27,17 @@ import {
   HelpCircle
 } from "lucide-react";
 import { 
-  useApiQuery, 
-  useApiMutation, 
-  useApiUpdate
+  CustomField as ApiCustomField,
+  useDeleteCustomField
 } from "@/hooks/useApi";
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog";
 import { 
   Form, 
@@ -57,16 +57,15 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import apiClient from "@/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
-import { useQueryClient } from "@tanstack/react-query";
-import { CustomField, CustomFieldFormData, ModelTypeOption, FieldTypeOption } from "@/types/custom-fields";
+import { CustomFieldFormData, ModelTypeOption, FieldTypeOption } from "@/types/custom-fields";
 import { CustomFieldsSkeleton } from "@/components/settings/custom-fields-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 import { SettingsLayout } from "@/components/settings/settings-layout";
+import { useCustomFields, useCreateCustomField, useUpdateCustomField } from "@/hooks/useApi";
 
 const modelTypes: ModelTypeOption[] = [
   { value: "PC", label: "PC" },
@@ -74,6 +73,7 @@ const modelTypes: ModelTypeOption[] = [
   { value: "Printer", label: "Printer" },
   { value: "License", label: "License" },
   { value: "WarehouseIT", label: "Warehouse" },
+  { value: "Internet", label: "Internet" },
 ];
 
 const fieldTypes: FieldTypeOption[] = [
@@ -85,81 +85,68 @@ const fieldTypes: FieldTypeOption[] = [
   { value: "select", label: "Select", description: "Dropdown selection" },
 ];
 
-// Map modelType to assetType for query invalidation
-const assetTypeMap: Record<string, string> = {
-  PC: "pc",
-  Laptop: "laptop",
-  Printer: "printer",
-  License: "license",
-  WarehouseIT: "warehouse"
-};
-
-export default function CustomFieldsPage() {
+const Page = () => {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingField, setEditingField] = useState<CustomField | null>(null);
+  const [editingField, setEditingField] = useState<ApiCustomField | null>(null);
   const [modelTypeFilter, setModelTypeFilter] = useState<string>("");
   const [showHelp, setShowHelp] = useState(false);
-  
-  const { data: customFields, isLoading, error, refetch } = useApiQuery<CustomField[]>(
-    ['custom-fields', modelTypeFilter], 
-    `/custom-fields${modelTypeFilter ? `?modelType=${modelTypeFilter}` : ''}`
-  );
-  
-  const createMutation = useApiMutation<CustomField, CustomFieldFormData>('/custom-fields');
-  const updateMutation = useApiUpdate<CustomField, CustomFieldFormData>(`/custom-fields/${editingField?.id}`);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [fieldToDelete, setFieldToDelete] = useState<ApiCustomField | null>(null);
+  const [deleteFieldId, setDeleteFieldId] = useState<string | null>(null);
   
   const form = useForm<CustomFieldFormData>({
     defaultValues: {
       name: "",
+      description: "",
       type: "text",
       modelType: "PC",
       required: false,
-      description: "",
-    },
+    }
   });
   
-  const handleCreate = () => {
+  // Fetch custom fields
+  const { data: customFields, isLoading, error, refetch } = useCustomFields();
+  
+  // Create and update mutations
+  const { createCustomField, isLoading: isCreating } = useCreateCustomField();
+  const { updateCustomField, isLoading: isUpdating } = useUpdateCustomField(editingField?.id || '');
+  
+  // Delete mutation - using the specific hook for custom fields
+  const { deleteCustomField, isLoading: isDeleting } = useDeleteCustomField(deleteFieldId || '');
+  
+  const handleCreate = useCallback(() => {
     setEditingField(null);
     form.reset({
       name: "",
+      description: "",
       type: "text",
       modelType: "PC",
       required: false,
-      description: "",
     });
     setIsFormOpen(true);
-  };
+  }, [form]);
   
-  const handleEdit = (field: CustomField) => {
+  const handleEdit = useCallback((field: ApiCustomField) => {
     setEditingField(field);
     form.reset({
       name: field.name,
-      type: field.type,
-      modelType: field.modelType,
-      required: field.required,
       description: field.description || "",
+      type: field.type as "text" | "textarea" | "number" | "date" | "boolean" | "select",
+      modelType: field.modelType as "PC" | "Laptop" | "Printer" | "License" | "WarehouseIT" | "Internet",
+      required: field.required,
     });
     setIsFormOpen(true);
-  };
+  }, [form]);
   
   const onSubmit = async (values: CustomFieldFormData) => {
     try {
       if (editingField) {
-        await updateMutation.mutateAsync(values);
+        await updateCustomField(values);
         toast.success('Custom field updated successfully');
-        // Invalidate asset queries to refresh asset lists with updated custom fields
-        const assetType = assetTypeMap[values.modelType] || values.modelType.toLowerCase();
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-        queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
       } else {
-        await createMutation.mutateAsync(values);
+        await createCustomField(values);
         toast.success('Custom field created successfully');
-        // Invalidate asset queries to refresh asset lists with new custom fields
-        const assetType = assetTypeMap[values.modelType] || values.modelType.toLowerCase();
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-        queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
       }
       setIsFormOpen(false);
       refetch();
@@ -168,29 +155,48 @@ export default function CustomFieldsPage() {
     }
   };
   
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback((field: ApiCustomField) => {
+    setFieldToDelete(field);
+    setDeleteFieldId(field.id); // Set the ID for the delete hook
+    setShowDeleteConfirm(true);
+  }, []);
+  
+  const confirmDelete = useCallback(async () => {
+    if (!fieldToDelete) return;
+    
     try {
-      // Get the field to know which model type to invalidate
-      const fieldToDelete = customFields?.find((field) => field.id === id);
-      
-      await apiClient.delete(`/custom-fields/${id}`);
+      // Call the delete function (no parameters needed)
+      await deleteCustomField();
       toast.success('Custom field deleted successfully');
       refetch();
-      
-      // Invalidate asset queries to refresh asset lists after custom field deletion
-      if (fieldToDelete) {
-        const assetType = assetTypeMap[fieldToDelete.modelType] || fieldToDelete.modelType.toLowerCase();
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-        queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
-      }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete custom field');
+      // Error deleting custom field
+      let message = 'Failed to delete custom field';
+      
+      if (error.status === 403) {
+        message = 'Access denied. You do not have permission to delete this custom field.';
+      } else if (error.status === 404) {
+        message = 'Custom field not found. It may have been deleted.';
+      } else if (error.status === 500) {
+        message = 'Server error. Please try again later.';
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      toast.error(message);
+    } finally {
+      setShowDeleteConfirm(false);
+      setFieldToDelete(null);
+      setDeleteFieldId(null); // Clear the delete field ID
     }
-  };
+  }, [fieldToDelete, deleteCustomField, refetch]);
   
-  const filteredFields: CustomField[] = modelTypeFilter
-    ? customFields?.filter((field) => field.modelType === modelTypeFilter) || []
-    : customFields || [];
+  // Memoize filtered fields to prevent unnecessary re-renders
+  const filteredFields = useMemo(() => {
+    return modelTypeFilter
+      ? customFields?.filter((field) => field.modelType === modelTypeFilter) || []
+      : customFields || [];
+  }, [customFields, modelTypeFilter]);
   
   if (isLoading) {
     return <CustomFieldsSkeleton />;
@@ -315,7 +321,7 @@ export default function CustomFieldsPage() {
                           {t('common.edit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          onClick={() => handleDelete(field.id)}
+                          onClick={() => handleDelete(field)}
                           className="text-red-600"
                         >
                           <Trash className="mr-2 h-4 w-4" />
@@ -364,6 +370,7 @@ export default function CustomFieldsPage() {
                       <Input 
                         placeholder={t('settings.customFields.namePlaceholder')} 
                         {...field} 
+                        maxLength={50}
                       />
                     </FormControl>
                     <FormDescription>
@@ -386,6 +393,7 @@ export default function CustomFieldsPage() {
                         {...field} 
                         className="resize-none"
                         rows={3}
+                        maxLength={255}
                       />
                     </FormControl>
                     <FormDescription>
@@ -492,9 +500,9 @@ export default function CustomFieldsPage() {
                 </Button>
                 <Button 
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={isCreating || isUpdating}
                 >
-                  {(createMutation.isPending || updateMutation.isPending) ? (
+                  {(isCreating || isUpdating) ? (
                     <div className="flex items-center">
                       <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                       {t('common.saving')}
@@ -506,6 +514,41 @@ export default function CustomFieldsPage() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('settings.customFields.deleteConfirmTitle')}</DialogTitle>
+            <DialogDescription>
+              {t('settings.customFields.deleteConfirmDescription', fieldToDelete?.name || '')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:space-x-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={isDeleting}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <div className="flex items-center">
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  {t('common.deleting')}
+                </div>
+              ) : (
+                t('common.delete')
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       
@@ -565,3 +608,5 @@ export default function CustomFieldsPage() {
     </SettingsLayout>
   );
 }
+
+export default Page;

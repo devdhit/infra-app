@@ -240,7 +240,7 @@ export function UserForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.map((role) => (
+                    {roles && roles.map((role) => (
                       <SelectItem key={role.id} value={role.name}>
                         {role.name}
                       </SelectItem>

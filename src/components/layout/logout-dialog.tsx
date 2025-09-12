@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useLogout } from '@/hooks/useApi'
 import { toast } from 'sonner'
 import { useTranslation } from '@/hooks/use-translation'
@@ -22,14 +21,12 @@ interface LogoutDialogProps {
 }
 
 export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const logoutMutation = useLogout()
+  const { logout, isLoading } = useLogout()
   const { t } = useTranslation()
 
   const handleLogout = async () => {
-    setIsLoggingOut(true)
     try {
-      await logoutMutation.mutateAsync()
+      await logout()
       // Clear token from localStorage and API client
       localStorage.removeItem('auth-token')
       // Use window.location for full page redirect to ensure proper navigation
@@ -42,7 +39,6 @@ export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
       }
       toast.error(message)
     } finally {
-      setIsLoggingOut(false)
       onOpenChange(false)
     }
   }
@@ -57,15 +53,15 @@ export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoggingOut}>
+          <AlertDialogCancel disabled={isLoading}>
             {t('common.cancel')}
           </AlertDialogCancel>
           <Button
             variant="destructive"
             onClick={handleLogout}
-            disabled={isLoggingOut}
+            disabled={isLoading}
           >
-            {isLoggingOut ? (t('auth.logout.loggingOut') || 'Logging out...') : (t('auth.logout_a') || 'Logout')}
+            {isLoading ? (t('auth.logout.loggingOut') || 'Logging out...') : (t('auth.logout_a') || 'Logout')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

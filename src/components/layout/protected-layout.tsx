@@ -1,7 +1,7 @@
 'use client'
 
 import { useCurrentUser } from '@/hooks/useApi'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Navigation } from './navigation'
 import { Header } from './header'
 import { useEffect } from 'react'
@@ -14,25 +14,50 @@ interface ProtectedLayoutProps {
 
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const pathname = usePathname()
-  const { data: user, isLoading, isError } = useCurrentUser()
+  const router = useRouter()
+  const { data: user, isLoading, error } = useCurrentUser()
 
   // Monitor navigation performance
   useEffect(() => {
-    // Start timing when pathname changes
-    navigationMonitor.startNavigation();
-    
-    // End timing after a short delay to ensure rendering is complete
-    const timer = setTimeout(() => {
-      const duration = navigationMonitor.endNavigation(pathname);
+    // Only run navigation monitoring in browser environment
+    if (typeof window !== 'undefined' && navigationMonitor) {
+      // Start timing when pathname changes
+      navigationMonitor.startNavigation();
       
-      // Log slow navigations
-      if (duration && duration > 1000) {
-        logger.warn(`[PERFORMANCE] Slow navigation detected: ${pathname} took ${duration.toFixed(2)}ms`);
-      }
-    }, 50); // Small delay to ensure rendering is complete
-    
-    return () => clearTimeout(timer);
+      // End timing after a short delay to ensure rendering is complete
+      const timer = setTimeout(() => {
+        const duration = navigationMonitor.endNavigation(pathname);
+        
+        // Log slow navigations
+        if (duration && duration > 1000) {
+          logger.warn(`[PERFORMANCE] Slow navigation detected: ${pathname} took ${duration.toFixed(2)}ms`);
+        }
+      }, 50); // Small delay to ensure rendering is complete
+      
+      return () => clearTimeout(timer);
+    }
+    // Always return a cleanup function or undefined
+    return () => {};
   }, [pathname]);
+
+  // Handle token expiration
+  useEffect(() => {
+    // If we get a 401 error, redirect to login
+    if (error && typeof error === 'object' && 'status' in error && error.status === 401) {
+      router.push('/auth/login');
+      return;
+    }
+    // Always return a cleanup function or undefined
+    return () => {};
+  }, [error, router]);
+
+  // Handle authentication redirect
+  useEffect(() => {
+    // If not authenticated or there's an error, redirect to login
+    if ((!user || error) && !isLoading) {
+      router.push('/auth/login');
+    }
+  }, [user, error, isLoading, router]);
 
   // For auth routes, don't show the navigation layout
   if (pathname.startsWith('/auth/')) {
@@ -48,9 +73,9 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     )
   }
 
-  // If not authenticated, show nothing (AuthProvider will handle redirect)
-  if (!user || isError) {
-    return null
+  // If not authenticated or there's an error, show nothing while redirecting
+  if (!user || error) {
+    return null;
   }
 
   // If authenticated, show the protected layout with fixed positioning

@@ -10,7 +10,6 @@ import {
   errorResponse as apiErrorResponse
 } from './api-utils'
 import { emitAssetChange } from '@/lib/realtime'
-import logger from '@/lib/logger'
 import { hasPermission, ResourceType, PermissionAction } from './permissions'
 
 // Only import Redis cache on the server side
@@ -18,107 +17,127 @@ let redisCache: any = null;
 let CACHE_PREFIXES: any = null;
 let CACHE_TTL: any = null;
 
+// Import logger for better error handling
+let logger: any = null;
+if (typeof window === 'undefined') {
+  try {
+    logger = require('./logger').default;
+  } catch (error) {
+    // Fallback to console if logger is not available
+    logger = {
+      error: console.error,
+      warn: console.warn,
+      info: console.log,
+      debug: console.log
+    };
+  }
+}
+
 if (typeof window === 'undefined') {
   try {
     const redisModule = require('./redis-cache');
     redisCache = redisModule.default;
     CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
     CACHE_TTL = redisModule.CACHE_TTL;
-  } catch (error) {
-    console.warn('Redis cache not available, using fallback:', error);
+  } catch (error: any) {
+    logger.warn('Redis cache not available, using fallback', { 
+      component: 'asset-api-handler', 
+      error: error.message 
+    });
   }
 }
 
-// Define the asset types based on the Prisma schema and route files
-interface PCAsset {
-  dept: string
-  cpuBarcode: string
-  cpuSapBarcode?: string
-  monitorBarcode?: string
-  monitorSapBarcode?: string
-  upsBarcode?: string
-  upsSapBarcode?: string
-  pcName: string
-  userName?: string
-  status: string
-  note?: string
-  customFields?: any
+// Define comprehensive asset interfaces with proper typing
+export interface BaseAsset {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  tenantId: string;
+  customFields?: Record<string, any>;
 }
 
-interface LaptopAsset {
-  dept: string
-  barcode: string
-  sapBarcode?: string
-  dateBuy?: string
-  userName?: string
-  email?: string
-  model?: string
-  status: string
-  customFields?: any
+export interface PCAsset extends BaseAsset {
+  dept: string;
+  cpuBarcode: string;
+  cpuSapBarcode?: string;
+  monitorBarcode?: string;
+  monitorSapBarcode?: string;
+  upsBarcode?: string;
+  upsSapBarcode?: string;
+  pcName: string;
+  userName?: string;
+  status: string;
+  note?: string;
 }
 
-interface PrinterAsset {
-  dept: string
-  location?: string
-  ip?: string
-  model?: string
-  color: string
-  barcode: string
-  sapCode?: string
-  date?: string
-  note?: string
-  customFields?: any
+export interface LaptopAsset extends BaseAsset {
+  dept: string;
+  barcode: string;
+  sapBarcode?: string;
+  dateBuy?: string;
+  userName?: string;
+  email?: string;
+  model?: string;
+  status: string;
 }
 
-interface LicenseAsset {
-  deviceName?: string
-  userName?: string
-  dept?: string
-  productType?: string
-  productKey?: string
-  model?: string
-  pc?: string
-  mac?: string
-  ip?: string
-  date?: string
-  updateStatus?: string
-  customFields?: any
+export interface PrinterAsset extends BaseAsset {
+  dept: string;
+  location?: string;
+  ip?: string;
+  model?: string;
+  color: string;
+  barcode: string;
+  sapCode?: string;
+  date?: string;
+  note?: string;
 }
 
-interface WarehouseITAsset {
-  barcode?: string
-  sapCode?: string
-  status: string
-  note?: string
-  createdAt?: string
-  updatedAt?: string
-  customFields?: any
+export interface LicenseAsset extends BaseAsset {
+  deviceName?: string;
+  userName?: string;
+  dept?: string;
+  productType?: string;
+  productKey?: string;
+  model?: string;
+  pc?: string;
+  mac?: string;
+  ip?: string;
+  date?: string;
+  updateStatus?: string;
 }
 
-// Add the InternetAsset interface
-interface InternetAsset {
-  dept: string
-  manager?: string
-  userName?: string
-  email?: string
-  ipAddress?: string
-  internetAccess?: string
-  status: string
-  note?: string
-  customFields?: any
+export interface WarehouseITAsset extends BaseAsset {
+  barcode?: string;
+  sapCode?: string;
+  status: string;
+  note?: string;
 }
 
-// Define the structure for asset operations
-interface AssetOperations<T> {
-  modelName: string
-  requiredFields?: (keyof T)[]
-  uniqueField?: keyof T
-  searchFields?: (keyof T)[]
-  include?: any
+export interface InternetAsset extends BaseAsset {
+  dept: string;
+  manager?: string;
+  userName?: string;
+  email?: string;
+  ipAddress?: string;
+  internetAccess?: string;
+  status: string;
+  note?: string;
 }
 
-// Generic asset API handler
-export class AssetApiHandler<T> {
+// Union type for all asset types
+export type AssetType = PCAsset | LaptopAsset | PrinterAsset | LicenseAsset | WarehouseITAsset | InternetAsset;
+
+// Define the structure for asset operations with better typing
+interface AssetOperations<T extends BaseAsset> {
+  modelName: string;
+  requiredFields?: (keyof Omit<T, keyof BaseAsset>)[];
+  uniqueField?: keyof Omit<T, keyof BaseAsset>;
+  searchFields?: (keyof Omit<T, keyof BaseAsset>)[];
+}
+
+// Generic asset API handler with improved type safety
+export class AssetApiHandler<T extends BaseAsset> {
   private resourceType: ResourceType;
 
   constructor(private db: PrismaClient, private operations: AssetOperations<T>) {
@@ -311,7 +330,6 @@ export class AssetApiHandler<T> {
 
       // Try to get cached result first if Redis is available
       if (redisCache && cacheKey) {
-        // Fix the type issue by not using type arguments
         const cachedResult = await redisCache.get(cacheKey);
         if (cachedResult) {
           logger.debug(`Cache hit for asset list: ${cacheKey}`);
@@ -531,7 +549,6 @@ export class AssetApiHandler<T> {
 
       // Try to get cached result first if Redis is available
       if (redisCache && cacheKey) {
-        // Fix the type issue by not using type arguments
         const cachedAsset = await redisCache.get(cacheKey);
         if (cachedAsset) {
           logger.debug(`Cache hit for asset: ${cacheKey}`);
@@ -574,7 +591,7 @@ export class AssetApiHandler<T> {
   }
 
   // Create a new asset
-  async create(user: any, body: T & { customFields?: Record<string, any> }) {
+  async create(user: any, body: Omit<T, keyof BaseAsset> & { customFields?: Record<string, any> }) {
     try {
       // Check permissions
       const hasCreatePermission = await this.checkPermission(user, 'create');
@@ -603,9 +620,15 @@ export class AssetApiHandler<T> {
           }
         });
 
+        // Create a map for faster lookup
+        const customFieldsMap = new Map(customFields.map(cf => [cf.name, cf]));
+
         // Validate each custom field
-        for (const customField of customFields) {
-          const fieldValue = body.customFields[customField.name];
+        for (const [fieldName, fieldValue] of Object.entries(body.customFields)) {
+          const customField = customFieldsMap.get(fieldName);
+          
+          // Skip validation for fields that don't exist in the custom fields config
+          if (!customField) continue;
           
           // Check required fields
           if (customField.required && (fieldValue === undefined || fieldValue === null || fieldValue === "")) {
@@ -639,6 +662,10 @@ export class AssetApiHandler<T> {
                 // For text fields, just ensure it's a string
                 if (typeof fieldValue !== 'string') {
                   validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a text value`;
+                }
+                // Check max length for text fields
+                if (typeof fieldValue === 'string' && fieldValue.length > 1000) {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be no more than 1000 characters`;
                 }
                 break;
               case 'select':
@@ -687,11 +714,11 @@ export class AssetApiHandler<T> {
 
       // Filter out undefined values to prevent setting fields to undefined
       const createData = Object.keys(body || {}).reduce((acc, key) => {
-        if (body[key as keyof T] !== undefined) {
-          (acc as any)[key] = body[key as keyof T];
+        if (body[key as keyof typeof body] !== undefined) {
+          (acc as any)[key] = body[key as keyof typeof body];
         }
         return acc;
-      }, {} as Partial<T>);
+      }, {} as Partial<Omit<T, keyof BaseAsset>>);
 
       const asset = await (this.db as any)[this.operations.modelName].create({
         data: {
@@ -733,7 +760,7 @@ export class AssetApiHandler<T> {
       }
 
       // Invalidate cache for this asset type and tenant if Redis is available
-      if (redisCache) {
+      if (redisCache && CACHE_PREFIXES) {
         await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:${this.operations.modelName}:${user.tenantId}:*`);
         await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
       }
@@ -755,10 +782,14 @@ export class AssetApiHandler<T> {
   }
 
   // Update an existing asset
-  async update(user: any, id: string, body: Partial<T> & { customFields?: Record<string, any> }) {
+  async update(user: any, id: string, body: Partial<Omit<T, keyof BaseAsset>> & { customFields?: Record<string, any> }) {
     try {
       if (process.env.NODE_ENV === 'development') {
-        logger.info(`Updating ${this.operations.modelName} asset ${id} with data:`, body);
+        logger.info(`Updating ${this.operations.modelName} asset ${id} with data`, { 
+          component: 'asset-api-handler', 
+          assetId: id, 
+          data: body 
+        });
       }
       
       // Check permissions
@@ -777,7 +808,11 @@ export class AssetApiHandler<T> {
 
       if (!existingAsset) {
         if (process.env.NODE_ENV === 'development') {
-          logger.info(`Asset ${id} not found for tenant ${user.tenantId}`);
+          logger.info(`Asset ${id} not found for tenant ${user.tenantId}`, { 
+            component: 'asset-api-handler', 
+            assetId: id, 
+            tenantId: user.tenantId 
+          });
         }
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
@@ -808,9 +843,15 @@ export class AssetApiHandler<T> {
           }
         });
 
+        // Create a map for faster lookup
+        const customFieldsMap = new Map(customFields.map(cf => [cf.name, cf]));
+
         // Validate each custom field
-        for (const customField of customFields) {
-          const fieldValue = body.customFields[customField.name];
+        for (const [fieldName, fieldValue] of Object.entries(body.customFields)) {
+          const customField = customFieldsMap.get(fieldName);
+          
+          // Skip validation for fields that don't exist in the custom fields config
+          if (!customField) continue;
           
           // Check required fields
           if (customField.required && (fieldValue === undefined || fieldValue === null || fieldValue === "")) {
@@ -845,6 +886,10 @@ export class AssetApiHandler<T> {
                 if (typeof fieldValue !== 'string') {
                   validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a text value`;
                 }
+                // Check max length for text fields
+                if (typeof fieldValue === 'string' && fieldValue.length > 1000) {
+                  validationErrors[`customFields.${customField.name}`] = `${customField.name} must be no more than 1000 characters`;
+                }
                 break;
               case 'select':
                 // For select fields, ensure it's a string
@@ -866,7 +911,10 @@ export class AssetApiHandler<T> {
       // Return validation errors if any
       if (Object.keys(validationErrors).length > 0) {
         if (process.env.NODE_ENV === 'development') {
-          logger.info("Validation errors:", validationErrors);
+          logger.info("Validation errors", { 
+            component: 'asset-api-handler', 
+            errors: validationErrors 
+          });
         }
         return validationErrorResponse(validationErrors)
       }
@@ -905,11 +953,11 @@ export class AssetApiHandler<T> {
       const changes: Record<string, { from: any; to: any }> = {}
       Object.keys(body).forEach(key => {
         // Skip undefined values to avoid setting fields to undefined
-        if (body[key as keyof T] !== undefined && 
-            body[key as keyof T] !== existingAsset[key as keyof typeof existingAsset]) {
+        if (body[key as keyof typeof body] !== undefined && 
+            body[key as keyof typeof body] !== existingAsset[key as keyof typeof existingAsset]) {
           changes[key] = {
             from: existingAsset[key as keyof typeof existingAsset],
-            to: body[key as keyof T]
+            to: body[key as keyof typeof body]
           }
         }
       })
@@ -953,17 +1001,23 @@ export class AssetApiHandler<T> {
       const updateData = Object.keys(body || {}).reduce((acc, key) => {
         // Only include valid fields for this model and non-undefined values
         // Allow both direct fields and customFields to be updated
-        if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof T] !== undefined) {
-          (acc as any)[key] = body[key as keyof T];
+        if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof typeof body] !== undefined) {
+          (acc as any)[key] = body[key as keyof typeof body];
         } else {
           if (process.env.NODE_ENV === 'development') {
-            logger.debug(`Skipping field ${key} - not valid or undefined`);
+            logger.debug(`Skipping field ${key} - not valid or undefined`, { 
+              component: 'asset-api-handler', 
+              field: key 
+            });
           }
         }
         return acc;
-      }, {} as Partial<T>);
+      }, {} as Partial<Omit<T, keyof BaseAsset>>);
       
-      logger.debug("Update data to be sent to database:", updateData);
+      logger.debug("Update data to be sent to database", { 
+      component: 'asset-api-handler', 
+      data: updateData 
+    });
 
       const asset = await (this.db as any)[this.operations.modelName].update({
         where: { 
@@ -989,7 +1043,7 @@ export class AssetApiHandler<T> {
       }
 
       // Invalidate cache for this specific asset and asset lists if Redis is available
-      if (redisCache) {
+      if (redisCache && CACHE_PREFIXES) {
         const assetCacheKey = redisCache.createKey(
           CACHE_PREFIXES.ASSETS,
           this.operations.modelName,
@@ -1072,7 +1126,7 @@ export class AssetApiHandler<T> {
       }
 
       // Invalidate cache for this specific asset and asset lists if Redis is available
-      if (redisCache) {
+      if (redisCache && CACHE_PREFIXES) {
         const assetCacheKey = redisCache.createKey(
           CACHE_PREFIXES.ASSETS,
           this.operations.modelName,
@@ -1081,7 +1135,12 @@ export class AssetApiHandler<T> {
         );
         await redisCache.del(assetCacheKey);
         await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
+        
+        // Add a small delay to ensure cache invalidation is complete
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // React Query cache invalidation removed - relying solely on Redis cache
 
       return successResponse<null>(null, 204)
     } catch (error: any) {
@@ -1132,41 +1191,47 @@ export class AssetApiHandler<T> {
         const foundIds = existingAssets.map((asset: any) => asset.id)
         const missingIds = batchIds.filter(id => !foundIds.includes(id))
         
+        // If some assets are missing, we should still delete the ones that exist
+        // rather than failing the entire operation
         if (missingIds.length > 0) {
-          return notFoundResponse(`Some ${this.operations.modelName} assets not found: ${missingIds.join(', ')}`)
+          logger.warn(`Some ${this.operations.modelName} assets not found during bulk delete: ${missingIds.join(', ')}`);
+          // Continue with deletion of found assets rather than returning error
         }
 
-        // Create audit log entries for each asset in batch
-        // Use Promise.all for parallel processing
-        const auditLogPromises = existingAssets.map((asset: any) => 
-          // Import audit logs dynamically to avoid circular dependencies
-          import('./audit-logs').then(({ createAuditLog }) => 
-            createAuditLog(user.tenantId, {
-              action: 'delete',
-              modelType: this.operations.modelName,
-              recordId: asset.id,
-              changes: asset,
-              userId: user.id,
-              tenantId: user.tenantId
-            }, 'bulkDelete').catch((auditLogError: any) => {
-              logger.error(`Failed to create audit log for asset ${asset.id}:`, auditLogError);
-              // Continue with deletion even if audit log creation fails
-            })
-          )
-        );
-        
-        // Wait for all audit log entries to be created
-        await Promise.all(auditLogPromises);
+        // Only create audit logs for assets that actually exist
+        if (existingAssets.length > 0) {
+          // Create audit log entries for each asset in batch
+          // Use Promise.all for parallel processing
+          const auditLogPromises = existingAssets.map((asset: any) => 
+            // Import audit logs dynamically to avoid circular dependencies
+            import('./audit-logs').then(({ createAuditLog }) => 
+              createAuditLog(user.tenantId, {
+                action: 'delete',
+                modelType: this.operations.modelName,
+                recordId: asset.id,
+                changes: asset,
+                userId: user.id,
+                tenantId: user.tenantId
+              }, 'bulkDelete').catch((auditLogError: any) => {
+                logger.error(`Failed to create audit log for asset ${asset.id}:`, auditLogError);
+                // Continue with deletion even if audit log creation fails
+              })
+            )
+          );
+          
+          // Wait for all audit log entries to be created
+          await Promise.all(auditLogPromises);
 
-        // Delete all assets in batch
-        const deleteResult = await (this.db as any)[this.operations.modelName].deleteMany({
-          where: { 
-            id: { in: batchIds },
-            tenantId: user.tenantId 
-          }
-        })
+          // Delete only the assets that exist
+          const deleteResult = await (this.db as any)[this.operations.modelName].deleteMany({
+            where: { 
+              id: { in: foundIds }, // Only delete assets that were found
+              tenantId: user.tenantId 
+            }
+          })
 
-        totalDeleted += deleteResult.count;
+          totalDeleted += deleteResult.count;
+        }
       }
 
       // Log the number of deleted assets
@@ -1205,10 +1270,12 @@ export class AssetApiHandler<T> {
       }
 
       // Invalidate cache for all assets of this type and tenant if Redis is available
-      if (redisCache) {
+      if (redisCache && CACHE_PREFIXES) {
         await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:${this.operations.modelName}:${user.tenantId}:*`);
         await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
       }
+
+      // React Query cache invalidation removed - relying solely on Redis cache
 
       return successResponse<null>(null, 204)
     } catch (error: any) {

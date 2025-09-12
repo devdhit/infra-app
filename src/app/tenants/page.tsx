@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useTenants, useCreateTenant, useDeleteTenant, useBulkDeleteTenants } from "@/hooks/useApi"
+import { useTenants, useCreateTenant, useDeleteTenant, useBulkDeleteTenants, useUpdateTenant } from "@/hooks/useApi"
 import { useTranslation } from "@/hooks/use-translation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
@@ -17,177 +17,146 @@ import { TenantsTable } from "@/components/tenants/tenants-table"
 import { TenantForm } from "@/components/tenants/tenant-form"
 import { ConfirmDialog } from "@/components/tenants/confirm-dialog"
 import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
-import { TenantFormValues } from "@/components/tenants/types"
 import { Tenant } from "@/hooks/useApi"
-import { useQueryClient } from '@tanstack/react-query'
 import { Plus, Building as BuildingIcon } from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
-import apiClient from '@/lib/api'
 import logger from '@/lib/logger'
 
-export default function TenantsPage() {
-  const { t } = useTranslation()
-  const { 
-    userRole,
-    canViewTenants, 
-    canCreateTenants, 
-    canEditTenants, 
-    canDeleteTenants, 
-    canBulkDeleteTenants 
-  } = usePermissions()
+const Page = () => {
+  const { t } = useTranslation();
+  const { data: currentUser } = useCurrentUser();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [bulkDeleteTenantIds, setBulkDeleteTenantIds] = useState<string[]>([]);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   
-  const { data: currentUser, isLoading: isUserLoading } = useCurrentUser()
-  const isComponentMounted = useRef(true)
+  // Fetch tenants
+  const { data: tenantsData, isLoading, error, refetch } = useTenants();
   
-  // Clean up ref on unmount
-  useEffect(() => {
-    return () => {
-      isComponentMounted.current = false
-    }
-  }, [])
+  // Tenant mutations
+  const { createTenant } = useCreateTenant();
+  const { updateTenant } = useUpdateTenant(editingTenant?.id || '');
+  const { deleteTenant } = useDeleteTenant(deleteTenantId || '');
+  const { bulkDeleteTenants } = useBulkDeleteTenants();
   
-  const queryClient = useQueryClient()
-  const { data: tenantsData = [], isLoading, isError, error, refetch } = useTenants()
-  const createTenantMutation = useCreateTenant()
-  const deleteMutation = useDeleteTenant('') // Placeholder, will be overridden when used
-  const bulkDeleteMutation = useBulkDeleteTenants()
-  
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null)
-  
-  // Manage the ID for delete operations in state
-  const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null)
-  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null)
-  
-  // State for bulk delete operations
-  const [bulkDeleteTenantIds, setBulkDeleteTenantIds] = useState<string[]>([])
-  
-  // Confirmation dialog states
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
-  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false)
-  
-  // Permission states
-  const [canView, setCanView] = useState<boolean | null>(null) // null means still checking
-  const [canCreate, setCanCreate] = useState<boolean | null>(null)
-  const [canEdit, setCanEdit] = useState<boolean | null>(null)
-  const [canDelete, setCanDelete] = useState<boolean | null>(null)
-  const [canBulkDelete, setCanBulkDelete] = useState<boolean | null>(null)
-  
-  // Ref to track if permission check is in progress
-  const isCheckingPermissions = useRef(false)
-
   // Check permissions
+  const { canViewTenants, canCreateTenants, canEditTenants, canDeleteTenants, canBulkDeleteTenants, isLoading: isUserLoading } = usePermissions();
+  
+  const [canView, setCanView] = useState<boolean | null>(null);
+  const [canCreate, setCanCreate] = useState<boolean | null>(null);
+  const [canEdit, setCanEdit] = useState<boolean | null>(null);
+  const [canDelete, setCanDelete] = useState<boolean | null>(null);
+  const [canBulkDelete, setCanBulkDelete] = useState<boolean | null>(null);
+  
   useEffect(() => {
-    const isCancelledRef = { current: false };
-    
     const checkPermissions = async () => {
-      // Prevent multiple simultaneous permission checks
-      if (isCheckingPermissions.current) {
-        logger.debug('Permission check already in progress, skipping');
-        return;
-      }
-      
       try {
-        isCheckingPermissions.current = true;
-        logger.debug('=== TENANT PERMISSION CHECKING STARTED ===');
-        logger.debug('User loading state:', isUserLoading);
-        logger.debug('Current user data:', currentUser);
+        const viewResult = await canViewTenants();
+        setCanView(viewResult);
         
-        // Only check permissions if user data is fully loaded
-        if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          logger.debug('User data fully loaded, checking permissions for user:', {
-            email: currentUser.email,
-            role: currentUser.role.name,
-            roleId: currentUser.role.id,
-            tenantId: currentUser.tenantId
-          });
-          
-          // Check all permissions in parallel for better performance
-          logger.debug('Starting parallel permission checks...');
-          const startTime = Date.now();
-          const [
-            viewPermission,
-            createPermission,
-            editPermission,
-            deletePermission,
-            bulkDeletePermission
-          ] = await Promise.all([
-            canViewTenants(),
-            canCreateTenants(),
-            canEditTenants(),
-            canDeleteTenants(),
-            canBulkDeleteTenants()
-          ]);
-          const endTime = Date.now();
-          const duration = endTime - startTime;
-          
-          logger.debug('Permission results:', { 
-            viewPermission, 
-            createPermission, 
-            editPermission, 
-            deletePermission, 
-            bulkDeletePermission,
-            duration: `${duration}ms`
-          });
-          
-          // Only update state if component is still mounted
-          if (!isCancelledRef.current) {
-            logger.debug('Updating permission states...');
-            setCanView(viewPermission);
-            setCanCreate(createPermission);
-            setCanEdit(editPermission);
-            setCanDelete(deletePermission);
-            setCanBulkDelete(bulkDeletePermission);
-            logger.debug('Permission states updated:', {
-              canView: viewPermission,
-              canCreate: createPermission,
-              canEdit: editPermission,
-              canDelete: deletePermission,
-              canBulkDelete: bulkDeletePermission
-            });
-          } else {
-            logger.debug('Component was unmounted, skipping state update');
-          }
-        } else if (!isUserLoading && (!currentUser || !currentUser.role?.id || !currentUser.tenantId)) {
-          // User data loaded but incomplete
-          logger.debug('User data loaded but incomplete, denying permissions');
-          logger.debug('Current user state:', { currentUser, hasRole: !!currentUser?.role?.id, hasTenant: !!currentUser?.tenantId });
-          if (!isCancelledRef.current) {
-            setCanView(false);
-            setCanCreate(false);
-            setCanEdit(false);
-            setCanDelete(false);
-            setCanBulkDelete(false)
-          }
-        } else {
-          logger.debug('Still loading user data or user data not available yet');
-        }
-        // If still loading, do nothing
+        const createResult = await canCreateTenants();
+        setCanCreate(createResult);
+        
+        const editResult = await canEditTenants();
+        setCanEdit(editResult);
+        
+        const deleteResult = await canDeleteTenants();
+        setCanDelete(deleteResult);
+        
+        const bulkDeleteResult = await canBulkDeleteTenants();
+        setCanBulkDelete(bulkDeleteResult);
       } catch (error) {
         logger.error('Error checking permissions:', error);
-        // Deny access if there's an error
-        if (!isCancelledRef.current) {
-          setCanView(false);
-          setCanCreate(false);
-          setCanEdit(false);
-          setCanDelete(false);
-          setCanBulkDelete(false);
-        }
-      } finally {
-        isCheckingPermissions.current = false;
-        logger.debug('=== TENANT PERMISSION CHECKING FINISHED ===');
+        setCanView(false);
+        setCanCreate(false);
+        setCanEdit(false);
+        setCanDelete(false);
+        setCanBulkDelete(false);
       }
     };
     
     checkPermissions();
+  }, [canViewTenants, canCreateTenants, canEditTenants, canDeleteTenants, canBulkDeleteTenants]);
+  
+  // Get the tenant to delete for confirmation dialog
+  const tenantToDelete = tenantsData?.find(tenant => tenant.id === deleteTenantId) || null;
+  
+  const handleEdit = (tenant: Tenant | null) => {
+    setEditingTenant(tenant);
+    setIsDialogOpen(true);
+  };
+  
+  const handleDelete = (id: string | string[]) => {
+    if (typeof id === 'string') {
+      setDeleteTenantId(id);
+      setIsDeleteConfirmOpen(true);
+    }
+  };
+  
+  const confirmDelete = async () => {
+    if (!deleteTenantId) return;
     
-    return () => {
-      logger.debug('Cleaning up permission checking');
-      isCancelledRef.current = true;
-      // Reset the permission checking flag when component unmounts
-      isCheckingPermissions.current = false;
-    };
-  }, [userRole, canViewTenants, canCreateTenants, canEditTenants, canDeleteTenants, canBulkDeleteTenants, currentUser, isUserLoading]);
+    try {
+      await deleteTenant();
+      toast.success(t('tenants.delete.success') || 'Tenant deleted successfully');
+      setIsDeleteConfirmOpen(false);
+      setDeleteTenantId(null);
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || t('tenants.delete.error') || 'Failed to delete tenant');
+    }
+  };
+  
+  const confirmBulkDelete = async () => {
+    try {
+      await bulkDeleteTenants(bulkDeleteTenantIds);
+      toast.success(t('tenants.bulkDelete.success') || 'Tenants deleted successfully');
+      setIsBulkDeleteConfirmOpen(false);
+      setBulkDeleteTenantIds([]);
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || t('tenants.bulkDelete.error') || 'Failed to delete tenants');
+    }
+  };
+  
+  const handleSubmit = async (data: Partial<Tenant>) => {
+    try {
+      if (editingTenant) {
+        try {
+          await updateTenant(data);
+          toast.success(t('tenants.update.success') || 'Tenant updated successfully');
+          setIsDialogOpen(false);
+          setEditingTenant(null);
+          refetch();
+        } catch (error: any) {
+          toast.error(error.message || t('tenants.update.error') || 'Failed to update tenant');
+        }
+      } else {
+        try {
+          await createTenant(data);
+          toast.success(t('tenants.create.success') || 'Tenant created successfully');
+          setIsDialogOpen(false);
+          refetch();
+        } catch (error: any) {
+          toast.error(error.message || t('tenants.create.error') || 'Failed to create tenant');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || (editingTenant 
+        ? t('tenants.update.error') || 'Failed to update tenant' 
+        : t('tenants.create.error') || 'Failed to create tenant'));
+    }
+  };
+
+  // Reset editing state when dialog is closed
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingTenant(null);
+    }
+  };
 
   // Show loading state while checking permissions
   if (canView === null || isUserLoading) {
@@ -214,191 +183,6 @@ export default function TenantsPage() {
     )
   }
 
-  const handleEdit = async (tenant: Tenant | null) => {
-    try {
-      // Only check permissions if user data is fully loaded
-      if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-        const hasEditPermission = await canEditTenants()
-        const hasCreatePermission = await canCreateTenants()
-        
-        if (tenant && !hasEditPermission) {
-          toast.error(t('tenants.edit.unauthorized') || 'You do not have permission to edit tenants')
-          return
-        }
-        if (!tenant && !hasCreatePermission) {
-          toast.error(t('tenants.create.unauthorized') || 'You do not have permission to create tenants')
-          return
-        }
-      }
-      setEditingTenant(tenant)
-      setIsDialogOpen(true)
-    } catch (error) {
-      logger.error('Error checking edit permissions:', error)
-      // Allow the action by default if there's an error
-      setEditingTenant(tenant)
-      setIsDialogOpen(true)
-    }
-  }
-
-  const handleDelete = async (id: string | string[]) => {
-    try {
-      // Only check permissions if user data is fully loaded
-      if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-        // Check if it's a bulk delete (array of IDs)
-        if (Array.isArray(id)) {
-          const hasBulkDeletePermission = await canBulkDeleteTenants()
-          
-          if (!hasBulkDeletePermission) {
-            toast.error(t('tenants.bulkDelete.unauthorized') || 'You do not have permission to bulk delete tenants')
-            return
-          }
-          
-          // Handle bulk delete
-          setBulkDeleteTenantIds(id)
-          setIsBulkDeleteConfirmOpen(true)
-        } else {
-          const hasDeletePermission = await canDeleteTenants()
-          
-          if (!hasDeletePermission) {
-            toast.error(t('tenants.delete.unauthorized') || 'You do not have permission to delete tenants')
-            return
-          }
-          
-          // Handle single delete
-          setDeleteTenantId(id)
-          // Find the tenant to display in the confirmation dialog
-          const tenant = tenantsData.find(t => t.id === id)
-          setTenantToDelete(tenant || null)
-          setIsDeleteConfirmOpen(true)
-        }
-      }
-    } catch (error) {
-      logger.error('Error in handleDelete:', error)
-      toast.error(t('common.error') || 'An error occurred while checking permissions')
-    }
-  }
-
-  const confirmDelete = async () => {
-    if (!deleteTenantId) return
-    
-    try {
-      logger.debug('Sending delete request for tenant ID:', deleteTenantId);
-      await deleteMutation.mutateAsync(deleteTenantId)
-      toast.success(t('tenants.delete.success') || 'Tenant deleted successfully')
-      refetch()
-    } catch (error: any) {
-      logger.error('Delete error:', error);
-      // Provide more specific error messages
-      if (error.status === 404) {
-        toast.error(t('tenants.delete.notFound') || 'Tenant not found. It may have already been deleted.')
-      } else if (error.status === 403) {
-        toast.error(t('tenants.delete.forbidden') || 'You do not have permission to delete this tenant.')
-      } else if (error.status === 400) {
-        toast.error(error.message || t('tenants.delete.hasData') || 'Cannot delete tenant with associated data. Please delete all associated users and assets first.')
-      } else {
-        toast.error(error.message || t('tenants.delete.error') || 'Failed to delete tenant')
-      }
-    } finally {
-      setIsDeleteConfirmOpen(false)
-      setDeleteTenantId(null)
-      setTenantToDelete(null)
-    }
-  }
-
-  const confirmBulkDelete = async () => {
-    try {
-      logger.debug('Sending bulk delete request with IDs:', bulkDeleteTenantIds);
-      await bulkDeleteMutation.mutateAsync({ ids: bulkDeleteTenantIds })
-      toast.success(t('tenants.bulkDelete.success', '{0} tenants deleted successfully', bulkDeleteTenantIds.length.toString()) || 
-                   `${bulkDeleteTenantIds.length} tenants deleted successfully`)
-      refetch()
-    } catch (error: any) {
-      logger.error('Bulk delete error:', error);
-      // Provide more specific error messages for bulk delete
-      if (error.status === 404) {
-        toast.error(t('tenants.bulkDelete.notFound') || 'One or more tenants not found. They may have already been deleted.')
-      } else if (error.status === 403) {
-        toast.error(t('tenants.bulkDelete.forbidden') || 'You do not have permission to delete these tenants.')
-      } else if (error.status === 400) {
-        toast.error(error.message || t('tenants.bulkDelete.hasData') || 'Cannot delete tenants with associated data. Please delete all associated users and assets first.')
-      } else {
-        toast.error(error.message || t('tenants.bulkDelete.error') || 'Failed to delete tenants')
-      }
-    } finally {
-      setIsBulkDeleteConfirmOpen(false)
-      setBulkDeleteTenantIds([])
-    }
-  }
-
-  const handleSubmit = async (data: TenantFormValues) => {
-    try {
-      if (editingTenant) {
-        // Only check permissions if user data is fully loaded
-        if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          const hasEditPermission = await canEditTenants()
-          if (!hasEditPermission) {
-            toast.error(t('tenants.update.unauthorized') || 'You do not have permission to update tenants')
-            return
-          }
-        }
-        // Update existing tenant using Axios instead of the hook
-        try {
-          const response = await apiClient.put(`/tenants/${editingTenant.id}`, {
-            name: data.name,
-            description: data.description,
-          });
-
-          if (response.status !== 200) {
-            throw new Error(response.data.error || 'Failed to update tenant');
-          }          
-          toast.success(t('tenants.update.success') || 'Tenant updated successfully')
-          setIsDialogOpen(false)
-          setEditingTenant(null) // Clear the editing tenant state
-          // Invalidate the tenants query to force a refresh
-          await queryClient.invalidateQueries({ queryKey: ['tenants'] })
-          // Also invalidate the specific tenant query
-          await queryClient.invalidateQueries({ queryKey: ['tenants', editingTenant.id] })
-        } catch (error: any) {
-          toast.error(error.message || t('tenants.update.error') || 'Failed to update tenant')
-        }
-      } else {
-        // Only check permissions if user data is fully loaded
-        if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
-          const hasCreatePermission = await canCreateTenants()
-          if (!hasCreatePermission) {
-            toast.error(t('tenants.create.unauthorized') || 'You do not have permission to create tenants')
-            return
-          }
-        }
-        // Create new tenant
-        try {
-          await createTenantMutation.mutateAsync({
-            name: data.name,
-            description: data.description,
-          })
-          toast.success(t('tenants.create.success') || 'Tenant created successfully')
-          setIsDialogOpen(false)
-          // Invalidate the tenants query to force a refresh
-          await queryClient.invalidateQueries({ queryKey: ['tenants'] })
-        } catch (error: any) {
-          toast.error(error.message || t('tenants.create.error') || 'Failed to create tenant')
-        }
-      }
-    } catch (error: any) {
-      toast.error(error.message || (editingTenant 
-        ? t('tenants.update.error') || 'Failed to update tenant' 
-        : t('tenants.create.error') || 'Failed to create tenant'))
-    }
-  }
-
-  // Reset editing state when dialog is closed
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsDialogOpen(open)
-    if (!open) {
-      setEditingTenant(null)
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-52">
@@ -407,7 +191,7 @@ export default function TenantsPage() {
     )
   }
 
-  if (isError) {
+  if (error) {
     return (
       <div className="flex items-center justify-center h-52">
         <div className="text-center">
@@ -447,10 +231,10 @@ export default function TenantsPage() {
         </CardHeader>
         <CardContent>
           <TenantsTable 
-            tenants={tenantsData}
+            tenants={tenantsData || []}
             onEdit={canEdit ? handleEdit : undefined}
-            onDelete={canDelete || canBulkDelete ? handleDelete : undefined}
-            isDeleting={deleteMutation.isPending || bulkDeleteMutation.isPending}
+            onDelete={(canDelete || canBulkDelete) ? handleDelete : undefined}
+            isDeleting={false}
             deletingTenantId={deleteTenantId}
           />
         </CardContent>
@@ -462,7 +246,7 @@ export default function TenantsPage() {
           onOpenChange={handleDialogOpenChange}
           editingTenant={editingTenant}
           onSubmit={handleSubmit}
-          isSubmitting={createTenantMutation.isPending || (editingTenant ? false : false)}
+          isSubmitting={false}
         />
       )}
       
@@ -482,10 +266,12 @@ export default function TenantsPage() {
         title={t('tenants.title') || 'Tenants'}
         count={bulkDeleteTenantIds.length}
         isOpen={isBulkDeleteConfirmOpen}
-        isDeleting={bulkDeleteMutation.isPending}
+        isDeleting={false}
         onClose={() => setIsBulkDeleteConfirmOpen(false)}
         onConfirm={confirmBulkDelete}
       />
     </div>
   )
 }
+
+export default Page;

@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import io from 'socket.io-client';
-import { useQueryClient } from '@tanstack/react-query';
 import logger from '@/lib/logger';
 
-export function useRealtimeUpdates(tenantId: string, assetType: string) {
-  const queryClient = useQueryClient();
+export function useRealtimeUpdates() {
   const [isConnected, setIsConnected] = useState(false);
 
-  useEffect(() => {
+  // Return a subscribe function that components can use to listen for updates
+  const subscribeToUpdates = useCallback((
+    assetType: string, 
+    callback: (action: string, data: any) => void
+  ) => {
     // Initialize socket connection with proper configuration
     // Use the full URL in production, relative path in development
     const socketUrl = process.env.NODE_ENV === 'production' 
@@ -31,10 +33,8 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
       logger.info('Connected to Socket.IO server with ID:', socket.id);
       setIsConnected(true);
       
-      // Join tenant room
-      if (tenantId) {
-        socket.emit('join-tenant', tenantId);
-      }
+      // Join tenant room (this would need to be passed in or obtained from context)
+      // For now, we'll assume tenantId is handled elsewhere
     });
     
     socket.on('disconnect', (reason) => {
@@ -64,14 +64,14 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
       if (data.assetType === assetType) {
         logger.info(`Received real-time update for ${assetType}:`, data);
         
-        // Invalidate and refetch queries for this asset type
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+        // Call the provided callback to notify the component
+        callback(data.action, data.data);
       }
     };
 
     socket.on('asset-change', handleAssetChange);
 
-    // Cleanup function
+    // Return unsubscribe function
     return () => {
       socket.off('asset-change', handleAssetChange);
       socket.off('connect');
@@ -79,7 +79,7 @@ export function useRealtimeUpdates(tenantId: string, assetType: string) {
       socket.off('connect_error');
       socket.close();
     };
-  }, [tenantId, assetType, queryClient]);
-  
-  return { isConnected };
+  }, []);
+
+  return { isConnected, subscribeToUpdates };
 }

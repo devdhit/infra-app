@@ -10,6 +10,22 @@ import {
 } from '@/lib/api-utils'
 import logger from '@/lib/logger'
 
+// Import Redis cache for proper cache invalidation
+let redisCache: any = null;
+let CACHE_PREFIXES: any = null;
+if (typeof window === 'undefined') {
+  try {
+    const redisModule = require('@/lib/redis-cache');
+    redisCache = redisModule.default;
+    CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
+  } catch (error: any) {
+    logger.warn('Redis cache not available, using fallback', { 
+      component: 'custom-fields-route', 
+      error: error.message 
+    });
+  }
+}
+
 // PUT /api/assets/custom-fields/[id] - Update custom field values for an asset
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -32,7 +48,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Validate that the asset type is supported
-    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT']
+    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet']
     if (!supportedAssetTypes.includes(assetType)) {
       return badRequestResponse(`Unsupported asset type: ${assetType}`)
     }
@@ -42,6 +58,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                      assetType === 'Laptop' ? 'Laptop' : 
                      assetType === 'Printer' ? 'Printer' : 
                      assetType === 'License' ? 'License' : 
+                     assetType === 'Internet' ? 'Internet' :
                      'WarehouseIT'
 
     logger.debug(`Updating custom fields for ${assetType} asset ${resolvedParams.id} with data:`, body);
@@ -70,10 +87,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // This prevents Prisma errors when invalid fields are sent
     const validFields = {
       'PC': ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userName', 'status', 'note', 'customFields'],
-      'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'userId', 'email', 'model', 'status', 'customFields'],
+      'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'userId', 'email', 'model', 'status', 'userName', 'customFields'],
       'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
       'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
-      'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields']
+      'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
+      'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
     }
     
     const modelValidFields = validFields[assetType as keyof typeof validFields] || []
@@ -95,6 +113,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       },
       data: updateData
     })
+
+    // Invalidate Redis cache for this asset and asset lists
+    if (redisCache && CACHE_PREFIXES) {
+      const assetCacheKey = redisCache.createKey(
+        CACHE_PREFIXES.ASSETS,
+        modelName,
+        user.tenantId,
+        resolvedParams.id
+      );
+      await redisCache.del(assetCacheKey);
+      await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${modelName}:${user.tenantId}:*`);
+    }
 
     return successResponse(updatedAsset)
   } catch (error: any) {
@@ -127,7 +157,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Validate that the asset type is supported
-    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT']
+    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet']
     if (!supportedAssetTypes.includes(assetType)) {
       return badRequestResponse(`Unsupported asset type: ${assetType}`)
     }
@@ -137,6 +167,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                      assetType === 'Laptop' ? 'Laptop' : 
                      assetType === 'Printer' ? 'Printer' : 
                      assetType === 'License' ? 'License' : 
+                     assetType === 'Internet' ? 'Internet' :
                      'WarehouseIT'
 
     // Get the asset with custom fields

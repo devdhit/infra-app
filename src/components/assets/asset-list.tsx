@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback, memo, useRef } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates'
-import { useCurrentUser } from '@/hooks/useApi'
+import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
 import {
   Button,
   Card,
@@ -39,9 +38,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
-  Eye as EyeIcon
+  Eye as EyeIcon,
+  RefreshCw
 } from "lucide-react";
-import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
 import { toast } from "sonner";
 import { AssetFormDialog } from "./asset-form";
 import { AssetDetailDialog } from "./asset-detail-dialog";
@@ -49,11 +48,11 @@ import { DeleteConfirmDialog } from "./delete-confirm-dialog";
 import { BulkDeleteDialog } from "./bulk-delete-dialog";
 import { useTranslation } from "@/hooks/use-translation";
 import { Asset, AssetResponse, AssetColumn, AssetFormField } from "@/types/assets";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter} from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { InlineEditCell } from "./inline-edit-cell";
 import { useCustomFields } from "@/hooks/useApi";
-import { getModelType, isCustomField, getFieldValue } from "@/lib/custom-fields";
+import { isCustomField, getFieldValue } from "@/lib/custom-fields";
 
 import { formatDisplayDate } from "@/lib/utils";
 import logger from '@/lib/logger';
@@ -106,15 +105,10 @@ const getAssetColumns = (
   visibleColumns: AssetColumn[],
   allFormFields: AssetFormField[],
   assetType: string,
-  customFieldsData: any,
+  customFieldsData: any[] | null, // Changed from CustomField[] | null to any[] | null
   handleView: (asset: Asset) => void,
   handleEdit: (asset: Asset) => void,
   handleDelete: (id: string) => void,
-  assets: Asset[],
-  queryClient: any,
-  currentPage: number,
-  search: string,
-  statusFilter: string,
   refetch: () => void, // Add refetch function as parameter
   // Permission props
   canView: boolean | null = true,
@@ -170,7 +164,7 @@ const getAssetColumns = (
         const field = allFormFields.find(f => f.name === column.key);
         
         // Determine if this is a custom field
-        const isCustom = isCustomField(column.key, asset, customFieldsData);
+        const isCustom = isCustomField(column.key, asset, customFieldsData || undefined);
         // Safely access the cell value
         const cellValue = getFieldValue(column.key, asset, isCustom);
         
@@ -187,71 +181,12 @@ const getAssetColumns = (
             field={field}
             value={displayValue}
             isCustomField={isCustom}
-            customFieldsData={customFieldsData}
-            onUpdate={(newValue) => {
-              // Create a truly deep clone of the assets array to avoid reference issues
-              const updatedAssets = assets.map(a => {
-                if (a.id === asset.id) {
-                  // Deep clone the asset object
-                  const newAsset = JSON.parse(JSON.stringify(a));
-                  
-                  if (isCustom) {
-                    // For custom fields, ensure the customFields object exists
-                    newAsset.customFields = newAsset.customFields || {};
-                    // Update the custom field with the new value
-                    newAsset.customFields[column.key] = newValue;
-                  } else {
-                    // For standard fields, update directly
-                    newAsset[column.key] = newValue;
-                  }
-                  
-                  return newAsset;
-                }
-                return a;
-              });
-              
-              // Get the exact query key for the current view
-              const queryParams = { 
-                page: currentPage, 
-                limit: 20, 
-                search, 
-                statusFilter 
-              };
-              
-              const exactQueryKey = ['assets', assetType, JSON.stringify(queryParams)];
-              
-              // Store the updated assets directly in the query cache
-              if (queryClient) {
-                // Update the exact paginated query
-                queryClient.setQueryData(exactQueryKey, (oldData: any) => {
-                  if (!oldData) return { data: updatedAssets };
-                  return {
-                    ...oldData,
-                    data: updatedAssets
-                  };
-                });
-                
-                // Force query invalidation
-                queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-                
-                // For custom fields, also invalidate custom field queries
-                if (isCustom) {
-                  const modelType = getModelType(assetType);
-                  queryClient.invalidateQueries({ 
-                    queryKey: ['asset-custom-fields', modelType, asset.id] 
-                  });
-                  
-                  // Also invalidate the specific asset query to ensure custom fields are refreshed
-                  queryClient.invalidateQueries({ 
-                    queryKey: ['assets', assetType, asset.id] 
-                  });
-                }
-                
-                // Force a refetch to ensure we have the latest data
-                setTimeout(() => {
-                  refetch();
-                }, 100);
-              }
+            customFieldsData={customFieldsData || undefined}
+            onUpdate={(_newValue) => {
+              // Force a refetch to ensure we have the latest data from the server
+              setTimeout(() => {
+                refetch();
+              }, 100);
             }}
           />
         ) : (
@@ -314,16 +249,17 @@ const getAssetColumns = (
     size: 70, // Set a fixed width for the actions column
   };
 
-  // Return columns with actions column at the beginning (after selection column)
-  return [selectionColumn, actionsColumn, ...dataColumns];
+  // Return the columns array
+  return [selectionColumn, ...dataColumns, actionsColumn];
 };
 
-// extractDepartments function removed - was unused
+// Add a helper function to generate a unique key for localStorage based on assetType
+const getColumnVisibilityStorageKey = (assetType: string) => `assetListColumnVisibility_${assetType}`;
 
-export function AssetList({ 
-  assetType, 
-  title, 
-  columns, 
+export function AssetList({
+  assetType,
+  title,
+  columns,
   formFields,
   canView = true,
   canCreate = true,
@@ -331,470 +267,79 @@ export function AssetList({
   canDelete = true,
   canBulkDelete = true
 }: AssetListProps) {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const { t } = useTranslation();
+  
+  // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
   
-  // Map assetType to modelType for custom fields
-  const modelType = getModelType(assetType);
-  
-  // Parse URL parameters for persistence across refreshes
-  const initialPage = parseInt(searchParams.get("page") || "1");
-  const initialSearch = searchParams.get("search") || "";
-  const initialStatus = searchParams.get("status") || "";
-  
-  const [currentPage, setCurrentPage] = useState(initialPage);
-  const [search, setSearch] = useState(initialSearch);
-  const [searchInputValue, setSearchInputValue] = useState(initialSearch); // Add this line
-  const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  // State management
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 1 });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [searchInputValue, setSearchInputValue] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  // const [isSelectAllChecked, setIsSelectAllChecked] = useState(false); // Unused
-  // const [editingCell, setEditingCell] = useState<{ assetId: string; fieldKey: string } | null>(null); // Unused
-  
-  // Import/Export dialog states (separate states for import and export)
+  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  const [viewAsset, setViewAsset] = useState<Asset | null>(null);
+  const [editingAsset, setEditingAsset] = useState<Asset | undefined>(undefined);
+  const [deleteAssetId, setDeleteAssetId] = useState<string | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  
-  // Column visibility state
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
   
-  // Real-time updates (using tenantId from auth context)
-  const { data: user } = useCurrentUser();
-  const tenantId = user?.tenantId || '';
-  const {} = useRealtimeUpdates(tenantId, assetType);
+  // Real-time updates
+  const { subscribeToUpdates } = useRealtimeUpdates();
   
-  // State for column order
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => 
-    columns.map(column => column.key)
-  );
-  
-  // Save column visibility to localStorage whenever it changes
-  const saveColumnVisibility = useCallback((visibility: Record<string, boolean>) => {
-    try {
-      const key = `columnVisibility_${assetType}`;
-      localStorage.setItem(key, JSON.stringify(visibility));
-    } catch (e) {
-      logger.warn('Failed to save column visibility to localStorage:', e);
-    }
-  }, [assetType]);
-  
-  // Load column visibility from localStorage
-  const loadColumnVisibility = useCallback(() => {
-    try {
-      const key = `columnVisibility_${assetType}`;
-      const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      logger.warn('Failed to load column visibility from localStorage:', e);
-      return null;
-    }
-  }, [assetType]);
-  
-  // Save column order to localStorage whenever it changes
-  const saveColumnOrder = useCallback((order: string[]) => {
-    try {
-      const key = `columnOrder_${assetType}`;
-      localStorage.setItem(key, JSON.stringify(order));
-    } catch (e) {
-      logger.warn('Failed to save column order to localStorage:', e);
-    }
-  }, [assetType]);
-  
-  // Load column order from localStorage
-  const loadColumnOrder = useCallback(() => {
-    try {
-      const key = `columnOrder_${assetType}`;
-      const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      logger.warn('Failed to load column order from localStorage:', e);
-      return null;
-    }
-  }, [assetType]);
-  
-  // Override the handleColumnOrderChange to also save to localStorage
-  const handleColumnOrderChangeWithSave = useCallback((newOrder: string[]) => {
-    setColumnOrder(newOrder);
-    saveColumnOrder(newOrder);
-  }, [saveColumnOrder]);
-  
-  // Fetch custom fields for this asset type
-  const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(modelType);
-  
-  // Combine standard columns with custom field columns, removing duplicates
-  const allColumns = useMemo(() => {
-    // Create a Set of standard column keys for quick lookup
-    const standardColumnKeys = new Set(columns.map(c => c.key));
-    
-    // Filter out custom fields that have the same name as standard columns
-    const uniqueCustomFieldColumns: AssetColumn[] = (customFieldsData || [])
-      .filter(field => !standardColumnKeys.has(field.name))
-      .map(field => ({
-        key: field.name,
-        label: field.name
-      }));
-    
-    return [...columns, ...uniqueCustomFieldColumns];
-  }, [columns, customFieldsData]);
-
-  // Define the column keys we want to hide by default
-  const defaultHiddenColumns = useMemo(() => {
-    // This will hide technical/identifier columns by default that aren't usually needed
-    // in day-to-day operations but can be shown if needed
-    return [
-      'cpuSapBarcode',
-      'monitorSapBarcode',
-      'upsSapBarcode',
-      'sapBarcode',
-      'upsBarcode',
-      'purchaseDate',
-      'dateBuy',
-      'note'
-    ];
-  }, []);
-
-  // Initialize column visibility state with intelligent defaults
+  // Subscribe to real-time updates
   useEffect(() => {
-    // Only initialize column visibility when we have all the columns (including custom fields)
-    // and custom fields data has been loaded (not undefined)
-    if (allColumns.length > 0 && customFieldsData !== undefined) {
-      // Try to load saved column visibility from localStorage
-      const savedVisibility = loadColumnVisibility();
-      
-      // Always initialize with a proper visibility object
-      const initialVisibility: Record<string, boolean> = {};
-      const allColumnKeys = allColumns.map(column => column.key);
-      
-      if (savedVisibility) {
-        // Use saved visibility if available, but ensure all current columns are included
-        // and remove any columns that no longer exist
-        let visibilityChanged = false;
-        
-        // Add any missing columns with default visibility
-        allColumns.forEach(column => {
-          if (!(column.key in savedVisibility)) {
-            initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
-            visibilityChanged = true;
-          } else {
-            initialVisibility[column.key] = savedVisibility[column.key];
-          }
-        });
-        
-        // Remove any columns that no longer exist
-        Object.keys(savedVisibility).forEach(key => {
-          if (!allColumnKeys.includes(key)) {
-            visibilityChanged = true;
-            // Don't add this key to initialVisibility (effectively removing it)
-          }
-        });
-        
-        setColumnVisibility(initialVisibility);
-        
-        // Save the updated visibility to localStorage if we made changes
-        if (visibilityChanged) {
-          saveColumnVisibility(initialVisibility);
-        }
-      } else {
-        // Fallback to default visibility logic
-        allColumns.forEach(column => {
-          initialVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
-        });
-        setColumnVisibility(initialVisibility);
-        // Save the initial visibility to localStorage
-        saveColumnVisibility(initialVisibility);
-      }
-    }
-  }, [allColumns, customFieldsData, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility, assetType]);
-
-  // Toggle column visibility and save to localStorage
-  const toggleColumnVisibility = (columnKey: string) => {
-    setColumnVisibility(prev => {
-      const newVisibility = {
-        ...prev,
-        [columnKey]: !(prev[columnKey] === true) // Toggle the value, defaulting to true if undefined
-      };
-      saveColumnVisibility(newVisibility);
-      return newVisibility;
+    const unsubscribe = subscribeToUpdates(assetType, () => {
+      // Handle real-time updates by refetching data
+      refetch();
     });
-  };
-
-  // Toggle all columns visibility and save to localStorage
-  const toggleAllColumns = (visible: boolean) => {
-    const newVisibility: Record<string, boolean> = {};
-    allColumns.forEach(column => {
-      newVisibility[column.key] = visible;
-    });
-    setColumnVisibility(newVisibility);
-    saveColumnVisibility(newVisibility);
-  };
-  
-  // Initialize column order with localStorage persistence
-  useEffect(() => {
-    // Only initialize column order when we have all the columns (including custom fields)
-    // and custom fields data has been loaded (not undefined)
-    if (allColumns.length > 0 && customFieldsData !== undefined) {
-      // Try to load saved column order from localStorage
-      const savedOrder = loadColumnOrder();
-      
-      if (savedOrder && Array.isArray(savedOrder)) {
-        // Validate that saved order contains all current columns
-        const currentColumnKeys = new Set(allColumns.map(column => column.key));
-        const validSavedOrder = savedOrder.filter(key => currentColumnKeys.has(key));
-        
-        // Only use saved order if it contains all current columns
-        if (validSavedOrder.length === allColumns.length) {
-          setColumnOrder(validSavedOrder);
-          return;
-        }
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
       }
-      
-      // Fallback to default order
-      const defaultOrder = allColumns.map(column => column.key);
-      setColumnOrder(defaultOrder);
-      // Save the initial order to localStorage
-      saveColumnOrder(defaultOrder);
-    }
-  }, [allColumns, customFieldsData, loadColumnOrder, saveColumnOrder, assetType]);
-
-  // Optimize memoization with proper dependencies
-  const filteredColumns = useMemo(() => {
-    // Create a more efficient filtering mechanism
-    return allColumns.filter(column => {
-      // If columnVisibility has an explicit false value, hide the column
-      // Otherwise, show the column (default to true if not set)
-      return columnVisibility[column.key] !== false;
-    });
-  }, [allColumns, columnVisibility]);
-
-// handleLargeDataset and related useEffect removed - was unused
-
-  // More efficient data transformation with memoization
-  const visibleColumns = useMemo(() => {
-    return filteredColumns; 
-  }, [filteredColumns]);
-
-  // Create a version of allColumns with unique keys for the detail dialog
-  const detailDialogColumns = useMemo(() => {
-    return allColumns.map((column, index) => {
-      // Determine if this is a custom field
-      const isCustom = isCustomField(column.key, {}, customFieldsData);
-      
-      // Create a unique key for this column
-      const uniqueKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
-      
-      return {
-        ...column,
-        key: uniqueKey,
-        originalKey: column.key, // Store the original key for reference
-        isCustomField: isCustom // Store whether this is a custom field
-      };
-    });
-  }, [allColumns, customFieldsData]);
+    };
+  }, [subscribeToUpdates, assetType]);
   
-  // Combine standard form fields with custom fields, removing duplicates
-  const allFormFields = useMemo(() => {
-    // Create a Set of standard field names for quick lookup
-    const standardFieldNames = new Set(formFields.map(f => f.name));
-    
-    // Filter out custom fields that have the same name as standard fields
-    const uniqueCustomFormFields: AssetFormField[] = (customFieldsData || [])
-      .filter(field => !standardFieldNames.has(field.name))
-      .map(field => ({
-        name: field.name,
-        label: field.name,
-        type: field.type as any,
-        required: field.required
-      }));
-    
-    return [...formFields, ...uniqueCustomFormFields];
-  }, [formFields, customFieldsData]);
-  
-  // Refetch custom fields when the component mounts or when assetType changes
-  useEffect(() => {
-    refetchCustomFields();
-  }, [assetType, refetchCustomFields]);
-  
-  // Reset column visibility and order when assetType changes
-  useEffect(() => {
-    // Reset column visibility state when assetType changes
-    setColumnVisibility({});
-    setColumnOrder(columns.map(column => column.key));
-    
-    // Load saved column visibility for the new assetType
-    const savedVisibility = loadColumnVisibility();
-    if (savedVisibility) {
-      setColumnVisibility(savedVisibility);
-    }
-    // Note: We'll let the other useEffect handle the case where there's no saved data
-    // since it also handles customFieldsData loading
-    
-    // Load saved column order for the new assetType
-    const savedOrder = loadColumnOrder();
-    if (savedOrder && Array.isArray(savedOrder)) {
-      // Validate that saved order contains all current columns
-      const currentColumnKeys = new Set(columns.map(column => column.key));
-      const validSavedOrder = savedOrder.filter(key => currentColumnKeys.has(key));
-      
-      // Only use saved order if it contains all current columns
-      if (validSavedOrder.length === columns.length) {
-        setColumnOrder(validSavedOrder);
-      } else {
-        // Fallback to default order
-        setColumnOrder(columns.map(column => column.key));
-      }
-    } else {
-      // Fallback to default order
-      setColumnOrder(columns.map(column => column.key));
-    }
-  }, [assetType, columns, loadColumnVisibility, loadColumnOrder]);
-  
-  // Re-initialize column visibility and order when custom fields data becomes available
-  useEffect(() => {
-    // Only re-initialize when custom fields data is loaded (not undefined) and we have all columns
-    if (customFieldsData !== undefined && allColumns.length > 0) {
-      // Check if we need to update column visibility to include new custom fields
-      // or remove columns that no longer exist
-      const allColumnKeys = allColumns.map(column => column.key);
-      const currentVisibilityKeys = Object.keys(columnVisibility);
-      
-      // Check if we have the correct columns in visibility state
-      const hasAllColumns = allColumnKeys.every(key => currentVisibilityKeys.includes(key));
-      const hasOnlyValidColumns = currentVisibilityKeys.every(key => allColumnKeys.includes(key));
-      
-      // If we don't have all columns or have invalid columns, update the visibility state
-      if (!hasAllColumns || !hasOnlyValidColumns) {
-        const savedVisibility = loadColumnVisibility();
-        const updatedVisibility: Record<string, boolean> = {};
-        let visibilityChanged = false;
-        
-        if (savedVisibility) {
-          // Use saved visibility but ensure consistency with current columns
-          allColumns.forEach(column => {
-            if (column.key in savedVisibility) {
-              updatedVisibility[column.key] = savedVisibility[column.key];
-            } else {
-              // Add missing column with default visibility
-              updatedVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
-              visibilityChanged = true;
-            }
-          });
-          
-          // Remove columns that no longer exist
-          Object.keys(savedVisibility).forEach(key => {
-            if (!allColumnKeys.includes(key)) {
-              visibilityChanged = true;
-              // Don't add this key to updatedVisibility (effectively removing it)
-            }
-          });
-        } else {
-          // No saved visibility, use default visibility for all columns
-          allColumns.forEach(column => {
-            updatedVisibility[column.key] = !defaultHiddenColumns.includes(column.key) && !(column as any).hide;
-          });
-          visibilityChanged = true;
-        }
-        
-        if (visibilityChanged || !hasAllColumns || !hasOnlyValidColumns) {
-          setColumnVisibility(updatedVisibility);
-          saveColumnVisibility(updatedVisibility);
-        }
-      }
-      
-      // Re-initialize column order if not already set or if it's empty
-      if (columnOrder.length === 0) {
-        const savedOrder = loadColumnOrder();
-        
-        if (savedOrder && Array.isArray(savedOrder)) {
-          // Validate that saved order contains all current columns
-          const currentColumnKeys = new Set(allColumns.map(column => column.key));
-          const validSavedOrder = savedOrder.filter(key => currentColumnKeys.has(key));
-          
-          // Only use saved order if it contains all current columns
-          if (validSavedOrder.length === allColumns.length) {
-            setColumnOrder(validSavedOrder);
-            return;
-          }
-        }
-        
-        // Fallback to default order
-        const defaultOrder = allColumns.map(column => column.key);
-        setColumnOrder(defaultOrder);
-        // Save the initial order to localStorage
-        saveColumnOrder(defaultOrder);
-      }
-    }
-  }, [customFieldsData, allColumns, columnVisibility, columnOrder, defaultHiddenColumns, loadColumnVisibility, saveColumnVisibility, loadColumnOrder, saveColumnOrder, assetType]);
-
-  // Dialog states
-  const [viewAsset, setViewAsset] = useState<Asset | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  
-  const [editingAsset, setEditingAsset] = useState<Asset | undefined>(undefined);
-  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
-  
-  const [deleteAssetId, setDeleteAssetId] = useState<string | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  
-  // Update URL when parameters change (for bookmarking/sharing)
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (currentPage > 1) params.set("page", currentPage.toString());
-    if (search) params.set("search", search);
-    if (statusFilter) params.set("status", statusFilter);
-    
-    const newPath = `${window.location.pathname}?${params.toString()}`;
-    router.replace(newPath, { scroll: false }); // Prevent scrolling when updating URL
-  }, [currentPage, search, statusFilter, router]);
-  
-  // Maintain focus on search input after URL updates
-  useEffect(() => {
-    // Only refocus if the search input is already focused
-    if (searchInputRef.current && document.activeElement === searchInputRef.current) {
-      // Small delay to ensure the DOM has updated
-      setTimeout(() => {
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
-        }
-      }, 0);
-    }
-  }, [currentPage, search, statusFilter]);
-  
-  // Sync searchInputValue with search state when search changes externally
-  useEffect(() => {
-    setSearchInputValue(search);
-  }, [search]);
-  
-  // Query assets with current parameters
-  // Optimize asset fetching with better caching and pagination
-  const { data, isLoading, isError, error, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
+  // Fetch assets with current parameters
+  const { data: assetsData, isLoading: assetsLoading, error: assetsApiError, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
     page: currentPage,
-    limit: 20, // Increase page size for fewer requests
+    limit: 20,
     search,
     status: statusFilter
-  }, {
-    // Optimize caching for better performance
-    staleTime: search || statusFilter ? 0 : 60 * 1000, // No caching when searching or filtering
-    gcTime: 10 * 60 * 1000, // Increased from 5 minutes to 10 minutes
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    refetchOnMount: search || statusFilter ? 'always' : false, // Always refetch when searching or filtering
-    retry: false, // Disable retry to prevent unnecessary delays
-    refetchInterval: false, // Disable automatic refetching
-    refetchIntervalInBackground: false // Disable background refetching
   });
   
-  // Memoize assets to prevent unnecessary re-renders
-  const assets = useMemo(() => data?.data || [], [data?.data]);
-  const pagination = useMemo(() => data?.pagination || { page: 1, limit: 10, total: 0, pages: 1 }, [data?.pagination]);
+  // Update state when assets data changes
+  useEffect(() => {
+    if (assetsData) {
+      setAssets(assetsData.data || []);
+      setPagination(assetsData.pagination || { page: 1, limit: 10, total: 0, pages: 1 });
+      setIsLoading(assetsLoading);
+      // isError is not a property of useAssets hook, using error instead
+      setIsError(!!assetsApiError);
+      setError(assetsApiError || null);
+    }
+  }, [assetsData, assetsLoading, assetsApiError]);
   
-  // Remove the placeholder ID parameter
-  const deleteMutation = useDeleteAsset<Asset>(assetType);
-  const bulkDeleteMutation = useBulkDeleteAssets<Asset>(assetType);
+  // Fetch custom fields
+  const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(assetType);
+  
+  // Asset deletion hooks
+  const { deleteAsset, isLoading: deleteLoading } = useDeleteAsset<Asset>(assetType);
+  const { bulkDeleteAssets, isLoading: bulkDeleteLoading } = useBulkDeleteAssets<Asset>(assetType);
   
   // Reset to first page when search or filter changes
   useEffect(() => {
@@ -880,29 +425,6 @@ export function AssetList({
     setIsDeleteDialogOpen(true);
   }, []);
   
-  const confirmDelete = useCallback(async () => {
-    if (!deleteAssetId) return;
-    
-    try {
-      // Call the delete mutation with the specific asset ID
-      await deleteMutation.mutateAsync(deleteAssetId);
-      toast.success(t('assets.delete.success', `{0} deleted successfully`, title));
-      setIsDeleteDialogOpen(false);
-      setDeleteAssetId(null);
-      refetch();
-    } catch (error: any) {
-      logger.error("Delete error:", error);
-      const apiError = error as ApiError;
-      let message = t('assets.delete.error', `Failed to delete {0}`, title);
-      
-      if (apiError.message) {
-        message = apiError.message;
-      }
-      
-      toast.error(message);
-    }
-  }, [deleteAssetId, deleteMutation, refetch, t, title]);
-  
   const handleBulkDelete = useCallback(() => {
     if (selectedAssets.length === 0) {
       toast.error(t('assets.bulkDelete.noSelection', 'Please select assets to delete'));
@@ -912,20 +434,58 @@ export function AssetList({
     setIsBulkDeleteDialogOpen(true);
   }, [selectedAssets.length, t]);
   
+  const confirmDelete = useCallback(async () => {
+    if (!deleteAssetId) return;
+    
+    try {
+      // Call the delete function with the specific asset ID
+      await deleteAsset(deleteAssetId);
+      toast.success(t('assets.delete.success', `{0} deleted successfully`, title));
+      setIsDeleteDialogOpen(false);
+      setDeleteAssetId(null);
+      
+      // Clear selection if the deleted asset was selected
+      setSelectedAssets(prev => prev.filter(id => id !== deleteAssetId));
+      
+      // Refetch data to ensure UI updates
+      await refetch();
+    } catch (error: any) {
+      logger.error("Delete error:", error);
+      const apiError = error as ApiError;
+      let message = t('assets.delete.error', `Failed to delete {0}`, title);
+      
+      if (apiError.message) {
+        message = apiError.message;
+      }
+      
+      // Even if there was an error, the asset might have been deleted
+      // So we still clear the selection and refresh the data
+      setIsDeleteDialogOpen(false);
+      setDeleteAssetId(null);
+      
+      // Clear selection if the deleted asset was selected
+      setSelectedAssets(prev => prev.filter(id => id !== deleteAssetId));
+      
+      // Refetch data to ensure UI updates
+      await refetch();
+      
+      toast.error(message);
+    }
+  }, [deleteAssetId, deleteAsset, t, title, refetch]);
+
   const confirmBulkDelete = useCallback(async () => {
     try {
-      await bulkDeleteMutation.mutateAsync({ ids: selectedAssets });
+      await bulkDeleteAssets(selectedAssets);
       toast.success(t('assets.bulkDelete.success', `{0} {1} assets deleted successfully`, selectedAssets.length.toString(), title));
+      
+      // Clear selection after successful deletion
       setSelectedAssets([]);
       setIsBulkDeleteDialogOpen(false);
       
-      // More robust cache invalidation
-      await queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-      
-      // Reset to first page after deletion
+      // Reset to first page after deletion to ensure we're showing current data
       setCurrentPage(1);
       
-      // Refetch the data to ensure UI updates
+      // Refetch data to ensure UI updates
       await refetch();
     } catch (error: any) {
       logger.error("Bulk delete error:", error);
@@ -936,9 +496,20 @@ export function AssetList({
         message = apiError.message;
       }
       
+      // Even if there was an error, some assets might have been deleted
+      // So we still clear the selection and refresh the data
+      setSelectedAssets([]);
+      setIsBulkDeleteDialogOpen(false);
+      
+      // Reset to first page after deletion
+      setCurrentPage(1);
+      
+      // Refetch data to ensure UI updates
+      await refetch();
+      
       toast.error(message);
     }
-  }, [bulkDeleteMutation, refetch, selectedAssets, t, title, assetType, queryClient]);
+  }, [bulkDeleteAssets, selectedAssets, t, title, refetch]);
   
   const handleView = useCallback((asset: Asset) => {
     setViewAsset(asset);
@@ -964,69 +535,230 @@ export function AssetList({
     }
   }, [viewAsset, handleEdit]);
 
-  // handleSelectAsset removed - was unused
-  
-  // handleSelectAll removed - was unused
-  
   const handleFormSuccess = useCallback(() => {
-    // Invalidate the query to refetch all data
-    queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
+    // Refetch data after form success
+    refetch();
+    refetchCustomFields();
+  }, [refetch, refetchCustomFields]);
+
+  const handleImportSuccess = useCallback(() => {
+    // Refetch data after import success
+    refetch();
+  }, [refetch]);
+  
+  // Update URL when parameters change (for bookmarking/sharing)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set("page", currentPage.toString());
+    if (search) params.set("search", search);
+    if (statusFilter) params.set("status", statusFilter);
     
-    // Also invalidate asset detail queries if we were editing
-    if (editingAsset) {
-      queryClient.invalidateQueries({ queryKey: ['assets', assetType, editingAsset.id] });
+    const newPath = `${window.location.pathname}?${params.toString()}`;
+    router.replace(newPath, { scroll: false }); // Prevent scrolling when updating URL
+  }, [currentPage, search, statusFilter, router]);
+  
+  // Maintain focus on search input after URL updates
+  useEffect(() => {
+    // Only refocus if the search input is already focused
+    if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+      // Small delay to ensure the DOM has updated
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }, 0);
+    }
+  }, [currentPage, search, statusFilter]);
+  
+  // Sync searchInputValue with search state when search changes externally
+  useEffect(() => {
+    setSearchInputValue(search);
+  }, [search]);
+  
+  // Create a version of allColumns with unique keys for the detail dialog
+  const allColumns = useMemo(() => {
+    // Combine standard columns with custom field columns
+    const standardColumnKeys = new Set(columns.map(c => c.key));
+    
+    // Add custom fields as columns if they don't already exist as standard columns
+    const customFieldColumns: AssetColumn[] = (customFieldsData || [])
+      .filter(field => !standardColumnKeys.has(field.name))
+      .map(field => ({
+        key: field.name,
+        label: field.name,
+        render: undefined
+      }));
+    
+    return [...columns, ...customFieldColumns];
+  }, [columns, customFieldsData]);
+  
+  // Combine standard form fields with custom fields, removing duplicates
+  const allFormFields = useMemo(() => {
+    // Create a Set of standard field names for quick lookup
+    const standardFieldNames = new Set(formFields.map(f => f.name));
+    
+    // Filter out custom fields that have the same name as standard fields
+    const uniqueCustomFormFields: AssetFormField[] = (customFieldsData || [])
+      .filter(field => !standardFieldNames.has(field.name))
+      .map(field => ({
+        name: field.name,
+        label: field.name,
+        type: field.type as any,
+        required: field.required
+      }));
+    
+    return [...formFields, ...uniqueCustomFormFields];
+  }, [formFields, customFieldsData]);
+  
+  // Refetch custom fields when the component mounts or when assetType changes
+  useEffect(() => {
+    refetchCustomFields();
+  }, [assetType, refetchCustomFields]);
+  
+  // Initialize column visibility and order when assetType or columns change
+  useEffect(() => {
+    // Try to load saved column visibility from localStorage
+    let savedVisibility: Record<string, boolean> | null = null;
+    try {
+      const savedVisibilityString = localStorage.getItem(getColumnVisibilityStorageKey(assetType));
+      if (savedVisibilityString) {
+        savedVisibility = JSON.parse(savedVisibilityString);
+      }
+    } catch (e) {
+      // If there's an error parsing, we'll use default visibility
+      console.warn('Failed to parse saved column visibility', e);
     }
     
-    // Refetch custom fields in case they've been updated
-    refetchCustomFields();
+    // Initialize column visibility with saved data or defaults for standard columns only
+    const initialVisibility: Record<string, boolean> = {};
+    columns.forEach(column => {
+      initialVisibility[column.key] = savedVisibility?.[column.key] ?? true;
+    });
     
-    // Finally refetch the list
-    refetch();
-  }, [assetType, queryClient, refetch, refetchCustomFields, editingAsset]);
-  
-  // New function to handle import success
-  const handleImportSuccess = useCallback(() => {
-    // Refetch all data after successful import
-    queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-    refetch();
-  }, [assetType, queryClient, refetch]);
-  
-  // Effect to handle select all/deselect all removed - was unused
+    setColumnVisibility(initialVisibility);
+    setColumnOrder(columns.map(column => column.key));
+  }, [assetType, columns]);
 
-  // Effect to clear selection when data changes significantly (e.g., after delete operations)
-  // But not after import operations
+  // Update column visibility when custom fields data becomes available
   useEffect(() => {
-    // Only clear selection if we're not in the middle of a delete operation
-    // and if the data change is significant (not just adding new items)
-    if (!isBulkDeleteDialogOpen && !isDeleteDialogOpen && selectedAssets.length > 0) {
-      // Check if any of the selected assets still exist in the new data
-      const currentAssetIds = new Set(assets.map(asset => asset.id));
-      const hasValidSelections = selectedAssets.some(id => currentAssetIds.has(id));
+    // Only update when we have all the data we need
+    if (customFieldsData !== undefined && columns.length > 0) {
+      // Try to load saved column visibility from localStorage
+      let savedVisibility: Record<string, boolean> | null = null;
+      try {
+        const savedVisibilityString = localStorage.getItem(getColumnVisibilityStorageKey(assetType));
+        if (savedVisibilityString) {
+          savedVisibility = JSON.parse(savedVisibilityString);
+        }
+      } catch (e) {
+        // If there's an error parsing, we'll use default visibility
+        console.warn('Failed to parse saved column visibility', e);
+      }
       
-      // Only clear selection if none of the selected assets exist in the new data
-      // This prevents clearing selection after import but still clears after delete
-      if (!hasValidSelections) {
-        setSelectedAssets([]);
+      // Create updated visibility state that includes both standard columns and custom fields
+      const updatedVisibility: Record<string, boolean> = {};
+      
+      // Add all standard columns with their saved visibility or default to true
+      columns.forEach(column => {
+        updatedVisibility[column.key] = savedVisibility?.[column.key] ?? true;
+      });
+      
+      // Add all custom field columns with their saved visibility or default to true
+      if (customFieldsData) {
+        customFieldsData.forEach(field => {
+          // Only add custom fields that don't conflict with standard columns
+          if (!columns.some(c => c.key === field.name)) {
+            updatedVisibility[field.name] = savedVisibility?.[field.name] ?? true;
+          }
+        });
+      }
+      
+      setColumnVisibility(updatedVisibility);
+      
+      // Update column order to include custom fields if needed
+      if (columnOrder.length > 0) {
+        // Preserve existing order but add any new custom field columns at the end
+        const existingOrder = [...columnOrder];
+        const customFieldKeys = (customFieldsData || [])
+          .filter(field => !columns.some(c => c.key === field.name))
+          .map(field => field.name);
+        
+        // Add any new custom field columns that aren't already in the order
+        const newCustomFields = customFieldKeys.filter(key => !existingOrder.includes(key));
+        if (newCustomFields.length > 0) {
+          setColumnOrder([...existingOrder, ...newCustomFields]);
+        }
+      } else {
+        // If columnOrder is empty, initialize it with all columns
+        const allColumnKeys = [
+          ...columns.map(c => c.key),
+          ...(customFieldsData || [])
+            .filter(field => !columns.some(c => c.key === field.name))
+            .map(field => field.name)
+        ];
+        setColumnOrder(allColumnKeys);
       }
     }
-  }, [assets, isBulkDeleteDialogOpen, isDeleteDialogOpen, selectedAssets]);
+  }, [customFieldsData, columns, columnOrder, assetType]);
+
+  // Get visible columns based on column visibility state
+  const visibleColumnsData = useMemo(() => {
+    return allColumns.filter(column => columnVisibility[column.key] !== false);
+  }, [allColumns, columnVisibility]);
+
+  // Toggle column visibility
+  const toggleColumnVisibility = useCallback((columnKey: string) => {
+    setColumnVisibility(prev => {
+      const newVisibility = {
+        ...prev,
+        [columnKey]: !prev[columnKey]
+      };
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem(getColumnVisibilityStorageKey(assetType), JSON.stringify(newVisibility));
+      } catch (e) {
+        console.warn('Failed to save column visibility to localStorage', e);
+      }
+      
+      return newVisibility;
+    });
+  }, [assetType]);
+
+  // Toggle all columns visibility
+  const toggleAllColumns = useCallback((visible: boolean) => {
+    const newVisibility: Record<string, boolean> = {};
+    // Apply visibility to all current columns (both standard and custom fields)
+    allColumns.forEach(column => {
+      newVisibility[column.key] = visible;
+    });
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem(getColumnVisibilityStorageKey(assetType), JSON.stringify(newVisibility));
+    } catch (e) {
+      console.warn('Failed to save column visibility to localStorage', e);
+    }
+    
+    setColumnVisibility(newVisibility);
+  }, [assetType, allColumns]);
+
+  // Handle column order change
+  const handleColumnOrderChangeWithSave = useCallback((newOrder: string[]) => {
+    setColumnOrder(newOrder);
+  }, []);
 
   // Get columns for DataTable with proper ordering
   const dataTableColumns = useMemo(() => {
     const baseColumns = getAssetColumns(
       t,
-      visibleColumns,
+      visibleColumnsData,
       allFormFields,
       assetType,
       customFieldsData,
       handleView,
       handleEdit,
       handleDelete,
-      assets,
-      queryClient,
-      currentPage,
-      search,
-      statusFilter,
       refetch, // Pass refetch function
       canView, // Pass permission props
       canEdit,
@@ -1045,18 +777,13 @@ export function AssetList({
     return baseColumns;
   }, [
     t,
-    visibleColumns,
+    visibleColumnsData,
     allFormFields,
     assetType,
     customFieldsData,
     handleView,
     handleEdit,
     handleDelete,
-    assets,
-    queryClient,
-    currentPage,
-    search,
-    statusFilter,
     columnOrder,
     refetch, // Add refetch to dependencies
     canView, // Add permission props to dependencies
@@ -1064,14 +791,23 @@ export function AssetList({
     canDelete
   ]);
 
+  // New function to manually refresh data
+  const handleRefresh = useCallback(() => {
+    // Force a refetch to ensure UI updates with fresh data
+    refetch().then(() => {
+      toast.success(t('assets.refresh.success', 'Data refreshed successfully'));
+    }).catch((error) => {
+      logger.error('Error refreshing data:', error);
+      toast.error(t('assets.refresh.error', 'Failed to refresh data'));
+    });
+  }, [refetch, t]);
+
   // Handle row selection change from DataTable
   const handleRowSelectionChange = useCallback((selectedRows: Record<string, boolean>) => {
     const selectedIds = Object.keys(selectedRows).filter(key => selectedRows[key]);
     setSelectedAssets(selectedIds);
   }, []);
   
-  // Effect to update select all checkbox state removed - was unused
-
   // Pagination component
   const renderPagination = () => {
     if (pagination.pages <= 1) return null;
@@ -1224,12 +960,21 @@ export function AssetList({
           </div>
           {selectedAssets.length > 0 && canBulkDelete && (
             <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
-              <Trash className="h-4 w-4 mr-2" />
+              <Trash className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">{t('common.delete', "Delete")}</span> 
               <span className="sm:hidden">{selectedAssets.length}</span>
               <span className="hidden sm:inline"> ({selectedAssets.length})</span>
             </Button>
           )}
+          <Button 
+            onClick={handleRefresh}
+            variant="outline" 
+            size="sm"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{t('common.refresh', "Refresh")}</span>
+            <span className="sm:hidden">{t('common.refresh', "Refresh")}</span>
+          </Button>
           {canCreate && (
             <Button size="sm" onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-2" />
@@ -1386,7 +1131,15 @@ export function AssetList({
               enableVirtualization={assets.length > 50} // Enable virtualization for medium datasets
               virtualItemHeight={50}
               columnVisibility={columnVisibility} // Pass column visibility state
-              onColumnVisibilityChange={setColumnVisibility} // Handle column visibility changes
+              onColumnVisibilityChange={(newVisibility) => {
+                // Update our local state and save to localStorage
+                setColumnVisibility(newVisibility);
+                try {
+                  localStorage.setItem(getColumnVisibilityStorageKey(assetType), JSON.stringify(newVisibility));
+                } catch (e) {
+                  console.warn('Failed to save column visibility to localStorage', e);
+                }
+              }} // Handle column visibility changes
             />
           </div>
 
@@ -1398,7 +1151,20 @@ export function AssetList({
       <MemoizedAssetDetailDialog
         asset={viewAsset}
         title={title}
-        columns={detailDialogColumns}
+        columns={allColumns.map((column, index) => {
+          // Determine if this is a custom field
+          const isCustom = isCustomField(column.key, {}, customFieldsData || undefined);
+          
+          // Create a unique key for this column
+          const uniqueKey = `${column.key}-${isCustom ? 'custom' : 'standard'}-${index}`;
+          
+          return {
+            ...column,
+            key: uniqueKey,
+            originalKey: column.key, // Store the original key for reference
+            isCustomField: isCustom // Store whether this is a custom field
+          };
+        })}
         isOpen={isViewDialogOpen}
         onClose={() => setIsViewDialogOpen(false)}
         onEdit={handleEditFromView}
@@ -1424,10 +1190,10 @@ export function AssetList({
           title={t('assets.delete.confirmTitle', `Delete {0}`, title)}
           description={t('assets.delete.confirmDescription', `Are you sure you want to delete this {0}? This action cannot be undone.`, title.toLowerCase())}
           isOpen={isDeleteDialogOpen}
-          isDeleting={deleteMutation.isPending}
+          isDeleting={deleteLoading}
           onClose={() => setIsDeleteDialogOpen(false)}
           onConfirm={confirmDelete}
-          error={deleteMutation.error ? (deleteMutation.error as ApiError).message : undefined}
+          error={error ? error.message : undefined}
         />
       )}
       
@@ -1437,10 +1203,10 @@ export function AssetList({
           title={title}
           count={selectedAssets.length}
           isOpen={isBulkDeleteDialogOpen}
-          isDeleting={bulkDeleteMutation.isPending}
+          isDeleting={bulkDeleteLoading}
           onClose={() => setIsBulkDeleteDialogOpen(false)}
           onConfirm={confirmBulkDelete}
-          error={bulkDeleteMutation.error ? (bulkDeleteMutation.error as ApiError).message : undefined}
+          error={error ? error.message : undefined}
         />
       )}
       

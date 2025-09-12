@@ -38,7 +38,7 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 import { Asset, AssetFormField } from "@/types/assets";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import { ApiError, ValidationError } from "@/lib/api";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -206,7 +206,8 @@ export function AssetFormDialog({
       label: cf.name,
       type: cf.type as any,
       required: cf.required,
-      isCustomField: true // Mark as custom field
+      isCustomField: true, // Mark as custom field
+      description: cf.description || undefined
     })) || [];
   }, [customFieldsData]);
   
@@ -287,7 +288,7 @@ export function AssetFormDialog({
   const createMutation = useCreateAsset<Asset, z.infer<typeof Schema>>(assetType);
   const updateMutation = useUpdateAsset<Asset, Partial<z.infer<typeof Schema>>>(assetType, initialData?.id || "");
   
-  const onSubmit = async (values: z.infer<typeof Schema>) => {
+  const onSubmit = useCallback(async (values: z.infer<typeof Schema>) => {
     try {
       // Process values before sending to API
       const processedValues: Record<string, any> = { customFields: {} };
@@ -349,10 +350,10 @@ export function AssetFormDialog({
       }
       
       if (isEditing) {
-        await updateMutation.mutateAsync(processedValues);
+        await updateMutation.updateAsset(processedValues);
         toast.success(t('assets.update.success', `{0} updated successfully`, title));
       } else {
-        await createMutation.mutateAsync(processedValues as z.infer<typeof Schema>);
+        await createMutation.createAsset(processedValues as z.infer<typeof Schema>);
         toast.success(t('assets.create.success', `{0} created successfully`, title));
       }
       form.reset();
@@ -383,7 +384,7 @@ export function AssetFormDialog({
         toast.error(message);
       }
     }
-  };
+  }, [form, fields, initialData, isEditing, title, updateMutation, createMutation, onSuccess, onClose, t]);
   
   // Handle form errors
   const onError = (errors: any) => {
@@ -397,7 +398,7 @@ export function AssetFormDialog({
   };
   
   // Show submission state
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isSubmitting = createMutation.isLoading || updateMutation.isLoading;
   
   // Show skeleton while loading initial data for editing
   if (isEditing && !initialData && isOpen) {
@@ -427,7 +428,7 @@ export function AssetFormDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-4">
             {/* Show general error message if needed */}
-            {(createMutation.isError || updateMutation.isError) && (
+            {(createMutation.error || updateMutation.error) && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>{t('common.error', "Error")}</AlertTitle>

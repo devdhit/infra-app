@@ -1,277 +1,276 @@
-import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query'
+// Remove React Query imports and replace with direct API calls
 import { api, ApiError, ValidationError } from '@/lib/api'
 import { toast } from 'sonner'
 import { getModelType } from '@/lib/custom-fields'
 import { User, UserCreateUpdate } from '@/types/users'
+import { useState, useEffect, useCallback } from 'react'
 
-// Define more specific types for useApiQuery
-type ApiQueryOptions<T> = Omit<UseQueryOptions<T, ApiError, T, string[]>, 'queryKey' | 'queryFn'>
-
-// Generic API hook with better typing and caching
-export function useApiQuery<T>(key: string[], url: string, options: ApiQueryOptions<T> = {}) {
-  return useQuery<T, ApiError, T, string[]>({
-    queryKey: key,
-    queryFn: async () => {
+// Generic API hook with direct API calls instead of React Query
+export function useApiCall<T>(url: string, options: { enabled?: boolean } = {}) {
+  const [data, setData] = useState<T | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<ApiError | null>(null)
+  
+  const fetchData = useCallback(async () => {
+    if (options.enabled === false) return
+    
+    setIsLoading(true)
+    setError(null)
+    
+    try {
       const response = await api.get<T>(url)
-      return response
-    },
-    // Implement optimized caching strategy
-    staleTime: 10 * 60 * 1000, // 10 minutes by default
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnWindowFocus: false, // Reduce unnecessary refetches
-    refetchOnReconnect: false, // Reduce unnecessary refetches
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-    ...options
-  })
-}
-
-// Better types for mutation hooks
-type ApiMutationOptions<T, V> = Omit<UseMutationOptions<T, ApiError, V, unknown>, 'mutationFn'>
-
-// Generic mutation hook for POST requests
-export function useApiMutation<T, V>(url: string, options: ApiMutationOptions<T, V> = {}) {
+      setData(response)
+    } catch (err) {
+      setError(err as ApiError)
+      console.error('API Error:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [url, options.enabled])
   
-  return useMutation<T, ApiError, V>({
-    mutationFn: async (data: V) => {
-      const response = await api.post<T, V>(url, data)
-      return response
-    },
-    ...options
-  })
-}
-
-// Generic mutation hook for PUT requests
-export function useApiUpdate<T, V>(url: string, options = {}) {
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
   
-  return useMutation<T, ApiError, V>({
-    mutationFn: async (data: V) => {
-      const response = await api.put<T, V>(url, data)
-      return response
-    },
-    ...options
-  })
-}
-
-// Generic mutation hook for DELETE requests
-export function useApiDelete<T>(url: string, options = {}) {
-  
-  return useMutation<T, ApiError, void>({
-    mutationFn: async () => {
-      const response = await api.delete<T>(url)
-      return response
-    },
-    ...options
-  })
-}
-
-// Generic mutation hook for DELETE requests with ID parameter
-export function useApiDeleteWithId<T>(url: string, options = {}) {
-  const queryClient = useQueryClient()
-  
-  return useMutation<T, ApiError, string>({
-    mutationFn: async (id: string) => {
-      const response = await api.delete<T>(`${url}/${id}`)
-      return response
-    },
-    onSuccess: (...args) => {
-      // Invalidate all queries related to assets when a deletion occurs
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
-      // Call any additional onSuccess handlers
-      if (options && typeof options === 'object' && 'onSuccess' in options) {
-        const onSuccess = (options as any).onSuccess
-        if (onSuccess && typeof onSuccess === 'function') {
-          onSuccess(...args)
-        }
-      }
-    },
-    ...options
-  })
+  return { data, isLoading, error, refetch: fetchData }
 }
 
 // Asset-specific hooks
-export function useAssets<T>(assetType: string, params: Record<string, any> = {}, options: ApiQueryOptions<T> = {}) {
+export function useAssets<T>(assetType: string, params: Record<string, any> = {}) {
   const queryString = new URLSearchParams(params).toString()
-  // Use the specific asset type routes that use the optimized search implementation
   const url = `/assets/${assetType}${queryString ? `?${queryString}` : ''}`
-  
-  // Convert params object to a string for the query key to ensure it's serializable
-  const paramsKey = JSON.stringify(params)
-  
-  return useApiQuery<T>(['assets', assetType, paramsKey], url, {
-    // Asset data can be cached longer since it doesn't change frequently
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    gcTime: 20 * 60 * 1000, // 20 minutes garbage collection time
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-    ...options
-  })
+  return useApiCall<T>(url)
 }
 
 export function useAsset<T>(assetType: string, id: string) {
-  return useApiQuery<T>(['assets', assetType, id], `/assets/${assetType}/${id}`, {
-    // Individual asset data can be cached for a moderate time
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<T>(`/assets/${assetType}/${id}`)
+}
+
+// Generic mutation hook for POST requests
+export function useApiMutation<T, V>(url: string) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<ApiError | null>(null)
+  
+  const mutate = async (data: V) => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const response = await api.post<T, V>(url, data)
+      return response
+    } catch (err) {
+      setError(err as ApiError)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  return { mutate, isLoading, error }
+}
+
+// Generic mutation hook for PUT requests
+export function useApiUpdate<T, V>(url: string) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<ApiError | null>(null)
+  
+  const mutate = async (data: V) => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const response = await api.put<T, V>(url, data)
+      return response
+    } catch (err) {
+      setError(err as ApiError)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  return { mutate, isLoading, error }
+}
+
+// Generic mutation hook for DELETE requests
+export function useApiDelete<T>(url: string) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<ApiError | null>(null)
+  
+  const mutate = async () => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const response = await api.delete<T>(url)
+      return response
+    } catch (err) {
+      setError(err as ApiError)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  return { mutate, isLoading, error }
+}
+
+// Generic mutation hook for DELETE requests with ID parameter
+export function useApiDeleteWithId<T>(url: string) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<ApiError | null>(null)
+  
+  const mutate = async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      // Ensure the URL is properly constructed
+      const fullUrl = url.endsWith('/') ? `${url}${id}` : `${url}/${id}`;
+      const response = await api.delete<T>(fullUrl)
+      return response
+    } catch (err) {
+      setError(err as ApiError)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  return { mutate, isLoading, error }
 }
 
 export function useCreateAsset<T, V>(assetType: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<T, V>(`/assets/${assetType}`)
   
-  return useApiMutation<T, V>(
-    `/assets/${assetType}`,
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
-      },
-      onError: (error: ApiError) => {
-        // Error creating asset
-        let message = `Failed to create ${assetType}`
-        
-        if (error instanceof ValidationError) {
-          message = 'Validation failed. Please check the form for errors.'
-        } else if (error.status === 409) {
-          message = 'An asset with this identifier already exists.'
-        } else if (error.status === 403) {
-          message = 'Access denied. You do not have permission to create this asset.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const createAsset = async (data: V) => {
+    try {
+      const response = await mutate(data)
+      toast.success(`${assetType} created successfully`)
+      return response
+    } catch (err) {
+      // Error creating asset
+      let message = `Failed to create ${assetType}`
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 409) {
+        message = 'An asset with this identifier already exists.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to create this asset.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { createAsset, isLoading, error }
 }
 
 export function useUpdateAsset<T, V>(assetType: string, id: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiUpdate<T, V>(`/assets/${assetType}/${id}`)
   
-  return useApiUpdate<T, V>(
-    `/assets/${assetType}/${id}`,
-    {
-      onSuccess: () => {
-        // Get current pagination parameters from cache
-        const queryKeys = queryClient.getQueryCache().getAll().map(query => query.queryKey);
-        
-        // Refresh the main list view
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-        
-        // Refresh any cached pagination versions
-        queryKeys.forEach(key => {
-          // Check if this is a paginated assets query for this asset type
-          if (Array.isArray(key) && 
-              key.length > 2 && 
-              key[0] === 'assets' && 
-              key[1] === assetType && 
-              typeof key[2] === 'string') {
-            // Forcefully invalidate this specific query
-            queryClient.invalidateQueries({ queryKey: key, exact: true });
-            // Force a refetch of this specific query
-            queryClient.refetchQueries({ queryKey: key, exact: true });
-          }
-        });
-        
-        // Invalidate the specific asset query to ensure view/edit dialogs refresh
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType, id] });
-        
-        // Force a refetch of all invalidated queries to ensure data is up-to-date
-        setTimeout(() => {
-          queryClient.refetchQueries({ queryKey: ['assets', assetType] });
-        }, 100);
-      },
-      onError: (error: ApiError) => {
-        // Error updating asset
-        let message = `Failed to update ${assetType}`
-        
-        if (error instanceof ValidationError) {
-          message = 'Validation failed. Please check the form for errors.'
-        } else if (error.status === 409) {
-          message = 'An asset with this identifier already exists.'
-        } else if (error.status === 403) {
-          message = 'Access denied. You do not have permission to update this asset.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 404) {
-          message = 'Asset not found. It may have been deleted.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const updateAsset = async (data: V) => {
+    try {
+      const response = await mutate(data)
+      toast.success(`${assetType} updated successfully`)
+      return response
+    } catch (err) {
+      // Error updating asset
+      let message = `Failed to update ${assetType}`
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 409) {
+        message = 'An asset with this identifier already exists.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to update this asset.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Asset not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { updateAsset, isLoading, error }
 }
 
 export function useDeleteAsset<T>(assetType: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiDeleteWithId<T>(`/assets/${assetType}`)
   
-  return useApiDeleteWithId<T>(
-    `/assets/${assetType}`,
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] })
-      },
-      onError: (error: ApiError) => {
-        // Error deleting asset
-        let message = `Failed to delete ${assetType}`
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to delete this asset.'
-        } else if (error.status === 404) {
-          message = 'Asset not found. It may have been deleted.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const deleteAsset = async (id: string) => {
+    try {
+      const response = await mutate(id)
+      toast.success(`${assetType} deleted successfully`)
+      return response
+    } catch (err) {
+      // Error deleting asset
+      let message = `Failed to delete ${assetType}`
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to delete this asset.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Asset not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { deleteAsset, isLoading, error }
 }
 
 // Bulk delete assets hook
 export function useBulkDeleteAssets<T>(assetType: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<T, { ids: string[] }>(`/assets/${assetType}/bulk-delete`)
   
-  return useApiMutation<T, { ids: string[] }>(
-    `/assets/${assetType}/bulk-delete`,
-    {
-      onSuccess: async () => {
-        // First invalidate all asset queries for this asset type
-        await queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-        // Refetch to ensure UI updates
-        await queryClient.refetchQueries({ queryKey: ['assets', assetType] });
-      },
-      onError: (error: ApiError) => {
-        // Error bulk deleting assets
-        let message = `Failed to delete ${assetType} assets`
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to delete these assets.'
-        } else if (error.status === 400) {
-          message = 'Bad request. No assets selected for deletion.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const bulkDeleteAssets = async (ids: string[]) => {
+    try {
+      const response = await mutate({ ids })
+      toast.success(`${assetType} assets deleted successfully`)
+      return response
+    } catch (err) {
+      // Error bulk deleting assets
+      let message = `Failed to delete ${assetType} assets`
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to delete these assets.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. No assets selected for deletion.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Some assets were not found. They may have already been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { bulkDeleteAssets, isLoading, error }
 }
 
 // Auth hooks
@@ -292,211 +291,212 @@ export interface LoginResponse {
 }
 
 export function useLogin() {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<LoginResponse, LoginData>('/auth/login')
   
-  return useApiMutation<LoginResponse, LoginData>('/auth/login', {
-    onSuccess: (data: LoginResponse) => {
+  const login = async (data: LoginData) => {
+    try {
+      const response = await mutate(data)
       // Set the token in the API client
-      if (data.token) {
-        api.setToken(data.token)
+      if (response.token) {
+        api.setToken(response.token)
         // Also save to localStorage for persistence
-        localStorage.setItem('auth-token', data.token)
+        localStorage.setItem('auth-token', response.token)
       }
-      // Invalidate all queries to refresh the app state
-      queryClient.invalidateQueries()
-    },
-    onError: (error: ApiError) => {
+      toast.success('Login successful')
+      return response
+    } catch (err) {
       // Login error
       let message = 'Login failed'
       
-      if (error.status === 401) {
+      if ((err as ApiError).status === 401) {
         message = 'Invalid email or password'
-      } else if (error.status === 429) {
+      } else if ((err as ApiError).status === 429) {
         message = 'Too many login attempts. Please try again later.'
-      } else if (error.status === 500) {
+      } else if ((err as ApiError).status === 500) {
         message = 'Server error. Please try again later.'
-      } else if (error.status === 503) {
+      } else if ((err as ApiError).status === 503) {
         message = 'Service unavailable. Please try again later.'
-      } else if (error.message) {
-        message = error.message
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
       
       toast.error(message)
+      throw err
     }
-  })
+  }
+  
+  return { login, isLoading, error }
 }
 
 export function useLogout() {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<void, void>('/auth/logout')
   
-  return useApiMutation<void, void>('/auth/logout', {
-    onSuccess: () => {
+  const logout = async () => {
+    try {
+      await mutate()
       // Clear the token
       api.setToken(null)
-      // Invalidate all queries to clear cached data
-      queryClient.clear()
+      toast.success('Logout successful')
       // Redirect to login (this should be handled in the component)
-    },
-    onError: (error: ApiError) => {
+      return
+    } catch (err) {
       // Logout error
       let message = 'Logout failed'
       
-      if (error.status === 500) {
+      if ((err as ApiError).status === 500) {
         message = 'Server error during logout. Please try again.'
-      } else if (error.message) {
-        message = error.message
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
       
       toast.error(message)
+      throw err
     }
-  })
+  }
+  
+  return { logout, isLoading, error }
 }
 
 // User hooks
 export type { User, UserCreateUpdate } from '@/types/users'
 
 export function useUsers() {
-  return useApiQuery<User[]>(['users'], '/users', {
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<User[]>('/users')
 }
 
 export function useUser(id: string) {
-  return useApiQuery<User>(['users', id], `/users/${id}`, {
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<User>(`/users/${id}`)
 }
 
 export function useCreateUser() {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<User, Partial<UserCreateUpdate>>('/users')
   
-  return useApiMutation<User, Partial<UserCreateUpdate>>(
-    '/users',
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['users'] })
-      },
-      onError: (error: ApiError) => {
-        // Error creating user
-        let message = 'Failed to create user'
-        
-        if (error instanceof ValidationError) {
-          message = 'Validation failed. Please check the form for errors.'
-        } else if (error.status === 409) {
-          message = 'A user with this email already exists.'
-        } else if (error.status === 403) {
-          message = 'Access denied. You do not have permission to create users.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const createUser = async (data: Partial<UserCreateUpdate>) => {
+    try {
+      const response = await mutate(data)
+      toast.success('User created successfully')
+      return response
+    } catch (err) {
+      // Error creating user
+      let message = 'Failed to create user'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 409) {
+        message = 'A user with this email already exists.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to create users.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { createUser, isLoading, error }
 }
 
 export function useUpdateUser(id: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiUpdate<User, Partial<UserCreateUpdate>>(`/users/${id}`)
   
-  return useApiUpdate<User, Partial<UserCreateUpdate>>(
-    `/users/${id}`,
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['users'] })
-        queryClient.invalidateQueries({ queryKey: ['users', id] })
-      },
-      onError: (error: ApiError) => {
-        // Error updating user
-        let message = 'Failed to update user'
-        
-        if (error instanceof ValidationError) {
-          message = 'Validation failed. Please check the form for errors.'
-        } else if (error.status === 409) {
-          message = 'A user with this email already exists.'
-        } else if (error.status === 403) {
-          message = 'Access denied. You do not have permission to update this user.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 404) {
-          message = 'User not found. They may have been deleted.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const updateUser = async (data: Partial<UserCreateUpdate>) => {
+    try {
+      const response = await mutate(data)
+      toast.success('User updated successfully')
+      return response
+    } catch (err) {
+      // Error updating user
+      let message = 'Failed to update user'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 409) {
+        message = 'A user with this email already exists.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to update this user.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'User not found. They may have been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { updateUser, isLoading, error }
 }
 
-export function useDeleteUser(_id: string) {
-  const queryClient = useQueryClient()
+export function useDeleteUser(id: string) {
+  const { mutate, isLoading, error } = useApiDeleteWithId<void>('/users')
   
-  return useApiDeleteWithId<void>(
-    `/users`,
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['users'] })
-      },
-      onError: (error: ApiError) => {
-        // Error deleting user
-        let message = 'Failed to delete user'
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to delete this user.'
-        } else if (error.status === 404) {
-          message = 'User not found. They may have been deleted.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const deleteUser = async () => {
+    try {
+      const response = await mutate(id)
+      toast.success('User deleted successfully')
+      return response
+    } catch (err) {
+      // Error deleting user
+      let message = 'Failed to delete user'
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to delete this user.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'User not found. They may have been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { deleteUser, isLoading, error }
 }
 
 // Bulk delete users hook
 export function useBulkDeleteUsers() {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<void, { ids: string[] }>('/users/bulk-delete')
   
-  return useApiMutation<void, { ids: string[] }>(
-    '/users/bulk-delete',
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['users'] })
-      },
-      onError: (error: ApiError) => {
-        // Error bulk deleting users
-        let message = 'Failed to delete users'
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to delete these users.'
-        } else if (error.status === 400) {
-          message = 'Bad request. No users selected for deletion.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const bulkDeleteUsers = async (ids: string[]) => {
+    try {
+      const response = await mutate({ ids })
+      toast.success('Users deleted successfully')
+      return response
+    } catch (err) {
+      // Error bulk deleting users
+      let message = 'Failed to delete users'
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to delete these users.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. No users selected for deletion.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { bulkDeleteUsers, isLoading, error }
 }
 
 // Tenant hooks
@@ -518,151 +518,146 @@ export interface Tenant {
 }
 
 export function useTenants() {
-  return useApiQuery<Tenant[]>(['tenants'], '/tenants', {
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<Tenant[]>('/tenants')
 }
 
 export function useTenant(id: string) {
-  return useApiQuery<Tenant>(['tenants', id], `/tenants/${id}`, {
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<Tenant>(`/tenants/${id}`)
 }
 
 export function useCreateTenant() {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<Tenant, Partial<Tenant>>('/tenants')
   
-  return useApiMutation<Tenant, Partial<Tenant>>(
-    '/tenants',
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['tenants'] })
-      },
-      onError: (error: ApiError) => {
-        // Error creating tenant
-        let message = 'Failed to create tenant'
-        
-        if (error instanceof ValidationError) {
-          message = 'Validation failed. Please check the form for errors.'
-        } else if (error.status === 409) {
-          message = 'A tenant with this name already exists.'
-        } else if (error.status === 403) {
-          message = 'Access denied. You do not have permission to create tenants.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const createTenant = async (data: Partial<Tenant>) => {
+    try {
+      const response = await mutate(data)
+      toast.success('Tenant created successfully')
+      return response
+    } catch (err) {
+      // Error creating tenant
+      let message = 'Failed to create tenant'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 409) {
+        message = 'A tenant with this name already exists.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to create tenants.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { createTenant, isLoading, error }
 }
 
 export function useUpdateTenant(id: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiUpdate<Tenant, Partial<Tenant>>(`/tenants/${id}`)
   
-  return useApiUpdate<Tenant, Partial<Tenant>>(
-    `/tenants/${id}`,
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['tenants'] })
-        queryClient.invalidateQueries({ queryKey: ['tenants', id] })
-      },
-      onError: (error: ApiError) => {
-        // Error updating tenant
-        let message = 'Failed to update tenant'
-        
-        if (error instanceof ValidationError) {
-          message = 'Validation failed. Please check the form for errors.'
-        } else if (error.status === 409) {
-          message = 'A tenant with this name already exists.'
-        } else if (error.status === 403) {
-          message = 'Access denied. You do not have permission to update this tenant.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 404) {
-          message = 'Tenant not found. It may have been deleted.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const updateTenant = async (data: Partial<Tenant>) => {
+    try {
+      const response = await mutate(data)
+      toast.success('Tenant updated successfully')
+      return response
+    } catch (err) {
+      // Error updating tenant
+      let message = 'Failed to update tenant'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 409) {
+        message = 'A tenant with this name already exists.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to update this tenant.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Tenant not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { updateTenant, isLoading, error }
 }
 
-export function useDeleteTenant(_id: string) {
-  const queryClient = useQueryClient()
+export function useDeleteTenant(id: string) {
+  const { mutate, isLoading, error } = useApiDeleteWithId<void>('/tenants')
   
-  return useApiDeleteWithId<void>(
-    `/tenants`,
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['tenants'] })
-      },
-      onError: (error: ApiError) => {
-        // Error deleting tenant
-        let message = 'Failed to delete tenant'
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to delete this tenant.'
-        } else if (error.status === 404) {
-          message = 'Tenant not found. It may have been deleted.'
-        } else if (error.status === 400) {
-          message = error.message || 'Cannot delete tenant with associated data. Please delete all associated users and assets first.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const deleteTenant = async () => {
+    try {
+      const response = await mutate(id)
+      toast.success('Tenant deleted successfully')
+      return response
+    } catch (err) {
+      // Error deleting tenant
+      let message = 'Failed to delete tenant'
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to delete this tenant.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Tenant not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 400) {
+        message = (err as ApiError).message || 'Cannot delete tenant with associated data. Please delete all associated users and assets first.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { deleteTenant, isLoading, error }
 }
 
 // Bulk delete tenants hook
 export function useBulkDeleteTenants() {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<void, { ids: string[] }>('/tenants/bulk-delete')
   
-  return useApiMutation<void, { ids: string[] }>(
-    '/tenants/bulk-delete',
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['tenants'] })
-      },
-      onError: (error: ApiError) => {
-        // Error bulk deleting tenants
-        let message = 'Failed to delete tenants'
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to delete these tenants.'
-        } else if (error.status === 404) {
-          message = 'One or more tenants not found. They may have been deleted.'
-        } else if (error.status === 400) {
-          message = error.message || 'Cannot delete tenants with associated data. Please delete all associated users and assets first.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const bulkDeleteTenants = async (ids: string[]) => {
+    try {
+      const response = await mutate({ ids })
+      toast.success('Tenants deleted successfully')
+      return response
+    } catch (err) {
+      // Error bulk deleting tenants
+      let message = 'Failed to delete tenants'
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to delete these tenants.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'One or more tenants not found. They may have been deleted.'
+      } else if ((err as ApiError).status === 400) {
+        message = (err as ApiError).message || 'Cannot delete tenants with associated data. Please delete all associated users and assets first.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { bulkDeleteTenants, isLoading, error }
 }
 
 // Dashboard hook
@@ -691,11 +686,7 @@ export interface DashboardData {
 }
 
 export function useDashboard<T = DashboardData>() {
-  return useApiQuery<T>(['dashboard'], '/dashboard', {
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<T>('/dashboard')
 }
 
 export interface DashboardSummaryData {
@@ -736,15 +727,11 @@ export interface DashboardSummaryData {
     type: string | null;
     _count: number;
   }>;
-  customFields: CustomField[];
+  customFields: any[];
 }
 
 export function useDashboardSummary<T = DashboardSummaryData>() {
-  return useApiQuery<T>(['dashboard-summary'], '/dashboard/summary', {
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<T>('/dashboard/summary')
 }
 
 // Current user hook
@@ -753,13 +740,7 @@ export function useCurrentUser() {
   const hasToken = typeof window !== 'undefined' && 
     (localStorage.getItem('auth-token') || api.getToken());
   
-  return useApiQuery<User>(['currentUser'], '/auth/me', {
-    retry: false, // Don't retry on failure to avoid infinite loops
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-    enabled: !!hasToken, // Only run the query if we have a token
-  })
+  return useApiCall<User>('/auth/me', { enabled: !!hasToken })
 }
 
 // Custom Fields hooks
@@ -786,175 +767,141 @@ export function useCustomFields(modelType?: string) {
   // Use the utility function to ensure consistent model type mapping
   const mappedModelType = modelType ? getModelType(modelType) : undefined;
   const queryString = mappedModelType ? `?modelType=${mappedModelType}` : ''
-  return useApiQuery<CustomField[]>(['custom-fields', mappedModelType || 'all'], `/custom-fields${queryString}`, {
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    gcTime: 20 * 60 * 1000, // 20 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<CustomField[]>(`/custom-fields${queryString}`)
 }
 
 export function useCreateCustomField() {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiMutation<CustomField, CustomFieldFormData>('/custom-fields')
   
-  return useApiMutation<CustomField, CustomFieldFormData>(
-    '/custom-fields',
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
-      },
-      onError: (error: ApiError) => {
-        // Error creating custom field
-        let message = 'Failed to create custom field'
-        
-        if (error instanceof ValidationError) {
-          message = 'Validation failed. Please check the form for errors.'
-        } else if (error.status === 403) {
-          message = 'Access denied. You do not have permission to create custom fields.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const createCustomField = async (data: CustomFieldFormData) => {
+    try {
+      const response = await mutate(data)
+      toast.success('Custom field created successfully')
+      return response
+    } catch (err) {
+      // Error creating custom field
+      let message = 'Failed to create custom field'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to create custom fields.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { createCustomField, isLoading, error }
 }
 
 export function useUpdateCustomField(id: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiUpdate<CustomField, CustomFieldFormData>(`/custom-fields/${id}`)
   
-  return useApiUpdate<CustomField, CustomFieldFormData>(
-    `/custom-fields/${id}`,
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
-      },
-      onError: (error: ApiError) => {
-        // Error updating custom field
-        let message = 'Failed to update custom field'
-        
-        if (error instanceof ValidationError) {
-          message = 'Validation failed. Please check the form for errors.'
-        } else if (error.status === 403) {
-          message = 'Access denied. You do not have permission to update this custom field.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 404) {
-          message = 'Custom field not found. It may have been deleted.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const updateCustomField = async (data: CustomFieldFormData) => {
+    try {
+      const response = await mutate(data)
+      toast.success('Custom field updated successfully')
+      return response
+    } catch (err) {
+      // Error updating custom field
+      let message = 'Failed to update custom field'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to update this custom field.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Custom field not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { updateCustomField, isLoading, error }
 }
 
 export function useDeleteCustomField(id: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiDelete<void>(`/custom-fields/${id}`)
   
-  return useApiDelete<void>(
-    `/custom-fields/${id}`,
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['custom-fields'] })
-      },
-      onError: (error: ApiError) => {
-        // Error deleting custom field
-        let message = 'Failed to delete custom field'
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to delete this custom field.'
-        } else if (error.status === 404) {
-          message = 'Custom field not found. It may have been deleted.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const deleteCustomField = async () => {
+    try {
+      const response = await mutate()
+      toast.success('Custom field deleted successfully')
+      return response
+    } catch (err) {
+      // Error deleting custom field
+      let message = 'Failed to delete custom field'
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to delete this custom field.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Custom field not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { deleteCustomField, isLoading, error }
 }
 
 // Asset Custom Fields hooks
 export function useAssetCustomFields(assetType: string, id: string) {
-  return useApiQuery<any>(['asset-custom-fields', assetType, id], `/assets/custom-fields/${id}?assetType=${assetType}`, {
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<any>(`/assets/custom-fields/${id}?assetType=${assetType}`)
 }
 
 // Hook for updating asset custom fields
 export function useUpdateAssetCustomFields(assetType: string, id: string) {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiUpdate<any, any>(`/assets/custom-fields/${id}?assetType=${assetType}`)
   
-  return useApiUpdate<any, any>(
-    `/assets/custom-fields/${id}?assetType=${assetType}`,
-    {
-      onSuccess: () => {
-        // Get current pagination parameters from cache
-        const queryKeys = queryClient.getQueryCache().getAll().map(query => query.queryKey);
-        
-        // Refresh the main list view
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType] });
-        
-        // Refresh any cached pagination versions
-        queryKeys.forEach(key => {
-          // Check if this is a paginated assets query for this asset type
-          if (Array.isArray(key) && 
-              key.length > 2 && 
-              key[0] === 'assets' && 
-              key[1] === assetType && 
-              typeof key[2] === 'string') {
-            // Forcefully invalidate this specific query
-            queryClient.invalidateQueries({ queryKey: key, exact: true });
-            // Force a refetch of this specific query
-            queryClient.refetchQueries({ queryKey: key, exact: true });
-          }
-        });
-        
-        // Invalidate the specific asset query to ensure view/edit dialogs refresh
-        queryClient.invalidateQueries({ queryKey: ['assets', assetType, id] });
-        
-        // Invalidate custom fields queries
-        queryClient.invalidateQueries({ queryKey: ['asset-custom-fields', assetType, id] });
-        
-        // Force a refetch of all invalidated queries to ensure data is up-to-date
-        setTimeout(() => {
-          queryClient.refetchQueries({ queryKey: ['assets', assetType] });
-        }, 100);
-      },
-      onError: (error: ApiError) => {
-        // Error updating asset custom fields
-        let message = 'Failed to update asset custom fields'
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to update these custom fields.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 404) {
-          message = 'Asset not found. It may have been deleted.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const updateAssetCustomFields = async (data: any) => {
+    try {
+      const response = await mutate(data)
+      toast.success('Asset custom fields updated successfully')
+      return response
+    } catch (err) {
+      // Error updating asset custom fields
+      let message = 'Failed to update asset custom fields'
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to update these custom fields.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Asset not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { updateAssetCustomFields, isLoading, error }
 }
 
 // Audit Logs Settings hooks
@@ -977,38 +924,241 @@ export interface AuditLogsSettings {
 }
 
 export function useAuditLogsSettings() {
-  return useApiQuery<AuditLogsSettings>(['audit-logs-settings'], '/settings/audit-logs', {
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection time
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-  })
+  return useApiCall<AuditLogsSettings>('/audit-logs/settings')
 }
 
 export function useUpdateAuditLogsSettings() {
-  const queryClient = useQueryClient()
+  const { mutate, isLoading, error } = useApiUpdate<AuditLogsSettings, Partial<AuditLogsSettings>>('/audit-logs/settings')
   
-  return useApiUpdate<AuditLogsSettings, Partial<AuditLogsSettings>>(
-    '/settings/audit-logs',
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['audit-logs-settings'] })
-      },
-      onError: (error: ApiError) => {
-        // Error updating audit logs settings
-        let message = 'Failed to update audit logs settings'
-        
-        if (error.status === 403) {
-          message = 'Access denied. You do not have permission to update audit logs settings.'
-        } else if (error.status === 400) {
-          message = 'Bad request. Please check the form data.'
-        } else if (error.status === 500) {
-          message = 'Server error. Please try again later.'
-        } else if (error.message) {
-          message = error.message
-        }
-        
-        toast.error(message)
+  const updateAuditLogsSettings = async (data: Partial<AuditLogsSettings>) => {
+    try {
+      const response = await mutate(data)
+      toast.success('Audit logs settings updated successfully')
+      return response
+    } catch (err) {
+      // Error updating audit logs settings
+      let message = 'Failed to update audit logs settings'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to update audit logs settings.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
       }
+      
+      toast.error(message)
+      throw err
     }
-  )
+  }
+  
+  return { updateAuditLogsSettings, isLoading, error }
+}
+
+// Performance monitoring hooks
+export interface PerformanceMetrics {
+  id: string
+  metricType: string
+  value: number
+  unit: string
+  recordedAt: string
+  tenantId: string
+}
+
+export function usePerformanceMetrics() {
+  return useApiCall<PerformanceMetrics[]>('/performance/metrics')
+}
+
+export function useCreatePerformanceMetric() {
+  const { mutate, isLoading, error } = useApiMutation<PerformanceMetrics, Omit<PerformanceMetrics, 'id' | 'recordedAt'>>('/performance/metrics')
+  
+  const createPerformanceMetric = async (data: Omit<PerformanceMetrics, 'id' | 'recordedAt'>) => {
+    try {
+      const response = await mutate(data)
+      return response
+    } catch (err) {
+      // Error creating performance metric
+      let message = 'Failed to create performance metric'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to create performance metrics.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
+      }
+      
+      toast.error(message)
+      throw err
+    }
+  }
+  
+  return { createPerformanceMetric, isLoading, error }
+}
+
+// Roles hooks
+export interface Role {
+  id: string
+  name: string
+  description?: string
+  permissions: any[]
+  createdAt: string
+  updatedAt: string
+}
+
+export function useRoles() {
+  return useApiCall<Role[]>('/roles')
+}
+
+export function useRole(id: string) {
+  return useApiCall<Role>(`/roles/${id}`)
+}
+
+export function useCreateRole() {
+  const { mutate, isLoading, error } = useApiMutation<Role, Omit<Role, 'id' | 'createdAt' | 'updatedAt'>>('/roles')
+  
+  const createRole = async (data: Omit<Role, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const response = await mutate(data)
+      toast.success('Role created successfully')
+      return response
+    } catch (err) {
+      // Error creating role
+      let message = 'Failed to create role'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to create roles.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 409) {
+        message = 'A role with this name already exists.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
+      }
+      
+      toast.error(message)
+      throw err
+    }
+  }
+  
+  return { createRole, isLoading, error }
+}
+
+export function useUpdateRole(id: string) {
+  const { mutate, isLoading, error } = useApiUpdate<Role, Partial<Role>>(`/roles/${id}`)
+  
+  const updateRole = async (data: Partial<Role>) => {
+    try {
+      const response = await mutate(data)
+      toast.success('Role updated successfully')
+      return response
+    } catch (err) {
+      // Error updating role
+      let message = 'Failed to update role'
+      
+      if (err instanceof ValidationError) {
+        message = 'Validation failed. Please check the form for errors.'
+      } else if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to update this role.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Bad request. Please check the form data.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Role not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 409) {
+        message = 'A role with this name already exists.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
+      }
+      
+      toast.error(message)
+      throw err
+    }
+  }
+  
+  return { updateRole, isLoading, error }
+}
+
+export function useDeleteRole(id: string) {
+  const { mutate, isLoading, error } = useApiDeleteWithId<void>('/roles')
+  
+  const deleteRole = async () => {
+    try {
+      const response = await mutate(id)
+      toast.success('Role deleted successfully')
+      return response
+    } catch (err) {
+      // Error deleting role
+      let message = 'Failed to delete role'
+      
+      if ((err as ApiError).status === 403) {
+        message = 'Access denied. You do not have permission to delete this role.'
+      } else if ((err as ApiError).status === 404) {
+        message = 'Role not found. It may have been deleted.'
+      } else if ((err as ApiError).status === 400) {
+        message = 'Cannot delete role that is assigned to users.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
+      }
+      
+      toast.error(message)
+      throw err
+    }
+  }
+  
+  return { deleteRole, isLoading, error }
+}
+
+// Permissions hooks
+export interface PermissionCheckRequest {
+  resource: string
+  action: string
+  resourceId?: string
+}
+
+export interface PermissionCheckResponse {
+  allowed: boolean
+  reason?: string
+}
+
+export function useCheckPermission() {
+  const { mutate, isLoading, error } = useApiMutation<PermissionCheckResponse, PermissionCheckRequest>('/permissions/check')
+  
+  const checkPermission = async (data: PermissionCheckRequest) => {
+    try {
+      const response = await mutate(data)
+      return response
+    } catch (err) {
+      // Error checking permission
+      let message = 'Failed to check permissions'
+      
+      if ((err as ApiError).status === 400) {
+        message = 'Invalid permission check request.'
+      } else if ((err as ApiError).status === 500) {
+        message = 'Server error. Please try again later.'
+      } else if ((err as ApiError).message) {
+        message = (err as ApiError).message
+      }
+      
+      toast.error(message)
+      throw err
+    }
+  }
+  
+  return { checkPermission, isLoading, error }
 }

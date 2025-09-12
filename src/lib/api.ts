@@ -115,12 +115,17 @@ apiClient.interceptors.response.use(
 export const api = {
   get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
+      // Add cache-busting timestamp to prevent browser caching
+      const cacheBuster = `_t=${Date.now()}`;
+      const separator = url.includes('?') ? '&' : '?';
+      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      
       // Add timeout promise to prevent hanging
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), 30000);
       });
       
-      const responsePromise = apiClient.get<T>(url, config);
+      const responsePromise = apiClient.get<T>(urlWithCacheBuster, config);
       const response = await Promise.race([responsePromise, timeoutPromise]);
       return response.data;
     } catch (error) {

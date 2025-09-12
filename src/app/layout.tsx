@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 import { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/contexts/i18n-context";
@@ -31,20 +30,18 @@ export default async function RootLayout({
     <html lang={language} suppressHydrationWarning>
       <body className={inter.className}>
         <I18nProvider initialLanguage={language}>
-          <ReactQueryProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <ProtectedLayout>
-                {children}
-              </ProtectedLayout>
-              <Toaster />
-              {isDevelopment && <PerformanceMonitor />}
-            </ThemeProvider>
-          </ReactQueryProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <ProtectedLayout>
+              {children}
+            </ProtectedLayout>
+            <Toaster />
+            {isDevelopment && <PerformanceMonitor />}
+          </ThemeProvider>
         </I18nProvider>
       </body>
     </html>

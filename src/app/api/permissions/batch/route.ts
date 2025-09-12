@@ -10,14 +10,30 @@ interface PermissionCheck {
   action: string;
 }
 
+// Generate a unique request ID for tracking
+function generateRequestId() {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
 // POST /api/permissions/batch - Check multiple permissions in a single request
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId();
+  
   try {
     const currentUser = await getCurrentUser(request)
     if (!currentUser) {
-      return errorResponse('Unauthorized', 401)
+      logger.warn('Unauthorized permission check attempt', { requestId, component: 'permissions-batch' });
+      return errorResponse('Unauthorized', 401, { requestId });
     }
 
+    // Log request details
+    logger.debug('Processing batch permissions request', { 
+      requestId, 
+      userId: currentUser.id, 
+      tenantId: currentUser.tenantId, 
+      component: 'permissions-batch' 
+    });
+    
     // Safely parse request body
     let body: { permissions: PermissionCheck[] } | undefined;
     try {
@@ -25,22 +41,43 @@ export async function POST(request: NextRequest) {
       
       // Check if body is empty
       if (!text || text.trim() === '') {
-        return errorResponse('Missing request body', 400)
+        logger.warn('Missing request body in permissions check', { 
+          requestId, 
+          userId: currentUser.id, 
+          component: 'permissions-batch' 
+        });
+        return errorResponse('Missing request body', 400, { requestId });
       }
       
-      body = JSON.parse(text)
+      body = JSON.parse(text);
     } catch (parseError: any) {
       // Check if it's an abort error
       if (parseError.name === 'AbortError' || parseError.code === 'ECONNRESET') {
-        return errorResponse('Request aborted', 499)
+        logger.warn('Request aborted during permissions check', { 
+          requestId, 
+          userId: currentUser.id, 
+          component: 'permissions-batch' 
+        });
+        return errorResponse('Request aborted', 499, { requestId });
       }
       
-      return errorResponse('Invalid JSON in request body', 400)
+      logger.error('Invalid JSON in permissions request body', { 
+        requestId, 
+        userId: currentUser.id, 
+        error: parseError.message, 
+        component: 'permissions-batch' 
+      });
+      return errorResponse('Invalid JSON in request body', 400, { requestId });
     }
 
     // Validate input
     if (!body || !Array.isArray(body.permissions)) {
-      return errorResponse('Missing or invalid permissions array', 400)
+      logger.warn('Missing or invalid permissions array in request', { 
+        requestId, 
+        userId: currentUser.id, 
+        component: 'permissions-batch' 
+      });
+      return errorResponse('Missing or invalid permissions array', 400, { requestId });
     }
 
     const permissionsToCheck: PermissionCheck[] = body.permissions;
@@ -48,7 +85,13 @@ export async function POST(request: NextRequest) {
     // Validate each permission object
     for (const perm of permissionsToCheck) {
       if (!perm.resource || !perm.action) {
-        return errorResponse('Each permission must have resource and action properties', 400)
+        logger.warn('Invalid permission object - missing resource or action', { 
+          requestId, 
+          userId: currentUser.id, 
+          permission: perm, 
+          component: 'permissions-batch' 
+        });
+        return errorResponse('Each permission must have resource and action properties', 400, { requestId });
       }
     }
 
@@ -56,8 +99,14 @@ export async function POST(request: NextRequest) {
     const roleId = currentUser.role?.id || '';
     const tenantId = currentUser.tenantId || '';
 
-    // For admin users, all permissions are true
+    // Log admin user shortcut
     if (currentUser.role?.name === 'admin') {
+      logger.debug('Admin user - granting all permissions', { 
+        requestId, 
+        userId: currentUser.id, 
+        tenantId, 
+        component: 'permissions-batch' 
+      });
       const results: Record<string, boolean> = {};
       for (const perm of permissionsToCheck) {
         const key = `${perm.resource}:${perm.action}`;
@@ -73,9 +122,18 @@ export async function POST(request: NextRequest) {
       ).values()
     );
 
-    // Check all permissions in parallel with a reasonable concurrency limit
-    const CONCURRENCY_LIMIT = 5;
+    logger.debug('Checking permissions', { 
+      requestId, 
+      userId: currentUser.id, 
+      tenantId, 
+      permissionCount: uniquePermissions.length, 
+      component: 'permissions-batch' 
+    });
+
+    // Check all permissions in parallel with an increased concurrency limit
+    const CONCURRENCY_LIMIT = 10; // Increased from 5 to 10
     const results: Record<string, boolean> = {};
+    let errorCount = 0;
     
     // Process permissions in chunks to avoid overwhelming the database
     for (let i = 0; i < uniquePermissions.length; i += CONCURRENCY_LIMIT) {
@@ -88,11 +146,16 @@ export async function POST(request: NextRequest) {
             key: `${perm.resource}:${perm.action}`,
             value: hasPerm
           };
-        } catch (error) {
-          // Log errors only in development
-          if (process.env.NODE_ENV === 'development') {
-            logger.error(`Error checking permission ${perm.resource}:${perm.action}:`, error);
-          }
+        } catch (error: any) {
+          errorCount++;
+          logger.error(`Error checking permission ${perm.resource}:${perm.action}`, { 
+            requestId, 
+            userId: currentUser.id, 
+            tenantId, 
+            error: error.message, 
+            stack: error.stack, 
+            component: 'permissions-batch' 
+          });
           return {
             key: `${perm.resource}:${perm.action}`,
             value: false
@@ -107,24 +170,36 @@ export async function POST(request: NextRequest) {
         results[result.key] = result.value;
       }
       
-      // Add a small delay between chunks to avoid overwhelming the database
+      // Reduce delay between chunks to 5ms for better performance
       if (i + CONCURRENCY_LIMIT < uniquePermissions.length) {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise(resolve => setTimeout(resolve, 5));
       }
     }
 
+    // Log completion
+    logger.debug('Permissions check completed', { 
+      requestId, 
+      userId: currentUser.id, 
+      tenantId, 
+      permissionCount: uniquePermissions.length, 
+      errorCount, 
+      component: 'permissions-batch' 
+    });
+
     return successResponse({ permissions: results });
   } catch (error: any) {
-    // Log errors only in development
-    if (process.env.NODE_ENV === 'development') {
-      logger.error('Error checking batch permissions:', error);
-    }
+    logger.error('Unexpected error checking batch permissions', { 
+      requestId, 
+      error: error.message, 
+      stack: error.stack, 
+      component: 'permissions-batch' 
+    });
     
     // Handle abort errors specifically
     if (error.name === 'AbortError' || error.code === 'ECONNRESET') {
-      return errorResponse('Request aborted', 499);
+      return errorResponse('Request aborted', 499, { requestId });
     }
     
-    return errorResponse('Internal server error');
+    return errorResponse('Internal server error', 500, { requestId });
   }
 }
