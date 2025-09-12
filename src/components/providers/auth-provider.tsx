@@ -14,7 +14,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Determine if current path is a protected route
-  const isProtectedRoute = ['/dashboard', '/assets', '/users', '/tenants', '/settings'].some(route => 
+  const isProtectedRoute = ['/dashboard', '/assets', '/users', '/tenants', '/settings', '/roles'].some(route => 
     pathname?.startsWith(route)
   );
 
