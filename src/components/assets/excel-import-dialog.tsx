@@ -649,9 +649,6 @@ export function ExcelImportDialog({
                 </>
               )}
             </Button>
-            <Button type="button" variant="outline" onClick={handleClose} className="w-full">
-              {t('common.close', 'Close')}
-            </Button>
           </div>
         </div>
       </DialogContent>

@@ -162,9 +162,6 @@ export function AssetDetailDialog({
   
   const footer = (
     <>
-      <Button variant="outline" onClick={onClose}>
-        {t('common.close', "Close")}
-      </Button>
       <Button onClick={handleEdit}>
         {t('common.edit', "Edit")}
       </Button>

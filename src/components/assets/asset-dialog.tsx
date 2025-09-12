@@ -45,7 +45,7 @@ export function AssetDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`${sizeClasses[size]} max-h-[80vh] overflow-y-auto`}>
+      <DialogContent className={`${sizeClasses[size]} max-h-[80vh] overflow-y-auto`} showCloseButton={false}>
         <DialogHeader>
           <div className="flex justify-between items-center">
             <DialogTitle>{title}</DialogTitle>

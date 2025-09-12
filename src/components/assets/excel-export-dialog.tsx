@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -556,11 +555,6 @@ export function ExcelExportDialog({
         </div>
       </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={isExporting}>
-            {t('common.close', 'Close')}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

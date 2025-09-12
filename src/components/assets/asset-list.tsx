@@ -138,6 +138,59 @@ const getAssetColumns = (
     enableHiding: false,
   };
 
+  // Create actions column with optimized width
+  const actionsColumn: ColumnDef<Asset> = {
+    id: 'actions',
+    header: () => <div className="text-center">{t('common.actions', 'Actions')}</div>,
+    cell: ({ row }) => {
+      const asset = row.original;
+      
+      // If no permissions are provided, show all actions
+      const canViewAsset = canView !== false;
+      const canEditAsset = canEdit !== false;
+      const canDeleteAsset = canDelete !== false;
+      
+      // If no permissions are granted, don't show the actions column
+      if (!canViewAsset && !canEditAsset && !canDeleteAsset) {
+        return <div className="text-center">-</div>;
+      }
+      
+      return (
+        <div className="text-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-7 w-7 p-0">
+                <span className="sr-only">{t('common.openMenu', 'Open menu')}</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canViewAsset && (
+                <DropdownMenuItem onClick={() => handleView(asset)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  {t('common.view', 'View')}
+                </DropdownMenuItem>
+              )}
+              {canEditAsset && (
+                <DropdownMenuItem onClick={() => handleEdit(asset)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  {t('common.edit', 'Edit')}
+                </DropdownMenuItem>
+              )}
+              {canDeleteAsset && (
+                <DropdownMenuItem onClick={() => handleDelete(asset.id)}>
+                  <Trash className="mr-2 h-4 w-4" />
+                  {t('common.delete', 'Delete')}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    },
+    size: 70, // Set a fixed width for the actions column
+  };
+
   // Create data columns
   const dataColumns: ColumnDef<Asset>[] = visibleColumns.map((column) => {
     return {
@@ -196,61 +249,8 @@ const getAssetColumns = (
     };
   });
 
-  // Create actions column with optimized width
-  const actionsColumn: ColumnDef<Asset> = {
-    id: 'actions',
-    header: () => <div className="text-center">{t('common.actions', 'Actions')}</div>,
-    cell: ({ row }) => {
-      const asset = row.original;
-      
-      // If no permissions are provided, show all actions
-      const canViewAsset = canView !== false;
-      const canEditAsset = canEdit !== false;
-      const canDeleteAsset = canDelete !== false;
-      
-      // If no permissions are granted, don't show the actions column
-      if (!canViewAsset && !canEditAsset && !canDeleteAsset) {
-        return <div className="text-center">-</div>;
-      }
-      
-      return (
-        <div className="text-center">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-7 w-7 p-0">
-                <span className="sr-only">{t('common.openMenu', 'Open menu')}</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {canViewAsset && (
-                <DropdownMenuItem onClick={() => handleView(asset)}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  {t('common.view', 'View')}
-                </DropdownMenuItem>
-              )}
-              {canEditAsset && (
-                <DropdownMenuItem onClick={() => handleEdit(asset)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  {t('common.edit', 'Edit')}
-                </DropdownMenuItem>
-              )}
-              {canDeleteAsset && (
-                <DropdownMenuItem onClick={() => handleDelete(asset.id)}>
-                  <Trash className="mr-2 h-4 w-4" />
-                  {t('common.delete', 'Delete')}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      );
-    },
-    size: 70, // Set a fixed width for the actions column
-  };
-
-  // Return the columns array
-  return [selectionColumn, ...dataColumns, actionsColumn];
+  // Return the columns array with actions column first, then selection, then data columns
+  return [actionsColumn, selectionColumn, ...dataColumns];
 };
 
 // Add a helper function to generate a unique key for localStorage based on assetType
