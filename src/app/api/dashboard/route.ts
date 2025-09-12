@@ -4,15 +4,46 @@ import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import logger from '@/lib/logger';
 
+// Add better error handling utility
+function createErrorResponse(message: string, status: number = 500, details?: any) {
+  const errorResponse = {
+    error: message,
+    status,
+    timestamp: new Date().toISOString(),
+    ...(details && { details })
+  };
+  
+  return new Response(JSON.stringify(errorResponse), {
+    status,
+    headers: { 
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store'
+    }
+  });
+}
+
+// Add success response utility
+function createSuccessResponse(data: any, status: number = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 
+      'Content-Type': 'application/json',
+      // Add caching headers for better performance
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=30',
+      // Add CORS headers for better security
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  });
+}
+
 // GET /api/dashboard - Get dashboard statistics
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser(request)
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return createErrorResponse('Unauthorized', 401);
     }
 
     // Check if user has permission to view assets dashboard
@@ -24,19 +55,31 @@ export async function GET(request: NextRequest) {
     )
     
     if (!hasViewPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return createErrorResponse('Forbidden: Insufficient permissions', 403);
     }
 
     // Get counts for different asset types
     const [pcCount, laptopCount, printerCount, licenseCount, warehouseCount] = await Promise.all([
-      db.pC.count({ where: { tenantId: user.tenantId } }),
-      db.laptop.count({ where: { tenantId: user.tenantId } }),
-      db.printer.count({ where: { tenantId: user.tenantId } }),
-      db.license.count({ where: { tenantId: user.tenantId } }),
-      db.warehouseIT.count({ where: { tenantId: user.tenantId } })
+      db.pC.count({ where: { tenantId: user.tenantId } }).catch(error => {
+        logger.error('Error counting PCs:', error);
+        throw new Error('Failed to count PCs');
+      }),
+      db.laptop.count({ where: { tenantId: user.tenantId } }).catch(error => {
+        logger.error('Error counting laptops:', error);
+        throw new Error('Failed to count laptops');
+      }),
+      db.printer.count({ where: { tenantId: user.tenantId } }).catch(error => {
+        logger.error('Error counting printers:', error);
+        throw new Error('Failed to count printers');
+      }),
+      db.license.count({ where: { tenantId: user.tenantId } }).catch(error => {
+        logger.error('Error counting licenses:', error);
+        throw new Error('Failed to count licenses');
+      }),
+      db.warehouseIT.count({ where: { tenantId: user.tenantId } }).catch(error => {
+        logger.error('Error counting warehouse items:', error);
+        throw new Error('Failed to count warehouse items');
+      })
     ])
 
     // Get status breakdown for PCs
@@ -44,6 +87,9 @@ export async function GET(request: NextRequest) {
       by: ['status'],
       where: { tenantId: user.tenantId },
       _count: true
+    }).catch(error => {
+      logger.error('Error fetching PC status breakdown:', error);
+      throw new Error('Failed to fetch PC status breakdown');
     })
 
     // Get status breakdown for Laptops
@@ -51,6 +97,9 @@ export async function GET(request: NextRequest) {
       by: ['status'],
       where: { tenantId: user.tenantId },
       _count: true
+    }).catch(error => {
+      logger.error('Error fetching laptop status breakdown:', error);
+      throw new Error('Failed to fetch laptop status breakdown');
     })
 
     // Get department-based statistics for PC assets
@@ -61,6 +110,9 @@ export async function GET(request: NextRequest) {
         monitorBarcode: true,
         upsBarcode: true
       }
+    }).catch(error => {
+      logger.error('Error fetching PC assets for department stats:', error);
+      throw new Error('Failed to fetch PC assets for department statistics');
     })
 
     // Group PC assets by department and count monitors and UPSs (excluding 'N/A' values)
@@ -116,6 +168,9 @@ export async function GET(request: NextRequest) {
       _count: {
         _all: true
       }
+    }).catch(error => {
+      logger.error('Error fetching laptop department stats:', error);
+      throw new Error('Failed to fetch laptop department statistics');
     })
 
     // Get department-based statistics for Printer assets
@@ -125,6 +180,9 @@ export async function GET(request: NextRequest) {
       _count: {
         _all: true
       }
+    }).catch(error => {
+      logger.error('Error fetching printer department stats:', error);
+      throw new Error('Failed to fetch printer department statistics');
     })
 
     // Get department-based statistics for License assets
@@ -134,6 +192,9 @@ export async function GET(request: NextRequest) {
       _count: {
         _all: true
       }
+    }).catch(error => {
+      logger.error('Error fetching license department stats:', error);
+      throw new Error('Failed to fetch license department statistics');
     })
 
     // Combine all department statistics
@@ -175,6 +236,9 @@ export async function GET(request: NextRequest) {
       where: {
         tenantId: user.tenantId
       }
+    }).catch(error => {
+      logger.error('Error fetching custom fields:', error);
+      throw new Error('Failed to fetch custom fields');
     })
 
     // Get recent activities (last 5 history records)
@@ -191,6 +255,9 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       },
       take: 5
+    }).catch(error => {
+      logger.error('Error fetching recent activities:', error);
+      throw new Error('Failed to fetch recent activities');
     })
 
     // Get license expiration data (licenses expiring in the next 30 days)
@@ -202,6 +269,9 @@ export async function GET(request: NextRequest) {
           gte: new Date() // Not already expired
         }
       }
+    }).catch(error => {
+      logger.error('Error counting upcoming license expirations:', error);
+      throw new Error('Failed to count upcoming license expirations');
     })
 
     // Get user count for the tenant
@@ -209,9 +279,12 @@ export async function GET(request: NextRequest) {
       where: {
         tenantId: user.tenantId
       }
+    }).catch(error => {
+      logger.error('Error counting users:', error);
+      throw new Error('Failed to count users');
     })
 
-    return new Response(JSON.stringify({
+    return createSuccessResponse({
       assets: {
         total: pcCount + laptopCount + printerCount + licenseCount + warehouseCount,
         pc: pcCount,
@@ -233,15 +306,29 @@ export async function GET(request: NextRequest) {
       totalDepartmentCount,
       totalMonitorCount,
       totalUpsCount
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error) {
+    });
+  } catch (error: any) {
     logger.error('Error fetching dashboard data:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return createErrorResponse(
+      'Internal server error', 
+      500, 
+      { 
+        message: error.message || 'Unknown error occurred',
+        // Don't expose sensitive information in production
+        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+      }
+    );
   }
+}
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  })
 }

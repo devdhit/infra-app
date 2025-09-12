@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState, useCallback } from "react";
 import { useCurrentUser } from "@/hooks/useApi";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/lib/api";
+import { ProtectedLayout } from "@/components/layout/protected-layout";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -99,10 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // For protected routes when authenticated, render children directly
+  // For protected routes when authenticated, render children within ProtectedLayout
   // The ProtectedLayout component will handle Navigation and Header
   if (isAuthenticated && isProtectedRoute) {
-    return <>{children}</>;
+    return <ProtectedLayout>{children}</ProtectedLayout>;
   }
 
   // For all other cases (login page, etc.), just render children

@@ -109,12 +109,20 @@
     "update": "Update",
     "saving": "Saving...",
     "create": "Create",
+    "apply": "Apply",
+    "reset": "Reset",
+    "clearAll": "Clear all",
+    "markAllRead": "Mark all read",
+    "analytics": "Analytics",
+    "reload": "Reload",
     "pagination": {
       "showing": "Showing {0} to {1} of {2} items",
       "previous": "Previous page",
       "next": "Next page"
     },
-    "selectedCount": "{0} items selected"
+    "selectedCount": "{0} items selected",
+    "connected": "Connected",
+    "disconnected": "Disconnected"
   },
   "bulkDelete": {
     "confirmation": "Are you sure you want to delete {0} {1}? This action cannot be undone.",
@@ -193,7 +201,12 @@
     "totalUpsDescription": "Total number of UPS devices in the system",
     "totalWarehouseAssetsDescription": "Total number of warehouse assets in the system",
     "licenseProductTypeDistribution": "Distribution of license product types",
-    "licenseKeyDistribution": "Distribution of license keys"
+    "licenseKeyDistribution": "Distribution of license keys",
+    "refreshSuccess": "Dashboard refreshed successfully",
+    "refreshError": "Failed to refresh dashboard",
+    "filtersApplied": "Filters applied",
+    "filtersReset": "Filters reset",
+    "exportSuccess": "Data exported as {0}"
   },
   "assets": {
     "title": "Assets",

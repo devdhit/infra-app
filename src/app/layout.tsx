@@ -1,49 +1,43 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { ReactNode } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { I18nProvider } from "@/contexts/i18n-context";
-import { getCurrentLanguage } from '@/lib/i18n-server';
-import { ProtectedLayout } from "@/components/layout/protected-layout";
-import { ThemeProvider } from "@/components/providers/theme-provider";
-import { PerformanceMonitor } from "@/components/performance/performance-monitor";
+import { ThemeProvider } from '@/components/providers/theme-provider'
+import { I18nProvider } from '@/contexts/i18n-context'
+import { WebSocketProvider } from '@/contexts/websocket-context'
+import { AuthProvider } from '@/components/providers/auth-provider'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { Toaster } from 'sonner'
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "IT Asset Management System",
-  description: "Comprehensive IT asset management solution",
-};
+  title: 'IT Asset Management System',
+  description: 'Comprehensive IT asset management solution',
+}
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
-}: Readonly<{
-  children: ReactNode;
-}>) {
-  // Get the current language on the server side
-  const language = await getCurrentLanguage();
-  
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang={language} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <I18nProvider initialLanguage={language}>
+        <I18nProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
             disableTransitionOnChange
           >
-            <ProtectedLayout>
-              {children}
-            </ProtectedLayout>
-            <Toaster />
-            {isDevelopment && <PerformanceMonitor />}
+            <AuthProvider>
+              <WebSocketProvider>
+                {children}
+                <Toaster />
+              </WebSocketProvider>
+            </AuthProvider>
           </ThemeProvider>
         </I18nProvider>
       </body>
     </html>
-  );
+  )
 }

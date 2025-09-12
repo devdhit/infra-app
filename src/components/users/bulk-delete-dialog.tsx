@@ -31,14 +31,6 @@ export function BulkDeleteDialog({
     <>
       <Button
         type="button"
-        variant="outline"
-        onClick={onClose}
-        disabled={isDeleting}
-      >
-        {t('common.cancel', "Cancel")}
-      </Button>
-      <Button
-        type="button"
         variant="destructive"
         onClick={onConfirm}
         disabled={isDeleting}
