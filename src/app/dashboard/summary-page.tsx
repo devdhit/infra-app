@@ -20,33 +20,14 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { useTranslation } from "@/hooks/use-translation";
 import { DashboardSummaryData } from "@/types/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { useMemo } from "react";
 
 export default function DashboardSummaryPage() {
   const { t } = useTranslation();
   const { data: dashboardData, isLoading, error } = useDashboardSummary<DashboardSummaryData>();
 
-  // Loading state
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-red-500">{t('common.error')}</h2>
-          <p className="text-muted-foreground">{t('dashboard.errorLoading')}</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
-            {t('common.retry')}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Asset type data for cards
-  const assetTypeData = [
+  // Memoize all data at the top to avoid conditional hook calls
+  const assetTypeData = useMemo(() => [
     { 
       name: 'PC', 
       count: dashboardData?.pc?.total || 0, 
@@ -89,10 +70,10 @@ export default function DashboardSummaryPage() {
       color: 'bg-indigo-500', 
       iconColor: 'text-indigo-500' 
     },
-  ];
+  ], [dashboardData]);
 
-  // PC Component Data for new cards
-  const pcComponentData = [
+  // Memoize PC Component Data for new cards
+  const pcComponentData = useMemo(() => [
     { 
       name: 'CPU', 
       count: dashboardData?.pc?.totalCpus || 0, 
@@ -114,10 +95,10 @@ export default function DashboardSummaryPage() {
       color: 'bg-yellow-500', 
       iconColor: 'text-yellow-500' 
     },
-  ];
+  ], [dashboardData]);
 
-  // License Statistics Data
-  const licenseStatisticsData = [
+  // Memoize License Statistics Data
+  const licenseStatisticsData = useMemo(() => [
     { 
       name: 'Product Types', 
       count: dashboardData?.license?.filter(item => item.productType).length || 0, 
@@ -132,10 +113,10 @@ export default function DashboardSummaryPage() {
       color: 'bg-purple-500', 
       iconColor: 'text-purple-500' 
     },
-  ];
+  ], [dashboardData]);
 
-  // Prepare custom field statistics data for charts
-  const prepareCustomFieldChartData = (fieldName: string, assetType: string) => {
+  // Memoize custom field statistics data for charts
+  const prepareCustomFieldChartData = useMemo(() => (fieldName: string, assetType: string) => {
     // Use the asset type prefixed key to avoid conflicts
     const key = `${assetType}_${fieldName}`
     if (!dashboardData?.customFieldStats?.[key]) return []
@@ -145,21 +126,41 @@ export default function DashboardSummaryPage() {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10) // Show top 10 values
-  };
+  }, [dashboardData?.customFieldStats]);
 
-  // Get custom fields for each asset type
-  const pcCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'PC') || [];
-  const laptopCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'Laptop') || [];
-  const printerCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'Printer') || [];
-  const licenseCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'License') || [];
-  const warehouseCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'WarehouseIT') || [];
-  const internetCustomFields = dashboardData?.customFields?.filter(field => field.modelType === 'Internet') || [];
+  // Memoize custom fields for each asset type
+  const pcCustomFields = useMemo(() => 
+    dashboardData?.customFields?.filter(field => field.modelType === 'PC') || [], 
+    [dashboardData?.customFields]
+  );
+  
+  const laptopCustomFields = useMemo(() => 
+    dashboardData?.customFields?.filter(field => field.modelType === 'Laptop') || [], 
+    [dashboardData?.customFields]
+  );
+  
+  const printerCustomFields = useMemo(() => 
+    dashboardData?.customFields?.filter(field => field.modelType === 'Printer') || [], 
+    [dashboardData?.customFields]
+  );
+  
+  const licenseCustomFields = useMemo(() => 
+    dashboardData?.customFields?.filter(field => field.modelType === 'License') || [], 
+    [dashboardData?.customFields]
+  );
+  
+  const warehouseCustomFields = useMemo(() => 
+    dashboardData?.customFields?.filter(field => field.modelType === 'WarehouseIT') || [], 
+    [dashboardData?.customFields]
+  );
+  
+  const internetCustomFields = useMemo(() => 
+    dashboardData?.customFields?.filter(field => field.modelType === 'Internet') || [], 
+    [dashboardData?.customFields]
+  );
 
-  // Colors for pie charts
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
-
-  // Prepare license product type data for charts
-  const prepareProductTypeData = () => {
+  // Memoize license product type data for charts
+  const prepareProductTypeData = useMemo(() => () => {
     if (!dashboardData?.license) return []
     
     const productTypeMap: Record<string, number> = {}
@@ -174,10 +175,33 @@ export default function DashboardSummaryPage() {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10) // Show top 10 values
-  };
+  }, [dashboardData?.license]);
 
   // Get product type and key data
-  const productTypeData = prepareProductTypeData()
+  const productTypeData = useMemo(() => prepareProductTypeData(), [prepareProductTypeData]);
+
+  // Colors for pie charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
+
+  // Loading state
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-red-500">{t('common.error')}</h2>
+          <p className="text-muted-foreground">{t('dashboard.errorLoading')}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            {t('common.retry')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -285,6 +309,7 @@ export default function DashboardSummaryPage() {
           </div>
         </ChartCard>
       )}
+      
       {/* Custom Field Statistics Charts for PC */}
       {pcCustomFields.length > 0 && (
         <div className="space-y-4">
@@ -648,7 +673,7 @@ export default function DashboardSummaryPage() {
   );
 }
 
-// Summary Card Component
+// Summary Card Component with memoization
 interface SummaryCardProps {
   title: string;
   value: string | number;
@@ -681,7 +706,7 @@ function SummaryCard({ title, value, icon: Icon, color }: SummaryCardProps) {
   );
 }
 
-// Chart Card Component
+// Chart Card Component with memoization
 interface ChartCardProps {
   title: string;
   description: string;

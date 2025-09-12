@@ -360,20 +360,24 @@ export function ExcelImportDialog({
       
       if (allErrors.length === 0) {
         toast.success(t('assets.excel.import.success', '{0} assets imported successfully', totalCreatedCount.toString()));
-        // Close dialog automatically on success after 4 seconds to allow user to see the message
+        // Call onImportSuccess immediately for successful imports
+        onImportSuccess();
+        // Close dialog automatically on success after 2 seconds to allow user to see the message
         setTimeout(() => {
           handleClose();
-          onImportSuccess();
-        }, 4000);
+        }, 2000);
       } else if (totalCreatedCount > 0) {
         toast.success(t('assets.excel.import.partialSuccess', '{0} assets imported with some errors', totalCreatedCount.toString()));
+        // Call onImportSuccess for partial success
+        onImportSuccess();
         // Don't close dialog automatically on partial success - let user see errors
       } else {
         toast.error(t('assets.excel.import.error', 'Failed to import assets'));
         // Don't close dialog automatically on failure - let user see errors
       }
       
-      if (allErrors.length === 0 || totalCreatedCount > 0) {
+      // Always call onImportSuccess if we created any assets
+      if (totalCreatedCount > 0) {
         onImportSuccess();
       }
     } catch (error: any) {

@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const { data: user, isLoading: userLoading, status, error } = useCurrentUser();
+  const { data: user, isLoading: userLoading, error } = useCurrentUser();
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -56,10 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Clear token if it's invalid
           localStorage.removeItem('auth-token');
           api.setToken(null);
+          // Redirect to login page
+          router.replace('/auth/login');
         }
       }
     }
-  }, [user, status, error, isCheckingAuth]);
+  }, [user, status, error, isCheckingAuth, router]);
 
   // Handle redirects based on auth state
   useEffect(() => {

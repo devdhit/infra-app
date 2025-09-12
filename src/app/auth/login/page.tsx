@@ -45,7 +45,7 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      await loginMutation.mutateAsync({ email, password });
+      await loginMutation.login({ email, password });
       
       // Save email to localStorage if "Remember me" is checked
       if (rememberMe) {

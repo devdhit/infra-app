@@ -4,6 +4,22 @@ let redisCache: any = null;
 let CACHE_PREFIXES: any = null;
 let CACHE_TTL: any = null;
 
+// Import logger for better error handling
+let logger: any = null;
+if (typeof window === 'undefined') {
+  try {
+    logger = require('./logger').default;
+  } catch (error) {
+    // Fallback to console if logger is not available
+    logger = {
+      error: console.error,
+      warn: console.warn,
+      info: console.log,
+      debug: console.log
+    };
+  }
+}
+
 if (typeof window === 'undefined') {
   // Server-side only imports
   const dbModule = require('./db');
@@ -14,8 +30,11 @@ if (typeof window === 'undefined') {
     redisCache = redisModule.default;
     CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
     CACHE_TTL = redisModule.CACHE_TTL;
-  } catch (error) {
-    console.warn('Redis cache not available, using fallback:', error);
+  } catch (error: any) {
+    logger.warn('Redis cache not available, using fallback', { 
+      component: 'permissions', 
+      error: error.message 
+    });
   }
 }
 
@@ -103,16 +122,20 @@ export async function hasPermission(
   
   // Check if required modules are available
   if (!db) {
-    console.error('Database module not available');
+    logger.error('Database module not available', { component: 'permissions' });
     return false;
   }
   
   try {
     // Validate inputs
     if (!roleId || !tenantId || !resource || !action) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Invalid permission check parameters:', { roleId, tenantId, resource, action });
-      }
+      logger.warn('Invalid permission check parameters', { 
+        component: 'permissions', 
+        roleId, 
+        tenantId, 
+        resource, 
+        action 
+      });
       return false;
     }
 
@@ -125,7 +148,6 @@ export async function hasPermission(
     // Check if we have a cached role that's still valid
     let role = null;
     if (redisCache && cacheKey) {
-      // Fix the type issue by not using type arguments
       const cachedRole = await redisCache.get(cacheKey);
       if (cachedRole) {
         role = cachedRole;
@@ -141,15 +163,17 @@ export async function hasPermission(
         }
       });
       
-      // Cache the role if Redis is available
+      // Cache the role with extended TTL if Redis is available
       if (redisCache && cacheKey && role) {
-        await redisCache.set(cacheKey, role, CACHE_TTL ? CACHE_TTL.PERMISSIONS : 300);
+        // Increase cache TTL to 10 minutes for better performance
+        await redisCache.set(cacheKey, role, CACHE_TTL ? CACHE_TTL.PERMISSIONS * 2 : 600);
       }
     }
 
-    // For debugging in development only
+    // Log permission check details
     if (process.env.NODE_ENV === 'development') {
-      console.log('Permission check details:', {
+      logger.debug('Permission check details', { 
+        component: 'permissions', 
         roleId,
         tenantId,
         resource,
@@ -185,11 +209,16 @@ export async function hasPermission(
     }
 
     return false;
-  } catch (error) {
-    // Log errors only in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Error checking permissions:', error);
-    }
+  } catch (error: any) {
+    logger.error('Error checking permissions', { 
+      component: 'permissions', 
+      roleId, 
+      tenantId, 
+      resource, 
+      action, 
+      error: error.message, 
+      stack: error.stack 
+    });
     return false;
   }
 }

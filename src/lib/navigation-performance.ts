@@ -21,12 +21,20 @@ export class NavigationPerformanceMonitor {
 
   // Start timing a navigation
   startNavigation(): void {
-    this.navigationStart = performance.now();
-    console.log('[NAVIGATION] Navigation started');
+    // Check if performance API is available (browser only)
+    if (typeof performance !== 'undefined' && performance.now) {
+      this.navigationStart = performance.now();
+      console.log('[NAVIGATION] Navigation started');
+    }
   }
 
   // End timing a navigation and log the result
   endNavigation(navigationPath: string): number | null {
+    // Check if performance API is available (browser only)
+    if (typeof performance === 'undefined' || !performance.now) {
+      return null;
+    }
+    
     if (!this.navigationStart) {
       console.warn('[NAVIGATION] Navigation timing not started');
       return null;
@@ -46,6 +54,11 @@ export class NavigationPerformanceMonitor {
 
   // Check if navigation is taking too long
   isNavigationSlow(threshold: number = 1000): boolean {
+    // Check if performance API is available (browser only)
+    if (typeof performance === 'undefined' || !performance.now) {
+      return false;
+    }
+    
     if (!this.navigationStart) return false;
     
     const currentTime = performance.now();

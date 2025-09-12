@@ -37,7 +37,7 @@ export const isCustomField = (
   
   // Fallback: check if field exists in asset.customFields but not directly on asset
   // This is a more reliable check than just checking if the field exists in customFields
-  return asset.customFields && 
+  return asset?.customFields && 
          fieldName in asset.customFields && 
          !(fieldName in asset);
 };
@@ -107,6 +107,9 @@ let CACHE_PREFIXES: any = null;
 let CACHE_TTL: any = null;
 let db: any = null;
 
+// Import logger for better error handling
+import logger from './logger';
+
 // Only import and use Redis cache on the server side
 if (typeof window === 'undefined') {
   try {
@@ -118,8 +121,11 @@ if (typeof window === 'undefined') {
     
     const dbModule = require('./db');
     db = dbModule.db;
-  } catch (error) {
-    console.warn('Server-side modules not available:', error);
+  } catch (error: any) {
+    logger.warn('Server-side modules not available', { 
+      component: 'custom-fields', 
+      error: error.message 
+    });
   }
 }
 
@@ -133,34 +139,60 @@ export const getCustomFieldsForModel = async (tenantId: string, modelType: strin
   // Check if we're on the server side and have the required modules
   if (typeof window !== 'undefined' || !redisCache || !db) {
     // This should never be called on the client side, but we need to provide a fallback
-    console.warn('getCustomFieldsForModel called on client side or missing modules');
+    logger.warn('getCustomFieldsForModel called on client side or missing modules', { 
+      component: 'custom-fields', 
+      isClient: typeof window !== 'undefined', 
+      hasRedis: !!redisCache, 
+      hasDb: !!db 
+    });
     return [];
   }
   
   // Create cache key
   const cacheKey = redisCache.createKey(CACHE_PREFIXES.CUSTOM_FIELDS, tenantId, modelType);
   
-  // Try to get from cache first
-  const cachedFields = await redisCache.get(cacheKey);
-  if (cachedFields) {
-    return cachedFields;
-  }
-  
-  // Fetch from database if not in cache
-  const customFields = await db.customField.findMany({
-    where: {
-      tenantId,
-      modelType
-    },
-    orderBy: {
-      createdAt: 'asc'
+  try {
+    // Try to get from cache first
+    const cachedFields = await redisCache.get(cacheKey);
+    if (cachedFields) {
+      return cachedFields;
     }
-  });
-  
-  // Cache the result
-  await redisCache.set(cacheKey, customFields, CACHE_TTL.CUSTOM_FIELDS);
-  
-  return customFields;
+    
+    // Fetch from database if not in cache
+    const customFields = await db.customField.findMany({
+      where: {
+        tenantId,
+        modelType
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+    
+    // Cache the result with error handling
+    try {
+      await redisCache.set(cacheKey, customFields, CACHE_TTL ? CACHE_TTL.CUSTOM_FIELDS : 600);
+    } catch (cacheError: any) {
+      logger.warn('Failed to cache custom fields', { 
+        component: 'custom-fields', 
+        tenantId, 
+        modelType, 
+        error: cacheError.message 
+      });
+      // Continue without caching if cache operation fails
+    }
+    
+    return customFields;
+  } catch (dbError: any) {
+    logger.error('Database error fetching custom fields', { 
+      component: 'custom-fields', 
+      tenantId, 
+      modelType, 
+      error: dbError.message, 
+      stack: dbError.stack 
+    });
+    throw new Error('Failed to fetch custom fields');
+  }
 };
 
 /**
@@ -172,10 +204,24 @@ export const invalidateCustomFieldsCache = async (tenantId: string, modelType: s
   // Check if we're on the server side and have the required modules
   if (typeof window !== 'undefined' || !redisCache) {
     // This should never be called on the client side, but we need to provide a fallback
-    console.warn('invalidateCustomFieldsCache called on client side or missing modules');
+    logger.warn('invalidateCustomFieldsCache called on client side or missing modules', { 
+      component: 'custom-fields', 
+      isClient: typeof window !== 'undefined', 
+      hasRedis: !!redisCache 
+    });
     return;
   }
   
-  const cacheKey = redisCache.createKey(CACHE_PREFIXES.CUSTOM_FIELDS, tenantId, modelType);
-  await redisCache.del(cacheKey);
+  try {
+    const cacheKey = redisCache.createKey(CACHE_PREFIXES.CUSTOM_FIELDS, tenantId, modelType);
+    await redisCache.del(cacheKey);
+  } catch (cacheError: any) {
+    logger.warn('Failed to invalidate custom fields cache', { 
+      component: 'custom-fields', 
+      tenantId, 
+      modelType, 
+      error: cacheError.message 
+    });
+    // Continue without error as this is not critical
+  }
 };

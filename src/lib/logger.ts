@@ -14,6 +14,14 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 // Log levels
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+// Type for structured log data
+interface LogData {
+  requestId?: string;
+  userId?: string;
+  tenantId?: string;
+  [key: string]: any;
+}
+
 /**
  * Main logging function that respects environment settings
  * @param level Log level
@@ -26,8 +34,38 @@ function log(level: LogLevel, message: any, ...optionalParams: any[]) {
     return;
   }
 
-  // Format the message with timestamp and log level
-  const formattedMessage = `[${getTimestamp()}] ${level.toUpperCase()}: ${message}`;
+  // Check if we have structured log data as the first parameter
+  let structuredData: LogData | undefined;
+  const logMessage = message;
+  
+  if (optionalParams.length > 0 && typeof optionalParams[0] === 'object' && optionalParams[0] !== null) {
+    const firstParam = optionalParams[0];
+    if (firstParam.requestId || firstParam.userId || firstParam.tenantId || firstParam.component) {
+      structuredData = firstParam;
+      // Remove the structured data from optionalParams
+      optionalParams = optionalParams.slice(1);
+    }
+  }
+
+  // Format the message with timestamp, log level, and structured data
+  let formattedMessage = `[${getTimestamp()}] ${level.toUpperCase()}`;
+  
+  if (structuredData) {
+    if (structuredData.requestId) {
+      formattedMessage += ` [Request: ${structuredData.requestId}]`;
+    }
+    if (structuredData.userId) {
+      formattedMessage += ` [User: ${structuredData.userId}]`;
+    }
+    if (structuredData.tenantId) {
+      formattedMessage += ` [Tenant: ${structuredData.tenantId}]`;
+    }
+    if (structuredData.component) {
+      formattedMessage += ` [Component: ${structuredData.component}]`;
+    }
+  }
+  
+  formattedMessage += `: ${logMessage}`;
   
   switch (level) {
     case 'debug':
@@ -74,6 +112,13 @@ export function error(message: any, ...optionalParams: any[]) {
 }
 
 /**
+ * Structured logging function with request context
+ */
+export function structuredLog(level: LogLevel, context: LogData, message: string, ...optionalParams: any[]) {
+  log(level, message, context, ...optionalParams);
+}
+
+/**
  * Log with emoji prefix for better visual identification
  */
 export function emojiLog(emoji: string, message: any, ...optionalParams: any[]) {
@@ -91,7 +136,11 @@ const logger = {
   info,
   warn,
   error,
-  emojiLog
+  emojiLog,
+  structuredLog
 };
 
 export default logger;
+
+// Export types for better TypeScript support
+export type { LogData };

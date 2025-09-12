@@ -43,7 +43,11 @@ export default function RolesPage() {
     }
   }, [])
   
-  const { data: roles = [], isLoading, isError, error, refetch } = useRoles()
+  const { data: roles = [], isLoading, error, refetch } = useRoles()
+  
+  // Determine if there's an error
+  const isError = !!error
+  
   const createRoleMutation = useCreateRole()
   // We'll manage the ID for update operations in state
   const [updateRoleId, setUpdateRoleId] = useState<string | null>(null)
@@ -319,7 +323,7 @@ export default function RolesPage() {
   const confirmBulkDelete = async () => {
     try {
       // Trigger the bulk delete mutation with the correct payload
-      await bulkDeleteRolesMutation.mutateAsync({ ids: rolesToBulkDelete })
+      await bulkDeleteRolesMutation.mutate({ ids: rolesToBulkDelete })
       toast.success(t('roles.bulkDelete.success', '{0} roles deleted successfully', rolesToBulkDelete.length.toString()) || 
                    `${rolesToBulkDelete.length} roles deleted successfully`)
       refetch()
@@ -353,7 +357,7 @@ export default function RolesPage() {
             setUpdateRoleId(editingRole.id)
           }
           // Trigger the update mutation
-          await updateRoleMutation.mutateAsync(data)
+          await updateRoleMutation.mutate(data)
           toast.success(t('roles.update.success') || 'Role updated successfully')
           setIsDialogOpen(false)
           setEditingRole(null)
@@ -376,7 +380,7 @@ export default function RolesPage() {
         }
         // Create new role
         try {
-          await createRoleMutation.mutateAsync(data)
+          await createRoleMutation.mutate(data)
           toast.success(t('roles.create.success') || 'Role created successfully')
           setIsDialogOpen(false)
         } catch (error: any) {
@@ -458,10 +462,10 @@ export default function RolesPage() {
         </CardHeader>
         <CardContent>
           <RolesTable 
-            roles={roles}
+            roles={roles || []}
             onEdit={canEdit ? handleEdit : undefined}
             onDelete={(canDelete || canBulkDelete) ? handleDelete : undefined}
-            isDeleting={bulkDeleteRolesMutation.isPending}
+            isDeleting={bulkDeleteRolesMutation.isLoading}
             deletingRoleId={null}
           />
         </CardContent>
@@ -472,7 +476,7 @@ export default function RolesPage() {
         onOpenChange={handleDialogOpenChange}
         editingRole={editingRole}
         onSubmit={handleSubmit}
-        isSubmitting={editingRole ? updateRoleMutation.isPending : createRoleMutation.isPending}
+        isSubmitting={editingRole ? updateRoleMutation.isLoading : createRoleMutation.isLoading}
       />
       
       <ConfirmDialog
@@ -495,7 +499,7 @@ export default function RolesPage() {
         confirmText={t('common.delete') || 'Delete'}
         cancelText={t('common.cancel') || 'Cancel'}
         onConfirm={confirmBulkDelete}
-        isLoading={bulkDeleteRolesMutation.isPending}
+        isLoading={bulkDeleteRolesMutation.isLoading}
       />
     </div>
   )
