@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from "@/components/ui/button"
 import { 
   Bell, 
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { useWebSocketContext } from '@/contexts/websocket-context'
 
 interface Notification {
   id: string
@@ -27,6 +28,10 @@ interface Notification {
   message: string
   timestamp: Date
   read: boolean
+  category?: string
+  modelType?: string
+  action?: string
+  uniqueKey?: string  // Add uniqueKey property
 }
 
 interface RealTimeNotificationsProps {
@@ -35,9 +40,94 @@ interface RealTimeNotificationsProps {
 
 export function RealTimeNotifications({ onNotificationChange }: RealTimeNotificationsProps) {
   const { t } = useTranslation()
+  const { assetUpdates, auditLogs } = useWebSocketContext()  // Get auditLogs from context
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isEnabled, setIsEnabled] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
+  // Remove local auditLogs state since we're using the context
+
+  // Convert audit logs to notifications
+  const auditLogNotifications = useMemo(() => {
+    return auditLogs.map(log => {
+      const action = log.action.toLowerCase()
+      let type: 'info' | 'warning' | 'success' | 'error' = 'info'
+      let title = ''
+      let message = ''
+      
+      // Determine notification type based on action
+      switch (action) {
+        case 'create':
+          type = 'success'
+          break
+        case 'update':
+          type = 'info'
+          break
+        case 'delete':
+          type = 'warning'
+          break
+        case 'login':
+        case 'logout':
+          type = 'info'
+          break
+        default:
+          type = 'info'
+      }
+      
+      // Get model-specific icon and title
+      const modelType = log.modelType.toLowerCase()
+      
+      switch (modelType) {
+        case 'user':
+          title = t('users.title', 'User')
+          break
+        case 'tenant':
+          title = t('tenants.title', 'Tenant')
+          break
+        case 'pc':
+          title = t('assets.pc.title', 'PC')
+          break
+        case 'laptop':
+          title = t('assets.laptop.title', 'Laptop')
+          break
+        case 'printer':
+          title = t('assets.printer.title', 'Printer')
+          break
+        case 'license':
+          title = t('assets.license.title', 'License')
+          break
+        case 'warehouseit':
+          title = t('assets.warehouse.title', 'Warehouse IT')
+          break
+        case 'internet':
+          title = t('assets.internet.title', 'Internet')
+          break
+        case 'role':
+          title = t('roles.title', 'Role')
+          break
+        default:
+          title = log.modelType
+      }
+      
+      // Create message based on action
+      const user = log.user?.name || t('common.unknownUser', 'Unknown User')
+      const actionText = t(`common.actions.${action}`, action)
+      
+      // Format message with parameters: {0} = user, {1} = action, {2} = model
+      message = t('notifications.auditLogMessage', '{0} {1} {2}', user, actionText, title)
+      
+      return {
+        id: log.id,
+        type,
+        title: t('notifications.auditLogTitle', 'Audit Log'),
+        message,
+        timestamp: new Date(log.createdAt),
+        read: false,
+        category: 'audit',
+        modelType: log.modelType,
+        action: log.action
+      }
+    })
+  }, [auditLogs, t])
 
   const getRandomTitle = useCallback((type: string): string => {
     const titles: Record<string, string[]> = {
@@ -103,6 +193,61 @@ export function RealTimeNotifications({ onNotificationChange }: RealTimeNotifica
     return selectedOptions[Math.floor(Math.random() * selectedOptions.length)] || 'You have a new notification'
   }, [t])
 
+  // Handle real-time asset updates from WebSocket
+  useEffect(() => {
+    if (!isEnabled || assetUpdates.length === 0) return
+
+    const newNotifications: Notification[] = assetUpdates.map(update => {
+      const action = update.type || update.action || 'update'
+      let type: 'info' | 'warning' | 'success' | 'error' = 'info'
+      
+      switch (action.toLowerCase()) {
+        case 'asset_created':
+        case 'create':
+          type = 'success'
+          break
+        case 'asset_updated':
+        case 'update':
+          type = 'info'
+          break
+        case 'asset_deleted':
+        case 'delete':
+          type = 'warning'
+          break
+        default:
+          type = 'info'
+      }
+      
+      return {
+        id: update.id || Math.random().toString(36).substr(2, 9),
+        type,
+        title: getRandomTitle(type),
+        message: update.payload?.name || update.data?.name || t('notifications.assetUpdate', 'Asset updated'),
+        timestamp: new Date(update.timestamp || Date.now()),
+        read: false,
+        category: 'asset'
+      }
+    })
+
+    setNotifications(prev => {
+      const updated = [...newNotifications, ...prev].slice(0, 20) // Keep only last 20 notifications
+      const unread = updated.filter(n => !n.read).length
+      setUnreadCount(unread)
+      
+      // Notify parent component if callback provided
+      if (onNotificationChange) {
+        onNotificationChange(updated)
+      }
+      
+      // Show toast notifications for new updates
+      newNotifications.forEach(notification => {
+        showToast(notification)
+      })
+      
+      return updated
+    })
+  }, [assetUpdates, isEnabled, onNotificationChange, getRandomTitle, t])
+
   // Simulate real-time notifications
   useEffect(() => {
     if (!isEnabled) return
@@ -122,11 +267,12 @@ export function RealTimeNotifications({ onNotificationChange }: RealTimeNotifica
           title: getRandomTitle(randomType),
           message: getRandomMessage(randomType),
           timestamp: new Date(),
-          read: false
+          read: false,
+          category: 'system'
         }
 
         setNotifications(prev => {
-          const updated = [newNotification, ...prev.slice(0, 9)] // Keep only last 10 notifications
+          const updated = [newNotification, ...prev.slice(0, 19)] // Keep only last 20 notifications
           const unread = updated.filter(n => !n.read).length
           setUnreadCount(unread)
           
@@ -225,6 +371,24 @@ export function RealTimeNotifications({ onNotificationChange }: RealTimeNotifica
     }
   }
 
+  // Combine all notifications (audit logs + system notifications)
+  const allNotifications = useMemo(() => {
+    // Combine audit log notifications with system notifications
+    const combined = [...auditLogNotifications, ...notifications]
+    
+    // Ensure all notifications have unique keys
+    const uniqueNotifications = combined.map((notification, index) => ({
+      ...notification,
+      // Create a unique key by combining the original ID with a prefix and index
+      uniqueKey: `${notification.category || 'system'}-${notification.id || index}-${index}`
+    }))
+    
+    // Sort by timestamp (newest first)
+    return uniqueNotifications.sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    ).slice(0, 20) // Keep only the 20 most recent
+  }, [auditLogNotifications, notifications])
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -234,6 +398,7 @@ export function RealTimeNotifications({ onNotificationChange }: RealTimeNotifica
             <Badge 
               variant="destructive" 
               className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+              data-testid="notification-badge"
             >
               {unreadCount}
             </Badge>
@@ -252,7 +417,7 @@ export function RealTimeNotifications({ onNotificationChange }: RealTimeNotifica
             >
               {isEnabled ? <BellOff className="h-3 w-3" /> : <Bell className="h-3 w-3" />}
             </Button>
-            {notifications.length > 0 && (
+            {allNotifications.length > 0 && (
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -266,14 +431,14 @@ export function RealTimeNotifications({ onNotificationChange }: RealTimeNotifica
         </div>
         
         <div className="max-h-96 overflow-y-auto">
-          {notifications.length === 0 ? (
+          {allNotifications.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
               {t('dashboard.noRecentActivities', 'No notifications')}
             </div>
           ) : (
-            notifications.map((notification) => (
+            allNotifications.map((notification) => (
               <DropdownMenuItem 
-                key={notification.id} 
+                key={notification.uniqueKey || notification.id} 
                 className="flex flex-col items-start p-3 focus:bg-accent"
                 onClick={() => markAsRead(notification.id)}
               >
@@ -301,7 +466,7 @@ export function RealTimeNotifications({ onNotificationChange }: RealTimeNotifica
           )}
         </div>
         
-        {notifications.length > 0 && (
+        {allNotifications.length > 0 && (
           <div className="border-t p-2 flex justify-between">
             <Button variant="ghost" size="sm" onClick={clearAll}>
               {t('common.clearAll', 'Clear all')}

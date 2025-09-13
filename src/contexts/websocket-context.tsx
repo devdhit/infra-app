@@ -14,6 +14,8 @@ interface WebSocketContextType {
   assetUpdates: any[]
   addAssetUpdate: (update: any) => void
   clearAssetUpdates: () => void
+  auditLogs: any[]  // Add audit logs to the context
+  addAuditLog: (auditLog: any) => void  // Add function to add audit logs
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined)
@@ -25,6 +27,7 @@ interface WebSocketProviderProps {
 export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const { t } = useTranslation()
   const [assetUpdates, setAssetUpdates] = useState<any[]>([])
+  const [auditLogs, setAuditLogs] = useState<any[]>([])  // Add audit logs state
   const [isConnected, setIsConnected] = useState(false)
   const [reconnectAttempts, setReconnectAttempts] = useState(0)
   const [socket, setSocket] = useState<Socket | null>(null)
@@ -81,6 +84,67 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         )
         break
         
+      case 'AUDIT_LOG_CREATED':
+        // Handle audit log notifications
+        const auditLog = message.payload || message.data
+        if (auditLog) {
+          // Add to audit logs list for real-time notifications component
+          setAuditLogs(prev => [auditLog, ...prev.slice(0, 9)])
+          
+          const user = auditLog.user?.name || t('common.unknownUser', 'Unknown User')
+          const modelType = auditLog.modelType
+          const action = auditLog.action
+          
+          let messageText = ''
+          switch (modelType?.toLowerCase()) {
+            case 'user':
+              messageText = t('notifications.userActivity', '{0} performed {1} on User', 
+                user, 
+                t(`common.actions.${action}`, action)
+              )
+              break
+            case 'pc':
+              messageText = t('notifications.assetActivity', '{0} performed {1} on PC asset', 
+                user, 
+                t(`common.actions.${action}`, action)
+              )
+              break
+            case 'laptop':
+              messageText = t('notifications.assetActivity', '{0} performed {1} on Laptop asset', 
+                user, 
+                t(`common.actions.${action}`, action)
+              )
+              break
+            case 'printer':
+              messageText = t('notifications.assetActivity', '{0} performed {1} on Printer asset', 
+                user, 
+                t(`common.actions.${action}`, action)
+              )
+              break
+            case 'license':
+              messageText = t('notifications.assetActivity', '{0} performed {1} on License asset', 
+                user, 
+                t(`common.actions.${action}`, action)
+              )
+              break
+            default:
+              messageText = t('notifications.auditActivity', '{0} performed {1} on {2}', 
+                user, 
+                t(`common.actions.${action}`, action), 
+                modelType
+              )
+          }
+          
+          toast.info(
+            t('notifications.auditLogTitle', 'Audit Log'),
+            {
+              description: messageText,
+              duration: 5000
+            }
+          )
+        }
+        break
+        
       default:
         console.log('Unknown Socket.IO message type:', message.type || message.action)
     }
@@ -121,7 +185,12 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     })
 
     newSocket.on('asset-change', (message) => {
-      console.log('Socket.IO message received:', message)
+      console.log('Socket.IO asset-change message received:', message)
+      handleWebSocketMessage(message)
+    })
+
+    newSocket.on('audit-log', (message) => {
+      console.log('Socket.IO audit-log message received:', message)
       handleWebSocketMessage(message)
     })
 
@@ -147,6 +216,11 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
   const addAssetUpdate = (update: any) => {
     setAssetUpdates(prev => [update, ...prev.slice(0, 9)])
+  }
+
+  // Add function to add audit logs
+  const addAuditLog = (auditLog: any) => {
+    setAuditLogs(prev => [auditLog, ...prev.slice(0, 9)])
   }
 
   const clearAssetUpdates = () => {
@@ -188,7 +262,9 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         reconnectAttempts,
         assetUpdates,
         addAssetUpdate,
-        clearAssetUpdates
+        clearAssetUpdates,
+        auditLogs,  // Expose audit logs
+        addAuditLog  // Expose addAuditLog function
       }}
     >
       {children}

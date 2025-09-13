@@ -122,7 +122,15 @@
     },
     "selectedCount": "{0} items selected",
     "connected": "Connected",
-    "disconnected": "Disconnected"
+    "disconnected": "Disconnected",
+    "unknownUser": "Unknown User",
+    "actions": {
+      "create": "created",
+      "update": "updated",
+      "delete": "deleted",
+      "login": "logged in",
+      "logout": "logged out"
+    }
   },
   "bulkDelete": {
     "confirmation": "Are you sure you want to delete {0} {1}? This action cannot be undone.",
@@ -965,5 +973,12 @@
         "bulkDelete": "Bulk delete audit logs"
       }
     }
+  },
+  "notifications": {
+    "auditLogTitle": "Audit Log",
+    "auditLogMessage": "{{user}} {{action}} {{model}}",
+    "userActivity": "{{user}} performed {{action}} on User",
+    "assetActivity": "{{user}} performed {{action}} on {{modelType}} asset",
+    "auditActivity": "{{user}} performed {{action}} on {{modelType}}"
   }
 }
