@@ -461,6 +461,11 @@
       "success": "{0} users deleted successfully",
       "error": "Failed to delete users"
     },
+    "unlock": {
+      "title": "Unlock Account",
+      "success": "User account unlocked successfully",
+      "error": "Failed to unlock user account"
+    },
     "error": {
       "loading": "Failed to load users"
     },

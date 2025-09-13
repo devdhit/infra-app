@@ -45,17 +45,21 @@ model Role {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  name      String
-  roleId    String?
-  tenantId  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  histories History[]
-  tenant    Tenant    @relation(fields: [tenantId], references: [id])
-  role      Role?     @relation(fields: [roleId], references: [id])
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  password             String
+  name                 String
+  roleId               String?
+  tenantId             String
+  failedLoginAttempts  Int       @default(0)
+  lockedAt             DateTime?
+  lockedUntil          DateTime?
+  lastLoginAttempt     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  histories            History[]
+  tenant               Tenant    @relation(fields: [tenantId], references: [id])
+  role                 Role?     @relation(fields: [roleId], references: [id])
 
   @@index([tenantId])
   @@index([roleId])

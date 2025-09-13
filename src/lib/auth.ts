@@ -400,17 +400,30 @@ export async function getCurrentUser(request: NextRequest): Promise<User | null>
     // and convert Date objects to strings
     if (user && user.role) {
       const formattedUser = {
-        ...user,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        roleId: user.roleId,
+        tenantId: user.tenantId,
+        failedLoginAttempts: user.failedLoginAttempts,
+        lockedAt: user.lockedAt ? user.lockedAt.toISOString() : undefined,
+        lockedUntil: user.lockedUntil ? user.lockedUntil.toISOString() : undefined,
+        lastLoginAttempt: user.lastLoginAttempt ? user.lastLoginAttempt.toISOString() : undefined,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),
         role: {
-          ...user.role,
+          id: user.role.id,
+          name: user.role.name,
+          description: user.role.description,
+          permissions: user.role.permissions as Record<string, string[]>,
+          tenantId: user.role.tenantId,
           createdAt: user.role.createdAt.toISOString(),
-          updatedAt: user.role.updatedAt.toISOString(),
-          permissions: user.role.permissions as Record<string, string[]>
+          updatedAt: user.role.updatedAt.toISOString()
         },
         tenant: user.tenant ? {
-          ...user.tenant,
+          id: user.tenant.id,
+          name: user.tenant.name,
+          description: user.tenant.description,
           createdAt: user.tenant.createdAt.toISOString(),
           updatedAt: user.tenant.updatedAt.toISOString()
         } : null
@@ -435,11 +448,21 @@ export async function getCurrentUser(request: NextRequest): Promise<User | null>
     // Convert Date objects to strings for users without roles
     if (user) {
       const formattedUser = {
-        ...user,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        roleId: user.roleId,
+        tenantId: user.tenantId,
+        failedLoginAttempts: user.failedLoginAttempts,
+        lockedAt: user.lockedAt ? user.lockedAt.toISOString() : undefined,
+        lockedUntil: user.lockedUntil ? user.lockedUntil.toISOString() : undefined,
+        lastLoginAttempt: user.lastLoginAttempt ? user.lastLoginAttempt.toISOString() : undefined,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),
         tenant: user.tenant ? {
-          ...user.tenant,
+          id: user.tenant.id,
+          name: user.tenant.name,
+          description: user.tenant.description,
           createdAt: user.tenant.createdAt.toISOString(),
           updatedAt: user.tenant.updatedAt.toISOString()
         } : null
