@@ -66,13 +66,15 @@ export async function createAuditLog(
     // Emit audit log event via WebSocket
     if (auditLog) {
       const io = getIO();
-      io.to(`tenant-${tenantId}`).emit('audit-log', {
-        type: 'AUDIT_LOG_CREATED',
-        payload: {
-          ...auditLog,
-          action: actionType
-        }
-      });
+      if (io) {
+        io.to(`tenant-${tenantId}`).emit('audit-log', {
+          type: 'AUDIT_LOG_CREATED',
+          payload: {
+            ...auditLog,
+            action: actionType
+          }
+        });
+      }
     }
     
     return auditLog;
@@ -132,13 +134,15 @@ export async function createUserEventAuditLog(
     // Emit audit log event via WebSocket
     if (auditLog) {
       const io = getIO();
-      io.to(`tenant-${tenantId}`).emit('audit-log', {
-        type: 'AUDIT_LOG_CREATED',
-        payload: {
-          ...auditLog,
-          action: eventType
-        }
-      });
+      if (io) {
+        io.to(`tenant-${tenantId}`).emit('audit-log', {
+          type: 'AUDIT_LOG_CREATED',
+          payload: {
+            ...auditLog,
+            action: eventType
+          }
+        });
+      }
     }
     
     return auditLog;
@@ -186,13 +190,15 @@ export async function createPermissionAuditLog(
     // Emit audit log event via WebSocket
     if (auditLog) {
       const io = getIO();
-      io.to(`tenant-${tenantId}`).emit('audit-log', {
-        type: 'AUDIT_LOG_CREATED',
-        payload: {
-          ...auditLog,
-          action: 'permission_change'
-        }
-      });
+      if (io) {
+        io.to(`tenant-${tenantId}`).emit('audit-log', {
+          type: 'AUDIT_LOG_CREATED',
+          payload: {
+            ...auditLog,
+            action: 'permission_change'
+          }
+        });
+      }
     }
     
     return auditLog;
@@ -292,13 +298,15 @@ export async function createRoleUpdateAuditLog(
     // Emit audit log event via WebSocket
     if (auditLog) {
       const io = getIO();
-      io.to(`tenant-${tenantId}`).emit('audit-log', {
-        type: 'AUDIT_LOG_CREATED',
-        payload: {
-          ...auditLog,
-          action: 'role_update'
-        }
-      });
+      if (io) {
+        io.to(`tenant-${tenantId}`).emit('audit-log', {
+          type: 'AUDIT_LOG_CREATED',
+          payload: {
+            ...auditLog,
+            action: 'role_update'
+          }
+        });
+      }
     }
     
     return auditLog;

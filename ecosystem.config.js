@@ -2,13 +2,15 @@ module.exports = {
   apps: [{
     name: 'itams',
     script: 'server.js',
-    cwd: process.env.ITAMS_PATH || '/opt/itams',
+    cwd: process.env.ITAMS_PATH || 'C:\\infra-app',
     instances: 1,
     exec_mode: 'fork',
+    // Pre-start script to build the server components
+    prestart: 'npm run build:server',
     env: {
       NODE_ENV: 'production',
       PORT: process.env.PORT || 3000,
-      ITAMS_DIST_PATH: process.env.ITAMS_PATH ? `${process.env.ITAMS_PATH}/dist` : '/opt/itams/dist',
+      ITAMS_DIST_PATH: process.env.ITAMS_PATH ? `${process.env.ITAMS_PATH}/dist` : 'C:\\infra-app\\dist',
       REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379'
     },
     // Add error handling and restart configuration
