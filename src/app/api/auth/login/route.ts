@@ -16,6 +16,9 @@ const MAX_ATTEMPTS = 5
 const LOCKOUT_TIME = 15 * 60 * 1000 // 15 minutes
 const CLEANUP_INTERVAL = 60 * 60 * 1000 // 1 hour
 
+// Add lockout duration (24 hours)
+const ACCOUNT_LOCKOUT_DURATION = 24 * 60 * 60 * 1000 // 24 hours
+
 // Store the interval ID so we can clear it if needed
 let cleanupIntervalId: NodeJS.Timeout | null = null;
 
@@ -216,6 +219,19 @@ export async function POST(request: NextRequest) {
       return errorResponse('Invalid email or password', 401, { requestId })
     }
 
+    // Check if user account is locked
+    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+      logger.warn('Login attempt blocked due to locked account', { 
+        requestId, 
+        ip, 
+        userId: user.id,
+        email,
+        lockedUntil: user.lockedUntil,
+        component: 'auth-login' 
+      });
+      return errorResponse('Account is locked. Please contact administrator.', 423, { requestId })
+    }
+
     // Verify password with proper error handling and rate limiting
     let isValidPassword;
     try {
@@ -283,7 +299,7 @@ export async function POST(request: NextRequest) {
       logger.debug('Calling verifyPassword function', { 
         requestId, 
         ip, 
-        userId: user.id, 
+        userId: user.id,
         component: 'auth-login' 
       });
       
@@ -309,18 +325,52 @@ export async function POST(request: NextRequest) {
     }
     
     if (!isValidPassword) {
+      // Increment failed login attempts
+      const updatedUser = await db.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: {
+            increment: 1
+          },
+          lastLoginAttempt: new Date(),
+          // Lock account if failed attempts exceed threshold
+          lockedAt: user.failedLoginAttempts + 1 >= MAX_ATTEMPTS ? new Date() : user.lockedAt,
+          lockedUntil: user.failedLoginAttempts + 1 >= MAX_ATTEMPTS ? 
+            new Date(Date.now() + ACCOUNT_LOCKOUT_DURATION) : user.lockedUntil
+        }
+      });
+      
       recordFailedAttempt(ip)
       logger.warn('Invalid password provided for user', { 
         requestId, 
         ip, 
-        userId: user.id, 
+        userId: user.id,
+        failedAttempts: updatedUser.failedLoginAttempts,
+        isLocked: updatedUser.failedLoginAttempts >= MAX_ATTEMPTS,
         component: 'auth-login' 
       });
+      
+      // If account is now locked, return specific error
+      if (updatedUser.failedLoginAttempts >= MAX_ATTEMPTS) {
+        return errorResponse('Account is locked due to too many failed attempts. Please contact administrator.', 423, { requestId });
+      }
+      
       return errorResponse('Invalid email or password', 401, { requestId })
     }
 
-    // Reset rate limiter on successful login
+    // Reset rate limiter and failed login attempts on successful login
     rateLimiter.delete(ip)
+    
+    // Reset failed login attempts
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockedAt: null,
+        lockedUntil: null,
+        lastLoginAttempt: new Date()
+      }
+    });
 
     logger.debug('Preparing to generate JWT token', { 
       requestId, 

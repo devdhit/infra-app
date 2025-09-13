@@ -17,9 +17,11 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Unlock } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { UsersTableProps } from "@/types/users"
+import { api } from '@/lib/api'
+import { toast } from 'sonner'
 
 export function UsersTable({ 
   users, 
@@ -59,6 +61,16 @@ export function UsersTable({
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString()
+  }
+
+  const handleUnlockUser = async (userId: string) => {
+    try {
+      await api.post(`/users/${userId}/unlock`)
+      toast.success(t('users.unlock.success') || 'User account unlocked successfully')
+    } catch (error) {
+      toast.error(t('users.unlock.error') || 'Failed to unlock user account')
+      console.error('Unlock user error:', error)
+    }
   }
 
   return (
@@ -117,6 +129,10 @@ export function UsersTable({
                         {t('common.edit') || 'Edit'}
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuItem onClick={() => handleUnlockUser(user.id)}>
+                      <Unlock className="mr-2 h-4 w-4" />
+                      {t('users.unlock.title') || 'Unlock Account'}
+                    </DropdownMenuItem>
                     {onDelete && (
                       <DropdownMenuItem 
                         onClick={() => onDelete(user.id)}

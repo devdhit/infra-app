@@ -1,4 +1,4 @@
-import { User, UserFormProps as UserFormPropsBase } from "@/types/users";
+import { User, UserCreateUpdate } from "@/types/users";
 import { Tenant } from "@/hooks/useApi";
 
 // Re-export the imported types
@@ -24,7 +24,14 @@ export interface UsersTableProps {
   deletingUserId: string | null;
 }
 
-// If we need to extend the base interfaces, we can do so here
-export interface UserFormProps extends UserFormPropsBase {}
+// Define the UserFormProps interface with all required props
+export interface UserFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editingUser: UserCreateUpdate | null;
+  tenants: Tenant[];
+  onSubmit: (data: UserCreateUpdate) => Promise<void>;
+  isSubmitting: boolean;
+}
 
 export interface UsersPageProps {}

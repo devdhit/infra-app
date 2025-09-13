@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useTranslation } from "@/hooks/use-translation"
-import { UserFormProps, UserFormValues } from "@/types/users"
+import { UserFormValues } from "@/components/users/types"
+import { UserFormProps } from "@/components/users/types"
 import { useRoles } from '@/hooks/useRoles'
 
 export function UserForm({ 
@@ -35,13 +36,13 @@ export function UserForm({
   const { data: roles = [] } = useRoles()
   
   // Use the first available role as default, or 'user' if none available
-  const DEFAULT_ROLE = (roles && roles.length > 0 && roles[0]) ? roles[0].name : 'user'
+  const DEFAULT_ROLE = (roles && roles.length > 0 && roles[0]) ? roles[0].id : ''
   
   const [formData, setFormData] = useState<UserFormValues>({
     email: editingUser?.email || '',
     name: editingUser?.name || '',
     password: '',
-    role: editingUser?.role?.name || DEFAULT_ROLE,
+    role: editingUser?.roleId || DEFAULT_ROLE,
     tenantId: editingUser?.tenantId || '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -53,7 +54,7 @@ export function UserForm({
         email: editingUser.email || '',
         name: editingUser.name || '',
         password: '',
-        role: editingUser.role?.name || DEFAULT_ROLE,
+        role: editingUser.roleId || DEFAULT_ROLE,
         tenantId: editingUser.tenantId || '',
       })
     } else {
@@ -109,7 +110,7 @@ export function UserForm({
       email: formData.email,
       name: formData.name,
       password: formData.password || undefined,
-      role: formData.role,
+      roleId: formData.role,
       tenantId: formData.tenantId,
     })
   }
@@ -241,7 +242,7 @@ export function UserForm({
                   </SelectTrigger>
                   <SelectContent>
                     {roles && roles.map((role) => (
-                      <SelectItem key={role.id} value={role.name}>
+                      <SelectItem key={role.id} value={role.id}>
                         {role.name}
                       </SelectItem>
                     ))}
