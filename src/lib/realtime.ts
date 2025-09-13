@@ -128,7 +128,7 @@ async function setupPostgresNotifications() {
 // Function to emit asset changes to connected clients
 export function emitAssetChange(tenantId: string, assetType: string, action: string, data: any) {
   if (!io) {
-    logger.warn('Socket.IO not initialized - cannot emit asset change');
+    logger.debug('Socket.IO not initialized - cannot emit asset change');
     return;
   }
 
@@ -161,8 +161,10 @@ export function emitAssetChange(tenantId: string, assetType: string, action: str
 }
 
 export function getIO() {
+  // Return null instead of throwing an error to prevent crashes
   if (!io) {
-    throw new Error('Socket.IO not initialized!');
+    logger.debug('Socket.IO not initialized!');
+    return null;
   }
   return io;
 }

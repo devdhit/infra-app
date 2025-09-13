@@ -41,15 +41,11 @@
     "baseUrl": "."
   },
   "include": [
-    "src/lib/realtime.ts",
-    "src/lib/path-utils.ts",
-    "src/lib/logger.ts",
-    "src/lib/redis-cache.ts"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
     ".next",
-    "dist",
-    "src/lib/excel.ts"
+    "dist"
   ]
 }

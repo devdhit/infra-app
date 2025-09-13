@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
               try {
                 emitAssetChange(user.tenantId, 'pc', 'create', createdPC);
               } catch (emitError) {
-                logger.error(`Failed to emit real-time event for PC creation: ${emitError}`);
+                logger.warn(`Failed to emit real-time event for PC creation (Socket.IO may not be available): ${emitError}`);
               }
               
               // Invalidate Redis cache for PC assets
@@ -448,7 +448,7 @@ export async function POST(request: NextRequest) {
               try {
                 emitAssetChange(user.tenantId, 'laptop', 'create', createdLaptop);
               } catch (emitError) {
-                logger.error('Failed to emit real-time event for Laptop creation:', emitError);
+                logger.warn(`Failed to emit real-time event for Laptop creation (Socket.IO may not be available): ${emitError}`);
               }
               
               // Invalidate Redis cache for Laptop assets
@@ -609,7 +609,7 @@ export async function POST(request: NextRequest) {
                   try {
                     emitAssetChange(user.tenantId, 'printer', 'create', createdPrinter);
                   } catch (emitError) {
-                    logger.error('Failed to emit real-time event for Printer creation:', emitError);
+                    logger.warn(`Failed to emit real-time event for Printer creation (Socket.IO may not be available): ${emitError}`);
                   }
                   
                   // Invalidate Redis cache for Printer assets
@@ -878,7 +878,7 @@ export async function POST(request: NextRequest) {
               try {
                 emitAssetChange(user.tenantId, 'license', 'create', createdLicense);
               } catch (emitError) {
-                logger.error('Failed to emit real-time event for License creation:', emitError);
+                logger.warn(`Failed to emit real-time event for License creation (Socket.IO may not be available): ${emitError}`);
               }
               
               // Invalidate Redis cache for License assets
@@ -994,11 +994,11 @@ export async function POST(request: NextRequest) {
                 }
               });
               
-              // Emit real-time event for WarehouseIT creation
+              // Emit real-time event for Warehouse IT creation
               try {
                 emitAssetChange(user.tenantId, 'warehouse', 'create', createdWarehouseIT);
               } catch (emitError) {
-                logger.error('Failed to emit real-time event for WarehouseIT creation:', emitError);
+                logger.warn(`Failed to emit real-time event for Warehouse IT creation (Socket.IO may not be available): ${emitError}`);
               }
               
               // Invalidate Redis cache for WarehouseIT assets
@@ -1135,7 +1135,7 @@ export async function POST(request: NextRequest) {
               try {
                 emitAssetChange(user.tenantId, 'internet', 'create', createdInternet);
               } catch (emitError) {
-                logger.error('Failed to emit real-time event for Internet creation:', emitError);
+                logger.warn(`Failed to emit real-time event for Internet creation (Socket.IO may not be available): ${emitError}`);
               }
               
               // Invalidate Redis cache for Internet assets

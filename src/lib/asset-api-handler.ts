@@ -1039,7 +1039,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       try {
         emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'update', asset);
       } catch (emitError) {
-        logger.error('Failed to emit real-time event:', emitError);
+        logger.warn('Failed to emit real-time event (Socket.IO may not be available):', emitError);
       }
 
       // Invalidate cache for this specific asset and asset lists if Redis is available
@@ -1122,7 +1122,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       try {
         emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
       } catch (emitError) {
-        logger.error('Failed to emit real-time event:', emitError);
+        logger.warn('Failed to emit real-time event (Socket.IO may not be available):', emitError);
       }
 
       // Invalidate cache for this specific asset and asset lists if Redis is available
@@ -1261,7 +1261,11 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Emit real-time events for each deleted asset
       try {
         ids.forEach(id => {
-          emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
+          try {
+            emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
+          } catch (emitError) {
+            logger.warn(`Failed to emit real-time event for asset ${id} (Socket.IO may not be available):`, emitError);
+          }
         });
       } catch (emitError) {
         if (process.env.NODE_ENV === 'development') {
