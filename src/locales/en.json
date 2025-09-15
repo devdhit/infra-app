@@ -319,7 +319,12 @@
         "moreErrors": "And {0} more errors",
         "noFileSelected": "Please select at least one file to import",
         "columnExtractionError": "Failed to extract columns from Excel file",
-        "invalidFile": "Invalid Excel file: No sheets found"
+        "invalidFile": "Invalid Excel file: No sheets found",
+        "progress": "Importing... {0} of {1}",
+        "eta": "Estimated time remaining: {0}",
+        "seconds": "{0} seconds",
+        "minutes": "{0} minutes",
+        "minutesSeconds": "{0} minutes {1} seconds"
       }
     },
     "pc": {

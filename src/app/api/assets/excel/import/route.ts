@@ -885,84 +885,80 @@ export async function POST(request: NextRequest) {
               // Extract custom fields from row data using pre-fetched config
               let warehouseCustomFields: Record<string, any> | undefined;
               
-              // Destructure to only keep valid WarehouseIT fields
-              // Note: Only extract actual WarehouseIT model fields, everything else will be treated as custom fields
-              const { 
-                barcode: warehouseBarcodeField,
-                sapCode: warehouseSapCodeField,
-                status: warehouseStatusField,
-                note: warehouseNoteField,
-                ...warehouseRowData 
-              } = row as any;
+              // Define valid WarehouseIT model fields
+              const validWarehouseFields = ['barcode', 'sapCode', 'status', 'note'];
               
-              // Explicitly set the barcode and sapCode fields
-              if (warehouseBarcodeField !== undefined) {
-                (warehouseRowData as any).barcode = warehouseBarcodeField;
-              }
+              // Create warehouseRowData with only valid WarehouseIT fields
+              const warehouseRowData: Record<string, any> = {};
               
-              if (warehouseSapCodeField !== undefined) {
-                (warehouseRowData as any).sapCode = warehouseSapCodeField;
+              // Explicitly set the valid WarehouseIT fields
+              for (const field of validWarehouseFields) {
+                if (row[field] !== undefined) {
+                  warehouseRowData[field] = row[field];
+                }
               }
               
               // If status was not provided in the row data, use a default value
-              if (!warehouseStatusField) {
-                (warehouseRowData as any).status = 'working';
+              if (!warehouseRowData.status) {
+                warehouseRowData.status = 'working';
               }
               
               // Use pre-fetched custom fields config
               if (warehouseCustomFieldsConfig.length > 0) {
                 warehouseCustomFields = {};
                 for (const customField of warehouseCustomFieldsConfig) {
-                  if (warehouseRowData[customField.name] !== undefined && warehouseRowData[customField.name] !== null) {
+                  if (row[customField.name] !== undefined && row[customField.name] !== null) {
                     // Handle different custom field types
                     switch (customField.type) {
                       case 'number':
-                        const numValue = Number(warehouseRowData[customField.name]);
-                        warehouseCustomFields[customField.name] = isNaN(numValue) ? warehouseRowData[customField.name] : numValue;
+                        const numValue = Number(row[customField.name]);
+                        warehouseCustomFields[customField.name] = isNaN(numValue) ? row[customField.name] : numValue;
                         break;
                       case 'boolean':
                         // Convert string values to boolean
-                        if (typeof warehouseRowData[customField.name] === 'string') {
-                          const strValue = (warehouseRowData[customField.name] as string).toLowerCase();
+                        if (typeof row[customField.name] === 'string') {
+                          const strValue = (row[customField.name] as string).toLowerCase();
                           warehouseCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
                         } else {
-                          warehouseCustomFields[customField.name] = Boolean(warehouseRowData[customField.name]);
+                          warehouseCustomFields[customField.name] = Boolean(row[customField.name]);
                         }
                         break;
                       case 'date':
                         // Try to parse date values
-                        if (typeof warehouseRowData[customField.name] === 'string') {
-                          const dateValue = new Date(warehouseRowData[customField.name]);
-                          warehouseCustomFields[customField.name] = isNaN(dateValue.getTime()) ? warehouseRowData[customField.name] : dateValue.toISOString();
+                        if (typeof row[customField.name] === 'string') {
+                          const dateValue = new Date(row[customField.name] as string);
+                          warehouseCustomFields[customField.name] = isNaN(dateValue.getTime()) ? row[customField.name] : dateValue.toISOString();
                         } else {
-                          warehouseCustomFields[customField.name] = warehouseRowData[customField.name];
+                          warehouseCustomFields[customField.name] = row[customField.name];
                         }
                         break;
                       default:
-                        warehouseCustomFields[customField.name] = warehouseRowData[customField.name];
+                        warehouseCustomFields[customField.name] = row[customField.name];
                     }
-                    // Remove custom field from row data
-                    delete warehouseRowData[customField.name];
                   }
                 }
               }
               
-              // Also check for any remaining fields in warehouseRowData that might be custom fields
+              // Check for any remaining fields that might be custom fields
               // but are not defined in the database yet (could be from Excel column mapping)
-              const warehouseModelFields = ['id', 'barcode', 'sapCode', 'status', 'note', 
-                'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+              for (const [key, value] of Object.entries(row)) {
+                // Skip valid WarehouseIT model fields and fields we've already processed
+                if (validWarehouseFields.includes(key)) {
+                  continue;
+                }
                 
-              // Check if there are any fields in warehouseRowData that are not part of the WarehouseIT model
-              // and treat them as custom fields
-              for (const [key, value] of Object.entries(warehouseRowData)) {
-                if (!warehouseModelFields.includes(key)) {
+                // Skip fields that are already identified as custom fields
+                if (warehouseCustomFieldsConfig.some(cf => cf.name === key)) {
+                  continue;
+                }
+                
+                // If it's not a valid field and not a known custom field, treat it as a custom field
+                if (!['id', 'tenantId', 'customFields', 'createdAt', 'updatedAt'].includes(key)) {
                   // Initialize warehouseCustomFields if not already done
                   if (!warehouseCustomFields) {
                     warehouseCustomFields = {};
                   }
                   warehouseCustomFields[key] = value;
-                  // Remove the field from warehouseRowData
-                  delete warehouseRowData[key];
                 }
               }
 

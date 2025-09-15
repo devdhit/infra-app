@@ -319,7 +319,12 @@
         "moreErrors": "還有 {0} 個錯誤",
         "noFileSelected": "請選擇至少一個檔案進行匯入",
         "columnExtractionError": "從 Excel 檔案提取欄位失敗",
-        "invalidFile": "無效的 Excel 檔案：未找到工作表"
+        "invalidFile": "無效的 Excel 檔案：未找到工作表",
+        "progress": "匯入中... {0} / {1}",
+        "eta": "預計剩餘時間：{0}",
+        "seconds": "{0} 秒",
+        "minutes": "{0} 分鐘",
+        "minutesSeconds": "{0} 分鐘 {1} 秒"
       }
     },
     "pc": {

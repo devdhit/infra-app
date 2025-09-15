@@ -47,6 +47,14 @@ interface ColumnMapping {
   databaseField: string
 }
 
+// Add interface for progress tracking with timing
+interface ImportProgress {
+  current: number
+  total: number
+  startTime?: number
+  lastUpdate?: number
+}
+
 export function ExcelImportDialog({
   assetType,
   title,
@@ -63,7 +71,7 @@ export function ExcelImportDialog({
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([])
   const [excelColumns, setExcelColumns] = useState<string[]>([])
   const [databaseFields, setDatabaseFields] = useState<string[]>([])
-  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null) // Add progress state
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null) // Updated progress state
   
   // Fetch custom fields for this asset type
   const modelType = getModelType(assetType)
@@ -305,7 +313,12 @@ export function ExcelImportDialog({
 
     setIsImporting(true);
     setImportResult(null);
-    setImportProgress(null); // Reset progress
+    // Initialize progress with start time
+    setImportProgress({ 
+      current: 0, 
+      total: 0,
+      startTime: Date.now()
+    });
 
     try {
       let totalCreatedCount = 0;
@@ -343,9 +356,14 @@ export function ExcelImportDialog({
           allErrors.push(`${file.name}: ${response.error || t('assets.excel.import.error', 'Failed to import assets')}`);
         }
         
-        // Update progress if available
+        // Update progress with timing information
         if (response.totalRows) {
-          setImportProgress({ current: totalCreatedCount, total: response.totalRows });
+          setImportProgress(prev => ({
+            current: totalCreatedCount,
+            total: response.totalRows,
+            startTime: prev?.startTime || Date.now(),
+            lastUpdate: Date.now()
+          }));
         }
       }
 
@@ -394,6 +412,37 @@ export function ExcelImportDialog({
       setIsImporting(false);
     }
   }, [selectedFiles, assetType, t, onImportSuccess, columnMappings, handleClose])
+
+  // Helper function to calculate estimated time remaining
+  const calculateETA = useCallback((progress: ImportProgress) => {
+    if (!progress.startTime || progress.current === 0 || progress.total === 0) {
+      return null;
+    }
+    
+    const elapsed = Date.now() - progress.startTime;
+    const rate = progress.current / elapsed; // items per millisecond
+    const remaining = progress.total - progress.current;
+    const etaMs = remaining / rate;
+    
+    // Convert to seconds and round up
+    return Math.ceil(etaMs / 1000);
+  }, []);
+
+  // Helper function to format time in seconds to human readable format
+  const formatTime = useCallback((seconds: number) => {
+    if (seconds < 60) {
+      return t('assets.excel.import.seconds', '{0} seconds', seconds.toString());
+    } else {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      if (remainingSeconds === 0) {
+        return t('assets.excel.import.minutes', '{0} minutes', minutes.toString());
+      } else {
+        return t('assets.excel.import.minutesSeconds', '{0} minutes {1} seconds', 
+          minutes.toString(), remainingSeconds.toString());
+      }
+    }
+  }, [t]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -609,19 +658,30 @@ export function ExcelImportDialog({
                 )}
                 
                 {/* Progress indicator */}
-                {isImporting && importProgress && (
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      {t('assets.excel.import.progress', 'Importing... {0} of {1}', 
-                        importProgress.current.toString(), 
-                        importProgress.total.toString())}
-                    </p>
+                {isImporting && importProgress && importProgress.total > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>
+                        {t('assets.excel.import.progress', 'Importing... {0} of {1}', 
+                          importProgress.current.toString(), 
+                          importProgress.total.toString())}
+                      </span>
+                      <span>
+                        {Math.round((importProgress.current / importProgress.total) * 100)}%
+                      </span>
+                    </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
                         style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
                       ></div>
                     </div>
+                    {importProgress.lastUpdate && (
+                      <div className="text-xs text-muted-foreground">
+                        {t('assets.excel.import.eta', 'Estimated time remaining: {0}', 
+                          formatTime(calculateETA(importProgress) || 0))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

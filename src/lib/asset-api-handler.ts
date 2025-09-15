@@ -712,9 +712,32 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Filter out undefined values to prevent setting fields to undefined
+      // Also filter out invalid fields that don't exist in the model
+      const validFields = {
+        'PC': ['dept', 'cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode', 'pcName', 'userName', 'status', 'note', 'customFields'],
+        'Laptop': ['dept', 'barcode', 'sapBarcode', 'dateBuy', 'email', 'model', 'status', 'userName', 'customFields'],
+        'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
+        'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
+        'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
+        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
+      }
+
+      const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
+      if (process.env.NODE_ENV === 'development') {
+        logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
+      }
+
       const createData = Object.keys(body || {}).reduce((acc, key) => {
-        if (body[key as keyof typeof body] !== undefined) {
+        // Allow both direct fields and customFields to be created
+        if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof typeof body] !== undefined) {
           (acc as any)[key] = body[key as keyof typeof body];
+        } else {
+          if (process.env.NODE_ENV === 'development') {
+            logger.debug(`Skipping field ${key} - not valid or undefined`, { 
+              component: 'asset-api-handler', 
+              field: key 
+            });
+          }
         }
         return acc;
       }, {} as Partial<Omit<T, keyof BaseAsset>>);
