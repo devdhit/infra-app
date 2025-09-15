@@ -1108,10 +1108,6 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
       })
 
-      if (!existingAsset) {
-        return notFoundResponse(`${this.operations.modelName} asset not found`)
-      }
-
       // Create audit log entry
       try {
         // Import audit logs dynamically to avoid circular dependencies
@@ -1120,7 +1116,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           action: 'delete',
           modelType: this.operations.modelName,
           recordId: id,
-          changes: existingAsset,
+          changes: existingAsset || { id }, // Include at least the ID if asset doesn't exist
           userId: user.id,
           tenantId: user.tenantId
         }, 'delete')
@@ -1129,12 +1125,17 @@ export class AssetApiHandler<T extends BaseAsset> {
         // Continue with the operation even if audit log creation fails
       }
 
-      await (this.db as any)[this.operations.modelName].delete({
-        where: { 
-          id,
-          tenantId: user.tenantId 
-        }
-      })
+      // Delete the asset if it exists
+      if (existingAsset) {
+        await (this.db as any)[this.operations.modelName].delete({
+          where: { 
+            id,
+            tenantId: user.tenantId 
+          }
+        })
+      } else {
+        logger.warn(`${this.operations.modelName} asset ${id} not found during delete operation`);
+      }
 
       // Use cache invalidation strategy for better performance
       if (cacheManager && CACHE_PREFIXES) {
@@ -1146,7 +1147,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           id
         );
         
-        // Remove the asset from cache
+        // Remove the asset from cache (whether it existed in DB or not)
         try {
           await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
         } catch (error: any) {
@@ -1172,6 +1173,23 @@ export class AssetApiHandler<T extends BaseAsset> {
       return successResponse<null>(null, 204)
     } catch (error: any) {
       if (error.code === 'P2025') {
+        // Even if Prisma reports not found, we still want to invalidate cache
+        // to handle cases where cache exists but DB record doesn't
+        if (cacheManager && CACHE_PREFIXES) {
+          const assetCacheKey = cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSETS,
+            this.operations.modelName,
+            user.tenantId,
+            id
+          );
+          
+          try {
+            await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
+          } catch (cacheError: any) {
+            logger.warn(`Failed to delete asset cache key ${assetCacheKey} after Prisma error:`, cacheError);
+          }
+        }
+        
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
       
@@ -1197,6 +1215,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Process in batches to avoid memory issues with large datasets
       const batchSize = 100;
       let totalDeleted = 0;
+      let totalNotFound = 0;
 
       // Process IDs in batches
       for (let i = 0; i < ids.length; i += batchSize) {
@@ -1218,11 +1237,12 @@ export class AssetApiHandler<T extends BaseAsset> {
         const foundIds = existingAssets.map((asset: any) => asset.id)
         const missingIds = batchIds.filter(id => !foundIds.includes(id))
         
-        // If some assets are missing, we should still delete the ones that exist
-        // rather than failing the entire operation
+        // Track missing assets
+        totalNotFound += missingIds.length;
+        
+        // Log missing assets
         if (missingIds.length > 0) {
           logger.warn(`Some ${this.operations.modelName} assets not found during bulk delete: ${missingIds.join(', ')}`);
-          // Continue with deletion of found assets rather than returning error
         }
 
         // Only create audit logs for assets that actually exist
@@ -1259,10 +1279,36 @@ export class AssetApiHandler<T extends BaseAsset> {
 
           totalDeleted += deleteResult.count;
         }
+        
+        // IMPORTANT: Even if assets don't exist in DB, we still need to invalidate their cache
+        // This handles the case where cached assets no longer exist in the database
+        if (batchIds.length > 0) {
+          // Invalidate cache for all requested IDs, not just found ones
+          if (cacheManager && CACHE_PREFIXES) {
+            for (const id of batchIds) {
+              const assetCacheKey = cacheManager.createCompositeKey(
+                CACHE_PREFIXES.ASSETS,
+                this.operations.modelName,
+                user.tenantId,
+                id
+              );
+              
+              try {
+                await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
+                logger.debug(`Invalidated cache for asset ID ${id} (may or may not have existed in DB)`);
+              } catch (error: any) {
+                logger.warn(`Failed to invalidate cache for asset ID ${id}:`, error);
+              }
+            }
+          }
+        }
       }
 
       // Log the number of deleted assets
       logger.debug(`Deleted ${totalDeleted} ${this.operations.modelName} assets in ${Math.ceil(ids.length/batchSize)} batches`);
+      if (totalNotFound > 0) {
+        logger.debug(`NotFound ${totalNotFound} ${this.operations.modelName} assets during bulk delete`);
+      }
 
       // Create audit log entry for the bulk delete operation itself
       try {
@@ -1274,6 +1320,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           recordId: 'bulk-operation',
           changes: {
             count: totalDeleted,
+            notFound: totalNotFound,
             ids: ids.slice(0, 10), // Only log first 10 IDs for privacy
             totalIds: ids.length
           },
@@ -1287,22 +1334,24 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // Use cache invalidation strategy for better performance
       if (cacheManager && CACHE_PREFIXES) {
-        // More efficient cache invalidation for bulk operations
-        // Instead of multiple pattern deletions, use a single comprehensive pattern
-        const comprehensivePattern = cacheManager.createCompositeKey(
-          '*',
+        // Invalidate all asset list caches to ensure consistency
+        const assetListPattern = cacheManager.createCompositeKey(
+          CACHE_PREFIXES.ASSET_LIST,
           this.operations.modelName,
           user.tenantId,
           '*'
         );
         
         try {
-          const deletedCount = await cacheManager.invalidateByPattern(comprehensivePattern, { component: 'asset-api-handler' });
-          logger.debug(`Invalidated ${deletedCount} cache entries for bulk delete operation on ${this.operations.modelName}`);
+          const deletedCount = await cacheManager.invalidateByPattern(assetListPattern, { component: 'asset-api-handler' });
+          logger.debug(`Invalidated ${deletedCount} asset list cache entries for ${this.operations.modelName}`);
         } catch (error: any) {
-          logger.error(`Failed to invalidate cache for bulk delete on ${this.operations.modelName}:`, error);
+          logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
         }
       }
+
+      // Log completion of bulk delete operation
+      logger.info(`Bulk delete operation completed for ${this.operations.modelName}: ${totalDeleted} deleted, ${totalNotFound} not found out of ${ids.length} requested`);
 
       // React Query cache invalidation removed - relying solely on Redis cache
 

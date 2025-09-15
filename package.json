@@ -15,7 +15,8 @@
     "build:optimized": "next build && next export",
     "analyze": "ANALYZE=true next build",
     "postinstall": "npm run build:server",
-    "test:redis-connection": "node scripts/test-redis-connection.js"
+    "test:redis-connection": "node scripts/test-redis-connection.js",
+    "verify:cache-fix": "node scripts/verify-cache-fix.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
