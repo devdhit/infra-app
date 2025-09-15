@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { defaultLanguage } from '@/lib/i18n'
+import { securityMiddleware, globalRateLimiter } from '@/lib/security-middleware'
 
 // Match all request paths except for the ones starting with:
 // - api (API routes)
@@ -11,7 +12,18 @@ export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  // Apply security middleware
+  const securityResult = await securityMiddleware(request)
+  if (securityResult) {
+    return securityResult
+  }
+  
+  // Apply global rate limiting
+  const rateLimitResult = await globalRateLimiter.check(request)
+  if (rateLimitResult) {
+    return rateLimitResult
+  }
   
   // Get the preferred language from the Accept-Language header
   const acceptLanguage = request.headers.get('accept-language')

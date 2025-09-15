@@ -5,8 +5,10 @@ import {
   errorResponse, 
   badRequestResponse 
 } from '@/lib/api-utils'
-import { generateToken, verifyPassword } from '@/lib/auth'
+import { generateToken, verifyPassword, generateRefreshToken } from '@/lib/auth'
 import logger from '@/lib/logger'
+import { validateEmail } from '@/lib/security'
+import { logFailedLoginAttempt, logSuccessfulLogin, logUserLockout } from '@/lib/security-audit'
 
 // Simple in-memory rate limiter (in production, use Redis or similar)
 const rateLimiter = new Map<string, { attempts: number; lastAttempt: number }>()
@@ -157,9 +159,8 @@ export async function POST(request: NextRequest) {
       return badRequestResponse('Email and password are required')
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    // Validate email format using enhanced validation
+    if (!validateEmail(email)) {
       recordFailedAttempt(ip)
       logger.warn('Invalid email format in login request', { 
         requestId, 
@@ -210,6 +211,8 @@ export async function POST(request: NextRequest) {
     // Check if user exists
     if (!user) {
       recordFailedAttempt(ip)
+      // Log failed login attempt
+      await logFailedLoginAttempt(email, 'unknown', ip, request.headers.get('user-agent') || undefined)
       logger.warn('User not found during login attempt', { 
         requestId, 
         ip, 
@@ -350,8 +353,9 @@ export async function POST(request: NextRequest) {
         component: 'auth-login' 
       });
       
-      // If account is now locked, return specific error
+      // If account is now locked, log the lockout and return specific error
       if (updatedUser.failedLoginAttempts >= MAX_ATTEMPTS) {
+        await logUserLockout(user.id, user.tenantId, ip, request.headers.get('user-agent') || undefined)
         return errorResponse('Account is locked due to too many failed attempts. Please contact administrator.', 423, { requestId });
       }
       
@@ -519,6 +523,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Log successful login
+    await logSuccessfulLogin(user.id, user.tenantId, ip, request.headers.get('user-agent') || undefined)
     logger.info('User logged in successfully', { 
       requestId, 
       ip, 
@@ -534,10 +539,14 @@ export async function POST(request: NextRequest) {
       component: 'auth-login' 
     });
 
-    // Return success response with token and user data
+    // Generate refresh token
+    const refreshToken = generateRefreshToken(user.id);
+    
+    // Return success response with tokens and user data
     try {
       const response = successResponse({
         token,
+        refreshToken,
         user: {
           id: user.id,
           email: user.email,
@@ -549,6 +558,9 @@ export async function POST(request: NextRequest) {
           tenantId: user.tenantId
         }
       });
+      
+      // Set refresh token as HTTP-only cookie for enhanced security
+      response.headers.set('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`);
       
       logger.debug('Success response created', { 
         requestId, 

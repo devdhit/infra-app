@@ -1,4 +1,5 @@
 import { hash, compare } from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 
 // Hash a password
 export async function hashPassword(password: string): Promise<string> {
@@ -10,17 +11,14 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return await compare(password, hashedPassword);
 }
 
-// Generate a random token
+// Generate a cryptographically secure random token
 export function generateToken(length: number = 32): string {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const charactersLength = characters.length;
-  
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  
-  return result;
+  return randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
+}
+
+// Generate a secure random string for cryptographic purposes
+export function generateSecureRandomString(length: number = 32): string {
+  return randomBytes(length).toString('base64url');
 }
 
 // Sanitize user input to prevent XSS
@@ -41,10 +39,10 @@ export function validateEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-// Validate password strength
+// Enhanced password strength validation
 export function validatePassword(password: string): { isValid: boolean; message: string } {
-  if (password.length < 8) {
-    return { isValid: false, message: 'Password must be at least 8 characters long' };
+  if (password.length < 12) {
+    return { isValid: false, message: 'Password must be at least 12 characters long' };
   }
   
   if (!/[A-Z]/.test(password)) {
@@ -63,10 +61,24 @@ export function validatePassword(password: string): { isValid: boolean; message:
     return { isValid: false, message: 'Password must contain at least one special character' };
   }
   
+  // Check for common password patterns
+  const commonPatterns = [
+    /password/i,
+    /123456/i,
+    /qwerty/i,
+    /abc123/i
+  ];
+  
+  for (const pattern of commonPatterns) {
+    if (pattern.test(password)) {
+      return { isValid: false, message: 'Password contains common weak patterns' };
+    }
+  }
+  
   return { isValid: true, message: 'Password is valid' };
 }
 
-// Rate limiting utility
+// Rate limiting utility with improved security
 export class RateLimiter {
   private requests: Map<string, number[]> = new Map();
   private windowMs: number;
@@ -95,12 +107,24 @@ export class RateLimiter {
     
     return true;
   }
+  
+  // Reset rate limiter for an IP
+  reset(ip: string): void {
+    this.requests.delete(ip);
+  }
+  
+  // Get current request count for an IP
+  getRequestCount(ip: string): number {
+    const now = Date.now();
+    const requests = this.requests.get(ip) || [];
+    return requests.filter(time => now - time < this.windowMs).length;
+  }
 }
 
-// Content Security Policy
+// Enhanced Content Security Policy
 export const CSP_HEADER = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval';
+  script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: https:;
   font-src 'self' data:;
@@ -110,3 +134,23 @@ export const CSP_HEADER = `
   base-uri 'self';
   form-action 'self';
 `.replace(/\s{2,}/g, ' ').trim();
+
+// Validate and sanitize search input to prevent injection attacks
+export function validateSearchInput(input: string): string {
+  if (!input) return '';
+  
+  // Remove potentially dangerous characters
+  let sanitized = input.replace(/[^a-zA-Z0-9\s\-_@.]/g, '');
+  
+  // Limit length to prevent resource exhaustion
+  if (sanitized.length > 100) {
+    sanitized = sanitized.substring(0, 100);
+  }
+  
+  return sanitized.trim();
+}
+
+// Create a hash for data integrity verification
+export function createDataHash(data: string): string {
+  return createHash('sha256').update(data).digest('hex');
+}

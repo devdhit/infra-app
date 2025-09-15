@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser, hashPassword } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { successResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { validateEmail, validatePassword } from '@/lib/security'
 import logger from '@/lib/logger'
 
 // GET /api/users - Get all users (requires view permission)
@@ -83,14 +84,15 @@ export async function POST(request: NextRequest) {
       return errorResponse('Email, name, and password are required', 400)
     }
 
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+    // Validate email format using enhanced validation
+    if (!validateEmail(body.email)) {
       return errorResponse('Invalid email format', 400)
     }
 
-    // Validate password length
-    if (body.password.length < 6) {
-      return errorResponse('Password must be at least 6 characters long', 400)
+    // Validate password strength using enhanced validation
+    const passwordValidation = validatePassword(body.password);
+    if (!passwordValidation.isValid) {
+      return errorResponse(passwordValidation.message, 400);
     }
 
     // Handle case when role is not provided - default to 'user'
