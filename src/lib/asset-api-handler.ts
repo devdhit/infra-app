@@ -610,32 +610,60 @@ export class AssetApiHandler<T extends BaseAsset> {
         return apiErrorResponse('Forbidden: Insufficient permissions to create asset', 403);
       }
 
-      // Validate required fields
+      // Get custom fields for this asset type and tenant to identify custom field names
+      const customFields = await this.db.customField.findMany({
+        where: {
+          tenantId: user.tenantId,
+          modelType: this.operations.modelName
+        }
+      });
+
+      // Create a set of custom field names for quick lookup
+      const customFieldNames = new Set(customFields.map(cf => cf.name));
+
+      // Separate custom fields from standard fields
+      const standardFieldsBody: any = {};
+      const customFieldsData: Record<string, any> = body.customFields || {};
+
+      // Process each field in the body
+      Object.entries(body).forEach(([key, value]) => {
+        // Skip base asset fields and the customFields object itself
+        if (key === 'id' || key === 'createdAt' || key === 'updatedAt' || key === 'tenantId' || key === 'customFields') {
+          return;
+        }
+
+        // If this is a custom field name, add it to customFieldsData
+        if (customFieldNames.has(key)) {
+          customFieldsData[key] = value;
+        } else {
+          // Otherwise, it's a standard field
+          standardFieldsBody[key] = value;
+        }
+      });
+
+      // Add customFields to standardFieldsBody if we have any custom fields
+      if (Object.keys(customFieldsData).length > 0) {
+        standardFieldsBody.customFields = customFieldsData;
+      }
+
+      // Validate required fields using the standard fields body
       const validationErrors: Record<string, string> = {}
       
       if (this.operations.requiredFields) {
         for (const field of this.operations.requiredFields) {
-          if (body[field] === undefined || body[field] === null || body[field] === "") {
+          if (standardFieldsBody[field] === undefined || standardFieldsBody[field] === null || standardFieldsBody[field] === "") {
             validationErrors[String(field)] = `${String(field)} is required`
           }
         }
       }
 
       // Validate custom fields if they exist
-      if (body.customFields) {
-        // Get custom fields for this asset type and tenant
-        const customFields = await this.db.customField.findMany({
-          where: {
-            tenantId: user.tenantId,
-            modelType: this.operations.modelName
-          }
-        });
-
+      if (customFieldsData) {
         // Create a map for faster lookup
         const customFieldsMap = new Map(customFields.map(cf => [cf.name, cf]));
 
         // Validate each custom field
-        for (const [fieldName, fieldValue] of Object.entries(body.customFields)) {
+        for (const [fieldName, fieldValue] of Object.entries(customFieldsData)) {
           const customField = customFieldsMap.get(fieldName);
           
           // Skip validation for fields that don't exist in the custom fields config
@@ -702,19 +730,19 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Check if asset with unique field already exists
-      if (this.operations.uniqueField && body[this.operations.uniqueField]) {
+      if (this.operations.uniqueField && standardFieldsBody[this.operations.uniqueField]) {
         // For Printer and PC models, we use findFirst instead of findUnique since we removed the @unique constraint
         let existingAsset;
         if (this.operations.modelName === 'Printer' || this.operations.modelName === 'PC') {
           existingAsset = await this.getPrismaModel().findFirst({
             where: { 
-              [this.operations.uniqueField]: body[this.operations.uniqueField],
+              [this.operations.uniqueField]: standardFieldsBody[this.operations.uniqueField],
               tenantId: user.tenantId
             }
           });
         } else {
           existingAsset = await this.getPrismaModel().findUnique({
-            where: { [this.operations.uniqueField]: body[this.operations.uniqueField] }
+            where: { [this.operations.uniqueField]: standardFieldsBody[this.operations.uniqueField] }
           });
         }
 
@@ -739,10 +767,10 @@ export class AssetApiHandler<T extends BaseAsset> {
         logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
 
-      const createData = Object.keys(body || {}).reduce((acc, key) => {
+      const createData = Object.keys(standardFieldsBody || {}).reduce((acc, key) => {
         // Allow both direct fields and customFields to be created
-        if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof typeof body] !== undefined) {
-          (acc as any)[key] = body[key as keyof typeof body];
+        if ((modelValidFields.includes(key) || key === 'customFields') && standardFieldsBody[key] !== undefined) {
+          (acc as any)[key] = standardFieldsBody[key];
         } else {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`Skipping field ${key} - not valid or undefined`, { 
@@ -777,7 +805,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           action: 'create',
           modelType: this.operations.modelName,
           recordId: asset.id,
-          changes: body as any,
+          changes: standardFieldsBody as any,
           userId: user.id,
           tenantId: user.tenantId
         }, 'create')
@@ -790,16 +818,42 @@ export class AssetApiHandler<T extends BaseAsset> {
       if (cacheManager && CACHE_PREFIXES) {
         // Asset is new, so no need to delete it from cache
         // Just invalidate ALL lists so they will fetch fresh data on next request
-        const assetListPattern = cacheManager.createCompositeKey(
-          CACHE_PREFIXES.ASSET_LIST,
-          this.operations.modelName,
-          user.tenantId,
-          '*'
-        );
+        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
+        const patterns = [
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*:*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*:*:*'
+          )
+        ];
         
         try {
-          const deletedCount = await cacheManager.invalidateByPattern(assetListPattern, { component: 'asset-api-handler' });
-          logger.debug(`Invalidated ${deletedCount} asset list cache entries for ${this.operations.modelName}`);
+          let totalDeleted = 0;
+          for (const pattern of patterns) {
+            const deletedCount = await cacheManager.invalidateByPattern(pattern, { component: 'asset-api-handler' });
+            totalDeleted += deletedCount;
+            logger.debug(`Invalidated ${deletedCount} cache entries with pattern: ${pattern}`);
+          }
+          logger.debug(`Invalidated ${totalDeleted} total asset list cache entries for ${this.operations.modelName}`);
         } catch (error: any) {
           logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
         }
@@ -867,37 +921,65 @@ export class AssetApiHandler<T extends BaseAsset> {
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
 
+      // Get custom fields for this asset type and tenant to identify custom field names
+      const customFields = await this.db.customField.findMany({
+        where: {
+          tenantId: user.tenantId,
+          modelType: this.operations.modelName
+        }
+      });
+
+      // Create a set of custom field names for quick lookup
+      const customFieldNames = new Set(customFields.map(cf => cf.name));
+
+      // Separate custom fields from standard fields
+      const standardFieldsBody: any = {};
+      const customFieldsData: Record<string, any> = body.customFields || {};
+
+      // Process each field in the body
+      Object.entries(body).forEach(([key, value]) => {
+        // Skip base asset fields and the customFields object itself
+        if (key === 'id' || key === 'createdAt' || key === 'updatedAt' || key === 'tenantId' || key === 'customFields') {
+          return;
+        }
+
+        // If this is a custom field name, add it to customFieldsData
+        if (customFieldNames.has(key)) {
+          customFieldsData[key] = value;
+        } else {
+          // Otherwise, it's a standard field
+          standardFieldsBody[key] = value;
+        }
+      });
+
+      // Add customFields to standardFieldsBody if we have any custom fields
+      if (Object.keys(customFieldsData).length > 0) {
+        standardFieldsBody.customFields = customFieldsData;
+      }
+
       // Validate required fields if they're being updated
       const validationErrors: Record<string, string> = {}
       
       if (this.operations.requiredFields) {
         for (const field of this.operations.requiredFields) {
           // Only validate if the field is being updated
-          if (field in body && (body[field] === undefined || body[field] === null || body[field] === "")) {
+          if (field in standardFieldsBody && (standardFieldsBody[field] === undefined || standardFieldsBody[field] === null || standardFieldsBody[field] === "")) {
             validationErrors[String(field)] = `${String(field)} is required`
           }
           // If field is not being updated, ensure it exists in the existing asset
-          if (!(field in body) && (existingAsset[field as keyof typeof existingAsset] === undefined || existingAsset[field as keyof typeof existingAsset] === null || existingAsset[field as keyof typeof existingAsset] === "")) {
+          if (!(field in standardFieldsBody) && (existingAsset[field as keyof typeof existingAsset] === undefined || existingAsset[field as keyof typeof existingAsset] === null || existingAsset[field as keyof typeof existingAsset] === "")) {
             validationErrors[String(field)] = `${String(field)} is required`
           }
         }
       }
 
       // Validate custom fields if they exist
-      if (body.customFields) {
-        // Get custom fields for this asset type and tenant
-        const customFields = await this.db.customField.findMany({
-          where: {
-            tenantId: user.tenantId,
-            modelType: this.operations.modelName
-          }
-        });
-
+      if (customFieldsData) {
         // Create a map for faster lookup
         const customFieldsMap = new Map(customFields.map(cf => [cf.name, cf]));
 
         // Validate each custom field
-        for (const [fieldName, fieldValue] of Object.entries(body.customFields)) {
+        for (const [fieldName, fieldValue] of Object.entries(customFieldsData)) {
           const customField = customFieldsMap.get(fieldName);
           
           // Skip validation for fields that don't exist in the custom fields config
@@ -970,8 +1052,8 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Check if unique field is being updated and already exists for another asset
-      if (this.operations.uniqueField && body[this.operations.uniqueField] && 
-          body[this.operations.uniqueField] !== existingAsset[this.operations.uniqueField]) {
+      if (this.operations.uniqueField && standardFieldsBody[this.operations.uniqueField] && 
+          standardFieldsBody[this.operations.uniqueField] !== existingAsset[this.operations.uniqueField]) {
         // For Printer and PC models, we use findFirst instead of findUnique since we removed the @unique constraint
         let existingAssetWithUniqueField;
         if (this.operations.modelName === 'Printer' || this.operations.modelName === 'PC') {
@@ -1001,16 +1083,30 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // Create history record for changes
       const changes: Record<string, { from: any; to: any }> = {}
-      Object.keys(body).forEach(key => {
+      Object.keys(standardFieldsBody).forEach(key => {
         // Skip undefined values to avoid setting fields to undefined
-        if (body[key as keyof typeof body] !== undefined && 
-            body[key as keyof typeof body] !== existingAsset[key as keyof typeof existingAsset]) {
+        if (standardFieldsBody[key] !== undefined && 
+            standardFieldsBody[key] !== (existingAsset as any)[key]) {
           changes[key] = {
-            from: existingAsset[key as keyof typeof existingAsset],
-            to: body[key as keyof typeof body]
+            from: (existingAsset as any)[key],
+            to: standardFieldsBody[key]
           }
         }
       })
+
+      // Also track changes in custom fields
+      if (standardFieldsBody.customFields) {
+        const existingCustomFields = existingAsset.customFields || {};
+        Object.entries(standardFieldsBody.customFields).forEach(([key, value]) => {
+          if (value !== undefined && 
+              value !== (existingCustomFields as any)[key]) {
+            changes[`customFields.${key}`] = {
+              from: (existingCustomFields as any)[key],
+              to: value
+            };
+          }
+        });
+      }
 
       if (Object.keys(changes).length > 0) {
         try {
@@ -1048,10 +1144,10 @@ export class AssetApiHandler<T extends BaseAsset> {
         logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
 
-      const updateData = Object.keys(body || {}).reduce((acc, key) => {
+      const updateData = Object.keys(standardFieldsBody || {}).reduce((acc, key) => {
         // Allow both direct fields and customFields to be updated
-        if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof typeof body] !== undefined) {
-          (acc as any)[key] = body[key as keyof typeof body];
+        if ((modelValidFields.includes(key) || key === 'customFields') && standardFieldsBody[key] !== undefined) {
+          (acc as any)[key] = standardFieldsBody[key];
         } else {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`Skipping field ${key} - not valid or undefined`, { 
@@ -1102,16 +1198,42 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
         
         // Invalidate cache entries more efficiently
-        const assetListPattern = cacheManager.createCompositeKey(
-          CACHE_PREFIXES.ASSET_LIST,
-          this.operations.modelName,
-          user.tenantId,
-          '*'
-        );
+        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
+        const patterns = [
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*:*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*:*:*'
+          )
+        ];
         
         try {
-          const deletedCount = await cacheManager.invalidateByPattern(assetListPattern, { component: 'asset-api-handler' });
-          logger.debug(`Invalidated ${deletedCount} asset list cache entries for ${this.operations.modelName}`);
+          let totalDeleted = 0;
+          for (const pattern of patterns) {
+            const deletedCount = await cacheManager.invalidateByPattern(pattern, { component: 'asset-api-handler' });
+            totalDeleted += deletedCount;
+            logger.debug(`Invalidated ${deletedCount} cache entries with pattern: ${pattern}`);
+          }
+          logger.debug(`Invalidated ${totalDeleted} total asset list cache entries for ${this.operations.modelName}`);
         } catch (error: any) {
           logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
         }
@@ -1211,16 +1333,42 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
         
         // Invalidate cache entries more efficiently
-        const assetListPattern = cacheManager.createCompositeKey(
-          CACHE_PREFIXES.ASSET_LIST,
-          this.operations.modelName,
-          user.tenantId,
-          '*'
-        );
+        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
+        const patterns = [
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*:*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*:*:*'
+          )
+        ];
         
         try {
-          const deletedCount = await cacheManager.invalidateByPattern(assetListPattern, { component: 'asset-api-handler' });
-          logger.debug(`Invalidated ${deletedCount} asset list cache entries for ${this.operations.modelName}`);
+          let totalDeleted = 0;
+          for (const pattern of patterns) {
+            const deletedCount = await cacheManager.invalidateByPattern(pattern, { component: 'asset-api-handler' });
+            totalDeleted += deletedCount;
+            logger.debug(`Invalidated ${deletedCount} cache entries with pattern: ${pattern}`);
+          }
+          logger.debug(`Invalidated ${totalDeleted} total asset list cache entries for ${this.operations.modelName}`);
         } catch (error: any) {
           logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
         }
@@ -1283,6 +1431,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         const batchIds = ids.slice(i, i + batchSize);
         
         // Check if all assets in batch exist and belong to user's tenant
+        // Use findMany with explicit tenantId check to ensure we only get assets belonging to the current tenant
         const existingAssets = await this.getPrismaModel().findMany({
           where: { 
             id: { in: batchIds },
@@ -1293,6 +1442,16 @@ export class AssetApiHandler<T extends BaseAsset> {
             tenantId: true
           }
         })
+
+        // Log detailed information about the found assets for debugging
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug(`Found ${existingAssets.length} assets out of ${batchIds.length} requested for tenant ${user.tenantId}`, {
+            component: 'asset-api-handler',
+            foundAssets: existingAssets.map((a: any) => a.id),
+            requestedIds: batchIds,
+            tenantId: user.tenantId
+          });
+        }
 
         // Check if all requested assets were found
         const foundIds = existingAssets.map((asset: any) => asset.id)
@@ -1396,16 +1555,42 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Use cache invalidation strategy for better performance
       if (cacheManager && CACHE_PREFIXES) {
         // Invalidate all asset list caches to ensure consistency
-        const assetListPattern = cacheManager.createCompositeKey(
-          CACHE_PREFIXES.ASSET_LIST,
-          this.operations.modelName,
-          user.tenantId,
-          '*'
-        );
+        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
+        const patterns = [
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*:*'
+          ),
+          cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            this.operations.modelName,
+            user.tenantId,
+            '*:*:*:*'
+          )
+        ];
         
         try {
-          const deletedCount = await cacheManager.invalidateByPattern(assetListPattern, { component: 'asset-api-handler' });
-          logger.debug(`Invalidated ${deletedCount} asset list cache entries for ${this.operations.modelName}`);
+          let totalDeleted = 0;
+          for (const pattern of patterns) {
+            const deletedCount = await cacheManager.invalidateByPattern(pattern, { component: 'asset-api-handler' });
+            totalDeleted += deletedCount;
+            logger.debug(`Invalidated ${deletedCount} cache entries with pattern: ${pattern}`);
+          }
+          logger.debug(`Invalidated ${totalDeleted} total asset list cache entries for ${this.operations.modelName}`);
         } catch (error: any) {
           logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
         }

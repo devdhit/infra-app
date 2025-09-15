@@ -305,6 +305,7 @@ export function ExcelImportDialog({
     setShowColumnMapping(!showColumnMapping);
   }, [showColumnMapping, setShowColumnMapping, columnMappings.length, excelColumns, databaseFields, generateAutomaticMappings]);
 
+  // Fix the progress calculation to prevent percentage > 100%
   const handleImport = useCallback(async () => {
     if (selectedFiles.length === 0) {
       toast.error(t('assets.excel.import.noFileSelected', 'Please select at least one file to import'));
@@ -356,10 +357,12 @@ export function ExcelImportDialog({
           allErrors.push(`${file.name}: ${response.error || t('assets.excel.import.error', 'Failed to import assets')}`);
         }
         
-        // Update progress with timing information
-        if (response.totalRows) {
+        // Update progress with timing information - Fix to prevent >100% progress
+        if (response.totalRows && response.totalRows > 0) {
+          // Ensure current count doesn't exceed total rows
+          const newCurrent = Math.min(totalCreatedCount, response.totalRows);
           setImportProgress(prev => ({
-            current: totalCreatedCount,
+            current: newCurrent,
             total: response.totalRows,
             startTime: prev?.startTime || Date.now(),
             lastUpdate: Date.now()
@@ -667,13 +670,13 @@ export function ExcelImportDialog({
                           importProgress.total.toString())}
                       </span>
                       <span>
-                        {Math.round((importProgress.current / importProgress.total) * 100)}%
+                        {Math.min(100, Math.round((importProgress.current / importProgress.total) * 100))}%
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                        style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                        style={{ width: `${Math.min(100, (importProgress.current / importProgress.total) * 100)}%` }}
                       ></div>
                     </div>
                     {importProgress.lastUpdate && (
