@@ -124,6 +124,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
       await redisCache.del(assetCacheKey);
       await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${modelName}:${user.tenantId}:*`);
+      
+      // Add a more substantial delay to ensure cache invalidation is complete
+      // and allow time for any ongoing requests to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     return successResponse(updatedAsset)

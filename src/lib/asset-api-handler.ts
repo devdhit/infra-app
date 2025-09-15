@@ -9,7 +9,6 @@ import {
   validationErrorResponse,
   errorResponse as apiErrorResponse
 } from './api-utils'
-import { emitAssetChange } from '@/lib/realtime'
 import { hasPermission, ResourceType, PermissionAction } from './permissions'
 
 // Only import Redis cache on the server side
@@ -752,17 +751,35 @@ export class AssetApiHandler<T extends BaseAsset> {
         // Continue with the operation even if audit log creation fails
       }
 
-      // Emit real-time event
-      try {
-        emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'create', asset);
-      } catch (emitError) {
-        logger.error('Failed to emit real-time event:', emitError);
-      }
-
-      // Invalidate cache for this asset type and tenant if Redis is available
+      // Use cache invalidation strategy for better performance
       if (redisCache && CACHE_PREFIXES) {
-        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:${this.operations.modelName}:${user.tenantId}:*`);
-        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
+        // Asset is new, so no need to delete it from cache
+        // Just invalidate ALL lists so they will fetch fresh data on next request
+        const patternsToDelete = [
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*:*`
+        ];
+        
+        // Delete patterns with optimized parallel processing
+        const deletionResults = await Promise.all(patternsToDelete.map(async pattern => {
+          try {
+            const result = await redisCache.delByPattern(pattern);
+            logger.debug(`Deleted ${result} cache entries for pattern: ${pattern}`);
+            return result;
+          } catch (error: any) {
+            logger.error(`Failed to delete cache pattern ${pattern}:`, error);
+            return 0;
+          }
+        }));
+        
+        // Log total deletions
+        const totalDeleted = deletionResults.reduce((sum, count) => sum + count, 0);
+        logger.debug(`Total cache entries deleted: ${totalDeleted}`);
+        
+        // Longer delay to ensure cache operations complete
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
 
       return successResponse(asset, 201)
@@ -921,7 +938,7 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // Check if unique field is being updated and already exists for another asset
       if (this.operations.uniqueField && body[this.operations.uniqueField] && 
-          body[this.operations.uniqueField] !== existingAsset[this.operations.uniqueField as keyof typeof existingAsset]) {
+          body[this.operations.uniqueField] !== existingAsset[this.operations.uniqueField]) {
         // For Printer model, we use findFirst instead of findUnique since we removed the @unique constraint
         let existingAssetWithUniqueField;
         if (this.operations.modelName === 'Printer') {
@@ -999,7 +1016,6 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       const updateData = Object.keys(body || {}).reduce((acc, key) => {
-        // Only include valid fields for this model and non-undefined values
         // Allow both direct fields and customFields to be updated
         if ((modelValidFields.includes(key) || key === 'customFields') && body[key as keyof typeof body] !== undefined) {
           (acc as any)[key] = body[key as keyof typeof body];
@@ -1035,23 +1051,51 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
       })
 
-      // Emit real-time event
-      try {
-        emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'update', asset);
-      } catch (emitError) {
-        logger.warn('Failed to emit real-time event (Socket.IO may not be available):', emitError);
-      }
-
-      // Invalidate cache for this specific asset and asset lists if Redis is available
+      // Use cache invalidation strategy for better performance
       if (redisCache && CACHE_PREFIXES) {
+        // Create cache key for the updated asset
         const assetCacheKey = redisCache.createKey(
           CACHE_PREFIXES.ASSETS,
           this.operations.modelName,
           user.tenantId,
           id
         );
-        await redisCache.del(assetCacheKey);
-        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
+        
+        // Remove the specific asset from cache (will be reloaded on next request)
+        try {
+          await redisCache.del(assetCacheKey);
+        } catch (error: any) {
+          logger.warn(`Failed to delete asset cache key ${assetCacheKey}:`, error);
+        }
+        
+        // Invalidate ALL cache for asset lists to ensure they reflect the updated asset
+        // Use a more comprehensive pattern to match all possible cache key variations
+        // The cache key format is: asset_list:<model>:<tenantId>:<page>:<limit>:<search>:<status>
+        const patternsToDelete = [
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*:*`
+        ];
+        
+        // Delete patterns with optimized parallel processing
+        const deletionResults = await Promise.all(patternsToDelete.map(async pattern => {
+          try {
+            const result = await redisCache.delByPattern(pattern);
+            logger.debug(`Deleted ${result} cache entries for pattern: ${pattern}`);
+            return result;
+          } catch (error: any) {
+            logger.error(`Failed to delete cache pattern ${pattern}:`, error);
+            return 0;
+          }
+        }));
+        
+        // Log total deletions
+        const totalDeleted = deletionResults.reduce((sum, count) => sum + count, 0);
+        logger.debug(`Total cache entries deleted: ${totalDeleted}`);
+        
+        // Longer delay to ensure cache operations complete
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       return successResponse(asset)
@@ -1118,29 +1162,50 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
       })
 
-      // Emit real-time event
-      try {
-        emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
-      } catch (emitError) {
-        logger.warn('Failed to emit real-time event (Socket.IO may not be available):', emitError);
-      }
-
-      // Invalidate cache for this specific asset and asset lists if Redis is available
+      // Use cache invalidation strategy for better performance
       if (redisCache && CACHE_PREFIXES) {
+        // Create cache key for the deleted asset
         const assetCacheKey = redisCache.createKey(
           CACHE_PREFIXES.ASSETS,
           this.operations.modelName,
           user.tenantId,
           id
         );
-        await redisCache.del(assetCacheKey);
-        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
         
-        // Add a small delay to ensure cache invalidation is complete
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Remove the asset from cache
+        try {
+          await redisCache.del(assetCacheKey);
+        } catch (error: any) {
+          logger.warn(`Failed to delete asset cache key ${assetCacheKey}:`, error);
+        }
+        
+        // Invalidate ALL cache for asset lists to ensure they reflect the deleted asset
+        const patternsToDelete = [
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*:*`
+        ];
+        
+        // Delete patterns with optimized parallel processing
+        const deletionResults = await Promise.all(patternsToDelete.map(async pattern => {
+          try {
+            const result = await redisCache.delByPattern(pattern);
+            logger.debug(`Deleted ${result} cache entries for pattern: ${pattern}`);
+            return result;
+          } catch (error: any) {
+            logger.error(`Failed to delete cache pattern ${pattern}:`, error);
+            return 0;
+          }
+        }));
+        
+        // Log total deletions
+        const totalDeleted = deletionResults.reduce((sum, count) => sum + count, 0);
+        logger.debug(`Total cache entries deleted: ${totalDeleted}`);
+        
+        // Longer delay to ensure cache operations complete
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
-
-      // React Query cache invalidation removed - relying solely on Redis cache
 
       return successResponse<null>(null, 204)
     } catch (error: any) {
@@ -1258,25 +1323,32 @@ export class AssetApiHandler<T extends BaseAsset> {
         // Continue with the operation even if audit log creation fails
       }
 
-      // Emit real-time events for each deleted asset
-      try {
-        ids.forEach(id => {
-          try {
-            emitAssetChange(user.tenantId, this.operations.modelName.toLowerCase(), 'delete', { id });
-          } catch (emitError) {
-            logger.warn(`Failed to emit real-time event for asset ${id} (Socket.IO may not be available):`, emitError);
-          }
-        });
-      } catch (emitError) {
-        if (process.env.NODE_ENV === 'development') {
-          logger.error('Failed to emit real-time events:', emitError);
-        }
-      }
-
-      // Invalidate cache for all assets of this type and tenant if Redis is available
+      // Use cache invalidation strategy for better performance
       if (redisCache && CACHE_PREFIXES) {
-        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:${this.operations.modelName}:${user.tenantId}:*`);
-        await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`);
+        // Invalidate cache for all assets of this type and tenant
+        const patternsToDelete = [
+          `${CACHE_PREFIXES.ASSETS}:${this.operations.modelName}:${user.tenantId}:*`,
+          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`
+        ];
+        
+        // Delete patterns with optimized parallel processing
+        const deletionResults = await Promise.all(patternsToDelete.map(async pattern => {
+          try {
+            const result = await redisCache.delByPattern(pattern);
+            logger.debug(`Deleted ${result} cache entries for pattern: ${pattern}`);
+            return result;
+          } catch (error: any) {
+            logger.error(`Failed to delete cache pattern ${pattern}:`, error);
+            return 0;
+          }
+        }));
+        
+        // Log total deletions
+        const totalDeleted = deletionResults.reduce((sum, count) => sum + count, 0);
+        logger.debug(`Total cache entries deleted: ${totalDeleted}`);
+        
+        // Longer delay for better performance
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       // React Query cache invalidation removed - relying solely on Redis cache

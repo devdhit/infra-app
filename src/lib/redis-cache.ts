@@ -141,12 +141,17 @@ class RedisCache {
     if (this.isConnected && this.client) {
       try {
         // Perform a simple ping to check if the connection is still alive
-        await this.client.ping();
+        const pingResult = await this.client.ping();
+        logger.debug('Redis connection health check passed', { 
+          ...context, 
+          pingResult 
+        });
         return true;
       } catch (error: any) {
         logger.warn('Redis connection health check failed', { 
           ...context, 
-          error: error.message 
+          error: error.message,
+          stack: error.stack
         });
         this.isConnected = false;
       }
@@ -154,22 +159,28 @@ class RedisCache {
 
     // If already connecting, wait a bit and check again
     if (this.isConnecting) {
+      logger.debug('Redis client is already connecting, waiting...', context);
       // Wait up to 5 seconds for connection to be established
       for (let i = 0; i < 50; i++) {
         await new Promise(resolve => setTimeout(resolve, 100));
         if (this.isConnected) {
+          logger.debug('Redis connection established while waiting', context);
           return true;
         }
       }
+      logger.warn('Redis connection timeout while waiting', context);
       return false;
     }
 
     // If not connected and not connecting, try to initialize
+    logger.info('Attempting to initialize Redis connection', context);
     this.isConnecting = true;
     try {
       await this.initializeClient();
       this.isConnecting = false;
-      return this.isConnected;
+      const result = this.isConnected;
+      logger.info(`Redis connection initialization ${result ? 'successful' : 'failed'}`, context);
+      return result;
     } catch (error: any) {
       logger.error('Failed to establish Redis connection', { 
         ...context, 
@@ -269,6 +280,50 @@ class RedisCache {
       return true;
     } catch (error: any) {
       logger.error(`Error setting cache key ${key}`, { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
+      return false;
+    }
+  }
+
+  /**
+   * Update cache immediately with new data
+   * @param key - Cache key
+   * @param value - Value to cache
+   * @param ttl - Time to live in seconds (optional)
+   */
+  public async update<T>(key: string, value: T, ttl?: number): Promise<boolean> {
+    // Always return false on client side
+    if (typeof window !== 'undefined') {
+      return false;
+    }
+    
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      logger.warn(`Unable to update cache key ${key}: Redis not connected`);
+      return false;
+    }
+
+    if (!this.isReady()) {
+      logger.warn(`Unable to update cache key ${key}: Redis not ready`);
+      return false;
+    }
+
+    try {
+      const serializedValue = JSON.stringify(value);
+      if (ttl) {
+        await this.client!.setEx(key, ttl, serializedValue);
+      } else {
+        await this.client!.set(key, serializedValue);
+      }
+      logger.debug(`Cache updated for key: ${key}`, { component: 'redis-cache' });
+      return true;
+    } catch (error: any) {
+      logger.error(`Error updating cache key ${key}`, { 
         component: 'redis-cache', 
         error: error.message, 
         stack: error.stack 

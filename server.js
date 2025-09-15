@@ -51,33 +51,6 @@ function getTimestamp() {
     return new Date().toISOString();
 }
 
-let initializeSocketIO;
-try {
-  // Try to load the realtime module from dist first, then fallback to src
-  const distPath = process.env.NODE_ENV === 'production' 
-    ? process.env.ITAMS_DIST_PATH || '/opt/itams/dist' 
-    : resolve(__dirname, 'dist');
-  const distModulePath = join(distPath, 'lib', 'realtime');
-  
-  if (existsSync(distModulePath + '.js') || existsSync(distModulePath)) {
-    ({ initializeSocketIO } = require(distModulePath));
-    logger.emojiLog('📦', `Loaded realtime module from dist: ${distModulePath}`);
-  } else {
-    // Fallback to src directory
-    const srcModulePath = join(__dirname, 'src', 'lib', 'realtime');
-    if (existsSync(srcModulePath + '.ts') || existsSync(srcModulePath)) {
-      ({ initializeSocketIO } = require(srcModulePath));
-      logger.emojiLog('📦', `Loaded realtime module from src: ${srcModulePath}`);
-    } else {
-      logger.warn(`Realtime module not found at ${distModulePath} or ${srcModulePath}, Socket.IO will not be available`);
-      initializeSocketIO = null;
-    }
-  }
-} catch (error) {
-  logger.warn(`Failed to load realtime module: ${error.message}`);
-  initializeSocketIO = null;
-}
-
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
@@ -121,43 +94,8 @@ app.prepare().then(() => {
     // This tells it to parse the query portion of the URL.
     const parsedUrl = parse(req.url, true);
     
-    // Let Socket.IO handle its own requests
-    // The Socket.IO server will automatically handle requests with /socket.io/ path
-    
     handle(req, res, parsedUrl);
   });
-
-  // Initialize Socket.IO with the HTTP server if the module was loaded successfully
-  if (initializeSocketIO) {
-    try {
-      const io = initializeSocketIO(server);
-      logger.emojiLog('🔄', 'Socket.IO initialized successfully');
-      
-      // Add error handling for the Socket.IO server
-      server.on('error', (error) => {
-        // Handle EPIPE errors specifically
-        if (error.code === 'EPIPE') {
-          logger.warn('EPIPE error caught - client likely disconnected abruptly');
-        } else {
-          logger.error(`Server error: ${error}`);
-        }
-      });
-      
-      server.on('clientError', (error, socket) => {
-        // Handle EPIPE errors specifically
-        if (error.code === 'EPIPE') {
-          logger.warn('EPIPE error on client connection - client likely disconnected abruptly');
-        } else {
-          logger.error(`Client error: ${error}`);
-          socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
-        }
-      });
-    } catch (error) {
-      logger.error(`Failed to initialize Socket.IO: ${error}`);
-    }
-  } else {
-    logger.info('Socket.IO not available (realtime module not loaded)');
-  }
 
   const port = process.env.PORT || 3001;
   
