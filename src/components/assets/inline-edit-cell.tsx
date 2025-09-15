@@ -112,15 +112,11 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
       // Show success message
       toast.success(t('assets.update.success', '{0} updated successfully', field.label))
       
-      // This critical step allows the parent component to update its state
-      // which will then trigger React Query cache updates
-      onUpdate(processedValue)
-      
-      // Force refresh the data after a short delay to ensure the server has processed the update
-      // Since we're removing React Query, we'll rely on the parent component to handle refresh
+      // Call onUpdate to notify parent component of the change
+      // Use a moderate delay to ensure cache operations complete
       setTimeout(() => {
-        // The parent component should handle data refresh
-      }, 100);
+        onUpdate(processedValue)
+      }, 1000);
     } catch (error: any) {
       console.error("Inline edit error:", error)
       let message = t('assets.update.error', 'Failed to update {0}', field.label)

@@ -158,12 +158,17 @@ export const api = {
         }
       }
       
+      // Add cache-busting timestamp to prevent browser caching
+      const cacheBuster = `_t=${Date.now()}`;
+      const separator = url.includes('?') ? '&' : '?';
+      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      
       // Add timeout promise to prevent hanging
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), 30000);
       });
       
-      const responsePromise = apiClient.post<T>(url, data, config);
+      const responsePromise = apiClient.post<T>(urlWithCacheBuster, data, config);
       const response = await Promise.race([responsePromise, timeoutPromise]);
       return response.data;
     } catch (error) {
@@ -173,12 +178,17 @@ export const api = {
   
   put: async <T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig): Promise<T> => {
     try {
+      // Add cache-busting timestamp to prevent browser caching
+      const cacheBuster = `_t=${Date.now()}`;
+      const separator = url.includes('?') ? '&' : '?';
+      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      
       // Add timeout promise to prevent hanging
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), 30000);
       });
       
-      const responsePromise = apiClient.put<T>(url, data, config);
+      const responsePromise = apiClient.put<T>(urlWithCacheBuster, data, config);
       const response = await Promise.race([responsePromise, timeoutPromise]);
       return response.data;
     } catch (error) {
@@ -188,12 +198,17 @@ export const api = {
   
   delete: async <T = void>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
+      // Add cache-busting timestamp to prevent browser caching
+      const cacheBuster = `_t=${Date.now()}`;
+      const separator = url.includes('?') ? '&' : '?';
+      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      
       // Add timeout promise to prevent hanging
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), 30000);
       });
       
-      const responsePromise = apiClient.delete<T>(url, config);
+      const responsePromise = apiClient.delete<T>(urlWithCacheBuster, config);
       const response = await Promise.race([responsePromise, timeoutPromise]);
       return response.data;
     } catch (error) {

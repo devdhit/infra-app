@@ -1,6 +1,5 @@
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { I18nProvider } from '@/contexts/i18n-context'
-import { WebSocketProvider } from '@/contexts/websocket-context'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
@@ -30,10 +29,8 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <AuthProvider>
-              <WebSocketProvider>
-                {children}
-                <Toaster />
-              </WebSocketProvider>
+              {children}
+              <Toaster />
             </AuthProvider>
           </ThemeProvider>
         </I18nProvider>

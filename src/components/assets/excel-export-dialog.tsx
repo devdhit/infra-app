@@ -294,7 +294,7 @@ export function ExcelExportDialog({
             }
           
             // Add a small delay between downloads to prevent browser issues
-            await new Promise(resolve => setTimeout(resolve, 500))
+            await new Promise(resolve => setTimeout(resolve, 1000))
           }
 
           setExportStatus(t('assets.excel.export.completing', 'Completing export...'))

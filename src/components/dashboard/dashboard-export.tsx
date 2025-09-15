@@ -24,7 +24,7 @@ export function DashboardExport({ onExport }: DashboardExportProps) {
     setIsExporting(true)
     try {
       // Simulate export process
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      await new Promise(resolve => setTimeout(resolve, 2000))
       onExport(format)
       toast.success(t('settings.dataManagement.export.success', 'Data exported successfully') || `Data exported as ${format.toUpperCase()}`)
     } catch (error) {

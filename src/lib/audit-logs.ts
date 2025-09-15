@@ -1,6 +1,5 @@
 import { db } from '@/lib/db';
 import { HistoryRecord, createHistoryRecord } from '@/lib/history';
-import { getIO } from '@/lib/realtime';
 
 /**
  * Creates an audit log entry if audit logging is enabled for the tenant and the specific action
@@ -63,20 +62,6 @@ export async function createAuditLog(
     // Create the audit log entry
     const auditLog = await createHistoryRecord(historyRecord);
     
-    // Emit audit log event via WebSocket
-    if (auditLog) {
-      const io = getIO();
-      if (io) {
-        io.to(`tenant-${tenantId}`).emit('audit-log', {
-          type: 'AUDIT_LOG_CREATED',
-          payload: {
-            ...auditLog,
-            action: actionType
-          }
-        });
-      }
-    }
-    
     return auditLog;
   } catch (error) {
     console.error('Error creating audit log:', error);
@@ -131,20 +116,6 @@ export async function createUserEventAuditLog(
     // Create the audit log entry
     const auditLog = await createHistoryRecord(historyRecord);
     
-    // Emit audit log event via WebSocket
-    if (auditLog) {
-      const io = getIO();
-      if (io) {
-        io.to(`tenant-${tenantId}`).emit('audit-log', {
-          type: 'AUDIT_LOG_CREATED',
-          payload: {
-            ...auditLog,
-            action: eventType
-          }
-        });
-      }
-    }
-    
     return auditLog;
   } catch (error) {
     console.error('Error creating user event audit log:', error);
@@ -186,20 +157,6 @@ export async function createPermissionAuditLog(
 
     // Create the audit log entry
     const auditLog = await createHistoryRecord(historyRecord);
-    
-    // Emit audit log event via WebSocket
-    if (auditLog) {
-      const io = getIO();
-      if (io) {
-        io.to(`tenant-${tenantId}`).emit('audit-log', {
-          type: 'AUDIT_LOG_CREATED',
-          payload: {
-            ...auditLog,
-            action: 'permission_change'
-          }
-        });
-      }
-    }
     
     return auditLog;
   } catch (error) {
@@ -294,20 +251,6 @@ export async function createRoleUpdateAuditLog(
 
     // Create the audit log entry
     const auditLog = await createHistoryRecord(enhancedHistoryRecord);
-    
-    // Emit audit log event via WebSocket
-    if (auditLog) {
-      const io = getIO();
-      if (io) {
-        io.to(`tenant-${tenantId}`).emit('audit-log', {
-          type: 'AUDIT_LOG_CREATED',
-          payload: {
-            ...auditLog,
-            action: 'role_update'
-          }
-        });
-      }
-    }
     
     return auditLog;
   } catch (error) {

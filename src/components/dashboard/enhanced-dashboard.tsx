@@ -22,9 +22,7 @@ import {
   ArrowUp,
   ArrowDown,
   ChevronDown,
-  ChevronRight,
-  Wifi,
-  WifiOff
+  ChevronRight
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, PieChart as RechartsPieChart, Pie, Legend, AreaChart, Area } from 'recharts';
 import { useTranslation } from "@/hooks/use-translation";
@@ -32,12 +30,9 @@ import { DashboardSummaryData } from "@/types/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { useMemo, useState } from "react";
 import { useDashboardSummary } from "@/hooks/useApi";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { DashboardExport } from "@/components/dashboard/dashboard-export";
-import { RealTimeNotifications } from "@/components/dashboard/real-time-notifications";
-import { useWebSocketContext } from '@/contexts/websocket-context';
 import { toast } from 'sonner';
 import {
   Collapsible,
@@ -52,7 +47,6 @@ interface EnhancedDashboardProps {
 export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps) {
   const { t } = useTranslation();
   const { data: dashboardData, isLoading, error, refetch } = useDashboardSummary<DashboardSummaryData>();
-  const { isConnected, reconnectAttempts } = useWebSocketContext();
   const [activeTab, setActiveTab] = useState("overview");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
@@ -277,20 +271,6 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
-          <div className="flex items-center space-x-2">
-            {isConnected ? (
-              <Badge variant="default" className="flex items-center">
-                <Wifi className="h-3 w-3 mr-1" />
-                {t('common.connected')}
-              </Badge>
-            ) : (
-              <Badge variant="destructive" className="flex items-center">
-                <WifiOff className="h-3 w-3 mr-1" />
-                {t('common.disconnected')}
-                {reconnectAttempts > 0 && ` (${reconnectAttempts})`}
-              </Badge>
-            )}
-          </div>
         </div>
         <DashboardSkeleton />
       </div>
@@ -333,21 +313,6 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
           <p className="text-muted-foreground">{t('dashboard.welcome')}</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="flex items-center space-x-2">
-            {isConnected ? (
-              <Badge variant="default" className="flex items-center">
-                <Wifi className="h-3 w-3 mr-1" />
-                {t('common.connected')}
-              </Badge>
-            ) : (
-              <Badge variant="destructive" className="flex items-center">
-                <WifiOff className="h-3 w-3 mr-1" />
-                {t('common.disconnected')}
-                {reconnectAttempts > 0 && ` (${reconnectAttempts})`}
-              </Badge>
-            )}
-          </div>
-          <RealTimeNotifications />
           <DashboardExport onExport={handleExport} />
           <Button size="sm" className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-700 dark:hover:from-blue-700 dark:hover:to-indigo-800" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />

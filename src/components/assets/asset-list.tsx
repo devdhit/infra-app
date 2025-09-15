@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useCallback, memo, useRef } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates'
 import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi";
 import {
   Button,
@@ -109,7 +108,8 @@ const getAssetColumns = (
   handleView: (asset: Asset) => void,
   handleEdit: (asset: Asset) => void,
   handleDelete: (id: string) => void,
-  refetch: () => void, // Add refetch function as parameter
+  refetch: () => Promise<any>, // Change refetch function type to return Promise
+  robustRefetch: (refetchFn: () => Promise<any>, t: (key: string, fallback?: string, ...args: any[]) => string) => Promise<boolean>, // Add robustRefetch function as parameter
   // Permission props
   canView: boolean | null = true,
   canEdit: boolean | null = true,
@@ -235,11 +235,10 @@ const getAssetColumns = (
             value={displayValue}
             isCustomField={isCustom}
             customFieldsData={customFieldsData || undefined}
-            onUpdate={(_newValue) => {
+            onUpdate={async (_newValue) => {
               // Force a refetch to ensure we have the latest data from the server
-              setTimeout(() => {
-                refetch();
-              }, 100);
+              // Use the robust refetch function
+              await robustRefetch(refetch, t);
             }}
           />
         ) : (
@@ -297,9 +296,21 @@ export function AssetList({
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
   
-  // Real-time updates
-  const { subscribeToUpdates } = useRealtimeUpdates();
-  
+  // New function to robustly refresh data with immediate cache update awareness
+  const robustRefetch = useCallback(async (refetchFn: () => Promise<any>, t: (key: string, fallback?: string, ...args: any[]) => string) => {
+    // Wait for a moderate period to ensure cache updates are complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    try {
+      await refetchFn();
+      return true;
+    } catch (error) {
+      console.error("Failed to refresh data:", error);
+      toast.error(t('assets.refresh.error', 'Failed to refresh data after update'));
+      return false;
+    }
+  }, []);
+
   // Fetch assets with current parameters
   const { data: assetsData, isLoading: assetsLoading, error: assetsApiError, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
     page: currentPage,
@@ -307,20 +318,6 @@ export function AssetList({
     search,
     status: statusFilter
   });
-  
-  // Subscribe to real-time updates
-  useEffect(() => {
-    const unsubscribe = subscribeToUpdates(assetType, () => {
-      // Handle real-time updates by refetching data
-      refetch();
-    });
-    
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [subscribeToUpdates, assetType, refetch]);
   
   // Update state when assets data changes
   useEffect(() => {
@@ -535,16 +532,42 @@ export function AssetList({
     }
   }, [viewAsset, handleEdit]);
 
-  const handleFormSuccess = useCallback(() => {
-    // Refetch data after form success
-    refetch();
-    refetchCustomFields();
-  }, [refetch, refetchCustomFields]);
+  const handleFormSuccess = useCallback(async () => {
+    // Force a more aggressive refetch to ensure we get fresh data
+    try {
+      // Wait a bit for server-side cache to update
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Force a complete refresh by resetting the cache
+      await refetch();
+      
+      // Also refetch custom fields
+      await refetchCustomFields();
+      
+      // Show success message
+      toast.success(t('assets.update.success', 'Asset updated successfully'));
+    } catch (error) {
+      console.error("Form success refetch error:", error);
+      toast.error(t('assets.update.error', 'Failed to refresh data after update'));
+    }
+  }, [refetch, refetchCustomFields, t]);
 
-  const handleImportSuccess = useCallback(() => {
-    // Refetch data after import success
-    refetch();
-  }, [refetch]);
+  const handleImportSuccess = useCallback(async () => {
+    // Force a more aggressive refetch to ensure we get fresh data
+    try {
+      // Wait a bit for server-side cache to update
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Force a complete refresh by resetting the cache
+      await refetch();
+      
+      // Show success message
+      toast.success(t('assets.import.success', 'Assets imported successfully'));
+    } catch (error) {
+      console.error("Import success refetch error:", error);
+      toast.error(t('assets.import.error', 'Failed to refresh data after import'));
+    }
+  }, [refetch, t]);
   
   // Update URL when parameters change (for bookmarking/sharing)
   useEffect(() => {
@@ -760,6 +783,7 @@ export function AssetList({
       handleEdit,
       handleDelete,
       refetch, // Pass refetch function
+      robustRefetch, // Pass robustRefetch function
       canView, // Pass permission props
       canEdit,
       canDelete
@@ -786,6 +810,7 @@ export function AssetList({
     handleDelete,
     columnOrder,
     refetch, // Add refetch to dependencies
+    robustRefetch, // Add robustRefetch to dependencies
     canView, // Add permission props to dependencies
     canEdit,
     canDelete
@@ -794,13 +819,13 @@ export function AssetList({
   // New function to manually refresh data
   const handleRefresh = useCallback(() => {
     // Force a refetch to ensure UI updates with fresh data
-    refetch().then(() => {
+    robustRefetch(refetch, t).then(() => {
       toast.success(t('assets.refresh.success', 'Data refreshed successfully'));
     }).catch((error) => {
       logger.error('Error refreshing data:', error);
       toast.error(t('assets.refresh.error', 'Failed to refresh data'));
     });
-  }, [refetch, t]);
+  }, [refetch, t, robustRefetch]);
 
   // Handle row selection change from DataTable
   const handleRowSelectionChange = useCallback((selectedRows: Record<string, boolean>) => {

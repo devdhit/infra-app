@@ -12,17 +12,24 @@ export function useApiCall<T>(url: string, options: { enabled?: boolean } = {}) 
   const [error, setError] = useState<ApiError | null>(null)
   
   const fetchData = useCallback(async () => {
-    if (options.enabled === false) return
+    if (options.enabled === false) return Promise.resolve()
     
     setIsLoading(true)
     setError(null)
     
     try {
-      const response = await api.get<T>(url)
+      // Add cache-busting timestamp to prevent browser caching
+      const cacheBuster = `_t=${Date.now()}`;
+      const separator = url.includes('?') ? '&' : '?';
+      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      
+      const response = await api.get<T>(urlWithCacheBuster)
       setData(response)
+      return response
     } catch (err) {
       setError(err as ApiError)
       console.error('API Error:', err)
+      throw err
     } finally {
       setIsLoading(false)
     }

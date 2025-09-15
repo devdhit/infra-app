@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { importFromExcelWithTemplate } from '@/lib/excel'
-import { emitAssetChange } from '@/lib/realtime'
 import { createAuditLog } from '@/lib/audit-logs'
 import logger from '@/lib/logger';
 
@@ -208,17 +207,15 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }, 'import');
               
-              // Emit real-time event for PC creation
-              try {
-                emitAssetChange(user.tenantId, 'pc', 'create', createdPC);
-              } catch (emitError) {
-                logger.warn(`Failed to emit real-time event for PC creation (Socket.IO may not be available): ${emitError}`);
-              }
+              // Real-time event emission removed
               
               // Invalidate Redis cache for PC assets
               if (redisCache && CACHE_PREFIXES) {
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:PC:${user.tenantId}:*`);
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:PC:${user.tenantId}:*`);
+                
+                // Increase delay to ensure cache invalidation is complete
+                await new Promise(resolve => setTimeout(resolve, 1500));
               }
               break;
 
@@ -444,17 +441,15 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }, 'import');
               
-              // Emit real-time event for Laptop creation
-              try {
-                emitAssetChange(user.tenantId, 'laptop', 'create', createdLaptop);
-              } catch (emitError) {
-                logger.warn(`Failed to emit real-time event for Laptop creation (Socket.IO may not be available): ${emitError}`);
-              }
+              // Real-time event emission removed
               
               // Invalidate Redis cache for Laptop assets
               if (redisCache && CACHE_PREFIXES) {
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:Laptop:${user.tenantId}:*`);
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:Laptop:${user.tenantId}:*`);
+                
+                // Increase delay to ensure cache invalidation is complete
+                await new Promise(resolve => setTimeout(resolve, 1500));
               }
               break;
 
@@ -605,17 +600,16 @@ export async function POST(request: NextRequest) {
                     }
                   });
                   
-                  // Emit real-time event for Printer creation
-                  try {
-                    emitAssetChange(user.tenantId, 'printer', 'create', createdPrinter);
-                  } catch (emitError) {
-                    logger.warn(`Failed to emit real-time event for Printer creation (Socket.IO may not be available): ${emitError}`);
-                  }
+                  // Real-time event emission removed
                   
                   // Invalidate Redis cache for Printer assets
                   if (redisCache && CACHE_PREFIXES) {
                     await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:Printer:${user.tenantId}:*`);
                     await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:Printer:${user.tenantId}:*`);
+                    
+                    // Add a more substantial delay to ensure cache invalidation is complete
+                    // and allow time for any ongoing requests to complete
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                   }
                 } else {
                   logger.debug(`Checking for existing printer with barcode: ${barcodeValue}`);
@@ -874,17 +868,16 @@ export async function POST(request: NextRequest) {
                 }
               });
               
-              // Emit real-time event for License creation
-              try {
-                emitAssetChange(user.tenantId, 'license', 'create', createdLicense);
-              } catch (emitError) {
-                logger.warn(`Failed to emit real-time event for License creation (Socket.IO may not be available): ${emitError}`);
-              }
+              // Real-time event emission removed
               
               // Invalidate Redis cache for License assets
               if (redisCache && CACHE_PREFIXES) {
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:License:${user.tenantId}:*`);
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:License:${user.tenantId}:*`);
+                
+                // Add a more substantial delay to ensure cache invalidation is complete
+                // and allow time for any ongoing requests to complete
+                await new Promise(resolve => setTimeout(resolve, 1000));
               }
               break;
 
@@ -994,17 +987,16 @@ export async function POST(request: NextRequest) {
                 }
               });
               
-              // Emit real-time event for Warehouse IT creation
-              try {
-                emitAssetChange(user.tenantId, 'warehouse', 'create', createdWarehouseIT);
-              } catch (emitError) {
-                logger.warn(`Failed to emit real-time event for Warehouse IT creation (Socket.IO may not be available): ${emitError}`);
-              }
+              // Real-time event emission removed
               
               // Invalidate Redis cache for WarehouseIT assets
               if (redisCache && CACHE_PREFIXES) {
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:WarehouseIT:${user.tenantId}:*`);
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:WarehouseIT:${user.tenantId}:*`);
+                
+                // Add a more substantial delay to ensure cache invalidation is complete
+                // and allow time for any ongoing requests to complete
+                await new Promise(resolve => setTimeout(resolve, 1000));
               }
               break;
 
@@ -1131,17 +1123,16 @@ export async function POST(request: NextRequest) {
                 }
               });
               
-              // Emit real-time event for Internet creation
-              try {
-                emitAssetChange(user.tenantId, 'internet', 'create', createdInternet);
-              } catch (emitError) {
-                logger.warn(`Failed to emit real-time event for Internet creation (Socket.IO may not be available): ${emitError}`);
-              }
+              // Real-time event emission removed
               
               // Invalidate Redis cache for Internet assets
               if (redisCache && CACHE_PREFIXES) {
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:Internet:${user.tenantId}:*`);
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:Internet:${user.tenantId}:*`);
+                
+                // Add a more substantial delay to ensure cache invalidation is complete
+                // and allow time for any ongoing requests to complete
+                await new Promise(resolve => setTimeout(resolve, 1000));
               }
               break;
 
