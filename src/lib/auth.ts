@@ -6,6 +6,7 @@ import * as jwt from 'jsonwebtoken'
 import * as bcrypt from 'bcryptjs'
 import type { UserJwtPayload, User } from '@/types/users'
 import logger from '@/lib/logger'
+import { createHash } from 'crypto';
 
 // Use environment-specific JWT secret with fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-for-development'
@@ -13,6 +14,12 @@ const SALT_ROUNDS = 12 // Increased rounds for better security
 
 // Token expiration based on environment
 const TOKEN_EXPIRATION = process.env.NODE_ENV === 'production' ? '24h' : '7d'
+
+// Refresh token settings
+const REFRESH_TOKEN_EXPIRATION = '7d';
+
+// Token blacklisting for enhanced security
+const tokenBlacklist: Set<string> = new Set();
 
 // Log environment information
 logger.debug('Auth module initialized', {
@@ -111,8 +118,9 @@ export function generateToken(user: { id: string; email: string; tenantId: strin
     email: user.email,
     tenantId: user.tenantId,
     role: user.role,
-    iat: now // Issued at
-    // Remove exp from here as we'll use expiresIn option
+    iat: now, // Issued at
+    // Add additional security claims
+    jti: createHash('sha256').update(user.id + now.toString()).digest('hex').substring(0, 16) // Unique token ID
   };
   
   // Add validation for payload values
@@ -121,7 +129,8 @@ export function generateToken(user: { id: string; email: string; tenantId: strin
     email: typeof payload.email,
     tenantId: typeof payload.tenantId,
     role: typeof payload.role,
-    iat: typeof payload.iat
+    iat: typeof payload.iat,
+    jti: typeof payload.jti
   });
   
   // Ensure all required fields are strings
@@ -145,6 +154,11 @@ export function generateToken(user: { id: string; email: string; tenantId: strin
     throw new Error('Invalid role for token generation');
   }
   
+  if (typeof payload.jti !== 'string' || payload.jti.length === 0) {
+    logger.error('Invalid jti for JWT payload', { jti: payload.jti, jtiType: typeof payload.jti });
+    throw new Error('Invalid jti for token generation');
+  }
+  
   logger.debug('JWT payload created', { payload });
   
   // Check JWT_SECRET
@@ -164,9 +178,9 @@ export function generateToken(user: { id: string; email: string; tenantId: strin
     throw new Error('JWT_SECRET must be a string');
   }
   
-  if (JWT_SECRET.length < 10) {
+  if (JWT_SECRET.length < 32) {
     logger.error('JWT_SECRET is too short', { length: JWT_SECRET.length });
-    throw new Error('JWT_SECRET must be at least 10 characters long');
+    throw new Error('JWT_SECRET must be at least 32 characters long');
   }
   
   logger.debug('Calling jwt.sign', { 
@@ -176,7 +190,10 @@ export function generateToken(user: { id: string; email: string; tenantId: strin
   
   // Use expiresIn option instead of exp in payload
   const options: jwt.SignOptions = { 
-    expiresIn: TOKEN_EXPIRATION
+    expiresIn: TOKEN_EXPIRATION,
+    issuer: 'ITAMS',
+    audience: 'ITAMS-users',
+    subject: user.id
   };
   
   logger.debug('JWT sign options', { options });
@@ -233,7 +250,8 @@ export function generateToken(user: { id: string; email: string; tenantId: strin
         emailType: typeof payload.email,
         tenantIdType: typeof payload.tenantId,
         roleType: typeof payload.role,
-        iatType: typeof payload.iat
+        iatType: typeof payload.iat,
+        jtiType: typeof payload.jti
       },
       hasJwtSecret: !!JWT_SECRET,
       jwtSecretType: typeof JWT_SECRET,
@@ -252,14 +270,55 @@ export function generateToken(user: { id: string; email: string; tenantId: strin
 }
 
 /**
+ * Generate a refresh token for a user
+ */
+export function generateRefreshToken(userId: string): string {
+  const payload = {
+    id: userId,
+    type: 'refresh',
+    iat: Math.floor(Date.now() / 1000),
+    jti: createHash('sha256').update(userId + Date.now().toString()).digest('hex').substring(0, 16)
+  };
+  
+  const options: jwt.SignOptions = {
+    expiresIn: REFRESH_TOKEN_EXPIRATION,
+    issuer: 'ITAMS',
+    audience: 'ITAMS-users',
+    subject: userId
+  };
+  
+  return jwt.sign(payload, JWT_SECRET, options);
+}
+
+/**
+ * Blacklist a token to prevent reuse
+ */
+export function blacklistToken(token: string): void {
+  tokenBlacklist.add(token);
+}
+
+/**
+ * Check if a token is blacklisted
+ */
+export function isTokenBlacklisted(token: string): boolean {
+  return tokenBlacklist.has(token);
+}
+
+/**
  * Verify a JWT token and return the payload with enhanced security
  */
 export function verifyToken(token: string): UserJwtPayload | null {
   try {
+    // Check if token is blacklisted
+    if (isTokenBlacklisted(token)) {
+      logger.warn('JWT token is blacklisted');
+      return null;
+    }
+    
     // Verify token with additional security checks
     const payload = jwt.verify(token, JWT_SECRET, {
-      // issuer: 'ITAMS',
-      // audience: 'ITAMS-users'
+      issuer: 'ITAMS',
+      audience: 'ITAMS-users'
     }) as UserJwtPayload
     
     // Additional validation
@@ -271,6 +330,36 @@ export function verifyToken(token: string): UserJwtPayload | null {
     return payload;
   } catch (error) {
     logger.warn('JWT token verification failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Verify a refresh token
+ */
+export function verifyRefreshToken(token: string): { id: string } | null {
+  try {
+    // Check if token is blacklisted
+    if (isTokenBlacklisted(token)) {
+      logger.warn('Refresh token is blacklisted');
+      return null;
+    }
+    
+    // Verify refresh token
+    const payload = jwt.verify(token, JWT_SECRET, {
+      issuer: 'ITAMS',
+      audience: 'ITAMS-users'
+    }) as { id: string, type: string };
+    
+    // Check if it's actually a refresh token
+    if (payload.type !== 'refresh') {
+      logger.warn('Token is not a refresh token');
+      return null;
+    }
+    
+    return { id: payload.id };
+  } catch (error) {
+    logger.warn('Refresh token verification failed:', error);
     return null;
   }
 }

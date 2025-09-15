@@ -10,6 +10,7 @@ import {
   errorResponse as apiErrorResponse
 } from './api-utils'
 import { hasPermission, ResourceType, PermissionAction } from './permissions'
+import { validateSearchInput } from '@/lib/security'
 
 // Only import Redis cache on the server side
 let CACHE_PREFIXES: any = null;
@@ -153,6 +154,12 @@ export class AssetApiHandler<T extends BaseAsset> {
     };
     
     this.resourceType = modelToResourceMap[this.operations.modelName] || 'assets';
+  }
+
+  // Helper method to get the correct Prisma model name
+  private getPrismaModel() {
+    // Prisma client uses lowercase 'pC' for the PC model
+    return this.operations.modelName === 'PC' ? this.db.pC : (this.db as any)[this.operations.modelName];
   }
 
   // Helper method to get optimized select fields based on asset type
@@ -339,6 +346,9 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // For full-text search, we need to use raw SQL queries
       if (search && this.operations.searchFields) {
+        // Sanitize search input to prevent injection
+        const sanitizedSearch = validateSearchInput(search);
+        
         // Use raw SQL for full-text search with search_vector
         const offset = (page - 1) * limit;
         const tableName = this.operations.modelName;
@@ -356,18 +366,20 @@ export class AssetApiHandler<T extends BaseAsset> {
         const actualTableName = tableNames[tableName] || tableName;
         
         // Build the search query using websearch_to_tsquery for better search experience
-        const searchQuery = search.trim();
+        const searchQuery = sanitizedSearch.trim();
         
         // Status filter
         let statusCondition = '';
         let statusValue = '';
         if (status) {
+          // Sanitize status input
+          const sanitizedStatus = validateSearchInput(status);
           if (this.operations.modelName === 'License') {
             statusCondition = `AND "updateStatus" = $3`;
-            statusValue = status;
+            statusValue = sanitizedStatus;
           } else if (this.operations.modelName !== 'Printer') {
             statusCondition = `AND "status" = $3`;
-            statusValue = status;
+            statusValue = sanitizedStatus;
           }
         }
         
@@ -492,7 +504,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         };
 
         const [assets, total] = await Promise.all([
-          (this.db as any)[this.operations.modelName].findMany({
+          this.getPrismaModel().findMany({
             where,
             select: selectFields,
             skip: (page - 1) * limit,
@@ -501,7 +513,7 @@ export class AssetApiHandler<T extends BaseAsset> {
               createdAt: 'desc'
             }
           }),
-          (this.db as any)[this.operations.modelName].count({ where })
+          this.getPrismaModel().count({ where })
         ]);
 
         const result = {
@@ -565,7 +577,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         ...this.getSelectFieldsForAssetType()
       };
       
-      const asset = await (this.db as any)[this.operations.modelName].findUnique({
+      const asset = await this.getPrismaModel().findUnique({
         where: { 
           id,
           tenantId: user.tenantId 
@@ -691,17 +703,17 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // Check if asset with unique field already exists
       if (this.operations.uniqueField && body[this.operations.uniqueField]) {
-        // For Printer model, we use findFirst instead of findUnique since we removed the @unique constraint
+        // For Printer and PC models, we use findFirst instead of findUnique since we removed the @unique constraint
         let existingAsset;
-        if (this.operations.modelName === 'Printer') {
-          existingAsset = await (this.db as any)[this.operations.modelName].findFirst({
+        if (this.operations.modelName === 'Printer' || this.operations.modelName === 'PC') {
+          existingAsset = await this.getPrismaModel().findFirst({
             where: { 
               [this.operations.uniqueField]: body[this.operations.uniqueField],
               tenantId: user.tenantId
             }
           });
         } else {
-          existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
+          existingAsset = await this.getPrismaModel().findUnique({
             where: { [this.operations.uniqueField]: body[this.operations.uniqueField] }
           });
         }
@@ -742,7 +754,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         return acc;
       }, {} as Partial<Omit<T, keyof BaseAsset>>);
 
-      const asset = await (this.db as any)[this.operations.modelName].create({
+      const asset = await this.getPrismaModel().create({
         data: {
           ...createData as any,
           tenantId: user.tenantId
@@ -796,16 +808,26 @@ export class AssetApiHandler<T extends BaseAsset> {
       return successResponse(asset, 201)
     } catch (error: any) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error(`Error creating ${this.operations.modelName} asset:`, error);
+        logger.error(`Error creating ${this.operations.modelName} asset:`, { 
+          error: error.message, 
+          stack: error.stack,
+          modelName: this.operations.modelName,
+          body: body
+        });
       }
       
       // Handle Prisma-specific errors
       if (error.code === 'P2002') {
         // Unique constraint violation
-        return conflictResponse('An asset with this identifier already exists.')
+        return conflictResponse('An asset with this identifier already exists.');
       }
       
-      return errorResponse('Failed to create asset. Please try again later.')
+      // Handle validation errors
+      if (error.message && error.message.includes('Validation')) {
+        return errorResponse(error.message, 400);
+      }
+      
+      return errorResponse('Failed to create asset. Please try again later.');
     }
   }
 
@@ -827,7 +849,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Check if asset exists and belongs to user's tenant
-      const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
+      const existingAsset = await this.getPrismaModel().findUnique({
         where: { 
           id,
           tenantId: user.tenantId 
@@ -950,10 +972,10 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Check if unique field is being updated and already exists for another asset
       if (this.operations.uniqueField && body[this.operations.uniqueField] && 
           body[this.operations.uniqueField] !== existingAsset[this.operations.uniqueField]) {
-        // For Printer model, we use findFirst instead of findUnique since we removed the @unique constraint
+        // For Printer and PC models, we use findFirst instead of findUnique since we removed the @unique constraint
         let existingAssetWithUniqueField;
-        if (this.operations.modelName === 'Printer') {
-          existingAssetWithUniqueField = await (this.db as any)[this.operations.modelName].findFirst({
+        if (this.operations.modelName === 'Printer' || this.operations.modelName === 'PC') {
+          existingAssetWithUniqueField = await this.getPrismaModel().findFirst({
             where: { 
               [this.operations.uniqueField]: body[this.operations.uniqueField],
               tenantId: user.tenantId,
@@ -961,7 +983,7 @@ export class AssetApiHandler<T extends BaseAsset> {
             }
           });
         } else {
-          existingAssetWithUniqueField = await (this.db as any)[this.operations.modelName].findUnique({
+          existingAssetWithUniqueField = await this.getPrismaModel().findUnique({
             where: { 
               [this.operations.uniqueField]: body[this.operations.uniqueField],
               NOT: { id: id }
@@ -1046,7 +1068,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       data: updateData 
     });
 
-      const asset = await (this.db as any)[this.operations.modelName].update({
+      const asset = await this.getPrismaModel().update({
         where: { 
           id,
           tenantId: user.tenantId 
@@ -1102,15 +1124,26 @@ export class AssetApiHandler<T extends BaseAsset> {
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
       
-      logger.error(`Error updating ${this.operations.modelName} asset:`, error)
+      logger.error(`Error updating ${this.operations.modelName} asset:`, { 
+        error: error.message, 
+        stack: error.stack,
+        modelName: this.operations.modelName,
+        assetId: id,
+        body: body
+      });
       
       // Handle Prisma-specific errors
       if (error.code === 'P2002') {
         // Unique constraint violation
-        return conflictResponse('An asset with this identifier already exists.')
+        return conflictResponse('An asset with this identifier already exists.');
       }
       
-      return errorResponse('Failed to update asset. Please try again later.')
+      // Handle validation errors
+      if (error.message && error.message.includes('Validation')) {
+        return errorResponse(error.message, 400);
+      }
+      
+      return errorResponse('Failed to update asset. Please try again later.');
     }
   }
 
@@ -1124,7 +1157,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Check if asset exists and belongs to user's tenant
-      const existingAsset = await (this.db as any)[this.operations.modelName].findUnique({
+      const existingAsset = await this.getPrismaModel().findUnique({
         where: { 
           id,
           tenantId: user.tenantId 
@@ -1150,7 +1183,7 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // Delete the asset if it exists
       if (existingAsset) {
-        await (this.db as any)[this.operations.modelName].delete({
+        await this.getPrismaModel().delete({
           where: { 
             id,
             tenantId: user.tenantId 
@@ -1216,7 +1249,12 @@ export class AssetApiHandler<T extends BaseAsset> {
         return notFoundResponse(`${this.operations.modelName} asset not found`)
       }
       
-      logger.error(`Error deleting ${this.operations.modelName} asset:`, error);
+      logger.error(`Error deleting ${this.operations.modelName} asset:`, { 
+        error: error.message, 
+        stack: error.stack,
+        modelName: this.operations.modelName,
+        assetId: id
+      });
       return errorResponse('Failed to delete asset. Please try again later.')
     }
   }
@@ -1245,7 +1283,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         const batchIds = ids.slice(i, i + batchSize);
         
         // Check if all assets in batch exist and belong to user's tenant
-        const existingAssets = await (this.db as any)[this.operations.modelName].findMany({
+        const existingAssets = await this.getPrismaModel().findMany({
           where: { 
             id: { in: batchIds },
             tenantId: user.tenantId 
@@ -1293,7 +1331,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           await Promise.all(auditLogPromises);
 
           // Delete only the assets that exist
-          const deleteResult = await (this.db as any)[this.operations.modelName].deleteMany({
+          const deleteResult = await this.getPrismaModel().deleteMany({
             where: { 
               id: { in: foundIds }, // Only delete assets that were found
               tenantId: user.tenantId 

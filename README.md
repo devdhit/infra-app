@@ -14,6 +14,7 @@ A comprehensive IT asset management solution built with modern web technologies.
 - [Excel Export Functionality](#excel-export-functionality)
 - [Role-Based Access Control](#role-based-access-control)
 - [Caching with Redis](#caching-with-redis)
+- [Security Implementation](#security-implementation)
 - [Deployment](#deployment)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
@@ -191,6 +192,10 @@ The database schema is designed with multi-tenancy in mind, featuring the follow
 - **History** - Audit trail for all changes
 
 For detailed schema information, refer to `prisma/schema.prisma`.
+
+## Security Implementation
+
+The ITAMS application implements comprehensive security measures to protect against common vulnerabilities and ensure data integrity. For detailed information about the security implementation, please refer to the [Security Documentation](./docs/SECURITY.md).
 
 ## API Documentation
 

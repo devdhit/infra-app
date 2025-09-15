@@ -37,9 +37,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const resolvedParams = await params;
     
     return await pcHandler.getById(user, resolvedParams.id)
-  } catch (error) {
-    logger.error('Error in PC GET by ID route:', error)
-    return errorResponse('Failed to fetch PC asset details. Please try again later.')
+  } catch (error: any) {
+    logger.error('Error in PC GET by ID route:', { error: error.message, stack: error.stack });
+    return errorResponse('Failed to fetch PC asset details. Please try again later.');
   }
 }
 
@@ -62,9 +62,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
     
     return await pcHandler.update(user, resolvedParams.id, body)
-  } catch (error) {
-    logger.error('Error in PC PUT route:', error)
-    return errorResponse('Failed to update PC asset. Please try again later.')
+  } catch (error: any) {
+    logger.error('Error in PC PUT route:', { error: error.message, stack: error.stack });
+    return errorResponse('Failed to update PC asset. Please try again later.');
   }
 }
 
@@ -80,8 +80,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const resolvedParams = await params;
 
     return await pcHandler.delete(user, resolvedParams.id)
-  } catch (error) {
-    logger.error('Error in PC DELETE route:', error)
-    return errorResponse('Failed to delete PC asset. Please try again later.')
+  } catch (error: any) {
+    logger.error('Error in PC DELETE route:', { error: error.message, stack: error.stack });
+    return errorResponse('Failed to delete PC asset. Please try again later.');
   }
 }

@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
 // Remove the CacheManager import as we'll use Redis instead
 import logger from '@/lib/logger';
+import { validateSearchInput } from '@/lib/security';
 
 // Only import Redis cache on the server side
 let redisCache: any = null;
@@ -198,16 +199,19 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
 
     // Add search condition if provided with optimized indexing
     if (search) {
+      // Sanitize search input to prevent injection
+      const sanitizedSearch = validateSearchInput(search);
+      
       // Create search conditions for indexed fields
       whereClause.OR = searchFields.map(field => ({
-        [field]: { contains: search, mode: 'insensitive' }
+        [field]: { contains: sanitizedSearch, mode: 'insensitive' }
       }));
       
       // Also search in custom fields using proper JSON search
       whereClause.OR.push({
         customFields: {
           path: [],
-          string_contains: search
+          string_contains: sanitizedSearch
         }
       });
     }
@@ -377,12 +381,17 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
           });
       }
       
+      // Sanitize search input to prevent injection
+      const sanitizedSearch = validateSearchInput(search);
+      
       // Add search parameter to args
-      queryArgs.push(search);
+      queryArgs.push(sanitizedSearch);
       
       // Add status filter if provided
       if (status) {
-        queryArgs.push(status);
+        // Sanitize status input
+        const sanitizedStatus = validateSearchInput(status);
+        queryArgs.push(sanitizedStatus);
         const statusField = assetType === 'license' ? 'updateStatus' : 'status';
         baseQuery += ` AND "${statusField}" = $${queryArgs.length}`;
         countQuery += ` AND "${statusField}" = $${queryArgs.length}`;

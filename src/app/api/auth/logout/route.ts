@@ -1,48 +1,46 @@
 import { NextRequest } from 'next/server'
-import { 
-  successResponse, 
-  errorResponse 
-} from '@/lib/api-utils'
-import { getCurrentUser } from '@/lib/auth'
+import { successResponse, errorResponse } from '@/lib/api-utils'
+import { blacklistToken } from '@/lib/auth'
 import logger from '@/lib/logger'
 
-// Generate a unique request ID for tracking
-function generateRequestId() {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-}
-
-// POST /api/auth/logout - User logout
+// POST /api/auth/logout - User logout with token blacklisting
 export async function POST(request: NextRequest) {
-  const requestId = generateRequestId();
-  
   try {
-    const user = await getCurrentUser(request)
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    let token: string | undefined
     
-    if (!user) {
-      logger.warn('Unauthorized logout attempt', { 
-        requestId, 
-        component: 'auth-logout' 
-      });
-      return errorResponse('Unauthorized', 401, { requestId })
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7) // Remove 'Bearer ' prefix
     }
-
-    // Log successful logout
-    logger.info('User logged out successfully', { 
-      requestId, 
-      userId: user.id, 
-      component: 'auth-logout' 
-    });
-
-    // For JWT-based auth, we just return success
-    // The client will clear the token
-    return successResponse(null)
+    
+    // If we have a token, blacklist it
+    if (token) {
+      blacklistToken(token)
+    }
+    
+    // Also check for refresh token in cookies
+    const cookieHeader = request.headers.get('cookie')
+    if (cookieHeader) {
+      const cookies = cookieHeader.split(';').map(cookie => cookie.trim())
+      const refreshTokenCookie = cookies.find(cookie => cookie.startsWith('refreshToken='))
+      if (refreshTokenCookie) {
+        const refreshToken = refreshTokenCookie.split('=')[1]
+        if (refreshToken) {
+          blacklistToken(refreshToken)
+        }
+      }
+    }
+    
+    // Return success response
+    const response = successResponse({ message: 'Logged out successfully' })
+    
+    // Clear the refresh token cookie
+    response.headers.set('Set-Cookie', 'refreshToken=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0')
+    
+    return response
   } catch (error: any) {
-    logger.error('Error in logout route', { 
-      requestId, 
-      error: error.message, 
-      stack: error.stack, 
-      component: 'auth-logout' 
-    });
-    return errorResponse('Internal server error', 500, { requestId })
+    logger.error('Error during logout:', error)
+    return errorResponse('Internal server error')
   }
 }

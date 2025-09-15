@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
     }
     
     return await pcHandler.bulkDelete(user, body.ids)
-  } catch (error) {
-    logger.error('Error in PC bulk DELETE route:', error)
+  } catch (error: any) {
+    logger.error('Error in PC bulk DELETE route:', { error: error.message, stack: error.stack });
     return errorResponse('Internal server error')
   }
 }
