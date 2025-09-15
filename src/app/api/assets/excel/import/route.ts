@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     const totalRows = jsonData.length
 
     // Process data in batches to avoid "Maximum call stack size exceeded" error
-    const batchSize = 50; // Reduce batch size to prevent connection pool exhaustion
+    const batchSize = 100; // Increase batch size from 50 to 100 to reduce overhead
     for (let i = 0; i < jsonData.length; i += batchSize) {
       // Get a batch of rows
       const batch = jsonData.slice(i, i + batchSize);
@@ -207,6 +207,9 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }, 'import');
               
+              // Increment createdCount after successful creation
+              createdCount++;
+              
               // Real-time event emission removed
               
               // Invalidate Redis cache for PC assets
@@ -214,8 +217,8 @@ export async function POST(request: NextRequest) {
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:PC:${user.tenantId}:*`);
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:PC:${user.tenantId}:*`);
                 
-                // Increase delay to ensure cache invalidation is complete
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Remove the artificial delay that was causing performance issues
+                // await new Promise(resolve => setTimeout(resolve, 1500));
               }
               break;
 
@@ -441,6 +444,9 @@ export async function POST(request: NextRequest) {
                 tenantId: user.tenantId
               }, 'import');
               
+              // Increment createdCount after successful creation
+              createdCount++;
+              
               // Real-time event emission removed
               
               // Invalidate Redis cache for Laptop assets
@@ -448,8 +454,8 @@ export async function POST(request: NextRequest) {
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:Laptop:${user.tenantId}:*`);
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:Laptop:${user.tenantId}:*`);
                 
-                // Increase delay to ensure cache invalidation is complete
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Remove the artificial delay that was causing performance issues
+                // await new Promise(resolve => setTimeout(resolve, 1500));
               }
               break;
 
@@ -599,6 +605,9 @@ export async function POST(request: NextRequest) {
                       tenantId: user.tenantId
                     }
                   });
+                  
+                  // Increment createdCount after successful creation
+                  createdCount++;
                   
                   // Real-time event emission removed
                   
@@ -868,6 +877,9 @@ export async function POST(request: NextRequest) {
                 }
               });
               
+              // Increment createdCount after successful creation
+              createdCount++;
+              
               // Real-time event emission removed
               
               // Invalidate Redis cache for License assets
@@ -982,6 +994,9 @@ export async function POST(request: NextRequest) {
                   tenantId: user.tenantId
                 }
               });
+              
+              // Increment createdCount after successful creation
+              createdCount++;
               
               // Real-time event emission removed
               
@@ -1119,6 +1134,9 @@ export async function POST(request: NextRequest) {
                 }
               });
               
+              // Increment createdCount after successful creation
+              createdCount++;
+              
               // Real-time event emission removed
               
               // Invalidate Redis cache for Internet assets
@@ -1137,15 +1155,17 @@ export async function POST(request: NextRequest) {
               continue
           }
 
-          createdCount++
+          // Remove the global createdCount++ since we're incrementing in each case
         } catch (error: any) {
           errors.push(`Error processing row: ${error.message}`)
         }
       }
       
+      // Remove the global createdCount++ that was here
       // Add a small delay between batches to prevent overwhelming the server and database connection pool
       if (i + batchSize < jsonData.length) {
-        await new Promise(resolve => setTimeout(resolve, 10)); // Increased delay to 10ms
+        // Reduce delay from 10ms to 1ms to improve performance
+        await new Promise(resolve => setTimeout(resolve, 1)); // Reduced delay to 1ms
       }
     }
 

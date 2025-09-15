@@ -638,7 +638,7 @@ export function AssetList({
     refetchCustomFields();
   }, [assetType, refetchCustomFields]);
   
-  // Initialize column visibility and order when assetType or columns change
+  // Initialize column visibility and order when assetType or allColumns change
   useEffect(() => {
     // Try to load saved column visibility from localStorage
     let savedVisibility: Record<string, boolean> | null = null;
@@ -652,20 +652,20 @@ export function AssetList({
       console.warn('Failed to parse saved column visibility', e);
     }
     
-    // Initialize column visibility with saved data or defaults for standard columns only
+    // Initialize column visibility with saved data or defaults for all columns
     const initialVisibility: Record<string, boolean> = {};
-    columns.forEach(column => {
+    allColumns.forEach(column => {
       initialVisibility[column.key] = savedVisibility?.[column.key] ?? true;
     });
     
     setColumnVisibility(initialVisibility);
-    setColumnOrder(columns.map(column => column.key));
-  }, [assetType, columns]);
+    setColumnOrder(allColumns.map(column => column.key));
+  }, [assetType, allColumns]);
 
-  // Update column visibility when custom fields data becomes available
+  // Update column visibility when custom fields data becomes available or allColumns change
   useEffect(() => {
     // Only update when we have all the data we need
-    if (customFieldsData !== undefined && columns.length > 0) {
+    if ((customFieldsData !== undefined || allColumns.length > columns.length) && columns.length > 0) {
       // Try to load saved column visibility from localStorage
       let savedVisibility: Record<string, boolean> | null = null;
       try {
@@ -682,7 +682,7 @@ export function AssetList({
       const updatedVisibility: Record<string, boolean> = {};
       
       // Add all standard columns with their saved visibility or default to true
-      columns.forEach(column => {
+      allColumns.forEach(column => {
         updatedVisibility[column.key] = savedVisibility?.[column.key] ?? true;
       });
       
@@ -690,7 +690,7 @@ export function AssetList({
       if (customFieldsData) {
         customFieldsData.forEach(field => {
           // Only add custom fields that don't conflict with standard columns
-          if (!columns.some(c => c.key === field.name)) {
+          if (!allColumns.some(c => c.key === field.name)) {
             updatedVisibility[field.name] = savedVisibility?.[field.name] ?? true;
           }
         });
@@ -703,7 +703,7 @@ export function AssetList({
         // Preserve existing order but add any new custom field columns at the end
         const existingOrder = [...columnOrder];
         const customFieldKeys = (customFieldsData || [])
-          .filter(field => !columns.some(c => c.key === field.name))
+          .filter(field => !allColumns.some(c => c.key === field.name))
           .map(field => field.name);
         
         // Add any new custom field columns that aren't already in the order
@@ -714,15 +714,15 @@ export function AssetList({
       } else {
         // If columnOrder is empty, initialize it with all columns
         const allColumnKeys = [
-          ...columns.map(c => c.key),
+          ...allColumns.map(c => c.key),
           ...(customFieldsData || [])
-            .filter(field => !columns.some(c => c.key === field.name))
+            .filter(field => !allColumns.some(c => c.key === field.name))
             .map(field => field.name)
         ];
         setColumnOrder(allColumnKeys);
       }
     }
-  }, [customFieldsData, columns, columnOrder, assetType]);
+  }, [customFieldsData, allColumns, columnOrder, assetType, columns]);
 
   // Get visible columns based on column visibility state
   const visibleColumnsData = useMemo(() => {
