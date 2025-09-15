@@ -30,6 +30,7 @@ type RedisClientType = {
   quit: () => Promise<void>;
   on: (event: string, callback: (...args: any[]) => void) => void;
   ping: () => Promise<string>;
+  isOpen: boolean;
 };
 
 class RedisCache {
@@ -39,6 +40,9 @@ class RedisCache {
   private connectionAttempts = 0;
   private maxConnectionAttempts = 5;
   private retryDelay = 1000; // 1 second initial delay
+  private healthCheckInterval: NodeJS.Timeout | null = null;
+  private lastHealthCheck = 0;
+  private healthCheckThreshold = 30000; // 30 seconds
 
   constructor() {
     // Only initialize Redis on the server side
@@ -105,6 +109,8 @@ class RedisCache {
         logger.info('Redis Client Ready', context);
         this.isConnected = true;
         this.connectionAttempts = 0; // Reset connection attempts on successful connection
+        // Start health check interval when client is ready
+        this.startHealthCheckInterval();
       });
 
       await this.client.connect();
@@ -132,28 +138,79 @@ class RedisCache {
   }
 
   /**
+   * Start periodic health check interval
+   */
+  private startHealthCheckInterval(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+    
+    this.healthCheckInterval = setInterval(async () => {
+      await this.performHealthCheck();
+    }, this.healthCheckThreshold);
+  }
+
+  /**
+   * Perform a health check on the Redis connection
+   */
+  private async performHealthCheck(): Promise<boolean> {
+    const context: LogData = { component: 'redis-cache' };
+    
+    // Skip if not connected or no client
+    if (!this.client || !this.isConnected) {
+      return false;
+    }
+    
+    try {
+      const pingResult = await this.client.ping();
+      this.lastHealthCheck = Date.now();
+      logger.debug('Redis connection health check passed', { 
+        ...context, 
+        pingResult 
+      });
+      return true;
+    } catch (error: any) {
+      logger.warn('Redis connection health check failed', { 
+        ...context, 
+        error: error.message,
+        stack: error.stack
+      });
+      this.isConnected = false;
+      return false;
+    }
+  }
+
+  /**
    * Ensure Redis connection is established with health check
    */
   private async ensureConnection(): Promise<boolean> {
     const context: LogData = { component: 'redis-cache' };
     
-    // If already connected, perform a health check
+    // If already connected, perform a health check if enough time has passed
     if (this.isConnected && this.client) {
-      try {
-        // Perform a simple ping to check if the connection is still alive
-        const pingResult = await this.client.ping();
-        logger.debug('Redis connection health check passed', { 
-          ...context, 
-          pingResult 
-        });
+      const now = Date.now();
+      // Only perform health check if enough time has passed since last check
+      if (now - this.lastHealthCheck > this.healthCheckThreshold) {
+        try {
+          // Perform a simple ping to check if the connection is still alive
+          const pingResult = await this.client.ping();
+          this.lastHealthCheck = now;
+          logger.debug('Redis connection health check passed', { 
+            ...context, 
+            pingResult 
+          });
+          return true;
+        } catch (error: any) {
+          logger.warn('Redis connection health check failed', { 
+            ...context, 
+            error: error.message,
+            stack: error.stack
+          });
+          this.isConnected = false;
+        }
+      } else {
+        // Connection is recent enough, assume it's still good
         return true;
-      } catch (error: any) {
-        logger.warn('Redis connection health check failed', { 
-          ...context, 
-          error: error.message,
-          stack: error.stack
-        });
-        this.isConnected = false;
       }
     }
 
@@ -200,7 +257,7 @@ class RedisCache {
     if (typeof window !== 'undefined') {
       return false;
     }
-    return this.isConnected && this.client !== null;
+    return this.isConnected && this.client !== null && this.client.isOpen;
   }
 
   /**
@@ -458,12 +515,121 @@ class RedisCache {
   }
 
   /**
+   * Warm up cache with multiple key-value pairs efficiently
+   * @param entries - Array of key-value pairs to cache
+   * @param ttl - Time to live in seconds (optional)
+   */
+  public async warmUp(entries: { key: string; value: any; ttl?: number }[]): Promise<boolean> {
+    // Always return false on client side
+    if (typeof window !== 'undefined') {
+      return false;
+    }
+    
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      logger.warn('Unable to warm up cache: Redis not connected');
+      return false;
+    }
+
+    if (!this.isReady()) {
+      logger.warn('Unable to warm up cache: Redis not ready');
+      return false;
+    }
+
+    try {
+      // Process entries in batches to avoid overwhelming Redis
+      const batchSize = 10;
+      for (let i = 0; i < entries.length; i += batchSize) {
+        const batch = entries.slice(i, i + batchSize);
+        const promises = batch.map(entry => {
+          const serializedValue = JSON.stringify(entry.value);
+          if (entry.ttl) {
+            return this.client!.setEx(entry.key, entry.ttl, serializedValue);
+          } else {
+            return this.client!.set(entry.key, serializedValue);
+          }
+        });
+        
+        await Promise.all(promises);
+      }
+      
+      logger.info(`Cache warmed up with ${entries.length} entries`, { component: 'redis-cache' });
+      return true;
+    } catch (error: any) {
+      logger.error('Error warming up cache', { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
+      return false;
+    }
+  }
+
+  /**
+   * Get multiple values from cache efficiently
+   * @param keys - Array of cache keys
+   * @returns Array of cached values in the same order as keys
+   */
+  public async getMulti<T>(keys: string[]): Promise<(T | null)[]> {
+    // Always return null array on client side
+    if (typeof window !== 'undefined') {
+      return keys.map(() => null);
+    }
+    
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      logger.warn('Unable to get multiple cache keys: Redis not connected');
+      return keys.map(() => null);
+    }
+
+    if (!this.isReady()) {
+      logger.warn('Unable to get multiple cache keys: Redis not ready');
+      return keys.map(() => null);
+    }
+
+    try {
+      // Use Promise.all for parallel execution
+      const results = await Promise.all(keys.map(key => this.client!.get(key)));
+      
+      return results.map(result => {
+        if (result === null) return null;
+        try {
+          return JSON.parse(result) as T;
+        } catch (parseError) {
+          logger.error('Error parsing cached value', { 
+            component: 'redis-cache', 
+            error: (parseError as Error).message 
+          });
+          return null;
+        }
+      });
+    } catch (error: any) {
+      logger.error('Error getting multiple cache keys', { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
+      return keys.map(() => null);
+    }
+  }
+
+  /**
    * Gracefully disconnect the Redis client
    */
   public async disconnect(): Promise<void> {
     // Do nothing on client side
     if (typeof window !== 'undefined') {
       return;
+    }
+    
+    // Clear health check interval
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
     }
     
     if (this.client && this.isConnected) {

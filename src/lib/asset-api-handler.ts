@@ -12,9 +12,9 @@ import {
 import { hasPermission, ResourceType, PermissionAction } from './permissions'
 
 // Only import Redis cache on the server side
-let redisCache: any = null;
 let CACHE_PREFIXES: any = null;
 let CACHE_TTL: any = null;
+let cacheManager: any = null;
 
 // Import logger for better error handling
 let logger: any = null;
@@ -35,9 +35,11 @@ if (typeof window === 'undefined') {
 if (typeof window === 'undefined') {
   try {
     const redisModule = require('./redis-cache');
-    redisCache = redisModule.default;
     CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
     CACHE_TTL = redisModule.CACHE_TTL;
+    
+    // Import the new cache manager
+    cacheManager = require('./cache-manager').default;
   } catch (error: any) {
     logger.warn('Redis cache not available, using fallback', { 
       component: 'asset-api-handler', 
@@ -315,8 +317,8 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // Create cache key for this specific query if Redis is available
       let cacheKey: string | null = null;
-      if (redisCache && CACHE_PREFIXES) {
-        cacheKey = redisCache.createKey(
+      if (cacheManager && CACHE_PREFIXES) {
+        cacheKey = cacheManager.createCompositeKey(
           CACHE_PREFIXES.ASSET_LIST,
           this.operations.modelName,
           user.tenantId,
@@ -328,10 +330,9 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Try to get cached result first if Redis is available
-      if (redisCache && cacheKey) {
-        const cachedResult = await redisCache.get(cacheKey);
+      if (cacheManager && cacheKey) {
+        const cachedResult = await cacheManager.get(cacheKey, { component: 'asset-api-handler' });
         if (cachedResult) {
-          logger.debug(`Cache hit for asset list: ${cacheKey}`);
           return successResponse(cachedResult);
         }
       }
@@ -461,8 +462,8 @@ export class AssetApiHandler<T extends BaseAsset> {
         };
         
         // Cache the result if Redis is available
-        if (redisCache && cacheKey) {
-          await redisCache.set(cacheKey, result, CACHE_TTL ? CACHE_TTL.ASSET_LIST : 120);
+        if (cacheManager && cacheKey) {
+          await cacheManager.set(cacheKey, result, CACHE_TTL ? CACHE_TTL.ASSET_LIST : 120, { component: 'asset-api-handler' });
         }
         
         return successResponse(result);
@@ -514,8 +515,8 @@ export class AssetApiHandler<T extends BaseAsset> {
         };
         
         // Cache the result if Redis is available
-        if (redisCache && cacheKey) {
-          await redisCache.set(cacheKey, result, CACHE_TTL ? CACHE_TTL.ASSET_LIST : 120);
+        if (cacheManager && cacheKey) {
+          await cacheManager.set(cacheKey, result, CACHE_TTL ? CACHE_TTL.ASSET_LIST : 120, { component: 'asset-api-handler' });
         }
 
         return successResponse(result);
@@ -537,8 +538,8 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // Create cache key for this specific asset if Redis is available
       let cacheKey: string | null = null;
-      if (redisCache && CACHE_PREFIXES) {
-        cacheKey = redisCache.createKey(
+      if (cacheManager && CACHE_PREFIXES) {
+        cacheKey = cacheManager.createCompositeKey(
           CACHE_PREFIXES.ASSETS,
           this.operations.modelName,
           user.tenantId,
@@ -547,10 +548,9 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Try to get cached result first if Redis is available
-      if (redisCache && cacheKey) {
-        const cachedAsset = await redisCache.get(cacheKey);
+      if (cacheManager && cacheKey) {
+        const cachedAsset = await cacheManager.get(cacheKey, { component: 'asset-api-handler' });
         if (cachedAsset) {
-          logger.debug(`Cache hit for asset: ${cacheKey}`);
           return successResponse(cachedAsset);
         }
       }
@@ -578,8 +578,8 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Cache the asset if Redis is available
-      if (redisCache && cacheKey) {
-        await redisCache.set(cacheKey, asset, CACHE_TTL ? CACHE_TTL.ASSETS : 300);
+      if (cacheManager && cacheKey) {
+        await cacheManager.set(cacheKey, asset, CACHE_TTL ? CACHE_TTL.ASSETS : 300, { component: 'asset-api-handler' });
       }
 
       return successResponse(asset)
@@ -752,34 +752,22 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Use cache invalidation strategy for better performance
-      if (redisCache && CACHE_PREFIXES) {
+      if (cacheManager && CACHE_PREFIXES) {
         // Asset is new, so no need to delete it from cache
         // Just invalidate ALL lists so they will fetch fresh data on next request
-        const patternsToDelete = [
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*:*`
-        ];
+        const assetListPattern = cacheManager.createCompositeKey(
+          CACHE_PREFIXES.ASSET_LIST,
+          this.operations.modelName,
+          user.tenantId,
+          '*'
+        );
         
-        // Delete patterns with optimized parallel processing
-        const deletionResults = await Promise.all(patternsToDelete.map(async pattern => {
-          try {
-            const result = await redisCache.delByPattern(pattern);
-            logger.debug(`Deleted ${result} cache entries for pattern: ${pattern}`);
-            return result;
-          } catch (error: any) {
-            logger.error(`Failed to delete cache pattern ${pattern}:`, error);
-            return 0;
-          }
-        }));
-        
-        // Log total deletions
-        const totalDeleted = deletionResults.reduce((sum, count) => sum + count, 0);
-        logger.debug(`Total cache entries deleted: ${totalDeleted}`);
-        
-        // Longer delay to ensure cache operations complete
-        await new Promise(resolve => setTimeout(resolve, 300));
+        try {
+          const deletedCount = await cacheManager.invalidateByPattern(assetListPattern, { component: 'asset-api-handler' });
+          logger.debug(`Invalidated ${deletedCount} asset list cache entries for ${this.operations.modelName}`);
+        } catch (error: any) {
+          logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
+        }
       }
 
       return successResponse(asset, 201)
@@ -1052,9 +1040,9 @@ export class AssetApiHandler<T extends BaseAsset> {
       })
 
       // Use cache invalidation strategy for better performance
-      if (redisCache && CACHE_PREFIXES) {
+      if (cacheManager && CACHE_PREFIXES) {
         // Create cache key for the updated asset
-        const assetCacheKey = redisCache.createKey(
+        const assetCacheKey = cacheManager.createCompositeKey(
           CACHE_PREFIXES.ASSETS,
           this.operations.modelName,
           user.tenantId,
@@ -1063,39 +1051,25 @@ export class AssetApiHandler<T extends BaseAsset> {
         
         // Remove the specific asset from cache (will be reloaded on next request)
         try {
-          await redisCache.del(assetCacheKey);
+          await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
         } catch (error: any) {
           logger.warn(`Failed to delete asset cache key ${assetCacheKey}:`, error);
         }
         
-        // Invalidate ALL cache for asset lists to ensure they reflect the updated asset
-        // Use a more comprehensive pattern to match all possible cache key variations
-        // The cache key format is: asset_list:<model>:<tenantId>:<page>:<limit>:<search>:<status>
-        const patternsToDelete = [
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*:*`
-        ];
+        // Invalidate cache entries more efficiently
+        const assetListPattern = cacheManager.createCompositeKey(
+          CACHE_PREFIXES.ASSET_LIST,
+          this.operations.modelName,
+          user.tenantId,
+          '*'
+        );
         
-        // Delete patterns with optimized parallel processing
-        const deletionResults = await Promise.all(patternsToDelete.map(async pattern => {
-          try {
-            const result = await redisCache.delByPattern(pattern);
-            logger.debug(`Deleted ${result} cache entries for pattern: ${pattern}`);
-            return result;
-          } catch (error: any) {
-            logger.error(`Failed to delete cache pattern ${pattern}:`, error);
-            return 0;
-          }
-        }));
-        
-        // Log total deletions
-        const totalDeleted = deletionResults.reduce((sum, count) => sum + count, 0);
-        logger.debug(`Total cache entries deleted: ${totalDeleted}`);
-        
-        // Longer delay to ensure cache operations complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          const deletedCount = await cacheManager.invalidateByPattern(assetListPattern, { component: 'asset-api-handler' });
+          logger.debug(`Invalidated ${deletedCount} asset list cache entries for ${this.operations.modelName}`);
+        } catch (error: any) {
+          logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
+        }
       }
 
       return successResponse(asset)
@@ -1163,9 +1137,9 @@ export class AssetApiHandler<T extends BaseAsset> {
       })
 
       // Use cache invalidation strategy for better performance
-      if (redisCache && CACHE_PREFIXES) {
+      if (cacheManager && CACHE_PREFIXES) {
         // Create cache key for the deleted asset
-        const assetCacheKey = redisCache.createKey(
+        const assetCacheKey = cacheManager.createCompositeKey(
           CACHE_PREFIXES.ASSETS,
           this.operations.modelName,
           user.tenantId,
@@ -1174,37 +1148,25 @@ export class AssetApiHandler<T extends BaseAsset> {
         
         // Remove the asset from cache
         try {
-          await redisCache.del(assetCacheKey);
+          await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
         } catch (error: any) {
           logger.warn(`Failed to delete asset cache key ${assetCacheKey}:`, error);
         }
         
-        // Invalidate ALL cache for asset lists to ensure they reflect the deleted asset
-        const patternsToDelete = [
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*:*:*:*`
-        ];
+        // Invalidate cache entries more efficiently
+        const assetListPattern = cacheManager.createCompositeKey(
+          CACHE_PREFIXES.ASSET_LIST,
+          this.operations.modelName,
+          user.tenantId,
+          '*'
+        );
         
-        // Delete patterns with optimized parallel processing
-        const deletionResults = await Promise.all(patternsToDelete.map(async pattern => {
-          try {
-            const result = await redisCache.delByPattern(pattern);
-            logger.debug(`Deleted ${result} cache entries for pattern: ${pattern}`);
-            return result;
-          } catch (error: any) {
-            logger.error(`Failed to delete cache pattern ${pattern}:`, error);
-            return 0;
-          }
-        }));
-        
-        // Log total deletions
-        const totalDeleted = deletionResults.reduce((sum, count) => sum + count, 0);
-        logger.debug(`Total cache entries deleted: ${totalDeleted}`);
-        
-        // Longer delay to ensure cache operations complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          const deletedCount = await cacheManager.invalidateByPattern(assetListPattern, { component: 'asset-api-handler' });
+          logger.debug(`Invalidated ${deletedCount} asset list cache entries for ${this.operations.modelName}`);
+        } catch (error: any) {
+          logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
+        }
       }
 
       return successResponse<null>(null, 204)
@@ -1324,31 +1286,22 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Use cache invalidation strategy for better performance
-      if (redisCache && CACHE_PREFIXES) {
-        // Invalidate cache for all assets of this type and tenant
-        const patternsToDelete = [
-          `${CACHE_PREFIXES.ASSETS}:${this.operations.modelName}:${user.tenantId}:*`,
-          `${CACHE_PREFIXES.ASSET_LIST}:${this.operations.modelName}:${user.tenantId}:*`
-        ];
+      if (cacheManager && CACHE_PREFIXES) {
+        // More efficient cache invalidation for bulk operations
+        // Instead of multiple pattern deletions, use a single comprehensive pattern
+        const comprehensivePattern = cacheManager.createCompositeKey(
+          '*',
+          this.operations.modelName,
+          user.tenantId,
+          '*'
+        );
         
-        // Delete patterns with optimized parallel processing
-        const deletionResults = await Promise.all(patternsToDelete.map(async pattern => {
-          try {
-            const result = await redisCache.delByPattern(pattern);
-            logger.debug(`Deleted ${result} cache entries for pattern: ${pattern}`);
-            return result;
-          } catch (error: any) {
-            logger.error(`Failed to delete cache pattern ${pattern}:`, error);
-            return 0;
-          }
-        }));
-        
-        // Log total deletions
-        const totalDeleted = deletionResults.reduce((sum, count) => sum + count, 0);
-        logger.debug(`Total cache entries deleted: ${totalDeleted}`);
-        
-        // Longer delay for better performance
-        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          const deletedCount = await cacheManager.invalidateByPattern(comprehensivePattern, { component: 'asset-api-handler' });
+          logger.debug(`Invalidated ${deletedCount} cache entries for bulk delete operation on ${this.operations.modelName}`);
+        } catch (error: any) {
+          logger.error(`Failed to invalidate cache for bulk delete on ${this.operations.modelName}:`, error);
+        }
       }
 
       // React Query cache invalidation removed - relying solely on Redis cache

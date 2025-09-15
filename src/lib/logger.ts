@@ -30,6 +30,7 @@ interface LogData {
  */
 function log(level: LogLevel, message: any, ...optionalParams: any[]) {
   // In production, only log info, warnings, and errors (not debug)
+  // But we want to show info-level messages in production as per requirements
   if (!isDevelopment && level === 'debug') {
     return;
   }
@@ -67,6 +68,7 @@ function log(level: LogLevel, message: any, ...optionalParams: any[]) {
   
   formattedMessage += `: ${logMessage}`;
   
+  // Always log info, warn, and error messages in production
   switch (level) {
     case 'debug':
       console.log(formattedMessage, ...optionalParams);
@@ -122,11 +124,12 @@ export function structuredLog(level: LogLevel, context: LogData, message: string
  * Log with emoji prefix for better visual identification
  */
 export function emojiLog(emoji: string, message: any, ...optionalParams: any[]) {
+  // Always log emoji messages in production as well, but without emoji in production logs
   if (isDevelopment) {
     console.log(`[${getTimestamp()}] ${emoji} ${message}`, ...optionalParams);
   } else {
-    // In production, still log but without emoji
-    info(`${emoji} ${message}`, ...optionalParams);
+    // In production, still log but without emoji for cleaner logs
+    info(`${message}`, ...optionalParams);
   }
 }
 
