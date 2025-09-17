@@ -741,13 +741,13 @@ export async function POST(request: NextRequest) {
                 delete row.IP;
               }
               
-              // Handle updateStatus field - convert ON to working, OFF to leave
-              if (row.updateStatus) {
-                const status = String(row.updateStatus).toUpperCase();
+              // Handle status field - convert ON to working, OFF to leave
+              if (row.status) {
+                const status = String(row.status).toUpperCase();
                 if (status === 'ON') {
-                  row.updateStatus = 'working';
+                  row.status = 'working';
                 } else if (status === 'OFF') {
-                  row.updateStatus = 'leave';
+                  row.status = 'leave';
                 }
               }
               

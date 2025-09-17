@@ -13,9 +13,11 @@ import logger from '@/lib/logger'
 // Add the Internet export function
 import { exportInternetToExcel } from '@/lib/excel'
 import { createAuditLog } from '@/lib/audit-logs'
+import XLSX from 'xlsx-populate'
 
 // Define types for our data
 type AssetType = 'pc' | 'laptop' | 'printer' | 'license' | 'warehouse' | 'internet'
+type ExportType = 'template' | 'all-columns'
 
 // GET /api/assets/excel/export - Export assets to Excel
 export async function GET(request: NextRequest) {
@@ -49,9 +51,10 @@ export async function GET(request: NextRequest) {
     const assetType = searchParams.get('assetType') as AssetType | null
     const selectedIds = searchParams.get('selectedIds')
     const department = searchParams.get('dept')
+    const exportType = (searchParams.get('exportType') as ExportType) || 'template'
 
     // Debug logging
-    logger.debug('Export API called with parameters:', { assetType, selectedIds, department })
+    logger.debug('Export API called with parameters:', { assetType, selectedIds, department, exportType })
     logger.debug('Full URL:', request.url)
     logger.debug('Search params:', Array.from(searchParams.entries()))
     
@@ -137,7 +140,12 @@ export async function GET(request: NextRequest) {
         const pcExportStart = Date.now();
         
         try {
-          buffer = await exportPCToExcel(formattedPcData)
+          // Use different export function based on exportType
+          if (exportType === 'all-columns') {
+            buffer = await exportAllColumnsToExcel(assetType, formattedPcData)
+          } else {
+            buffer = await exportPCToExcel(formattedPcData)
+          }
           logger.debug(`PC Excel export completed in ${(Date.now() - pcExportStart) / 1000} seconds`);
         } catch (exportError: any) {
           logger.error('Error during PC export:', exportError);
@@ -206,7 +214,12 @@ export async function GET(request: NextRequest) {
         const laptopExportStart = Date.now();
         
         try {
-          buffer = await exportLaptopToExcel(formattedLaptopData)
+          // Use different export function based on exportType
+          if (exportType === 'all-columns') {
+            buffer = await exportAllColumnsToExcel(assetType, formattedLaptopData)
+          } else {
+            buffer = await exportLaptopToExcel(formattedLaptopData)
+          }
           logger.debug(`Laptop Excel export completed in ${(Date.now() - laptopExportStart) / 1000} seconds`);
         } catch (exportError: any) {
           logger.error('Error during Laptop export:', exportError);
@@ -276,7 +289,12 @@ export async function GET(request: NextRequest) {
         const printerExportStart = Date.now();
         
         try {
-          buffer = await exportPrinterToExcel(formattedPrinterData)
+          // Use different export function based on exportType
+          if (exportType === 'all-columns') {
+            buffer = await exportAllColumnsToExcel(assetType, formattedPrinterData)
+          } else {
+            buffer = await exportPrinterToExcel(formattedPrinterData)
+          }
           logger.debug(`Printer Excel export completed in ${(Date.now() - printerExportStart) / 1000} seconds`);
         } catch (exportError: any) {
           logger.error('Error during Printer export:', exportError);
@@ -339,9 +357,9 @@ export async function GET(request: NextRequest) {
             pc: license.pc ?? undefined,
             mac: license.mac ?? undefined,
             ip: license.ip ?? undefined,
-            date: license.date ? license.date.toISOString().split('T')[0] : undefined, // Only include date part
+            dateBuy: license.date ? license.date.toISOString().split('T')[0] : undefined, // Only include date part
             // Normalize status values to lowercase to match standardized values
-            updateStatus: license.updateStatus ? license.updateStatus.toLowerCase() : 'working',
+            status: license.updateStatus ? license.updateStatus.toLowerCase() : 'working',
             // Include custom fields
             ...customFields
           };
@@ -351,7 +369,12 @@ export async function GET(request: NextRequest) {
         const licenseExportStart = Date.now();
         
         try {
-          buffer = await exportLicenseToExcel(formattedLicenseData)
+          // Use different export function based on exportType
+          if (exportType === 'all-columns') {
+            buffer = await exportAllColumnsToExcel(assetType, formattedLicenseData)
+          } else {
+            buffer = await exportLicenseToExcel(formattedLicenseData)
+          }
           logger.debug(`License Excel export completed in ${(Date.now() - licenseExportStart) / 1000} seconds`);
         } catch (exportError: any) {
           logger.error('Error during License export:', exportError);
@@ -406,7 +429,12 @@ export async function GET(request: NextRequest) {
         const warehouseExportStart = Date.now();
         
         try {
-          buffer = await exportWarehouseITToExcel(formattedWarehouseData)
+          // Use different export function based on exportType
+          if (exportType === 'all-columns') {
+            buffer = await exportAllColumnsToExcel(assetType, formattedWarehouseData)
+          } else {
+            buffer = await exportWarehouseITToExcel(formattedWarehouseData)
+          }
           logger.debug(`Warehouse Excel export completed in ${(Date.now() - warehouseExportStart) / 1000} seconds`);
         } catch (exportError: any) {
           logger.error('Error during Warehouse export:', exportError);
@@ -475,7 +503,12 @@ export async function GET(request: NextRequest) {
         const internetExportStart = Date.now();
         
         try {
-          buffer = await exportInternetToExcel(formattedInternetData)
+          // Use different export function based on exportType
+          if (exportType === 'all-columns') {
+            buffer = await exportAllColumnsToExcel(assetType, formattedInternetData)
+          } else {
+            buffer = await exportInternetToExcel(formattedInternetData)
+          }
           logger.debug(`Internet Excel export completed in ${(Date.now() - internetExportStart) / 1000} seconds`);
         } catch (exportError: any) {
           logger.error('Error during Internet export:', exportError);
@@ -551,5 +584,51 @@ export async function GET(request: NextRequest) {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     })
+  }
+}
+
+// Function to export all columns including custom fields without using templates
+async function exportAllColumnsToExcel(assetType: AssetType, data: any[]): Promise<ArrayBuffer> {
+  try {
+    logger.debug(`Starting exportAllColumnsToExcel for ${assetType} with ${data.length} records`);
+    
+    // Create a new workbook by creating a simple template in memory
+    const workbook = await XLSX.fromBlankAsync();
+    const worksheet = workbook.sheet(0);
+    
+    // If no data, return empty workbook
+    if (data.length === 0) {
+      return await workbook.outputAsync() as ArrayBuffer;
+    }
+    
+    // Get all unique keys from the data to create headers
+    const allKeys = new Set<string>();
+    data.forEach(item => {
+      Object.keys(item).forEach(key => allKeys.add(key));
+    });
+    
+    const headers = Array.from(allKeys);
+    logger.debug(`Headers for ${assetType}:`, headers);
+    
+    // Write headers
+    headers.forEach((header, index) => {
+      worksheet.cell(1, index + 1).value(header);
+    });
+    
+    // Write data rows
+    data.forEach((row, rowIndex) => {
+      headers.forEach((header, colIndex) => {
+        const value = row[header];
+        worksheet.cell(rowIndex + 2, colIndex + 1).value(value !== undefined ? value : '');
+      });
+    });
+    
+    // Convert to buffer and return
+    const result = await workbook.outputAsync() as ArrayBuffer;
+    logger.debug(`exportAllColumnsToExcel completed for ${assetType}`);
+    return result;
+  } catch (error) {
+    logger.error(`Error in exportAllColumnsToExcel for ${assetType}:`, error);
+    throw error;
   }
 }

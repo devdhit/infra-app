@@ -51,8 +51,8 @@ export interface LicenseAsset {
   pc?: string;
   mac?: string;
   ip?: string;
-  date?: string;
-  updateStatus: string;
+  dateBuy?: string;
+  status: string;
 }
 
 export interface WarehouseITAsset {
@@ -777,9 +777,9 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
         worksheet.cell(currentRow, 7).value(row.pc || 'N/A')
         worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
         worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
-        worksheet.cell(currentRow, 10).value(row.date || 'N/A')
-        // For License assets, preserve the original updateStatus value (including Chinese characters)
-        const statusValue = row.updateStatus ? row.updateStatus : 'N/A';
+        worksheet.cell(currentRow, 10).value(row.dateBuy || 'N/A')
+        // For License assets, preserve the original status value (including Chinese characters)
+        const statusValue = row.status ? row.status : 'N/A';
         worksheet.cell(currentRow, 11).value(statusValue)
       });
     } else {
@@ -795,9 +795,9 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
         worksheet.cell(currentRow, 7).value(row.pc || 'N/A')
         worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
         worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
-        worksheet.cell(currentRow, 10).value(row.date || 'N/A')
-        // For License assets, preserve the original updateStatus value (including Chinese characters)
-        const statusValue = row.updateStatus ? row.updateStatus : 'N/A';
+        worksheet.cell(currentRow, 10).value(row.dateBuy || 'N/A')
+        // For License assets, preserve the original status value (including Chinese characters)
+        const statusValue = row.status ? row.status : 'N/A';
         worksheet.cell(currentRow, 11).value(statusValue)
       });
     }
@@ -1262,7 +1262,7 @@ export async function importFromExcelWithTemplate(
           } else if (header === 'UserName') {
             header = 'userName';
           } else if (header === 'UpdateStatus') {
-            header = 'updateStatus';
+            header = 'status';
           } else if (header === 'Date') {
             header = 'date';
           } else if (header === 'Dept') {
@@ -1390,8 +1390,8 @@ export function generateLicenseTemplate(): LicenseAsset[] {
     pc: '',
     mac: '',
     ip: '',
-    date: '',
-    updateStatus: 'working'  // Changed from 'active' to 'working'
+    dateBuy: '',
+    status: 'working'  // Changed from 'active' to 'working'
   }]
 }
 

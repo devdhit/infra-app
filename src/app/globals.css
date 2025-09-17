@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./modern-ui.css";
-@import "./modern-data-table.css";
 
 @custom-variant dark (&:is(.dark *));
 

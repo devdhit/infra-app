@@ -35,7 +35,7 @@ interface ExcelExportDialogProps {
 }
 
 // Define the export options type
-type ExportOption = 'all' | 'selected' | 'allDepts' | 'eachDept'
+type ExportOption = 'all' | 'selected' | 'allDepts' | 'eachDept' | 'allColumns'
 
 export function ExcelExportDialog({
   assetType,
@@ -82,6 +82,11 @@ export function ExcelExportDialog({
     setExportStatus('')
     setExportProgress(0)
   }, [])
+
+  // Determine export type for API calls
+  const getExportType = useCallback(() => {
+    return exportOption === 'allColumns' ? 'all-columns' : 'template'
+  }, [exportOption])
 
   const handleExport = useCallback(async () => {
     setIsExporting(true)
@@ -131,7 +136,9 @@ export function ExcelExportDialog({
               // Build URL with query parameters
               const params = new URLSearchParams({
                 assetType,
-                dept
+                dept,
+                // Add exportType parameter for allColumns functionality
+                exportType: getExportType()
               })
             
               // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
@@ -230,7 +237,9 @@ export function ExcelExportDialog({
               // Build URL with query parameters
               const params = new URLSearchParams({
                 assetType,
-                dept
+                dept,
+                // Add exportType parameter for allColumns functionality
+                exportType: getExportType()
               })
             
               // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
@@ -312,7 +321,7 @@ export function ExcelExportDialog({
           }, 1500)
         }
       } else {
-        // Handle single file exports (all, selected, by department)
+        // Handle single file exports (all, selected, by department, allColumns)
         // Build URL with query parameters
         const params = new URLSearchParams({
           assetType
@@ -324,9 +333,14 @@ export function ExcelExportDialog({
         }
       
         // If exporting by department and the asset type supports departments, add the department parameter
-        if ((exportOption === 'allDepts') && department && showByDeptOption) {
+        // This should apply to allDepts, eachDept, and allColumns when a department is selected
+        if (((exportOption === 'allDepts' || exportOption === 'eachDept') && department && showByDeptOption) || 
+            (exportOption === 'allColumns' && department)) {
           params.append('dept', department)
         }
+        
+        // Add exportType parameter for allColumns functionality
+        params.append('exportType', getExportType())
 
         // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
         const url = `/assets/excel/export?${params.toString()}`
@@ -401,7 +415,7 @@ export function ExcelExportDialog({
     } finally {
       resetExport()
     }
-  }, [assetType, title, t, exportOption, selectedAssetIds, department, showByDeptOption, departments, resetExport, onClose])
+  }, [assetType, title, t, exportOption, selectedAssetIds, department, showByDeptOption, departments, resetExport, onClose, getExportType])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -450,7 +464,16 @@ export function ExcelExportDialog({
                           id="export-each-dept" 
                         />
                         <Label htmlFor="export-each-dept">
-                          {t('assets.excel.export.eachDept', 'Each Department (separate files)')}
+                          {t('assets.excel.export.eachDept', 'Each Department (only for Inventory)')}
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem 
+                          value="allColumns" 
+                          id="export-all-columns" 
+                        />
+                        <Label htmlFor="export-all-columns">
+                          {t('assets.excel.export.allColumns', 'All Columns (including custom fields)')}
                         </Label>
                       </div>
                     </>
@@ -470,7 +493,7 @@ export function ExcelExportDialog({
                   </div>
                 </RadioGroup>
               
-              {(exportOption === 'allDepts' || exportOption === 'eachDept') && showByDeptOption && (
+              {((exportOption === 'allDepts' || exportOption === 'eachDept') && showByDeptOption) || exportOption === 'allColumns' ? (
                 <div className="mt-2">
                   <Label htmlFor="department">
                     {t('assets.excel.export.department', 'Department')}
@@ -499,18 +522,20 @@ export function ExcelExportDialog({
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              ) : null}
             </div>
 
             <p className="text-sm text-muted-foreground">
               {exportOption === 'all' 
                 ? t('assets.excel.export.info.all', 'This will export all {0} data to an Excel file with proper formatting.', title.toLowerCase())
+                : exportOption === 'allColumns'
+                ? t('assets.excel.export.info.allColumns', 'This will export all {0} data including custom fields to an Excel file.', title.toLowerCase())
                 : exportOption === 'allDepts' && showByDeptOption
                 ? t('assets.excel.export.info.allDeptsZip', 'This will export {0} data for all departments packaged into a single ZIP file with separate Excel files for each department.', title.toLowerCase())
                 : exportOption === 'eachDept' && showByDeptOption
                 ? department 
                   ? t('assets.excel.export.info.singleDept', 'This will export {0} data for the selected department ({1}) to an Excel file with proper formatting.', title.toLowerCase(), department)
-                  : t('assets.excel.export.info.eachDept', 'This will export {0} data for each department to separate Excel files with proper formatting.', title.toLowerCase())
+                  : t('assets.excel.export.info.eachDept', 'This will export {0} data for each department to separate Excel files with proper formatting for Inventory.', title.toLowerCase())
                 : selectedAssetIds.length > 0
                 ? t('assets.excel.export.info.selected', 'This will export only the selected {0} items to an Excel file with proper formatting.', title.toLowerCase())
                 : t('assets.excel.export.info.noSelection', 'No items selected for export.')
@@ -535,7 +560,7 @@ export function ExcelExportDialog({
               disabled={
                 isExporting || 
                 (exportOption === 'selected' && selectedAssetIds.length === 0) || 
-                ((exportOption === 'allDepts' || exportOption === 'eachDept') && showByDeptOption && !department && departments.length === 0 && exportOption !== 'allDepts')
+                (((exportOption === 'allDepts' || exportOption === 'eachDept') && showByDeptOption) || exportOption === 'allColumns') && !department && departments.length === 0 && exportOption !== 'allDepts'
               }
               className="w-full"
             >
