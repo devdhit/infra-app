@@ -402,12 +402,12 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.license.ip') || "IP Address"
       },
       {
-        key: "date",
+        key: "dateBuy",
         label: t('assets.license.purchaseDate') || "Purchase Date",
         render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
       },
       {
-        key: "updateStatus",
+        key: "status",
         label: t('assets.license.status') || "Status",
         render: (value: string) => {
           const statusClass: Record<string, string> = {
@@ -482,12 +482,12 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         placeholder: "192.168.1.100"
       },
       {
-        name: "date",
+        name: "dateBuy",
         label: t('assets.license.purchaseDate') || "Purchase Date",
         type: "date"
       },
       { 
-        name: "updateStatus", 
+        name: "status", 
         label: t('assets.license.status') || "Status", 
         type: "select", 
         required: true,
