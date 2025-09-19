@@ -35,6 +35,7 @@
     "noImplicitOverride": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
+    "downlevelIteration": true,
     "paths": {
       "@/*": ["./src/*"]
     },

@@ -851,7 +851,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
     while (footerStartRow < MAX_ROWS) { // Reasonable limit
       // Check if this row has content in any of the columns
       let hasContent = false;
-      for (let col = 1; col <= 8; col++) { // Check columns 1-8 (our data columns)
+      for (let col = 1; col <= 4; col++) { // Check columns 1-4 (our data columns: barcode, sapCode, status, note)
         try {
           const cellValue = worksheet.cell(footerStartRow, col).value();
           if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
@@ -872,6 +872,20 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
       }
     }
     
+    // Get all unique custom field keys from the data
+    const customFieldKeys = new Set<string>();
+    data.forEach(row => {
+      Object.keys(row).forEach(key => {
+        // Skip the standard fields
+        if (!['barcode', 'sapCode', 'status', 'note'].includes(key)) {
+          customFieldKeys.add(key);
+        }
+      });
+    });
+    
+    const customFieldArray = Array.from(customFieldKeys);
+    logger.debug(`Found ${customFieldArray.length} custom fields:`, customFieldArray);
+    
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < MAX_ROWS) {
       // Calculate how many rows we need to insert
@@ -884,7 +898,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         for (let i = 0; i < rowsToInsert; i++) {
           // Shift footer rows down by one
           for (let row = footerStartRow + rowsToInsert - i - 1; row >= dataStartRow; row--) {
-            for (let col = 1; col <= 8; col++) { // Assuming 8 columns for WarehouseIT template
+            for (let col = 1; col <= 4 + customFieldArray.length; col++) { // Standard columns + custom fields
               const cellValue = worksheet.cell(row, col).value();
               worksheet.cell(row + 1, col).value(cellValue);
               // Clear the original cell
@@ -898,7 +912,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         for (let i = 0; i < rowsToInsert; i++) {
           const currentRow = dataStartRow + i;
           // Get all style properties from the template cell and apply to the current cell
-          for (let col = 1; col <= 8; col++) {
+          for (let col = 1; col <= 4 + customFieldArray.length; col++) {
             try {
               const templateCell = worksheet.cell(templateRow, col);
               const currentCell = worksheet.cell(currentRow, col);
@@ -930,7 +944,33 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         // For WarehouseIT assets, preserve the original status value (including Chinese characters)
         const statusValue = row.status ? row.status : 'N/A';
         worksheet.cell(currentRow, 3).value(statusValue)
-        worksheet.cell(currentRow, 4).value(row.note || 'N/A')
+        // Write note field - it's optional so we check if it exists in the data
+        if ('note' in row) {
+          try {
+            // Try to write to column 4 (note column)
+            worksheet.cell(currentRow, 4).value(row.note || 'N/A')
+          } catch (error) {
+            // If there's an error writing to the note column, it might not exist in the template
+            logger.debug('Note column may not exist in WarehouseIT template, skipping note field');
+          }
+        }
+        
+        // Add custom fields if there are any
+        if (customFieldArray.length > 0) {
+          try {
+            // Add custom fields
+            customFieldArray.forEach((field, index) => {
+              const value = (row as any)[field];
+              // Write to columns starting from column 5 (after barcode, sapCode, status, note)
+              const column = 5 + index;
+              worksheet.cell(currentRow, column).value(value !== undefined ? value : 'N/A');
+            });
+          } catch (error) {
+            // If there's an error writing custom fields, it might be because the template
+            // doesn't have enough columns. This is not an error condition.
+            logger.debug('Could not write custom fields to WarehouseIT template, template may not have enough columns');
+          }
+        }
       });
     } else {
       // No footer found, just add data rows normally
@@ -941,7 +981,33 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         // For WarehouseIT assets, preserve the original status value (including Chinese characters)
         const statusValue = row.status ? row.status : 'N/A';
         worksheet.cell(currentRow, 3).value(statusValue)
-        worksheet.cell(currentRow, 4).value(row.note || 'N/A')
+        // Write note field - it's optional so we check if it exists in the data
+        if ('note' in row) {
+          try {
+            // Try to write to column 4 (note column)
+            worksheet.cell(currentRow, 4).value(row.note || 'N/A')
+          } catch (error) {
+            // If there's an error writing to the note column, it might not exist in the template
+            logger.debug('Note column may not exist in WarehouseIT template, skipping note field');
+          }
+        }
+        
+        // Add custom fields if there are any
+        if (customFieldArray.length > 0) {
+          try {
+            // Add custom fields
+            customFieldArray.forEach((field, index) => {
+              const value = (row as any)[field];
+              // Write to columns starting from column 5 (after barcode, sapCode, status, note)
+              const column = 5 + index;
+              worksheet.cell(currentRow, column).value(value !== undefined ? value : 'N/A');
+            });
+          } catch (error) {
+            // If there's an error writing custom fields, it might be because the template
+            // doesn't have enough columns. This is not an error condition.
+            logger.debug('Could not write custom fields to WarehouseIT template, template may not have enough columns');
+          }
+        }
       });
     }
     

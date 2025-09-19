@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
-import { HistoryRecord, createHistoryRecord } from '@/lib/history';
+import { db } from './db'
+import { HistoryRecord, createHistoryRecord } from './history'
 
 /**
  * Creates an audit log entry if audit logging is enabled for the tenant and the specific action
@@ -217,7 +217,9 @@ export async function createRoleUpdateAuditLog(
       ...Object.keys(newPermissions)
     ]);
 
-    for (const resource of allResources) {
+    // Convert Set to Array for iteration to avoid TypeScript errors
+    const resourcesArray = Array.from(allResources);
+    for (const resource of resourcesArray) {
       const oldActions = oldPermissions[resource] || [];
       const newActions = newPermissions[resource] || [];
 
