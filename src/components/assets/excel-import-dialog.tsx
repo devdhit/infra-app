@@ -325,48 +325,75 @@ export function ExcelImportDialog({
       let totalCreatedCount = 0;
       const allErrors: string[] = [];
 
-      // Process each selected file
-      for (const file of selectedFiles) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('assetType', assetType);
+      // Process files in parallel batches for better performance with large numbers of files
+      const batchSize = assetType === 'pc' ? 5 : 3; // Larger batch size for PC assets
+      let processedFiles = 0;
+      
+      // Process files in batches
+      for (let i = 0; i < selectedFiles.length; i += batchSize) {
+        const batch = selectedFiles.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (file, _index) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('assetType', assetType);
 
-        // Add column mapping if mappings exist (regardless of UI visibility)
-        if (columnMappings.length > 0) {
-          const mappingObj: Record<string, string> = {};
-          columnMappings.forEach(mapping => {
-            if (mapping.excelColumn && mapping.databaseField) {
-              mappingObj[mapping.excelColumn] = mapping.databaseField;
-            }
-          });
-          formData.append('columnMapping', JSON.stringify(mappingObj));
-        }
+          // Add column mapping if mappings exist (regardless of UI visibility)
+          if (columnMappings.length > 0) {
+            const mappingObj: Record<string, string> = {};
+            columnMappings.forEach(mapping => {
+              if (mapping.excelColumn && mapping.databaseField) {
+                mappingObj[mapping.excelColumn] = mapping.databaseField;
+              }
+            });
+            formData.append('columnMapping', JSON.stringify(mappingObj));
+          }
 
-        const response = await api.postExcelImport<any>('/assets/excel/import', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
+          try {
+            const response = await api.postExcelImport<any>('/assets/excel/import', formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              }
+            });
+
+            // Update progress
+            processedFiles++;
+            
+            setImportProgress(prev => ({
+              current: processedFiles,
+              total: selectedFiles.length,
+              startTime: prev?.startTime || Date.now(),
+              lastUpdate: Date.now()
+            }));
+
+            return { response, file };
+          } catch (error: any) {
+            throw {
+              file: file.name,
+              error: error.message || t('assets.excel.import.error', 'Failed to import assets')
+            };
           }
         });
 
-        if (response.success) {
-          totalCreatedCount += response.createdCount || 0;
-          if (response.errors && response.errors.length > 0) {
-            allErrors.push(...response.errors.map((error: string) => `${file.name}: ${error}`));
+        // Process batch
+        try {
+          const batchResults = await Promise.all(batchPromises);
+          
+          batchResults.forEach(({ response, file }) => {
+            if (response.success) {
+              totalCreatedCount += response.createdCount || 0;
+              if (response.errors && response.errors.length > 0) {
+                allErrors.push(...response.errors.map((error: string) => `${file.name}: ${error}`));
+              }
+            } else {
+              allErrors.push(`${file.name}: ${response.error || t('assets.excel.import.error', 'Failed to import assets')}`);
+            }
+          });
+        } catch (batchError: any) {
+          if (batchError.file) {
+            allErrors.push(`${batchError.file}: ${batchError.error}`);
+          } else {
+            allErrors.push(t('assets.excel.import.batchError', 'Batch processing error: {0}', batchError.message));
           }
-        } else {
-          allErrors.push(`${file.name}: ${response.error || t('assets.excel.import.error', 'Failed to import assets')}`);
-        }
-        
-        // Update progress with timing information - Fix to prevent >100% progress
-        if (response.totalRows && response.totalRows > 0) {
-          // Ensure current count doesn't exceed total rows
-          const newCurrent = Math.min(totalCreatedCount, response.totalRows);
-          setImportProgress(prev => ({
-            current: newCurrent,
-            total: response.totalRows,
-            startTime: prev?.startTime || Date.now(),
-            lastUpdate: Date.now()
-          }));
         }
       }
 
@@ -718,3 +745,4 @@ export function ExcelImportDialog({
     </Dialog>
   )
 }
+

@@ -618,7 +618,7 @@ export async function POST(request: NextRequest) {
                     
                     // Add a more substantial delay to ensure cache invalidation is complete
                     // and allow time for any ongoing requests to complete
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // await new Promise(resolve => setTimeout(resolve, 1000)); // Removed to improve performance
                   }
                 } else {
                   logger.debug(`Checking for existing printer with barcode: ${barcodeValue}`);
@@ -889,7 +889,7 @@ export async function POST(request: NextRequest) {
                 
                 // Add a more substantial delay to ensure cache invalidation is complete
                 // and allow time for any ongoing requests to complete
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // await new Promise(resolve => setTimeout(resolve, 1000)); // Removed to improve performance
               }
               break;
 
@@ -1007,7 +1007,7 @@ export async function POST(request: NextRequest) {
                 
                 // Add a more substantial delay to ensure cache invalidation is complete
                 // and allow time for any ongoing requests to complete
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // await new Promise(resolve => setTimeout(resolve, 1000)); // Removed to improve performance
               }
               break;
 
@@ -1146,7 +1146,7 @@ export async function POST(request: NextRequest) {
                 
                 // Add a more substantial delay to ensure cache invalidation is complete
                 // and allow time for any ongoing requests to complete
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // await new Promise(resolve => setTimeout(resolve, 1000)); // Removed to improve performance
               }
               break;
 
@@ -1163,10 +1163,10 @@ export async function POST(request: NextRequest) {
       
       // Remove the global createdCount++ that was here
       // Add a small delay between batches to prevent overwhelming the server and database connection pool
-      if (i + batchSize < jsonData.length) {
-        // Reduce delay from 10ms to 1ms to improve performance
-        await new Promise(resolve => setTimeout(resolve, 1)); // Reduced delay to 1ms
-      }
+      // Removed delay to improve performance for large imports
+      // if (i + batchSize < jsonData.length) {
+      //   await new Promise(resolve => setTimeout(resolve, 1));
+      // }
     }
 
     return new Response(JSON.stringify({

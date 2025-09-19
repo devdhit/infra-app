@@ -1,5 +1,5 @@
 import { PrismaClient } from '../generated/prisma'
-import { db } from '@/lib/db'
+import { db } from './db'
 import { 
   successResponse, 
   errorResponse, 
@@ -10,7 +10,7 @@ import {
   errorResponse as apiErrorResponse
 } from './api-utils'
 import { hasPermission, ResourceType, PermissionAction } from './permissions'
-import { validateSearchInput } from '@/lib/security'
+import { validateSearchInput } from './security'
 
 // Only import Redis cache on the server side
 let CACHE_PREFIXES: any = null;

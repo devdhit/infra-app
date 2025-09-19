@@ -298,8 +298,8 @@ export function AssetList({
   
   // New function to robustly refresh data with immediate cache update awareness
   const robustRefetch = useCallback(async (refetchFn: () => Promise<any>, t: (key: string, fallback?: string, ...args: any[]) => string) => {
-    // Wait for a moderate period to ensure cache updates are complete
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Wait for a shorter period to ensure cache updates are complete
+    await new Promise(resolve => setTimeout(resolve, 50));
     
     try {
       await refetchFn();
@@ -535,8 +535,8 @@ export function AssetList({
   const handleFormSuccess = useCallback(async () => {
     // Force a more aggressive refetch to ensure we get fresh data
     try {
-      // Wait a bit for server-side cache to update
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait a shorter time for server-side cache to update
+      await new Promise(resolve => setTimeout(resolve, 50));
       
       // Force a complete refresh by resetting the cache
       await refetch();
@@ -555,8 +555,8 @@ export function AssetList({
   const handleImportSuccess = useCallback(async () => {
     // Force a more aggressive refetch to ensure we get fresh data
     try {
-      // Wait a bit for server-side cache to update
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait a shorter time for server-side cache to update
+      await new Promise(resolve => setTimeout(resolve, 50));
       
       // Force a complete refresh by resetting the cache
       await refetch();
