@@ -150,6 +150,21 @@ export function validateSearchInput(input: string): string {
   return sanitized.trim();
 }
 
+// Validate and sanitize Office information to preserve version details
+export function validateOfficeInput(input: string): string {
+  if (!input) return '';
+  
+  // Allow common characters in Office version strings including / and ()
+  let sanitized = input.replace(/[^a-zA-Z0-9\s\-_@./()]/g, '');
+  
+  // Limit length to prevent resource exhaustion
+  if (sanitized.length > 100) {
+    sanitized = sanitized.substring(0, 100);
+  }
+  
+  return sanitized.trim();
+}
+
 // Create a hash for data integrity verification
 export function createDataHash(data: string): string {
   return createHash('sha256').update(data).digest('hex');

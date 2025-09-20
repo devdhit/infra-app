@@ -11,6 +11,7 @@ A comprehensive IT asset management solution built with modern web technologies.
 - [Installation](#installation)
 - [Database Schema](#database-schema)
 - [API Documentation](#api-documentation)
+- [Agent API](#agent-api)
 - [Excel Export Functionality](#excel-export-functionality)
 - [Role-Based Access Control](#role-based-access-control)
 - [Caching with Redis](#caching-with-redis)
@@ -215,6 +216,90 @@ All API endpoints are RESTful and follow standard conventions:
 ### Users
 - `GET /api/users` - List users
 
+### Agent API
+- `POST /api/agent` - Submit computer configuration data from agent software
+- `GET /api/agent` - Health check endpoint
+
+For detailed Agent API documentation, see:
+- [Agent API Documentation](./docs/AGENT_API.md)
+- [Agent Health Check Documentation](./docs/AGENT_HEALTH_CHECK.md)
+
+## Agent API
+
+The Agent API allows computer agent software to automatically submit computer configuration data to the ITAMS system. The agent software should send updated information every 5-10 minutes to keep the system synchronized with actual computer configurations.
+
+### Endpoint
+`POST /api/agent`
+
+### Request Body
+The request body should be a JSON object containing computer configuration data:
+
+```json
+{
+  "pcName": "SGDH-IT-DTHIEN",
+  "userName": "thien.dinh",
+  "ipAddress": "10.1.1.10",
+  "cpu": "Intel Core i5-10400",
+  "ram": "32GB DDR4",
+  "os": "Windows 10 Pro 21H2",
+  "harddisk": "1TB NVMe SSD",
+  "motherboard": "ASUS Prime B460M-A",
+  "graphics": "Intel UHD Graphics 630",
+  "macAddress": "00:1A:2B:3C:4D:5E"
+}
+```
+
+### MAC Address Identification
+
+The system now supports identifying existing computers by MAC address to prevent duplicate entries when a computer's name or other details change. To enable this functionality:
+
+1. Create a custom field named "MAC" for the PC asset type
+2. Include the `macAddress` field in agent data submissions
+3. The system will automatically check for existing PCs with the same MAC address and update them instead of creating new records
+
+### Field Mapping
+The agent fields are mapped to database custom fields as follows:
+- `cpu` → `CPU`
+- `ram` → `RAM`
+- `os` → `OS`
+- `ipAddress` → `IP`
+- `harddisk` → `HARDISK`
+- `motherboard` → `MOTHERBOARD`
+- `graphics` → `GRAPHICS`
+- `macAddress` → `MAC`
+
+### Response
+- `201 Created` - Data successfully processed
+- `400 Bad Request` - Missing required fields or invalid data
+- `500 Internal Server Error` - Server error
+
+### Example Usage
+```javascript
+const agentData = {
+  pcName: 'SGDH-IT-DTHIEN',
+  userName: 'thien.dinh',
+  ipAddress: '10.1.1.10',
+  cpu: 'Intel Core i5-10400',
+  ram: '32GB DDR4',
+  os: 'Windows 10 Pro 21H2',
+  harddisk: '1TB NVMe SSD',
+  motherboard: 'ASUS Prime B460M-A',
+  graphics: 'Intel UHD Graphics 630',
+  macAddress: '00:1A:2B:3C:4D:5E'
+};
+
+fetch('/api/agent', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(agentData)
+})
+.then(response => response.json())
+.then(data => console.log('Success:', data))
+.catch(error => console.error('Error:', error));
+```
+
 ## Excel Export Functionality
 
 The ITAMS provides comprehensive Excel export capabilities for all asset types:
@@ -356,32 +441,6 @@ A Dockerfile is included for containerized deployment:
 docker build -t itams .
 docker run -p 3000:3000 itams
 ```
-
-## Roadmap
-
-### Phase 1: Core Features (Completed)
-- [x] Multi-tenant architecture
-- [x] User authentication and authorization
-- [x] Asset management for PCs, laptops, printers, licenses
-- [x] Excel import/export functionality
-- [x] Custom fields system
-- [x] Dashboard and statistics
-- [x] History/audit logs
-
-### Phase 2: Advanced Features (In Progress)
-- [x] Role-based access control
-- [ ] Advanced reporting and analytics
-- [ ] API documentation with Swagger
-- [ ] Mobile-responsive design enhancements
-- [ ] Performance optimization
-
-### Phase 3: Enterprise Features (Planned)
-- [ ] SSO integration
-- [ ] Advanced workflow automation
-- [ ] Notification system
-- [ ] Integration with third-party tools
-- [ ] Multi-language support expansion
-
 ## Contributing
 
 Contributions are welcome! Please follow these steps:
@@ -399,6 +458,7 @@ Please ensure your code follows the existing style and includes appropriate test
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Migate prima
+npx prisma migrate
 npx prisma migrate reset --force
 npx prisma migrate status
 npx prisma migrate dev

@@ -14,7 +14,7 @@
     "management": "管理",
     "roles": "角色",
     "auditLogs": "審計日誌",
-    "test_roles": "測試角色"
+    "agents": "代理管理"
   },
   "management": {
     "description": "管理您的系統組織和使用者"
@@ -384,6 +384,7 @@
       "pc": "電腦",
       "mac": "MAC 位址",
       "ip": "IP 位址",
+      "office": "Office 版本",
       "purchaseDate": "購買日期",
       "status": "狀態",
       "note": "備註"
@@ -1003,5 +1004,73 @@
     "userActivity": "{{user}} 對使用者執行了 {{action}} 操作",
     "assetActivity": "{{user}} 對 {{modelType}} 資產執行了 {{action}} 操作",
     "auditActivity": "{{user}} 對 {{modelType}} 執行了 {{action}} 操作"
+  },
+  "agents": {
+    "title": "代理管理",
+    "description": "管理和監控您的 IT 資產代理",
+    "loading": "正在載入代理...",
+    "search": {
+      "placeholder": "透過電腦名稱、IP 或 MAC 位址搜尋代理...",
+      "noResults": "找不到符合搜尋條件的代理",
+      "tryAgain": "請嘗試調整搜尋條件"
+    },
+    "errors": {
+      "fetchFailed": "獲取代理失敗",
+      "ipRequired": "需要 IP 位址",
+      "addFailed": "新增代理失敗",
+      "updateFailed": "觸發更新失敗"
+    },
+    "success": {
+      "added": "代理新增成功",
+      "updateTriggered": "更新觸發成功"
+    },
+    "delete": {
+      "confirm": "您確定要刪除代理 {0} 嗎？此操作無法復原。",
+      "success": "代理刪除成功",
+      "error": "代理刪除失敗"
+    },
+    "status": {
+      "online": "線上",
+      "offline": "離線",
+      "updating": "更新中",
+      "error": "錯誤",
+      "unknown": "未知"
+    },
+    "add": {
+      "title": "新增代理",
+      "description": "透過 IP 位址註冊新代理",
+      "ipLabel": "代理 IP 位址",
+      "ipPlaceholder": "輸入代理 IP 位址（例如：192.168.1.100）",
+      "button": "新增代理",
+      "adding": "新增中..."
+    },
+    "list": {
+      "title": "已註冊代理",
+      "description": "查看和管理所有已註冊代理"
+    },
+    "empty": {
+      "title": "未註冊代理",
+      "description": "新增您的第一個代理以開始監控 IT 資產"
+    },
+    "table": {
+      "agent": "代理",
+      "ipAddress": "IP 位址",
+      "pcName": "電腦名稱",
+      "lastSeen": "最後上線",
+      "lastUpdate": "最後更新",
+      "status": "狀態",
+      "actions": "操作"
+    },
+    "actions": {
+      "update": "更新"
+    },
+    "configuration": {
+      "title": "代理設定",
+      "description": "設定代理更新參數",
+      "updateInterval": "更新間隔（分鐘）",
+      "updateIntervalHelp": "代理自動傳送更新的頻率",
+      "retryAttempts": "重試次數",
+      "retryAttemptsHelp": "更新失敗時的重試次數"
+    }
   }
 }

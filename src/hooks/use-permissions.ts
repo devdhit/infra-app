@@ -223,6 +223,7 @@ export function usePermissions() {
       canViewSettings: () => Promise.resolve(false),
       canEditSettings: () => Promise.resolve(false),
       canViewAuditLogs: () => Promise.resolve(false),
+      canViewAgents: () => Promise.resolve(false),
       // Asset management permissions (generic)
       canViewAssets: () => Promise.resolve(false),
       // User management permissions
@@ -285,6 +286,7 @@ export function usePermissions() {
       canViewSettings: () => Promise.resolve(true),
       canEditSettings: () => Promise.resolve(true),
       canViewAuditLogs: () => Promise.resolve(true),
+      canViewAgents: () => Promise.resolve(true),
       // Asset management permissions (generic)
       canViewAssets: () => Promise.resolve(true),
       // User management permissions
@@ -347,6 +349,7 @@ export function usePermissions() {
   const canViewSettings = () => checkPermission('settings', 'view');
   const canEditSettings = () => checkPermission('settings', 'edit');
   const canViewAuditLogs = () => checkPermission('auditLogs', 'view');
+  const canViewAgents = () => checkPermission('agent', 'viewStatus');
       
   // Asset management permissions (generic)
   const canViewAssets = () => Promise.all([
@@ -416,6 +419,7 @@ export function usePermissions() {
     canViewSettings,
     canEditSettings,
     canViewAuditLogs,
+    canViewAgents,
     // Asset management permissions (generic)
     canViewAssets,
     // User management permissions

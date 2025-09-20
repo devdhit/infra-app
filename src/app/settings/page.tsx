@@ -14,6 +14,7 @@ import {
   FileText,
   ArrowRight,
   AppWindow,
+  Server
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/use-translation";
@@ -35,6 +36,7 @@ interface PermissionsState {
   canViewDataManagement: boolean;
   canViewAuditLogs: boolean;
   canViewCustomFields: boolean;
+  canViewAgents: boolean;
 }
 
 interface SettingsSection {
@@ -71,7 +73,8 @@ export default function SettingsPage() {
     canViewSecurity: true,
     canViewDataManagement: true,
     canViewAuditLogs: true,
-    canViewCustomFields: true
+    canViewCustomFields: true,
+    canViewAgents: true
   });
   
   const [loading, setLoading] = useState(true); // Default to true to show loading state initially
@@ -93,7 +96,8 @@ export default function SettingsPage() {
         canViewSecurity: true,
         canViewDataManagement: true,
         canViewAuditLogs: true,
-        canViewCustomFields: true
+        canViewCustomFields: true,
+        canViewAgents: true
       });
       setLoading(false);
       return;
@@ -129,7 +133,8 @@ export default function SettingsPage() {
         canViewSecurity: true,
         canViewDataManagement: true,
         canViewAuditLogs: true,
-        canViewCustomFields: customFieldsPermission ?? true
+        canViewCustomFields: customFieldsPermission ?? true,
+        canViewAgents: true
       });
     } catch (error) {
       logger.error('Error checking permissions:', error);
@@ -146,7 +151,8 @@ export default function SettingsPage() {
         canViewSecurity: true,
         canViewDataManagement: true,
         canViewAuditLogs: true,
-        canViewCustomFields: true
+        canViewCustomFields: true,
+        canViewAgents: true
       });
     } finally {
       setLoading(false);
@@ -175,7 +181,8 @@ export default function SettingsPage() {
           canViewSecurity: true,
           canViewDataManagement: true,
           canViewAuditLogs: true,
-          canViewCustomFields: true
+          canViewCustomFields: true,
+          canViewAgents: true
         });
       }
     }, 150);
@@ -285,6 +292,17 @@ export default function SettingsPage() {
     }
   ];
 
+  const agentSettings: SettingsSection[] = [
+    {
+      name: t('agents.title') || "Agent Management",
+      icon: Server,
+      href: "/settings/agents",
+      description: t('agents.description') || "Manage and monitor IT asset agents",
+      color: "bg-green-100 text-green-700",
+      gradient: "from-green-500 to-green-600"
+    }
+  ];
+
   // Filter sections based on permissions
   const getFilteredSections = (sections: SettingsSection[]) => {
     // During loading, show all sections to avoid blocking access
@@ -368,11 +386,12 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-10">
-          {/* Show all sections while loading to avoid blocking access */
-          renderSettingsGroup(t('settings.groups.general') || "General Settings", generalSettings)}
+          {/* Show all sections while loading to avoid blocking access */}
+          {renderSettingsGroup(t('settings.groups.general') || "General Settings", generalSettings)}
           {renderSettingsGroup(t('settings.groups.security') || "Security & Data", securitySettings)}
           {renderSettingsGroup(t('settings.groups.management') || "User Management", userManagementSettings)}
           {renderSettingsGroup(t('settings.groups.customization') || "Customization", customFieldsSettings)}
+          {renderSettingsGroup(t('settings.groups.agents') || "Agents", agentSettings)}
         </div>
       </div>
     );
@@ -415,6 +434,7 @@ export default function SettingsPage() {
         {renderSettingsGroup(t('settings.groups.security') || "Security & Data", securitySettings)}
         {renderSettingsGroup(t('settings.groups.management') || "User Management", userManagementSettings)}
         {renderSettingsGroup(t('settings.groups.customization') || "Customization", customFieldsSettings)}
+        {renderSettingsGroup(t('settings.groups.agents') || "Agents", agentSettings)}
       </div>
     </div>
   );
