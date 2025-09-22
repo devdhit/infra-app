@@ -162,6 +162,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             '*:*:*:*:*'
           ),
           redisCache.createKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            modelName,
+            user.tenantId,
+            '*:*:*:*:*:*'
+          ),
+          redisCache.createKey(
             CACHE_PREFIXES.SEARCH,
             modelName,
             user.tenantId,

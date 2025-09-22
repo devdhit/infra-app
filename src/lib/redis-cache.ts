@@ -452,11 +452,23 @@ class RedisCache {
     try {
       const keys = await this.client!.keys(pattern);
       if (keys.length > 0) {
-        // Fix: spread the keys array as individual arguments
-        await this.client!.del(...keys);
-        logger.debug(`Cache deleted ${keys.length} keys by pattern: ${pattern}`, { component: 'redis-cache' });
+        // Delete keys individually to avoid issues with batch deletion
+        let totalDeleted = 0;
+        for (const key of keys) {
+          const deleted = await this.client!.del(key);
+          totalDeleted += deleted;
+          if (deleted > 0) {
+            logger.debug(`Cache deleted key by pattern: ${pattern}`, { 
+              component: 'redis-cache',
+              key
+            });
+          }
+        }
+        
+        logger.debug(`Cache deleted ${totalDeleted} total keys by pattern: ${pattern}`, { component: 'redis-cache' });
+        return totalDeleted;
       }
-      return keys.length;
+      return 0;
     } catch (error: any) {
       logger.error(`Error deleting cache keys by pattern ${pattern}`, { 
         component: 'redis-cache', 
@@ -614,6 +626,43 @@ class RedisCache {
       // Try to reconnect on error
       this.isConnected = false;
       return keys.map(() => null);
+    }
+  }
+
+  /**
+   * Get keys matching a pattern (for testing purposes)
+   * @param pattern - Pattern to match keys
+   */
+  public async keys(pattern: string): Promise<string[]> {
+    // Always return empty array on client side
+    if (typeof window !== 'undefined') {
+      return [];
+    }
+    
+    // Ensure connection before proceeding
+    if (!(await this.ensureConnection())) {
+      logger.warn(`Unable to get keys by pattern ${pattern}: Redis not connected`);
+      return [];
+    }
+
+    if (!this.isReady()) {
+      logger.warn(`Unable to get keys by pattern ${pattern}: Redis not ready`);
+      return [];
+    }
+
+    try {
+      const keys = await this.client!.keys(pattern);
+      logger.debug(`Found ${keys.length} keys matching pattern: ${pattern}`, { component: 'redis-cache' });
+      return keys;
+    } catch (error: any) {
+      logger.error(`Error getting keys by pattern ${pattern}`, { 
+        component: 'redis-cache', 
+        error: error.message, 
+        stack: error.stack 
+      });
+      // Try to reconnect on error
+      this.isConnected = false;
+      return [];
     }
   }
 
