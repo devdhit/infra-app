@@ -195,16 +195,19 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
 
   // Memoize custom field statistics data for charts
   const prepareCustomFieldChartData = useMemo(() => {
-    return (fieldName: string, assetType: string) => {
+    return (fieldName: string, assetType: string, showAll: boolean = false) => {
       // Use the asset type prefixed key to avoid conflicts
       const key = `${assetType}_${fieldName}`
       if (!dashboardData?.customFieldStats?.[key]) return []
       
       const stats = dashboardData.customFieldStats[key]
-      return Object.entries(stats.values)
+      const allData = Object.entries(stats.values)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10) // Show top 10 values
+      
+      // If showAll is true or there are 20 or fewer items, return all data
+      // Otherwise, return only the top 20
+      return showAll || allData.length <= 20 ? allData : allData.slice(0, 20)
     }
   }, [dashboardData?.customFieldStats]);
 
@@ -255,7 +258,8 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
       return Object.entries(productTypeMap)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10) // Show top 10 values
+        // Show top 20 values instead of just top 10 for better data visibility
+        .slice(0, 20)
     }
   }, [dashboardData?.license]);
 
@@ -424,20 +428,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
               description={t('dashboard.licenseProductTypeDistribution') || 'Distribution of license product types'}
               icon={Key}
             >
-              <div className="h-64 md:h-80">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-80 min-w-full">
+                <ResponsiveContainer width="100%" height="100%" minWidth={500}>
                   <BarChart
                     data={productTypeData}
                     layout="vertical"
-                    margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
                     <YAxis 
                       type="category" 
                       dataKey="name" 
-                      width={100}
+                      width={90}
                       tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                     />
                     <Tooltip 
                       formatter={(value) => [value, t('common.count')]}
@@ -691,20 +696,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                   description={t('dashboard.customFieldDistribution', undefined, total)}
                   icon={Server}
                 >
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 min-w-full">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={500}>
                       <BarChart
                         data={chartData}
                         layout="vertical"
-                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis 
                           type="category" 
                           dataKey="name" 
-                          width={100}
+                          width={90}
                           tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                         />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
@@ -727,6 +733,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+
                 </ChartCard>
               ) : null
             })}
@@ -751,20 +758,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                   description={t('dashboard.customFieldDistribution', undefined, total)}
                   icon={Server}
                 >
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 min-w-full">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={500}>
                       <BarChart
                         data={chartData}
                         layout="vertical"
-                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis 
                           type="category" 
                           dataKey="name" 
-                          width={100}
+                          width={90}
                           tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                         />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
@@ -811,20 +819,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                   description={t('dashboard.customFieldDistribution', undefined, total)}
                   icon={Server}
                 >
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 min-w-full">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={500}>
                       <BarChart
                         data={chartData}
                         layout="vertical"
-                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis 
                           type="category" 
                           dataKey="name" 
-                          width={100}
+                          width={90}
                           tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                         />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
@@ -871,20 +880,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                   description={t('dashboard.customFieldDistribution', undefined, total)}
                   icon={Server}
                 >
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 min-w-full">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={500}>
                       <BarChart
                         data={chartData}
                         layout="vertical"
-                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis 
                           type="category" 
                           dataKey="name" 
-                          width={100}
+                          width={90}
                           tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                         />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
@@ -931,20 +941,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                   description={t('dashboard.customFieldDistribution', undefined, total)}
                   icon={Server}
                 >
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 min-w-full">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={500}>
                       <BarChart
                         data={chartData}
                         layout="vertical"
-                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis 
                           type="category" 
                           dataKey="name" 
-                          width={100}
+                          width={90}
                           tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                         />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
@@ -991,20 +1002,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                   description={t('dashboard.customFieldDistribution', undefined, total)}
                   icon={Server}
                 >
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 min-w-full">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={500}>
                       <BarChart
                         data={chartData}
                         layout="vertical"
-                        margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis 
                           type="category" 
                           dataKey="name" 
-                          width={100}
+                          width={90}
                           tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                         />
                         <Tooltip 
                           formatter={(value) => [value, t('common.count')]}
@@ -1102,7 +1114,7 @@ function ChartCard({ title, description, icon: Icon, children }: ChartCardProps)
         </CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="overflow-x-auto">
         {children}
       </CardContent>
     </Card>
