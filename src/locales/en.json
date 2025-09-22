@@ -262,6 +262,8 @@
         "department": "Department",
         "loadingDepts": "Loading departments...",
         "selectDept": "Select department",
+        "selectDeptOrAll": "Select department (leave empty for all)",
+        "allColumnsDeptInfo": "Leave department empty to export all departments",
         "selectDeptDisabled": "Select \"All Departments\" or \"Each Department\" to enable",
         "info": {
           "allColumns": "This will export all {0} data including custom fields to an Excel file.",

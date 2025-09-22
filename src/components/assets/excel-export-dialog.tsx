@@ -334,6 +334,7 @@ export function ExcelExportDialog({
       
         // If exporting by department and the asset type supports departments, add the department parameter
         // This should apply to allDepts, eachDept, and allColumns when a department is selected
+        // For allColumns export, we want to be able to export all departments when no specific department is selected
         if (((exportOption === 'allDepts' || exportOption === 'eachDept') && department && showByDeptOption) || 
             (exportOption === 'allColumns' && department)) {
           params.append('dept', department)
@@ -501,7 +502,7 @@ export function ExcelExportDialog({
                   <Select 
                     onValueChange={setDepartment} 
                     value={department}
-                    disabled={loadingDepartments || exportOption === 'allDepts'} // Disable for allDepts since it exports all departments
+                    disabled={loadingDepartments || exportOption === 'allDepts' || (exportOption === 'allColumns' && departments.length > 0)} // Enable department selection for allColumns but disable when allDepts is selected
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue 
@@ -509,6 +510,8 @@ export function ExcelExportDialog({
                           ? t('assets.excel.export.loadingDepts', 'Loading departments...') 
                           : exportOption === 'allDepts'
                           ? t('assets.excel.export.allDeptsSelected', 'All departments will be exported')
+                          : exportOption === 'allColumns' && departments.length > 0
+                          ? t('assets.excel.export.selectDeptOrAll', 'Select department (leave empty for all)')
                           : t('assets.excel.export.selectDept', 'Select department')
                         } 
                       />
@@ -521,6 +524,11 @@ export function ExcelExportDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  {exportOption === 'allColumns' && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t('assets.excel.export.allColumnsDeptInfo', 'Leave department empty to export all departments')}
+                    </p>
+                  )}
                 </div>
               ) : null}
             </div>
@@ -560,7 +568,7 @@ export function ExcelExportDialog({
               disabled={
                 isExporting || 
                 (exportOption === 'selected' && selectedAssetIds.length === 0) || 
-                (((exportOption === 'allDepts' || exportOption === 'eachDept') && showByDeptOption) || exportOption === 'allColumns') && !department && departments.length === 0 && exportOption !== 'allDepts'
+                (((exportOption === 'allDepts' || exportOption === 'eachDept') && showByDeptOption) || exportOption === 'allColumns') && !department && departments.length === 0 && exportOption !== 'allDepts' && !(exportOption === 'allColumns' && departments.length > 0)
               }
               className="w-full"
             >
