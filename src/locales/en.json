@@ -14,7 +14,7 @@
     "management": "Management",
     "roles": "Roles",
     "auditLogs": "Audit Logs",
-    "test_roles": "Test Roles"
+    "agents": "Agent Management"
   },
   "management": {
     "description": "Manage your system organizations and users"
@@ -1003,5 +1003,73 @@
     "userActivity": "{{user}} performed {{action}} on User",
     "assetActivity": "{{user}} performed {{action}} on {{modelType}} asset",
     "auditActivity": "{{user}} performed {{action}} on {{modelType}}"
+  },
+  "agents": {
+    "title": "Agent Management",
+    "description": "Manage and monitor your IT asset agents",
+    "loading": "Loading agents...",
+    "search": {
+      "placeholder": "Search agents by PC name, IP or MAC address...",
+      "noResults": "No agents found matching your search",
+      "tryAgain": "Try adjusting your search terms"
+    },
+    "errors": {
+      "fetchFailed": "Failed to fetch agents",
+      "ipRequired": "IP address is required",
+      "addFailed": "Failed to add agent",
+      "updateFailed": "Failed to trigger update"
+    },
+    "success": {
+      "added": "Agent added successfully",
+      "updateTriggered": "Update triggered successfully"
+    },
+    "delete": {
+      "confirm": "Are you sure you want to delete agent {0}? This action cannot be undone.",
+      "success": "Agent deleted successfully",
+      "error": "Failed to delete agent"
+    },
+    "status": {
+      "online": "Online",
+      "offline": "Offline",
+      "updating": "Updating",
+      "error": "Error",
+      "unknown": "Unknown"
+    },
+    "add": {
+      "title": "Add New Agent",
+      "description": "Register a new agent by IP address",
+      "ipLabel": "Agent IP Address",
+      "ipPlaceholder": "Enter agent IP address (e.g., 192.168.1.100)",
+      "button": "Add Agent",
+      "adding": "Adding..."
+    },
+    "list": {
+      "title": "Registered Agents",
+      "description": "View and manage all registered agents"
+    },
+    "empty": {
+      "title": "No agents registered",
+      "description": "Add your first agent to start monitoring IT assets"
+    },
+    "table": {
+      "agent": "Agent",
+      "ipAddress": "IP Address",
+      "pcName": "PC Name",
+      "lastSeen": "Last Seen",
+      "lastUpdate": "Last Update",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "update": "Update"
+    },
+    "configuration": {
+      "title": "Agent Configuration",
+      "description": "Configure agent update settings",
+      "updateInterval": "Update Interval (minutes)",
+      "updateIntervalHelp": "How often agents should automatically send updates",
+      "retryAttempts": "Retry Attempts",
+      "retryAttemptsHelp": "Number of retry attempts for failed updates"
+    }
   }
 }

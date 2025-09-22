@@ -120,6 +120,12 @@ const navigationItems: NavigationItem[] = [
         icon: FileText,
         requiredPermission: { resource: 'auditLogs', action: 'view' }
       },
+      { 
+        nameKey: "nav.agents", 
+        href: "/settings/agents", 
+        icon: FileText,
+        requiredPermission: { resource: 'agent', action: 'viewStatus' }
+      },
     ]
   },
 ];
@@ -156,7 +162,8 @@ export function Navigation({}: NavigationProps) {
     canViewLicense,
     canViewWarehouse,
     canViewInternet,
-    canViewAuditLogs
+    canViewAuditLogs,
+    canViewAgents
   } = usePermissions();
 
   // Load application name
@@ -224,7 +231,8 @@ export function Navigation({}: NavigationProps) {
     'tenants': false,
     'roles': false,
     'settings': false,
-    'auditLogs': false
+    'auditLogs': false,
+    'agent': false
   });
   
   // Memoize the permission checks to prevent unnecessary re-renders
@@ -240,8 +248,9 @@ export function Navigation({}: NavigationProps) {
     { key: 'tenants', check: () => canViewTenants() },
     { key: 'roles', check: () => canViewRoles() },
     { key: 'settings', check: () => canViewSettings() },
-    { key: 'auditLogs', check: () => canViewAuditLogs() }
-  ], [canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAuditLogs]);
+    { key: 'auditLogs', check: () => canViewAuditLogs() },
+    { key: 'agent', check: () => canViewAgents() }
+  ], [canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAuditLogs, canViewAgents]);
   
   // Ref to track if we've already checked permissions for the current user
   const permissionCheckRef = useRef<{userRole: string | null, checked: boolean}>({userRole: null, checked: false});
@@ -275,7 +284,8 @@ export function Navigation({}: NavigationProps) {
         'tenants': true,
         'roles': true,
         'settings': true,
-        'auditLogs': true
+        'auditLogs': true,
+        'agent': true
       });
       permissionCheckRef.current = {userRole, checked: true};
     } else if (userRole) {

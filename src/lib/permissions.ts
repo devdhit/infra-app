@@ -57,7 +57,8 @@ export const COMMON_RESOURCE_TYPES = [
   'license', 
   'warehouse', 
   'internet',
-  'auditLogs'
+  'auditLogs',
+  'agent'
 ] as const;
 
 // Define common permission actions for better type safety
@@ -66,7 +67,10 @@ export const COMMON_PERMISSION_ACTIONS = [
   'create', 
   'edit', 
   'delete', 
-  'bulkDelete'
+  'bulkDelete',
+  'submitData',
+  'viewStatus',
+  'healthCheck'
 ] as const;
 
 // Define default permissions for built-in roles
@@ -83,7 +87,8 @@ const defaultPermissions: Record<string, Record<ResourceType, PermissionAction[]
     license: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     warehouse: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     internet: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
-    auditLogs: ['view']
+    auditLogs: ['view'],
+    agent: ['submitData', 'viewStatus', 'healthCheck']
   },
   user: {
     users: ['view'],
@@ -97,7 +102,8 @@ const defaultPermissions: Record<string, Record<ResourceType, PermissionAction[]
     license: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     warehouse: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     internet: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
-    auditLogs: [] // Regular users cannot view audit logs by default
+    auditLogs: [], // Regular users cannot view audit logs by default
+    agent: ['submitData', 'viewStatus', 'healthCheck']
   }
 };
 
@@ -327,7 +333,8 @@ export function getDefaultPermissions(roleName: string): Record<ResourceType, Pe
     license: [],
     warehouse: [],
     internet: [],
-    auditLogs: []
+    auditLogs: [],
+    agent: []
   };
 }
 

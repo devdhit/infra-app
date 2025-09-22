@@ -101,18 +101,29 @@ app.prepare().then(() => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';");
     
+    // Increase timeout for API requests (30 seconds)
+    req.setTimeout(30000, () => {
+      logger.warn(`Request timeout for ${req.url}`);
+      res.statusCode = 408;
+      res.end('Request Timeout');
+    });
+    
     handle(req, res, parsedUrl);
   });
 
   const port = process.env.PORT || 3001;
+  const host = '0.0.0.0'; // Bind to all interfaces
   
-  server.listen(port, (err) => {
+  server.listen(port, host, (err) => {
     if (err) {
       logger.error(`Error starting server: ${err}`);
       process.exit(1);
     }
     logger.emojiLog('🚀', `Server ready at http://localhost:${port}`);
   });
+  
+  // Set server timeout to 30 seconds
+  server.setTimeout(30000);
   
   // Register shutdown handlers
   registerShutdownHandlers(server);
