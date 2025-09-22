@@ -122,13 +122,17 @@ class CacheManager {
     await this.batchInvalidate(assetPatterns, context);
     
     // Invalidate asset lists with comprehensive patterns to cover all variations
+    // The asset list cache key format is: asset_list:{resourceType}:{tenantId}:{page}:{limit}:{search}:{status}
+    // We need multiple patterns to ensure we catch all variations including those with hyphens in search/status
     const assetListPatterns = [
+      // Most general pattern - should match all asset lists for this resource type and tenant
       this.createCompositeKey(
         CACHE_PREFIXES.ASSET_LIST,
         resourceType,
         tenantId,
         '*'
       ),
+      // More specific patterns to ensure comprehensive coverage
       this.createCompositeKey(
         CACHE_PREFIXES.ASSET_LIST,
         resourceType,
@@ -152,6 +156,19 @@ class CacheManager {
         resourceType,
         tenantId,
         '*:*:*:*:*'
+      ),
+      this.createCompositeKey(
+        CACHE_PREFIXES.ASSET_LIST,
+        resourceType,
+        tenantId,
+        '*:*:*:*:*:*'
+      ),
+      // Additional patterns to ensure we catch edge cases
+      this.createCompositeKey(
+        CACHE_PREFIXES.ASSET_LIST,
+        resourceType,
+        tenantId,
+        '*:*:*:*:*:*:*'
       )
     ];
     
