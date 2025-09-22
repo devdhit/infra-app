@@ -814,48 +814,27 @@ export class AssetApiHandler<T extends BaseAsset> {
         // Continue with the operation even if audit log creation fails
       }
 
-      // Use cache invalidation strategy for better performance
+      // Use comprehensive cache invalidation strategy for better performance and consistency
       if (cacheManager && CACHE_PREFIXES) {
-        // Asset is new, so no need to delete it from cache
-        // Just invalidate ALL lists so they will fetch fresh data on next request
-        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
-        const patterns = [
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*:*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*:*:*'
-          )
-        ];
-        
         try {
-          let totalDeleted = 0;
-          for (const pattern of patterns) {
-            const deletedCount = await cacheManager.invalidateByPattern(pattern, { component: 'asset-api-handler' });
-            totalDeleted += deletedCount;
-            logger.debug(`Invalidated ${deletedCount} cache entries with pattern: ${pattern}`);
-          }
-          logger.debug(`Invalidated ${totalDeleted} total asset list cache entries for ${this.operations.modelName}`);
+          // Invalidate all asset list caches for this tenant and model type
+          await cacheManager.invalidateResource(user.tenantId, this.operations.modelName, { component: 'asset-api-handler' });
+          
+          // Also invalidate any potential search result caches
+          const searchPatterns = [
+            cacheManager.createCompositeKey(
+              CACHE_PREFIXES.SEARCH,
+              this.operations.modelName,
+              user.tenantId,
+              '*'
+            )
+          ];
+          
+          await cacheManager.batchInvalidate(searchPatterns, { component: 'asset-api-handler' });
+          
+          logger.debug(`Cache invalidated after creating ${this.operations.modelName} asset ${asset.id}`);
         } catch (error: any) {
-          logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
+          logger.error(`Failed to invalidate cache after creating ${this.operations.modelName} asset:`, error);
         }
       }
 
@@ -1180,62 +1159,37 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
       })
 
-      // Use cache invalidation strategy for better performance
+      // Use comprehensive cache invalidation strategy for better performance and consistency
       if (cacheManager && CACHE_PREFIXES) {
-        // Create cache key for the updated asset
-        const assetCacheKey = cacheManager.createCompositeKey(
-          CACHE_PREFIXES.ASSETS,
-          this.operations.modelName,
-          user.tenantId,
-          id
-        );
-        
-        // Remove the specific asset from cache (will be reloaded on next request)
         try {
+          // Invalidate the specific asset cache
+          const assetCacheKey = cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSETS,
+            this.operations.modelName,
+            user.tenantId,
+            id
+          );
+          
           await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
+          
+          // Invalidate all asset list caches for this tenant and model type
+          await cacheManager.invalidateResource(user.tenantId, this.operations.modelName, { component: 'asset-api-handler' });
+          
+          // Also invalidate any potential search result caches
+          const searchPatterns = [
+            cacheManager.createCompositeKey(
+              CACHE_PREFIXES.SEARCH,
+              this.operations.modelName,
+              user.tenantId,
+              '*'
+            )
+          ];
+          
+          await cacheManager.batchInvalidate(searchPatterns, { component: 'asset-api-handler' });
+          
+          logger.debug(`Cache invalidated after updating ${this.operations.modelName} asset ${id}`);
         } catch (error: any) {
-          logger.warn(`Failed to delete asset cache key ${assetCacheKey}:`, error);
-        }
-        
-        // Invalidate cache entries more efficiently
-        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
-        const patterns = [
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*:*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*:*:*'
-          )
-        ];
-        
-        try {
-          let totalDeleted = 0;
-          for (const pattern of patterns) {
-            const deletedCount = await cacheManager.invalidateByPattern(pattern, { component: 'asset-api-handler' });
-            totalDeleted += deletedCount;
-            logger.debug(`Invalidated ${deletedCount} cache entries with pattern: ${pattern}`);
-          }
-          logger.debug(`Invalidated ${totalDeleted} total asset list cache entries for ${this.operations.modelName}`);
-        } catch (error: any) {
-          logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
+          logger.error(`Failed to invalidate cache after updating ${this.operations.modelName} asset:`, error);
         }
       }
 
@@ -1315,62 +1269,37 @@ export class AssetApiHandler<T extends BaseAsset> {
         logger.warn(`${this.operations.modelName} asset ${id} not found during delete operation`);
       }
 
-      // Use cache invalidation strategy for better performance
+      // Use comprehensive cache invalidation strategy for better performance and consistency
       if (cacheManager && CACHE_PREFIXES) {
-        // Create cache key for the deleted asset
-        const assetCacheKey = cacheManager.createCompositeKey(
-          CACHE_PREFIXES.ASSETS,
-          this.operations.modelName,
-          user.tenantId,
-          id
-        );
-        
-        // Remove the asset from cache (whether it existed in DB or not)
         try {
+          // Invalidate the specific asset cache (whether it existed or not)
+          const assetCacheKey = cacheManager.createCompositeKey(
+            CACHE_PREFIXES.ASSETS,
+            this.operations.modelName,
+            user.tenantId,
+            id
+          );
+          
           await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
+          
+          // Invalidate all asset list caches for this tenant and model type
+          await cacheManager.invalidateResource(user.tenantId, this.operations.modelName, { component: 'asset-api-handler' });
+          
+          // Also invalidate any potential search result caches
+          const searchPatterns = [
+            cacheManager.createCompositeKey(
+              CACHE_PREFIXES.SEARCH,
+              this.operations.modelName,
+              user.tenantId,
+              '*'
+            )
+          ];
+          
+          await cacheManager.batchInvalidate(searchPatterns, { component: 'asset-api-handler' });
+          
+          logger.debug(`Cache invalidated after deleting ${this.operations.modelName} asset ${id}`);
         } catch (error: any) {
-          logger.warn(`Failed to delete asset cache key ${assetCacheKey}:`, error);
-        }
-        
-        // Invalidate cache entries more efficiently
-        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
-        const patterns = [
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*:*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*:*:*'
-          )
-        ];
-        
-        try {
-          let totalDeleted = 0;
-          for (const pattern of patterns) {
-            const deletedCount = await cacheManager.invalidateByPattern(pattern, { component: 'asset-api-handler' });
-            totalDeleted += deletedCount;
-            logger.debug(`Invalidated ${deletedCount} cache entries with pattern: ${pattern}`);
-          }
-          logger.debug(`Invalidated ${totalDeleted} total asset list cache entries for ${this.operations.modelName}`);
-        } catch (error: any) {
-          logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
+          logger.error(`Failed to invalidate cache after deleting ${this.operations.modelName} asset:`, error);
         }
       }
 
@@ -1502,23 +1431,21 @@ export class AssetApiHandler<T extends BaseAsset> {
         
         // IMPORTANT: Even if assets don't exist in DB, we still need to invalidate their cache
         // This handles the case where cached assets no longer exist in the database
-        if (batchIds.length > 0) {
+        if (batchIds.length > 0 && cacheManager && CACHE_PREFIXES) {
           // Invalidate cache for all requested IDs, not just found ones
-          if (cacheManager && CACHE_PREFIXES) {
-            for (const id of batchIds) {
-              const assetCacheKey = cacheManager.createCompositeKey(
-                CACHE_PREFIXES.ASSETS,
-                this.operations.modelName,
-                user.tenantId,
-                id
-              );
-              
-              try {
-                await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
-                logger.debug(`Invalidated cache for asset ID ${id} (may or may not have existed in DB)`);
-              } catch (error: any) {
-                logger.warn(`Failed to invalidate cache for asset ID ${id}:`, error);
-              }
+          for (const id of batchIds) {
+            const assetCacheKey = cacheManager.createCompositeKey(
+              CACHE_PREFIXES.ASSETS,
+              this.operations.modelName,
+              user.tenantId,
+              id
+            );
+            
+            try {
+              await cacheManager.del(assetCacheKey, { component: 'asset-api-handler' });
+              logger.debug(`Invalidated cache for asset ID ${id} (may or may not have existed in DB)`);
+            } catch (error: any) {
+              logger.warn(`Failed to invalidate cache for asset ID ${id}:`, error);
             }
           }
         }
@@ -1552,54 +1479,32 @@ export class AssetApiHandler<T extends BaseAsset> {
         // Continue with the operation even if audit log creation fails
       }
 
-      // Use cache invalidation strategy for better performance
+      // Use comprehensive cache invalidation strategy for better performance and consistency
       if (cacheManager && CACHE_PREFIXES) {
-        // Invalidate all asset list caches to ensure consistency
-        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
-        const patterns = [
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*:*'
-          ),
-          cacheManager.createCompositeKey(
-            CACHE_PREFIXES.ASSET_LIST,
-            this.operations.modelName,
-            user.tenantId,
-            '*:*:*:*'
-          )
-        ];
-        
         try {
-          let totalDeleted = 0;
-          for (const pattern of patterns) {
-            const deletedCount = await cacheManager.invalidateByPattern(pattern, { component: 'asset-api-handler' });
-            totalDeleted += deletedCount;
-            logger.debug(`Invalidated ${deletedCount} cache entries with pattern: ${pattern}`);
-          }
-          logger.debug(`Invalidated ${totalDeleted} total asset list cache entries for ${this.operations.modelName}`);
+          // Invalidate all asset list caches for this tenant and model type
+          await cacheManager.invalidateResource(user.tenantId, this.operations.modelName, { component: 'asset-api-handler' });
+          
+          // Also invalidate any potential search result caches
+          const searchPatterns = [
+            cacheManager.createCompositeKey(
+              CACHE_PREFIXES.SEARCH,
+              this.operations.modelName,
+              user.tenantId,
+              '*'
+            )
+          ];
+          
+          await cacheManager.batchInvalidate(searchPatterns, { component: 'asset-api-handler' });
+          
+          logger.debug(`Cache invalidated after bulk deleting ${this.operations.modelName} assets`);
         } catch (error: any) {
-          logger.error(`Failed to invalidate asset list cache for ${this.operations.modelName}:`, error);
+          logger.error(`Failed to invalidate cache after bulk deleting ${this.operations.modelName} assets:`, error);
         }
       }
 
       // Log completion of bulk delete operation
       logger.info(`Bulk delete operation completed for ${this.operations.modelName}: ${totalDeleted} deleted, ${totalNotFound} not found out of ${ids.length} requested`);
-
-      // React Query cache invalidation removed - relying solely on Redis cache
 
       return successResponse<null>(null, 204)
     } catch (error: any) {

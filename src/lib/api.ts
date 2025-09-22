@@ -128,8 +128,8 @@ apiClient.interceptors.response.use(
 export const api = {
   get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add cache-busting timestamp to prevent browser caching
-      const cacheBuster = `_t=${Date.now()}`;
+      // Add more aggressive cache-busting with timestamp and random value
+      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       
@@ -158,8 +158,8 @@ export const api = {
         }
       }
       
-      // Add cache-busting timestamp to prevent browser caching
-      const cacheBuster = `_t=${Date.now()}`;
+      // Add more aggressive cache-busting with timestamp and random value
+      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       
@@ -178,8 +178,8 @@ export const api = {
   
   put: async <T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add cache-busting timestamp to prevent browser caching
-      const cacheBuster = `_t=${Date.now()}`;
+      // Add more aggressive cache-busting with timestamp and random value
+      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       
@@ -198,8 +198,8 @@ export const api = {
   
   delete: async <T = void>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add cache-busting timestamp to prevent browser caching
-      const cacheBuster = `_t=${Date.now()}`;
+      // Add more aggressive cache-busting with timestamp and random value
+      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       

@@ -109,25 +109,53 @@ class CacheManager {
    * Invalidate all cache entries for a specific resource type
    */
   async invalidateResource(tenantId: string, resourceType: string, context?: LogData): Promise<void> {
-    // Invalidate individual assets
-    const assetPattern = this.createCompositeKey(
-      CACHE_PREFIXES.ASSETS,
-      resourceType,
-      tenantId,
-      '*'
-    );
+    // Invalidate individual assets with comprehensive patterns
+    const assetPatterns = [
+      this.createCompositeKey(
+        CACHE_PREFIXES.ASSETS,
+        resourceType,
+        tenantId,
+        '*'
+      )
+    ];
     
-    await this.invalidateByPattern(assetPattern, context);
+    await this.batchInvalidate(assetPatterns, context);
     
-    // Invalidate asset lists
-    const assetListPattern = this.createCompositeKey(
-      CACHE_PREFIXES.ASSET_LIST,
-      resourceType,
-      tenantId,
-      '*'
-    );
+    // Invalidate asset lists with comprehensive patterns to cover all variations
+    const assetListPatterns = [
+      this.createCompositeKey(
+        CACHE_PREFIXES.ASSET_LIST,
+        resourceType,
+        tenantId,
+        '*'
+      ),
+      this.createCompositeKey(
+        CACHE_PREFIXES.ASSET_LIST,
+        resourceType,
+        tenantId,
+        '*:*'
+      ),
+      this.createCompositeKey(
+        CACHE_PREFIXES.ASSET_LIST,
+        resourceType,
+        tenantId,
+        '*:*:*'
+      ),
+      this.createCompositeKey(
+        CACHE_PREFIXES.ASSET_LIST,
+        resourceType,
+        tenantId,
+        '*:*:*:*'
+      ),
+      this.createCompositeKey(
+        CACHE_PREFIXES.ASSET_LIST,
+        resourceType,
+        tenantId,
+        '*:*:*:*:*'
+      )
+    ];
     
-    await this.invalidateByPattern(assetListPattern, context);
+    await this.batchInvalidate(assetListPatterns, context);
   }
 
   /**
