@@ -262,6 +262,8 @@
         "department": "部門",
         "loadingDepts": "正在載入部門...",
         "selectDept": "選擇部門",
+        "selectDeptOrAll": "選擇部門（留空則匯出所有部門）",
+        "allColumnsDeptInfo": "留空部門以匯出所有部門",
         "selectDeptDisabled": "選擇「所有部門」或「每個部門」以啟用",
         "info": {
           "allColumns": "這將匯出所有 {0} 資料，包括自訂欄位到 Excel 檔案。",

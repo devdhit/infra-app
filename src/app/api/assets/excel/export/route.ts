@@ -99,7 +99,8 @@ export async function GET(request: NextRequest) {
         const pcWhereClause = { 
           tenantId: user.tenantId,
           ...(selectedIdArray ? { id: { in: selectedIdArray } } : {}),
-          ...(department ? { dept: department } : {})
+          // For all-columns export, if no department is specified, we want all departments
+          ...((department || exportType !== 'all-columns') ? (department ? { dept: department } : {}) : {})
         }
         logger.debug('PC where clause:', pcWhereClause)
         // Use cursor-based pagination for better performance with large datasets
@@ -162,7 +163,8 @@ export async function GET(request: NextRequest) {
         const laptopWhereClause = { 
           tenantId: user.tenantId,
           ...(selectedIdArray ? { id: { in: selectedIdArray } } : {}),
-          ...(department ? { dept: department } : {})
+          // For all-columns export, if no department is specified, we want all departments
+          ...((department || exportType !== 'all-columns') ? (department ? { dept: department } : {}) : {})
         }
         logger.debug('Laptop where clause:', laptopWhereClause)
         // Use cursor-based pagination for better performance with large datasets
@@ -236,7 +238,8 @@ export async function GET(request: NextRequest) {
         const printerWhereClause = { 
           tenantId: user.tenantId,
           ...(selectedIdArray ? { id: { in: selectedIdArray } } : {}),
-          ...(department ? { dept: department } : {})
+          // For all-columns export, if no department is specified, we want all departments
+          ...((department || exportType !== 'all-columns') ? (department ? { dept: department } : {}) : {})
         }
         logger.debug('Printer where clause:', printerWhereClause)
         // Use cursor-based pagination for better performance with large datasets
@@ -311,7 +314,8 @@ export async function GET(request: NextRequest) {
         const licenseWhereClause = { 
           tenantId: user.tenantId,
           ...(selectedIdArray ? { id: { in: selectedIdArray } } : {}),
-          ...(department ? { dept: department } : {})
+          // For all-columns export, if no department is specified, we want all departments
+          ...((department || exportType !== 'all-columns') ? (department ? { dept: department } : {}) : {})
         }
         logger.debug('License where clause:', licenseWhereClause)
         // Use cursor-based pagination for better performance with large datasets
@@ -451,7 +455,8 @@ export async function GET(request: NextRequest) {
         const internetWhereClause = { 
           tenantId: user.tenantId,
           ...(selectedIdArray ? { id: { in: selectedIdArray } } : {}),
-          ...(department ? { dept: department } : {})
+          // For all-columns export, if no department is specified, we want all departments
+          ...((department || exportType !== 'all-columns') ? (department ? { dept: department } : {}) : {})
         }
         logger.debug('Internet where clause:', internetWhereClause)
         // Use cursor-based pagination for better performance with large datasets
