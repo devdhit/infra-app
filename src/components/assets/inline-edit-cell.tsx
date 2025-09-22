@@ -113,10 +113,10 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
       toast.success(t('assets.update.success', '{0} updated successfully', field.label))
       
       // Call onUpdate to notify parent component of the change
-      // Use a moderate delay to ensure cache operations complete
+      // Use a more aggressive delay to ensure cache operations complete
       setTimeout(() => {
         onUpdate(processedValue)
-      }, 1000);
+      }, 100); // Reduced delay for faster UI updates
     } catch (error: any) {
       console.error("Inline edit error:", error)
       let message = t('assets.update.error', 'Failed to update {0}', field.label)

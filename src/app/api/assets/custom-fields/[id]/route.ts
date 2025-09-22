@@ -114,19 +114,70 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data: updateData
     })
 
-    // Invalidate Redis cache for this asset and asset lists
+    // Invalidate Redis cache for this asset and asset lists with comprehensive patterns
     if (redisCache && CACHE_PREFIXES) {
-      const assetCacheKey = redisCache.createKey(
-        CACHE_PREFIXES.ASSETS,
-        modelName,
-        user.tenantId,
-        resolvedParams.id
-      );
-      await redisCache.del(assetCacheKey);
-      await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:${modelName}:${user.tenantId}:*`);
-      
-      // Remove the artificial delay that was causing performance issues
-      // await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        // Create cache key for the specific asset
+        const assetCacheKey = redisCache.createKey(
+          CACHE_PREFIXES.ASSETS,
+          modelName,
+          user.tenantId,
+          resolvedParams.id
+        );
+        
+        // Remove the specific asset from cache
+        await redisCache.del(assetCacheKey);
+        
+        // Invalidate cache entries more efficiently with comprehensive patterns
+        // Use multiple patterns with different numbers of wildcards to ensure all variations are covered
+        const patterns = [
+          redisCache.createKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            modelName,
+            user.tenantId,
+            '*'
+          ),
+          redisCache.createKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            modelName,
+            user.tenantId,
+            '*:*'
+          ),
+          redisCache.createKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            modelName,
+            user.tenantId,
+            '*:*:*'
+          ),
+          redisCache.createKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            modelName,
+            user.tenantId,
+            '*:*:*:*'
+          ),
+          redisCache.createKey(
+            CACHE_PREFIXES.ASSET_LIST,
+            modelName,
+            user.tenantId,
+            '*:*:*:*:*'
+          ),
+          redisCache.createKey(
+            CACHE_PREFIXES.SEARCH,
+            modelName,
+            user.tenantId,
+            '*'
+          )
+        ];
+        
+        // Process patterns in parallel for better performance
+        await Promise.all(
+          patterns.map(pattern => redisCache.delByPattern(pattern))
+        );
+        
+        logger.debug(`Invalidated cache for ${modelName} asset ${resolvedParams.id}`);
+      } catch (cacheError: any) {
+        logger.warn(`Failed to invalidate cache for ${modelName} asset ${resolvedParams.id}:`, cacheError);
+      }
     }
 
     return successResponse(updatedAsset)
