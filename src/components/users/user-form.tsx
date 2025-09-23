@@ -33,21 +33,31 @@ export function UserForm({
   isSubmitting 
 }: UserFormProps) {
   const { t } = useTranslation()
-  const { data: roles = [] } = useRoles()
+  const { data: roles = [], error } = useRoles()
   
-  // Use the first available role as default, or empty string if none available
-  const DEFAULT_ROLE = (roles && roles.length > 0 && roles[0]?.id) ? roles[0].id : ''
+  // Log roles and tenants for debugging
+  useEffect(() => {
+    if (roles && roles.length > 0) {
+      console.log('Available roles:', roles);
+    }
+    if (error) {
+      console.error('Error loading roles:', error);
+    }
+    if (tenants && tenants.length > 0) {
+      console.log('Available tenants:', tenants);
+    }
+  }, [roles, error, tenants]);
   
   const [formData, setFormData] = useState<UserFormValues>({
     email: editingUser?.email || '',
     name: editingUser?.name || '',
     password: '',
-    role: editingUser?.roleId || '',
+    role: editingUser?.roleId || '', // Keep existing role for editing
     tenantId: editingUser?.tenantId || '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Update form data when editingUser or roles change
+  // Update form data when editingUser changes
   useEffect(() => {
     if (editingUser) {
       setFormData({
@@ -57,17 +67,8 @@ export function UserForm({
         role: editingUser.roleId || '',
         tenantId: editingUser.tenantId || '',
       })
-    } else {
-      // Reset to default values
-      setFormData({
-        email: '',
-        name: '',
-        password: '',
-        role: DEFAULT_ROLE,
-        tenantId: '',
-      })
     }
-  }, [editingUser, DEFAULT_ROLE]);
+  }, [editingUser]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -92,7 +93,13 @@ export function UserForm({
       newErrors.tenantId = t('users.form.tenantRequired') || 'Tenant is required'
     }
     
-    if (!formData.role) {
+    // For new users, role is required
+    if (!editingUser && !formData.role) {
+      newErrors.role = t('users.form.roleRequired') || 'Role is required'
+    }
+    
+    // For editing users, if role is provided, validate it
+    if (editingUser && formData.role && !roles?.some(role => role.id === formData.role)) {
       newErrors.role = t('users.form.roleRequired') || 'Role is required'
     }
     
@@ -105,6 +112,16 @@ export function UserForm({
     
     if (!validateForm()) return
     
+    // Log the data being sent for debugging
+    console.log('Submitting user data:', {
+      id: editingUser?.id,
+      email: formData.email,
+      name: formData.name,
+      password: formData.password || undefined,
+      roleId: formData.role,
+      tenantId: formData.tenantId,
+    });
+    
     onSubmit({
       id: editingUser?.id,
       email: formData.email,
@@ -116,6 +133,16 @@ export function UserForm({
   }
 
   const handleInputChange = (field: keyof UserFormValues, value: string) => {
+    // Log role selection for debugging
+    if (field === 'role') {
+      console.log('Role selected:', value);
+      // Find the role object to get more details
+      const selectedRole = roles?.find(role => role.id === value);
+      if (selectedRole) {
+        console.log('Selected role details:', selectedRole);
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => {
@@ -127,12 +154,15 @@ export function UserForm({
   }
 
   const resetForm = () => {
+    // Set default tenant ID if only one tenant is available
+    const defaultTenantId = tenants && tenants.length === 1 ? tenants[0]?.id : '';
+    
     setFormData({
       email: '',
       name: '',
       password: '',
-      role: DEFAULT_ROLE,
-      tenantId: '',
+      role: '', // Start with empty role for new users
+      tenantId: defaultTenantId,
     })
     setErrors({})
   }
@@ -233,7 +263,7 @@ export function UserForm({
               </Label>
               <div className="col-span-3">
                 <Select 
-                  value={formData.role || DEFAULT_ROLE} 
+                  value={formData.role || ''} 
                   onValueChange={(value) => handleInputChange('role', value)}
                   disabled={isSubmitting}
                 >

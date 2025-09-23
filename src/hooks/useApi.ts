@@ -133,7 +133,9 @@ export function useApiDeleteWithId<T>(url: string) {
     
     try {
       // Ensure the URL is properly constructed
-      const fullUrl = url.endsWith('/') ? `${url}${id}` : `${url}/${id}`;
+      // Remove leading slash if present to avoid double slashes
+      const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+      const fullUrl = `${cleanUrl}/${id}`;
       const response = await api.delete<T>(fullUrl)
       return response
     } catch (err) {

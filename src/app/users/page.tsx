@@ -32,6 +32,7 @@ const Page = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [bulkDeleteUserIds, setBulkDeleteUserIds] = useState<string[]>([]);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Fetch users and tenants
   const { data: usersData, refetch: refetchUsers } = useUsers();
@@ -40,8 +41,8 @@ const Page = () => {
   // User mutations
   const { createUser } = useCreateUser();
   const { updateUser } = useUpdateUser(editingUser?.id || '');
-  const { deleteUser } = useDeleteUser(deleteUserId || '');
-  const { bulkDeleteUsers } = useBulkDeleteUsers();
+  const { deleteUser, isLoading: isDeleteUserLoading } = useDeleteUser(deleteUserId || '');
+  const { bulkDeleteUsers, isLoading: isBulkDeleteUsersLoading } = useBulkDeleteUsers();
   
   // Check permissions
   const { canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers, isLoading: isUserLoading } = usePermissions();
@@ -82,6 +83,11 @@ const Page = () => {
     checkPermissions();
   }, [canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers]);
   
+  // Update isDeleting state based on hook loading states
+  useEffect(() => {
+    setIsDeleting(isDeleteUserLoading || isBulkDeleteUsersLoading);
+  }, [isDeleteUserLoading, isBulkDeleteUsersLoading]);
+  
   // Get the user to delete for confirmation dialog
   const userToDelete = usersData?.find(user => user.id === deleteUserId) || null;
   
@@ -95,8 +101,13 @@ const Page = () => {
   
   const handleDelete = (id: string | string[]) => {
     if (typeof id === 'string') {
+      // Single user deletion
       setDeleteUserId(id);
       setIsDeleteConfirmOpen(true);
+    } else if (Array.isArray(id) && id.length > 0) {
+      // Bulk user deletion
+      setBulkDeleteUserIds(id);
+      setIsBulkDeleteConfirmOpen(true);
     }
   };
   
@@ -216,7 +227,7 @@ const Page = () => {
             tenants={tenants}
             onEdit={canEdit || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) ? handleEdit : undefined}
             onDelete={(canDelete || canBulkDelete || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId)) ? handleDelete : undefined}
-            isDeleting={false}
+            isDeleting={isDeleting}
             deletingUserId={deleteUserId}
           />
         </CardContent>
@@ -247,7 +258,7 @@ const Page = () => {
         title={t('users.title') || 'Users'}
         count={bulkDeleteUserIds.length}
         isOpen={isBulkDeleteConfirmOpen}
-        isDeleting={false}
+        isDeleting={isDeleting}
         onClose={() => setIsBulkDeleteConfirmOpen(false)}
         onConfirm={confirmBulkDelete}
       />
