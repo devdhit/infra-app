@@ -347,7 +347,8 @@
       "pcName": "電腦名稱",
       "user": "使用者",
       "status": "狀態",
-      "note": "備註"
+      "note": "備註",
+      "office": "Office 版本"
     },
     "laptop": {
       "title": "筆電",
@@ -386,7 +387,6 @@
       "pc": "電腦",
       "mac": "MAC 位址",
       "ip": "IP 位址",
-      "office": "Office 版本",
       "purchaseDate": "購買日期",
       "status": "狀態",
       "note": "備註"
@@ -491,6 +491,7 @@
       "role": "角色",
       "tenant": "租戶",
       "selectTenant": "選擇租戶",
+      "selectRole": "選擇角色",
       "userRole": "使用者",
       "adminRole": "管理員",
       "nameRequired": "姓名為必填",
@@ -848,7 +849,8 @@
       "description": "描述",
       "permissions": "權限",
       "users": "使用者",
-      "createdAt": "建立時間"
+      "createdAt": "建立時間",
+      "actions": "操作"
     },
     "list": {
       "title": "角色列表",

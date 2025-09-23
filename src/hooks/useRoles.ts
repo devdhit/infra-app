@@ -41,6 +41,8 @@ export function useCreateRole() {
     
     try {
       const response = await api.post<Role, RoleFormValues>('/roles', data)
+      // Refetch roles after successful creation
+      window.dispatchEvent(new Event('roles-updated'))
       return response
     } catch (err) {
       setError(err as ApiError)
@@ -64,6 +66,8 @@ export function useUpdateRole(id: string) {
     
     try {
       const response = await api.put<Role, RoleFormValues>(`/roles/${id}`, data)
+      // Refetch roles after successful update
+      window.dispatchEvent(new Event('roles-updated'))
       return response
     } catch (err) {
       setError(err as ApiError)
@@ -87,6 +91,8 @@ export function useDeleteRole(id: string) {
     
     try {
       const response = await api.delete<void>(`/roles/${id}`)
+      // Refetch roles after successful deletion
+      window.dispatchEvent(new Event('roles-updated'))
       return response
     } catch (err) {
       setError(err as ApiError)
@@ -110,6 +116,8 @@ export function useBulkDeleteRoles() {
     
     try {
       const response = await api.post<void, { ids: string[] }>('/roles/bulk-delete', { ids })
+      // Refetch roles after successful bulk deletion
+      window.dispatchEvent(new Event('roles-updated'))
       return response
     } catch (err) {
       setError(err as ApiError)

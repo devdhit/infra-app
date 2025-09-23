@@ -67,7 +67,7 @@ export function RolesTable({
             <TableHead>{t('roles.table.name') || 'Name'}</TableHead>
             <TableHead>{t('roles.table.description') || 'Description'}</TableHead>
             <TableHead>{t('roles.table.createdAt') || 'Created'}</TableHead>
-            <TableHead className="text-right">{t('common.actions') || 'Actions'}</TableHead>
+            <TableHead className="text-right">{t('roles.table.actions') || 'Actions'}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

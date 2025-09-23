@@ -32,6 +32,13 @@ const Page = () => {
   const [bulkDeleteTenantIds, setBulkDeleteTenantIds] = useState<string[]>([]);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   
+  // Permission states
+  const [canView, setCanView] = useState<boolean | null>(null);
+  const [canCreate, setCanCreate] = useState<boolean | null>(null);
+  const [canEdit, setCanEdit] = useState<boolean | null>(null);
+  const [canDelete, setCanDelete] = useState<boolean | null>(null);
+  const [canBulkDelete, setCanBulkDelete] = useState<boolean | null>(null);
+  
   // Fetch tenants
   const { data: tenantsData, isLoading, error, refetch } = useTenants();
   
@@ -41,15 +48,17 @@ const Page = () => {
   const { deleteTenant } = useDeleteTenant(deleteTenantId || '');
   const { bulkDeleteTenants } = useBulkDeleteTenants();
   
+  // Get permission functions from usePermissions hook
+  const { 
+    canViewTenants, 
+    canCreateTenants, 
+    canEditTenants, 
+    canDeleteTenants, 
+    canBulkDeleteTenants,
+    isLoading: isUserLoading 
+  } = usePermissions();
+  
   // Check permissions
-  const { canViewTenants, canCreateTenants, canEditTenants, canDeleteTenants, canBulkDeleteTenants, isLoading: isUserLoading } = usePermissions();
-  
-  const [canView, setCanView] = useState<boolean | null>(null);
-  const [canCreate, setCanCreate] = useState<boolean | null>(null);
-  const [canEdit, setCanEdit] = useState<boolean | null>(null);
-  const [canDelete, setCanDelete] = useState<boolean | null>(null);
-  const [canBulkDelete, setCanBulkDelete] = useState<boolean | null>(null);
-  
   useEffect(() => {
     const checkPermissions = async () => {
       try {
@@ -79,6 +88,19 @@ const Page = () => {
     
     checkPermissions();
   }, [canViewTenants, canCreateTenants, canEditTenants, canDeleteTenants, canBulkDeleteTenants]);
+
+  // Listen for tenants updates
+  useEffect(() => {
+    const handleTenantsUpdated = () => {
+      refetch();
+    };
+
+    window.addEventListener('tenants-updated', handleTenantsUpdated);
+    
+    return () => {
+      window.removeEventListener('tenants-updated', handleTenantsUpdated);
+    };
+  }, [refetch]);
   
   // Get the tenant to delete for confirmation dialog
   const tenantToDelete = tenantsData?.find(tenant => tenant.id === deleteTenantId) || null;
@@ -90,8 +112,13 @@ const Page = () => {
   
   const handleDelete = (id: string | string[]) => {
     if (typeof id === 'string') {
+      // Single tenant deletion
       setDeleteTenantId(id);
       setIsDeleteConfirmOpen(true);
+    } else if (Array.isArray(id) && id.length > 0) {
+      // Bulk tenant deletion
+      setBulkDeleteTenantIds(id);
+      setIsBulkDeleteConfirmOpen(true);
     }
   };
   
