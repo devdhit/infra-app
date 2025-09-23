@@ -33,6 +33,7 @@ const Page = () => {
   const [bulkDeleteUserIds, setBulkDeleteUserIds] = useState<string[]>([]);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Fetch users and tenants
   const { data: usersData, refetch: refetchUsers } = useUsers();
@@ -138,6 +139,7 @@ const Page = () => {
   };
   
   const handleSubmit = async (data: Partial<UserCreateUpdate>) => {
+    setIsSubmitting(true);
     try {
       if (editingUser) {
         try {
@@ -163,6 +165,8 @@ const Page = () => {
       toast.error(error.message || (editingUser 
         ? t('users.update.error') || 'Failed to update user' 
         : t('users.create.error') || 'Failed to create user'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -239,7 +243,7 @@ const Page = () => {
         editingUser={editingUser}
         tenants={tenants}
         onSubmit={handleSubmit}
-        isSubmitting={false}
+        isSubmitting={isSubmitting}
       />
       
       <ConfirmDialog
