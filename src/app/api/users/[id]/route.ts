@@ -114,12 +114,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Validate role if provided
-    if (body.role) {
+    if (body.roleId) {
       if (currentRoleName === 'admin') {
-        // Find the role by name within the same tenant
+        // Find the role by ID within the same tenant
         const role = await db.role.findFirst({
           where: {
-            name: body.role,
+            id: body.roleId,
             tenantId: currentUser.tenantId
           }
         })
