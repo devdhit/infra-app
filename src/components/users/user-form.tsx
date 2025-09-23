@@ -35,26 +35,26 @@ export function UserForm({
   const { t } = useTranslation()
   const { data: roles = [] } = useRoles()
   
-  // Use the first available role as default, or 'user' if none available
-  const DEFAULT_ROLE = (roles && roles.length > 0 && roles[0]) ? roles[0].id : ''
+  // Use the first available role as default, or empty string if none available
+  const DEFAULT_ROLE = (roles && roles.length > 0 && roles[0]?.id) ? roles[0].id : ''
   
   const [formData, setFormData] = useState<UserFormValues>({
     email: editingUser?.email || '',
     name: editingUser?.name || '',
     password: '',
-    role: editingUser?.roleId || DEFAULT_ROLE,
+    role: editingUser?.roleId || '',
     tenantId: editingUser?.tenantId || '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Update form data when editingUser changes
+  // Update form data when editingUser or roles change
   useEffect(() => {
     if (editingUser) {
       setFormData({
         email: editingUser.email || '',
         name: editingUser.name || '',
         password: '',
-        role: editingUser.roleId || DEFAULT_ROLE,
+        role: editingUser.roleId || '',
         tenantId: editingUser.tenantId || '',
       })
     } else {
@@ -233,12 +233,12 @@ export function UserForm({
               </Label>
               <div className="col-span-3">
                 <Select 
-                  value={formData.role} 
+                  value={formData.role || DEFAULT_ROLE} 
                   onValueChange={(value) => handleInputChange('role', value)}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className={errors.role ? 'border-red-500' : ''}>
+                    <SelectValue placeholder={t('users.form.selectRole') || 'Select a role'} />
                   </SelectTrigger>
                   <SelectContent>
                     {roles && roles.map((role) => (
@@ -261,7 +261,7 @@ export function UserForm({
                   onValueChange={(value) => handleInputChange('tenantId', value)}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={errors.tenantId ? 'border-red-500' : ''}>
                     <SelectValue placeholder={t('users.form.selectTenant') || 'Select a tenant'} />
                   </SelectTrigger>
                   <SelectContent>
