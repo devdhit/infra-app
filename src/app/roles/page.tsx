@@ -174,6 +174,19 @@ export default function RolesPage() {
     };
   }, [userRole, canViewRoles, canCreateRoles, canEditRoles, canDeleteRoles, canBulkDeleteRoles, currentUser, isUserLoading]);
 
+  // Listen for roles updates
+  useEffect(() => {
+    const handleRolesUpdated = () => {
+      refetch();
+    };
+
+    window.addEventListener('roles-updated', handleRolesUpdated);
+    
+    return () => {
+      window.removeEventListener('roles-updated', handleRolesUpdated);
+    };
+  }, [refetch]);
+
   // Show loading state while checking permissions
   if (canView === null || isUserLoading) {
     return (
@@ -362,6 +375,8 @@ export default function RolesPage() {
           setIsDialogOpen(false)
           setEditingRole(null)
           setUpdateRoleId(null)
+          // Refetch roles to update the table
+          refetch()
         } catch (error: any) {
           // Log errors only in development
           if (process.env.NODE_ENV === 'development') {
@@ -383,6 +398,8 @@ export default function RolesPage() {
           await createRoleMutation.mutate(data)
           toast.success(t('roles.create.success') || 'Role created successfully')
           setIsDialogOpen(false)
+          // Refetch roles to update the table
+          refetch()
         } catch (error: any) {
           // Log errors only in development
           if (process.env.NODE_ENV === 'development') {

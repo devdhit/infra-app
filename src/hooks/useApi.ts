@@ -540,6 +540,8 @@ export function useCreateTenant() {
   const createTenant = async (data: Partial<Tenant>) => {
     try {
       const response = await mutate(data)
+      // Refetch tenants after successful creation
+      window.dispatchEvent(new Event('tenants-updated'))
       toast.success('Tenant created successfully')
       return response
     } catch (err) {
@@ -574,6 +576,8 @@ export function useUpdateTenant(id: string) {
   const updateTenant = async (data: Partial<Tenant>) => {
     try {
       const response = await mutate(data)
+      // Refetch tenants after successful update
+      window.dispatchEvent(new Event('tenants-updated'))
       toast.success('Tenant updated successfully')
       return response
     } catch (err) {
@@ -610,6 +614,8 @@ export function useDeleteTenant(id: string) {
   const deleteTenant = async () => {
     try {
       const response = await mutate(id)
+      // Refetch tenants after successful deletion
+      window.dispatchEvent(new Event('tenants-updated'))
       toast.success('Tenant deleted successfully')
       return response
     } catch (err) {
@@ -643,6 +649,8 @@ export function useBulkDeleteTenants() {
   const bulkDeleteTenants = async (ids: string[]) => {
     try {
       const response = await mutate({ ids })
+      // Refetch tenants after successful bulk deletion
+      window.dispatchEvent(new Event('tenants-updated'))
       toast.success('Tenants deleted successfully')
       return response
     } catch (err) {

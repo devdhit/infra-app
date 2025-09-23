@@ -16,8 +16,6 @@ import { Search, MoreHorizontal, Edit, Trash } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { Tenant } from "@/hooks/useApi"
 import logger from '@/lib/logger';
-// Remove the import for BulkDeleteDialog since we're not using it in this component
-// import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
 
 // Define the interface directly in this file to avoid import issues
 interface TenantsTableProps {
@@ -173,8 +171,6 @@ export function TenantsTable({
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [selectedTenants, setSelectedTenants] = useState<string[]>([])
-  // Remove the local state for the bulk delete dialog since it's handled by the parent
-  // const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
   const columns = useTenantColumns(t, onEdit, onDelete, isDeleting, deletingTenantId)
   
   // Load column visibility from localStorage
@@ -272,7 +268,6 @@ export function TenantsTable({
         getRowId={(row: Tenant) => row.id}
       />
 
-      {/* Remove the local BulkDeleteDialog since it's handled by the parent component */}
     </div>
   )
 }
