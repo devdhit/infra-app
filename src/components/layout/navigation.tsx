@@ -19,8 +19,6 @@ import {
   Wifi,
   Shield,
   FileText,
-  Palette,
-  Database,
   AppWindow,
   ShieldAlert
 } from "lucide-react";
@@ -90,28 +88,11 @@ const navigationItems: NavigationItem[] = [
         icon: AppWindow,
         requiredPermission: { resource: 'settings', action: 'view' }
       },
-      { 
-        nameKey: "settings.appearance.title", 
-        href: "/settings/appearance", 
-        icon: Palette,
-        requiredPermission: { resource: 'settings', action: 'view' }
-      },
+
       { 
         nameKey: "settings.customFields.title", 
         href: "/settings/custom-fields", 
         icon: Settings,
-        requiredPermission: { resource: 'settings', action: 'view' }
-      },
-      { 
-        nameKey: "settings.security.title", 
-        href: "/settings/security", 
-        icon: Shield,
-        requiredPermission: { resource: 'settings', action: 'view' }
-      },
-      { 
-        nameKey: "settings.dataManagement.title", 
-        href: "/settings/data-management", 
-        icon: Database,
         requiredPermission: { resource: 'settings', action: 'view' }
       },
       { 

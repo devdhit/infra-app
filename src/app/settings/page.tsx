@@ -5,10 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Settings, 
-  Palette, 
   Bell, 
   Shield, 
-  Database,
   Users,
   Building,
   FileText,
@@ -30,10 +28,7 @@ interface PermissionsState {
   canViewRolesSection: boolean;
   // Add permissions for other settings sections
   canViewApplication: boolean;
-  canViewAppearance: boolean;
   canViewNotifications: boolean;
-  canViewSecurity: boolean;
-  canViewDataManagement: boolean;
   canViewAuditLogs: boolean;
   canViewCustomFields: boolean;
   canViewAgents: boolean;
@@ -68,10 +63,7 @@ export default function SettingsPage() {
     canViewRolesSection: false,
     // Add permissions for other settings sections - all set to true for accessibility
     canViewApplication: true,
-    canViewAppearance: true,
     canViewNotifications: true,
-    canViewSecurity: true,
-    canViewDataManagement: true,
     canViewAuditLogs: true,
     canViewCustomFields: true,
     canViewAgents: true
@@ -91,10 +83,7 @@ export default function SettingsPage() {
         canViewRolesSection: false,
         // Set all settings permissions to true since they're now accessible to all
         canViewApplication: true,
-        canViewAppearance: true,
         canViewNotifications: true,
-        canViewSecurity: true,
-        canViewDataManagement: true,
         canViewAuditLogs: true,
         canViewCustomFields: true,
         canViewAgents: true
@@ -128,10 +117,7 @@ export default function SettingsPage() {
         canViewRolesSection: rolesPermission ?? false,
         // Set general settings permissions to true since they're now accessible to all
         canViewApplication: true,
-        canViewAppearance: true,
         canViewNotifications: true,
-        canViewSecurity: true,
-        canViewDataManagement: true,
         canViewAuditLogs: true,
         canViewCustomFields: customFieldsPermission ?? true,
         canViewAgents: true
@@ -146,10 +132,7 @@ export default function SettingsPage() {
         canViewRolesSection: false,
         // Set all settings permissions to true since they're now accessible to all
         canViewApplication: true,
-        canViewAppearance: true,
         canViewNotifications: true,
-        canViewSecurity: true,
-        canViewDataManagement: true,
         canViewAuditLogs: true,
         canViewCustomFields: true,
         canViewAgents: true
@@ -176,10 +159,7 @@ export default function SettingsPage() {
           canViewRolesSection: false,
           // Set all settings permissions to true since they're now accessible to all
           canViewApplication: true,
-          canViewAppearance: true,
           canViewNotifications: true,
-          canViewSecurity: true,
-          canViewDataManagement: true,
           canViewAuditLogs: true,
           canViewCustomFields: true,
           canViewAgents: true
@@ -204,14 +184,6 @@ export default function SettingsPage() {
       gradient: "from-blue-500 to-blue-600"
     },
     {
-      name: t('settings.appearance.title') || "Appearance",
-      icon: Palette,
-      href: "/settings/appearance",
-      description: t('settings.appearance.description') || "Customize the look and feel",
-      color: "bg-yellow-100 text-yellow-700",
-      gradient: "from-yellow-500 to-yellow-600"
-    },
-    {
       name: t('settings.notifications.title') || "Notifications",
       icon: Bell,
       href: "/settings/notifications",
@@ -222,22 +194,6 @@ export default function SettingsPage() {
   ];
 
   const securitySettings: SettingsSection[] = [
-    {
-      name: t('settings.security.title') || "Security",
-      icon: Shield,
-      href: "/settings/security",
-      description: t('settings.security.description') || "Manage security settings",
-      color: "bg-indigo-100 text-indigo-700",
-      gradient: "from-indigo-500 to-indigo-600"
-    },
-    {
-      name: t('settings.dataManagement.title') || "Data Management",
-      icon: Database,
-      href: "/settings/data-management",
-      description: t('settings.dataManagement.description') || "Manage data backup, retention, and export settings",
-      color: "bg-cyan-100 text-cyan-700",
-      gradient: "from-cyan-500 to-cyan-600"
-    },
     {
       name: t('settings.auditLogs.title') || "Audit Logs",
       icon: FileText,
