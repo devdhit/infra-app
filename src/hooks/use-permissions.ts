@@ -7,8 +7,8 @@ import logger from '@/lib/logger';
 // Global cache for permission checks shared across all instances of the hook
 const globalPermissionCache = new Map<string, { value: boolean; timestamp: number }>();
 
-// Cache timeout (5 minutes)
-const CACHE_TIMEOUT = 5 * 60 * 1000;
+// Cache timeout (10 minutes)
+const CACHE_TIMEOUT = 10 * 60 * 1000;
 
 // Define the permission check structure
 interface PermissionCheck {
@@ -42,9 +42,9 @@ async function processPermissionQueue() {
   isProcessingQueue = true;
 
   try {
-    // Process queue in larger batches of 20 to reduce API calls for users with many permissions
+    // Process queue in larger batches of 15 to reduce API calls for users with many permissions
     while (permissionQueue.length > 0) {
-      const batch = permissionQueue.splice(0, 20);
+      const batch = permissionQueue.splice(0, 15);
       
       // Create batch request
       const permissionsToCheck: PermissionCheck[] = batch.map(item => ({
@@ -53,9 +53,9 @@ async function processPermissionQueue() {
       }));
 
       try {
-        // Increase timeout to 15 seconds for larger batches
+        // Increase timeout to 20 seconds for larger batches
         const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Permission check timeout')), 15000)
+          setTimeout(() => reject(new Error('Permission check timeout')), 20000)
         );
         
         // Make batch API call using the existing API client with proper authentication
@@ -102,9 +102,9 @@ async function processPermissionQueue() {
       }
 
       // Add a small delay between batches to avoid overwhelming the server
-      // Reduce delay to 25ms for better performance
+      // Reduce delay to 50ms for better performance
       if (permissionQueue.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, 25));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
   } finally {
@@ -135,10 +135,10 @@ export function usePermissions() {
     
     // For non-admin users, use batch checking for better performance
     return new Promise<boolean>((resolve, reject) => {
-      // Add timeout to reject the promise if it takes too long
+      // Increase timeout to 10 seconds to prevent premature timeouts
       const timeoutId = setTimeout(() => {
         reject(new Error(`Permission check timeout for ${resource}:${action}`));
-      }, 5000);
+      }, 10000);
       
       // Wrap resolve and reject to clear timeout
       const wrappedResolve = (value: boolean) => {
@@ -156,7 +156,8 @@ export function usePermissions() {
       
       // Process queue if not already processing
       if (!isProcessingQueue) {
-        setTimeout(processPermissionQueue, 10);
+        // Add a small delay before processing to allow batching
+        setTimeout(processPermissionQueue, 50);
       }
     }).catch((error: any) => {
       logger.error(`Error checking permission for ${resource}:${action}`, error);
@@ -171,7 +172,7 @@ export function usePermissions() {
       if (error?.message?.includes('401')) {
         toast.error(`Authentication error. Please log in again.`);
       } else if (error?.message?.includes('timeout')) {
-        // Don't show toast for timeouts to avoid spam
+        // Don't show toast for timeouts to avoid spam, but log it
         logger.warn(`Permission check timed out for ${resource}:${action}`);
       } else {
         toast.error(`Unable to check permissions. You may not have permission to perform this action.`);

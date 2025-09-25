@@ -356,7 +356,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full sm:w-auto">
                 <Filter className="h-4 w-4 mr-2" />
-                {t('common.filter')}
+                Filter
                 {isFiltersOpen ? (
                   <ChevronDown className="h-4 w-4 ml-2" />
                 ) : (
@@ -475,7 +475,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full sm:w-auto">
                 <Filter className="h-4 w-4 mr-2" />
-                {t('common.filter')}
+                Filter
                 {isFiltersOpen ? (
                   <ChevronDown className="h-4 w-4 ml-2" />
                 ) : (
@@ -516,7 +516,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full sm:w-auto">
                 <Filter className="h-4 w-4 mr-2" />
-                {t('common.filter')}
+                Filter
                 {isFiltersOpen ? (
                   <ChevronDown className="h-4 w-4 ml-2" />
                 ) : (

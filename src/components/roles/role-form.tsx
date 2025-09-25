@@ -32,20 +32,24 @@ export function RoleForm({
 }: RoleFormProps) {
   const { t } = useTranslation()
   
-  // Initialize permissions structure
-  const initialPermissions = useMemo(() => ({
-    users: [],
-    tenants: [],
-    assets: [],
-    settings: [],
-    roles: [],
-    pc: [],
-    laptop: [],
-    printer: [],
-    license: [],
-    warehouse: [],
-    internet: []
-  }), [])
+  // Initialize permissions structure with all resource types
+  const initialPermissions = useMemo(() => {
+    const permissions: Record<ResourceType, PermissionAction[]> = {}
+    
+    // Initialize all common resource types with empty arrays
+    COMMON_RESOURCE_TYPES_ARRAY.forEach(resource => {
+      permissions[resource] = []
+    })
+    
+    // Also initialize asset types
+    ASSET_TYPES.forEach(assetType => {
+      if (!permissions[assetType]) {
+        permissions[assetType] = []
+      }
+    })
+    
+    return permissions
+  }, [])
   
   const [formData, setFormData] = useState<RoleFormValues>({
     name: '',
@@ -58,16 +62,22 @@ export function RoleForm({
   // Update form data when editingRole changes
   useEffect(() => {
     if (editingRole) {
-      // Merge editingRole permissions with initialPermissions to ensure all resource types are present
-      const mergedPermissions: Record<ResourceType, PermissionAction[]> = { ...initialPermissions };
-      Object.keys(editingRole.permissions || {}).forEach(resource => {
-        mergedPermissions[resource] = editingRole.permissions[resource] || [];
-      });
+      // Create a complete permissions object with all resource types
+      const completePermissions: Record<ResourceType, PermissionAction[]> = { ...initialPermissions }
+      
+      // Merge editingRole permissions, ensuring all resource types are present
+      if (editingRole.permissions) {
+        Object.keys(editingRole.permissions).forEach(resource => {
+          completePermissions[resource] = Array.isArray(editingRole.permissions[resource]) 
+            ? [...editingRole.permissions[resource]] 
+            : []
+        })
+      }
       
       setFormData({
         name: editingRole.name,
         description: editingRole.description || '',
-        permissions: mergedPermissions
+        permissions: completePermissions
       })
     } else {
       // Reset to default values
