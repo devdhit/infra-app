@@ -2,7 +2,6 @@
 
 import { useCurrentUser } from '@/hooks/useApi'
 import { usePathname, useRouter } from 'next/navigation'
-import { Navigation } from './navigation'
 import { Header } from './header'
 import { useEffect, useState } from 'react'
 import { navigationMonitor } from '@/lib/navigation-performance'
@@ -108,18 +107,15 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     return null;
   }
 
-  // If authenticated, show the protected layout with fixed positioning
+  // If authenticated, show the protected layout without sidebar
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      <Navigation />
-      <div className="flex flex-col flex-1 md:ml-64 relative">
-        <Header />
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          <div className="max-w-full">
-            {children}
-          </div>
-        </main>
-      </div>
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <Header />
+      <main className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="max-w-full">
+          {children}
+        </div>
+      </main>
     </div>
   )
 }
