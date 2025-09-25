@@ -136,6 +136,9 @@ const getAssetColumns = (
     ),
     enableSorting: false,
     enableHiding: false,
+    size: 50, // Make select column a little longer (increased from 40 to 50)
+    minSize: 50,
+    maxSize: 50,
   };
 
   // Create actions column with optimized width
@@ -188,11 +191,38 @@ const getAssetColumns = (
         </div>
       );
     },
-    size: 70, // Set a fixed width for the actions column
+    size: 100, // Make actions column longer (increased from 70 to 100)
+    minSize: 80,
+    maxSize: 150,
   };
 
   // Create data columns
   const dataColumns: ColumnDef<Asset>[] = visibleColumns.map((column) => {
+    // Determine if this is a custom field
+    const isCustom = customFieldsData?.some((cf: any) => cf.name === column.key) || false;
+    
+    // Set column sizing based on column type
+    let columnWidth = 200; // Default width for main columns
+    let minWidth = 120;
+    let maxWidth = 500;
+    
+    if (column.key === 'select') {
+      // Select/checkbox column - make it shorter
+      columnWidth = 100;
+      minWidth = 100;
+      maxWidth = 100;
+    } else if (isCustom) {
+      // Custom fields - make them longer
+      columnWidth = 200;
+      minWidth = 150;
+      maxWidth = 600;
+    } else {
+      // Main columns - standard width
+      columnWidth = 150;
+      minWidth = 120;
+      maxWidth = 500;
+    }
+    
     return {
       accessorKey: column.key, // Use the original key as accessorKey
       header: t(column.label, column.label),
@@ -227,6 +257,16 @@ const getAssetColumns = (
           displayValue = formatDisplayDate(cellValue);
         }
         
+        // For textarea custom fields, show full content without truncation
+        const isTextareaCustomField = isCustom && field?.type === 'textarea';
+        
+        // Truncate long text for display in table cells (limit to 15 characters)
+        const truncateTextForDisplay = (text: string, maxLength: number = 15) => {
+          if (!text) return '';
+          const str = String(text);
+          return str.length > maxLength ? `${str.substring(0, maxLength)}...` : str;
+        };
+        
         return field ? (
           <InlineEditCell
             asset={asset}
@@ -242,9 +282,15 @@ const getAssetColumns = (
             }}
           />
         ) : (
-          column.render ? column.render(displayValue) : String(displayValue || '')
+          <div className={isTextareaCustomField ? "whitespace-pre-wrap break-words max-h-32 overflow-y-auto p-1" : "overflow-hidden text-ellipsis whitespace-nowrap"}>
+            {column.render ? column.render(displayValue) : truncateTextForDisplay(displayValue || '')}
+          </div>
         );
       },
+      // Add column sizing properties
+      size: columnWidth,
+      minSize: minWidth,
+      maxSize: maxWidth,
     };
   });
 
@@ -947,7 +993,7 @@ export function AssetList({
             <Button 
               variant="outline" 
               size="sm" 
-              className="hidden sm:flex"
+              className="hidden sm:flex border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
               onClick={() => setIsExportDialogOpen(true)}
               disabled={canView === false}
             >
@@ -957,7 +1003,7 @@ export function AssetList({
             <Button 
               variant="outline" 
               size="sm" 
-              className="hidden sm:flex"
+              className="hidden sm:flex border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
               onClick={() => setIsImportDialogOpen(true)}
               disabled={canCreate === false}
             >
@@ -967,7 +1013,7 @@ export function AssetList({
             <Button 
               variant="outline" 
               size="icon" 
-              className="sm:hidden"
+              className="sm:hidden border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
               onClick={() => setIsExportDialogOpen(true)}
               disabled={canView === false}
             >
@@ -976,7 +1022,7 @@ export function AssetList({
             <Button 
               variant="outline" 
               size="icon" 
-              className="sm:hidden"
+              className="sm:hidden border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
               onClick={() => setIsImportDialogOpen(true)}
               disabled={canCreate === false}
             >
@@ -995,6 +1041,7 @@ export function AssetList({
             onClick={handleRefresh}
             variant="outline" 
             size="sm"
+            className="border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{t('common.refresh', "Refresh")}</span>
