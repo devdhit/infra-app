@@ -1,5 +1,7 @@
-import { useTheme as useNextTheme } from 'next-themes'
+import { useTheme as useNextTheme, type ThemeProviderProps } from 'next-themes'
 import { useEffect, useState } from 'react'
+
+type Theme = NonNullable<ThemeProviderProps['defaultTheme']>
 
 export function useTheme() {
   const { theme, setTheme, systemTheme } = useNextTheme()
@@ -19,7 +21,7 @@ export function useTheme() {
   const isLight = resolvedTheme === 'light'
 
   return {
-    theme: resolvedTheme,
+    theme: resolvedTheme as Theme | null,
     setTheme,
     isDark,
     isLight,

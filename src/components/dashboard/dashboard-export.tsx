@@ -37,7 +37,7 @@ export function DashboardExport({ onExport }: DashboardExportProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={isExporting} className="w-full sm:w-auto">
+        <Button variant="outline" disabled={isExporting} className="w-full sm:w-auto border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200">
           <Download className="h-4 w-4 mr-2" />
           <span className="hidden sm:inline">{t('common.export')}</span>
           <span className="sm:hidden">{t('common.export')}</span>

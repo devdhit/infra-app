@@ -117,8 +117,9 @@ const DraggableTableHeader = React.memo(({
     opacity: isDragging ? 0.8 : 1,
     zIndex: isDragging ? 1 : undefined,
     position: isFirstColumn ? 'sticky' : 'relative',
-    width: isCheckboxColumn ? 40 : isActionsColumn ? 70 : header.getSize(),
-    minWidth: isCheckboxColumn ? 40 : isActionsColumn ? 70 : 120,
+    width: header.getSize(),
+    minWidth: header.column.columnDef.minSize || 120,
+    maxWidth: header.column.columnDef.maxSize || 500,
   } as React.CSSProperties
 
   return (
@@ -127,24 +128,25 @@ const DraggableTableHeader = React.memo(({
       style={style}
       className={`
         ${isFirstColumn ? 'sticky-column' : ''}
-        ${isCheckboxColumn ? 'w-10' : ''}
-        ${isActionsColumn ? 'w-[70px]' : ''}
+        ${isCheckboxColumn ? 'w-[50px]' : ''}
+        ${isActionsColumn ? 'w-[100px]' : ''}
         ${isDragging ? 'shadow-lg rounded-md' : ''}
+        relative
       `}
     >
       {header.isPlaceholder ? null : (
         <div
           {...{
             className: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
-              ? "cursor-pointer select-none flex items-center justify-between"
-              : "flex items-center justify-between",
+              ? "cursor-pointer select-none flex items-center justify-between h-full"
+              : "flex items-center justify-between h-full",
             onClick: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
               ? header.column.getToggleSortingHandler()
               : undefined,
           }}
         >
           <div 
-            className="break-words whitespace-normal text-sm font-medium flex items-center gap-1"
+            className="break-words whitespace-normal text-sm font-medium flex items-center gap-1 flex-1"
             {...(header.column.id !== 'select' && header.column.id !== 'actions' ? attributes : {})}
             {...(header.column.id !== 'select' && header.column.id !== 'actions' ? listeners : {})}
           >
@@ -159,13 +161,13 @@ const DraggableTableHeader = React.memo(({
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
-                className="h-4 w-4 text-muted-foreground cursor-grab"
+                className="h-4 w-4 text-muted-foreground cursor-grab flex-shrink-0"
               >
                 <line x1="9" x2="9" y1="5" y2="19" />
                 <line x1="15" x2="15" y1="5" y2="19" />
               </svg>
             )}
-            <div>
+            <div className="flex-1">
               {flexRender(
                 header.column.columnDef.header,
                 header.getContext()
@@ -181,7 +183,7 @@ const DraggableTableHeader = React.memo(({
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-muted-foreground opacity-30"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>}
             </span>
           )}
-          {enableColumnResizing && !isCheckboxColumn && (
+          {enableColumnResizing && !isCheckboxColumn && !isActionsColumn && (
             <div
               onMouseDown={header.getResizeHandler()}
               onTouchStart={header.getResizeHandler()}
@@ -211,7 +213,7 @@ export function DataTable<TData, TValue>({
   onRefresh,
   disableBuiltInFeatures = false,
   getRowId,
-  enableColumnResizing = false,
+  enableColumnResizing = true, // Enable column resizing by default
   enableVirtualization = false,
   virtualItemHeight = 50,
   enableColumnReordering = false,
@@ -409,7 +411,7 @@ export function DataTable<TData, TValue>({
                         <span className="modern-data-table-card-label">
                           {typeof header === 'string' ? header : header?.toString() || cell.column.id}
                         </span>
-                        <span className="modern-data-table-card-value">
+                        <span className="modern-data-table-card-value whitespace-nowrap overflow-hidden text-ellipsis">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </span>
                       </div>
@@ -491,20 +493,19 @@ export function DataTable<TData, TValue>({
             >
               {row.getVisibleCells().map((cell, index) => {
                 const isFirstColumn = index === 0;
-                const isCheckboxColumn = cell.column.id === 'select';
                 const isActionsColumn = cell.column.id === 'actions';
                 
                 return (
                   <TableCell 
                     key={cell.id} 
-                    className={`align-middle ${isFirstColumn ? 'sticky-column' : ''} ${isActionsColumn ? 'w-[70px]' : ''}`}
+                    className={`align-middle ${isFirstColumn ? 'sticky-column' : ''} ${cell.column.id === 'select' ? 'w-[50px]' : ''} ${isActionsColumn ? 'w-[100px]' : ''}`}  /* Updated sizes */
                     style={{
-                      width: isCheckboxColumn ? 40 : isActionsColumn ? 70 : cell.column.getSize(),
-                      minWidth: isCheckboxColumn ? 40 : isActionsColumn ? 70 : 120,
-                      maxWidth: isCheckboxColumn ? 40 : isActionsColumn ? 70 : 'none',
+                      width: cell.column.getSize(),
+                      minWidth: cell.column.columnDef.minSize || 120,
+                      maxWidth: cell.column.columnDef.maxSize || 500,
                     }}
                   >
-                    <div className={`${isCheckboxColumn ? '' : 'break-words whitespace-normal text-sm'} overflow-hidden text-ellipsis`}>
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </div>
                   </TableCell>
@@ -562,12 +563,14 @@ export function DataTable<TData, TValue>({
                   key={header.id} 
                   className={`
                     ${isFirstColumn ? 'sticky-column' : ''}
-                    ${isCheckboxColumn ? 'w-10' : ''}
-                    ${isActionsColumn ? 'w-[70px]' : ''}
+                    ${isCheckboxColumn ? 'w-[50px]' : ''}
+                    ${isActionsColumn ? 'w-[100px]' : ''}
+                    relative
                   `}
                   style={{
-                    width: isCheckboxColumn ? 40 : isActionsColumn ? 70 : header.getSize(),
-                    minWidth: isCheckboxColumn ? 40 : isActionsColumn ? 70 : 120,
+                    width: header.getSize(),
+                    minWidth: header.column.columnDef.minSize || 120,
+                    maxWidth: header.column.columnDef.maxSize || 500,
                     position: isFirstColumn ? 'sticky' : 'relative',
                   }}
                 >
@@ -575,14 +578,14 @@ export function DataTable<TData, TValue>({
                     <div
                       {...{
                         className: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
-                          ? "cursor-pointer select-none flex items-center justify-between"
-                          : "flex items-center justify-between",
+                          ? "cursor-pointer select-none flex items-center justify-between h-full"
+                          : "flex items-center justify-between h-full",
                         onClick: (sortable && header.column.getCanSort() && !disableBuiltInFeatures)
                           ? header.column.getToggleSortingHandler()
                           : undefined,
                       }}
                     >
-                      <div className="break-words whitespace-normal text-sm font-medium">
+                      <div className="break-words whitespace-normal text-sm font-medium flex-1">
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext()
@@ -597,7 +600,7 @@ export function DataTable<TData, TValue>({
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-muted-foreground opacity-30"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>}
                         </span>
                       )}
-                      {enableColumnResizing && !isCheckboxColumn && (
+                      {enableColumnResizing && !isCheckboxColumn && !isActionsColumn && (
                         <div
                           onMouseDown={header.getResizeHandler()}
                           onTouchStart={header.getResizeHandler()}

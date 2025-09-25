@@ -245,7 +245,13 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
       <div className="flex-1">
         {field.render ? field.render(value) : 
          field.type === 'boolean' ? (value ? 'Yes' : 'No') : 
-         String(value || '')}
+         field.type === 'textarea' ? (
+          <div className="whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+            {String(value || '')}
+          </div>
+        ) : (
+          String(value || '')
+        )}
       </div>
       {isCustom && (
         <TooltipProvider>

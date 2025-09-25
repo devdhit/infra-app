@@ -332,10 +332,10 @@ export default function SettingsPage() {
             <p className="text-muted-foreground">{t('settings.description') || "Manage your system preferences"}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="rounded-lg">
+            <Button variant="outline" className="rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200">
               {t('common.export')}
             </Button>
-            <Button className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700">
+            <Button className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-700 dark:hover:from-blue-700 dark:hover:to-indigo-800">
               {t('common.save')}
             </Button>
           </div>
@@ -376,10 +376,10 @@ export default function SettingsPage() {
           <p className="text-muted-foreground">{t('settings.description') || "Manage your system preferences"}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="rounded-lg">
+          <Button variant="outline" className="rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200">
             {t('common.export')}
           </Button>
-          <Button className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700">
+          <Button className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-700 dark:hover:from-blue-700 dark:hover:to-indigo-800">
             {t('common.save')}
           </Button>
         </div>
