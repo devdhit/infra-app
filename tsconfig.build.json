@@ -42,11 +42,12 @@
     "baseUrl": "."
   },
   "include": [
-    "src/**/*"
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ],
   "exclude": [
     "node_modules",
     ".next",
-    "dist"
+    "src/generated/**/*"
   ]
 }
