@@ -34,7 +34,11 @@
       "logout": "Logged out successfully",
       "error": "Invalid email or password",
       "tooManyAttempts": "Too many login attempts. Please try again later.",
-      "signingIn": "Signing in..."
+      "signingIn": "Signing in...",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "invalidEmail": "Please enter a valid email address",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required"
     },
     "logout": {
       "success": "Logged out successfully",

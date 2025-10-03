@@ -21,7 +21,7 @@ export function generateSecureRandomString(length: number = 32): string {
   return randomBytes(length).toString('base64url');
 }
 
-// Sanitize user input to prevent XSS
+// Enhanced input sanitization to prevent XSS and injection attacks
 export function sanitizeInput(input: string): string {
   if (!input) return '';
   
@@ -30,7 +30,8 @@ export function sanitizeInput(input: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
 }
 
 // Validate email format
@@ -135,7 +136,7 @@ export const CSP_HEADER = `
   form-action 'self';
 `.replace(/\s{2,}/g, ' ').trim();
 
-// Validate and sanitize search input to prevent injection attacks
+// Enhanced input validation and sanitization for search inputs
 export function validateSearchInput(input: string): string {
   if (!input) return '';
   
@@ -147,10 +148,11 @@ export function validateSearchInput(input: string): string {
     sanitized = sanitized.substring(0, 100);
   }
   
+  // Trim whitespace
   return sanitized.trim();
 }
 
-// Validate and sanitize Office information to preserve version details
+// Enhanced input validation for Office information
 export function validateOfficeInput(input: string): string {
   if (!input) return '';
   
@@ -163,6 +165,37 @@ export function validateOfficeInput(input: string): string {
   }
   
   return sanitized.trim();
+}
+
+// Enhanced SQL injection prevention for dynamic table/column names
+export function validateTableName(tableName: string): string {
+  // Only allow alphanumeric characters and underscores
+  const validTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
+  
+  // List of allowed table names (whitelist approach)
+  const allowedTables = [
+    'PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet',
+    'User', 'Role', 'Tenant', 'CustomField', 'History', 'AuditLogsSettings'
+  ];
+  
+  if (!allowedTables.includes(validTableName)) {
+    throw new Error('Invalid table name');
+  }
+  
+  return validTableName;
+}
+
+// Enhanced SQL injection prevention for column names
+export function validateColumnName(columnName: string): string {
+  // Only allow alphanumeric characters and underscores
+  const validColumnName = columnName.replace(/[^a-zA-Z0-9_]/g, '');
+  
+  // Limit length
+  if (validColumnName.length > 50) {
+    throw new Error('Column name too long');
+  }
+  
+  return validColumnName;
 }
 
 // Create a hash for data integrity verification

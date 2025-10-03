@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { defaultLanguage } from '@/lib/i18n'
 import { securityMiddleware, globalRateLimiter } from '@/lib/security-middleware'
+import { sqlInjectionMiddleware } from '@/lib/sql-injection-middleware'
 
 // Match all request paths except for the ones starting with:
 // - api (API routes)
@@ -13,6 +14,12 @@ export const config = {
 }
 
 export async function middleware(request: NextRequest) {
+  // Apply SQL injection middleware first
+  const sqlInjectionResult = await sqlInjectionMiddleware(request)
+  if (sqlInjectionResult) {
+    return sqlInjectionResult
+  }
+  
   // Apply security middleware
   const securityResult = await securityMiddleware(request)
   if (securityResult) {
