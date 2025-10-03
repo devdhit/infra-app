@@ -3,6 +3,7 @@
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LogoutDialog } from "@/components/layout/logout-dialog";
+import { ProfileDialog } from "@/components/layout/profile-dialog";
 import { useTranslation } from "@/hooks/use-translation";
 import { User, LogOut, UserCircle, Menu, X, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -125,10 +126,12 @@ export function Header() {
   const router = useRouter();
   const { data: user } = useCurrentUser();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [applicationName, setApplicationName] = useState('IT Asset Management');
   const [shortName, setShortName] = useState('ITAMS');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   // Use permission hooks
   const { 
@@ -364,6 +367,15 @@ export function Header() {
     setOpenDropdown(openDropdown === nameKey ? null : nameKey);
   };
 
+  // Update date/time every second for real-time display
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <>
       <header className="sticky top-0 right-0 left-0 z-50 bg-background/80 backdrop-blur-md border-b shadow-sm">
@@ -433,6 +445,11 @@ export function Header() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Date/Time and IP Display */}
+            <div className="hidden md:flex flex-col items-end text-sm text-muted-foreground">
+              <div>{currentDateTime.getFullYear()}/{String(currentDateTime.getMonth() + 1).padStart(2, '0')}/{String(currentDateTime.getDate()).padStart(2, '0')} {String(currentDateTime.getHours()).padStart(2, '0')}:{String(currentDateTime.getMinutes()).padStart(2, '0')}:{String(currentDateTime.getSeconds()).padStart(2, '0')}</div>
+            </div>
+            
             {/* Mobile menu button */}
             <Button 
               variant="ghost" 
@@ -468,11 +485,9 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile">
-                    <UserCircle className="mr-2 h-4 w-4" />
-                    <span>{t('common.profile') || 'Profile'}</span>
-                  </Link>
+                <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  <span>{t('common.profile') || 'Profile'}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
@@ -493,6 +508,13 @@ export function Header() {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t bg-background">
+            {/* Date/Time and IP Display for mobile */}
+            <div className="px-4 py-2 border-b">
+              <div className="text-sm text-muted-foreground">
+                {currentDateTime.getFullYear()}/{String(currentDateTime.getMonth() + 1).padStart(2, '0')}/{String(currentDateTime.getDate()).padStart(2, '0')} {String(currentDateTime.getHours()).padStart(2, '0')}:{String(currentDateTime.getMinutes()).padStart(2, '0')}:{String(currentDateTime.getSeconds()).padStart(2, '0')}
+              </div>
+            </div>
+            
             <div className="space-y-1 px-4 py-3">
               {filteredNavigationItems.map((item) => (
                 <div key={item.nameKey}>
@@ -546,6 +568,7 @@ export function Header() {
         )}
       </header>
       <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} />
+      <ProfileDialog open={showProfileDialog} onOpenChange={setShowProfileDialog} />
     </>
   );
 }
