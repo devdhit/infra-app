@@ -19,6 +19,14 @@ import { Badge } from "@/components/ui/badge"
 import { Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { getModelType, isCustomField, createUpdateData } from "@/lib/custom-fields"
+// Import the Dialog components for a more consistent popup experience
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 interface InlineEditCellProps {
   asset: Asset
@@ -139,44 +147,55 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
   
   if (isEditing) {
     return (
-      <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{field.label}</h3>
-              {isCustom && (
+      // Using Dialog component instead of full-screen overlay for better UX
+      <Dialog open={isEditing} onOpenChange={(open) => {
+        if (!open) {
+          handleCancel()
+        }
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{field.label}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {isCustom && (
+              <div className="flex justify-end">
                 <Badge variant="secondary" className="text-xs">
                   Custom Field
                 </Badge>
-              )}
-            </div>
+              </div>
+            )}
             
-            <div className="mb-4">
+            <div className="space-y-4">
               {field.type === 'textarea' ? (
-                <Textarea
-                  ref={textareaRef}
-                  value={editValue || ''}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="min-h-[120px] w-full"
-                  placeholder={field.placeholder}
-                />
+                <div className="space-y-2">
+                  <Textarea
+                    ref={textareaRef}
+                    value={editValue || ''}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="min-h-[120px]"
+                    placeholder={field.placeholder}
+                  />
+                </div>
               ) : field.type === 'select' ? (
-                <Select 
-                  value={editValue || ''} 
-                  onValueChange={setEditValue}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={field.placeholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {field.options?.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Select 
+                    value={editValue || ''} 
+                    onValueChange={setEditValue}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={field.placeholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               ) : field.type === 'boolean' ? (
                 <div className="flex items-center space-x-2">
                   <input
@@ -190,50 +209,51 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
                   </span>
                 </div>
               ) : (
-                <Input
-                  ref={inputRef}
-                  type={field.type}
-                  value={editValue || ''}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="w-full h-12 text-lg"
-                  placeholder={field.placeholder}
-                />
+                <div className="space-y-2">
+                  <Input
+                    ref={inputRef}
+                    type={field.type}
+                    value={editValue || ''}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="h-12 text-lg"
+                    placeholder={field.placeholder}
+                  />
+                </div>
+              )}
+              
+              {field.description && (
+                <div className="flex items-start">
+                  <Info className="h-4 w-4 text-muted-foreground mt-0.5 mr-2 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">{field.description}</p>
+                </div>
               )}
             </div>
-            
-            {field.description && (
-              <div className="flex items-start mb-4">
-                <Info className="h-4 w-4 text-muted-foreground mt-0.5 mr-2 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">{field.description}</p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button 
-                variant="outline" 
-                onClick={handleCancel}
-                disabled={updateMutation.isLoading}
-              >
-                {t('common.cancel', "Cancel")}
-              </Button>
-              <Button 
-                onClick={handleSave}
-                disabled={updateMutation.isLoading}
-              >
-                {updateMutation.isLoading ? (
-                  <div className="flex items-center">
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                    {t('common.saving', "Saving...")}
-                  </div>
-                ) : (
-                  t('common.save', "Save")
-                )}
-              </Button>
-            </div>
           </div>
-        </div>
-      </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={handleCancel}
+              disabled={updateMutation.isLoading}
+            >
+              {t('common.cancel', "Cancel")}
+            </Button>
+            <Button 
+              onClick={handleSave}
+              disabled={updateMutation.isLoading}
+            >
+              {updateMutation.isLoading ? (
+                <div className="flex items-center">
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  {t('common.saving', "Saving...")}
+                </div>
+              ) : (
+                t('common.save', "Save")
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     )
   }
   
