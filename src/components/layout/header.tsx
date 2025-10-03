@@ -345,6 +345,25 @@ export function Header() {
   
   // Check if a navigation item is active
   const isActive = (href: string) => {
+    // Special handling for management section
+    if (href === '/management') {
+      return pathname === href || 
+             pathname === '/users' || 
+             pathname === '/tenants' || 
+             pathname === '/roles';
+    }
+    
+    // Special handling for settings section
+    if (href === '/settings') {
+      return pathname === href || pathname.startsWith('/settings/');
+    }
+    
+    // Special handling for assets section
+    if (href === '/assets') {
+      return pathname === href || pathname.startsWith('/assets/');
+    }
+    
+    // Default behavior for other items
     return pathname === href || pathname.startsWith(href);
   };
 
@@ -362,7 +381,17 @@ export function Header() {
     setOpenDropdown(null);
   };
 
-  // Toggle dropdown
+  // Open dropdown
+  const openDropdownMenu = (nameKey: string) => {
+    setOpenDropdown(nameKey);
+  };
+
+  // Close dropdown
+  const closeDropdownMenu = () => {
+    setOpenDropdown(null);
+  };
+
+  // Toggle dropdown (for mobile)
   const toggleDropdown = (nameKey: string) => {
     setOpenDropdown(openDropdown === nameKey ? null : nameKey);
   };
@@ -391,47 +420,59 @@ export function Header() {
               {filteredNavigationItems.map((item) => (
                 <div key={item.nameKey} className="relative">
                   {item.children ? (
-                    <div className="relative">
+                    <div 
+                      className="relative"
+                      onMouseEnter={() => openDropdownMenu(item.nameKey)}
+                      onMouseLeave={closeDropdownMenu}
+                    >
                       <button
                         onClick={() => toggleDropdown(item.nameKey)}
                         className={cn(
-                          "flex items-center gap-2 bg-transparent hover:bg-muted px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                          isActive(item.href) && "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+                          "flex items-center gap-2 bg-transparent hover:bg-muted px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 ease-out transform-gpu",
+                          isActive(item.href) && "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300",
+                          openDropdown === item.nameKey && "scale-[1.03]"
                         )}
                       >
-                        <item.icon className="h-4 w-4" />
+                        <item.icon className="h-4 w-4 transition-transform duration-200 ease-in-out" />
                         {t(item.nameKey)}
-                        <ChevronDown className="h-4 w-4 ml-1" />
+                        <ChevronDown className={cn(
+                          "h-4 w-4 ml-1 transition-all duration-300 ease-out",
+                          openDropdown === item.nameKey && "rotate-180"
+                        )} />
                       </button>
                       
-                      {openDropdown === item.nameKey && (
-                        <div 
-                          className="absolute top-full left-0 mt-1 w-64 bg-background border rounded-md shadow-lg z-50"
-                          onMouseLeave={() => setOpenDropdown(null)}
-                        >
-                          <div className="py-1">
-                            {item.children.map((child) => (
-                              <button
-                                key={child.nameKey}
-                                onClick={() => handleNavigation(child.href, child.requiredPermission)}
-                                className={cn(
-                                  "flex items-center gap-2 w-full px-4 py-2 text-left text-sm hover:bg-muted",
-                                  isActive(child.href) && "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
-                                )}
-                              >
-                                <child.icon className="h-4 w-4" />
-                                {t(child.nameKey)}
-                              </button>
-                            ))}
-                          </div>
+                      <div 
+                        className={cn(
+                          "absolute top-full left-0 mt-1 w-64 bg-background border rounded-md shadow-lg z-50 transition-all duration-300 ease-out transform-gpu",
+                          openDropdown === item.nameKey 
+                            ? "opacity-100 translate-y-0 visible scale-100" 
+                            : "opacity-0 -translate-y-3 invisible scale-95"
+                        )}
+                      >
+                        <div className="py-1">
+                          {item.children.map((child) => (
+                            <button
+                              key={child.nameKey}
+                              onClick={() => handleNavigation(child.href, child.requiredPermission)}
+                              className={cn(
+                                "flex items-center gap-2 w-full px-4 py-2 text-left text-sm transition-all duration-200 ease-out transform-gpu",
+                                isActive(child.href) 
+                                  ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300" 
+                                  : "hover:bg-muted hover:pl-5"
+                              )}
+                            >
+                              <child.icon className="h-4 w-4" />
+                              {t(child.nameKey)}
+                            </button>
+                          ))}
                         </div>
-                      )}
+                      </div>
                     </div>
                   ) : (
                     <button
                       onClick={() => handleNavigation(item.href, item.requiredPermission)}
                       className={cn(
-                        "flex items-center gap-2 bg-transparent hover:bg-muted px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                        "flex items-center gap-2 bg-transparent hover:bg-muted px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 ease-out transform-gpu hover:scale-[1.03]",
                         isActive(item.href) && "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
                       )}
                     >
