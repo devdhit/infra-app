@@ -77,6 +77,7 @@
       "reset": "重置",
       "clearAll": "清除所有篩選條件"
     },
+    "filter": "篩選",
     "sort": "排序",
     "export": "匯出",
     "import": "匯入",
@@ -143,6 +144,19 @@
       "daysAgo": "{0} 天前"
     }
   },
+  "profile": {
+    "title": "使用者個人檔案",
+    "description": "管理您的個人檔案資訊",
+    "subtitle": "查看和更新您的個人檔案資訊",
+    "memberSince": "成員自",
+    "updateSuccess": "個人檔案更新成功",
+    "updateError": "個人檔案更新失敗",
+    "loading": "正在載入個人檔案...",
+    "form": {
+      "confirmPassword": "確認密碼",
+      "passwordMismatch": "密碼不相符"
+    }
+  },
   "bulkDelete": {
     "confirmation": "您確定要刪除 {0} 個 {1} 嗎？此操作無法復原。",
     "warning": "重要",
@@ -151,6 +165,9 @@
   "dashboard": {
     "title": "儀表板",
     "welcome": "歡迎使用 IT 資產管理系統",
+    "overview": "概覽",
+    "assetOverview": "資產概覽",
+    "pcComponents": "電腦組件",
     "totalAssets": "總資產數",
     "activeAssets": "使用中資產",
     "maintenanceAssets": "維護中資產",
@@ -225,7 +242,14 @@
     "refreshError": "儀表板重新整理失敗",
     "filtersApplied": "篩選條件已套用",
     "filtersReset": "篩選條件已重置",
-    "exportSuccess": "資料已匯出為 {0}"
+    "exportSuccess": "資料已匯出為 {0}",
+    "cpus": "CPU",
+    "monitors": "監視器",
+    "upsDevices": "UPS 裝置",
+    "licenseProductTypes": "產品類型",
+    "licenseProductKeys": "產品金鑰",
+    "licenseProductTypesDescription": "不同的產品類型",
+    "licenseProductKeysDescription": "具有產品金鑰的授權"
   },
   "assets": {
     "title": "資產",
@@ -576,7 +600,8 @@
       "general": "一般",
       "security": "安全性",
       "management": "管理",
-      "customization": "自訂"
+      "customization": "自訂",
+      "agents": "代理管理"
     },
     "application": {
       "title": "應用程式設定",
