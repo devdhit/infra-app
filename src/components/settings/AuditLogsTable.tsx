@@ -30,7 +30,6 @@ import {
 } from '@/components/ui/pagination';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ShieldAlert } from 'lucide-react';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { RolePermissionDetails } from '@/components/settings/RolePermissionDetails';
 import { PermissionChangeDetails } from '@/components/settings/PermissionChangeDetails';
 
@@ -184,12 +183,12 @@ export function AuditLogsTable() {
 
   return (
     <div className="space-y-4">
-      <Card>
+      {/* <Card>
         <CardTitle>Audit Logs</CardTitle>
         <CardDescription>
           View and manage system audit logs. All user actions and system events are recorded here for security and compliance purposes.
         </CardDescription>
-      </Card>
+      </Card> */}
       <div className="flex flex-wrap gap-4 items-end">
         <div className="flex-1 min-w-[200px]">
           <label className="text-sm font-medium">Model Type</label>

@@ -68,16 +68,15 @@
     "confirm": "確認",
     "search": "搜尋",
     "gotIt": "好的",
-    "search": {
-      "placeholder": "搜尋資產..."
-    },
-    "filter": {
+    "searchPlaceholder": "搜尋資產...",
+    "filter": "篩選",
+    "filterOptions": {
       "status": "狀態",
       "all": "全部",
       "reset": "重置",
       "clearAll": "清除所有篩選條件"
     },
-    "filter": "篩選",
+    "filterLabel": "篩選",
     "sort": "排序",
     "export": "匯出",
     "import": "匯入",
@@ -113,7 +112,6 @@
     "bulkDelete": "批次刪除",
     "update": "更新",
     "saving": "儲存中...",
-    "create": "建立",
     "help": "說明",
     "apply": "套用",
     "reset": "重置",
@@ -130,7 +128,7 @@
     },
     "selectedCount": "已選擇 {0} 項",
     "unknownUser": "未知使用者",
-    "actions": {
+    "actionVerbs": {
       "create": "建立了",
       "update": "更新了",
       "delete": "刪除了",
@@ -240,7 +238,7 @@
     "licenseKeyDistribution": "授權金鑰分佈",
     "refreshSuccess": "儀表板重新整理成功",
     "refreshError": "儀表板重新整理失敗",
-    "filtersApplied": "篩選條件已套用",
+    "filtersApplied": "已套用篩選條件",
     "filtersReset": "篩選條件已重置",
     "exportSuccess": "資料已匯出為 {0}",
     "cpus": "CPU",
@@ -249,7 +247,7 @@
     "licenseProductTypes": "產品類型",
     "licenseProductKeys": "產品金鑰",
     "licenseProductTypesDescription": "不同的產品類型",
-    "licenseProductKeysDescription": "具有產品金鑰的授權",
+    "licenseProductKeysDescription": "帶有產品金鑰的授權",
     "assetDetails": "資產詳細資訊"
   },
   "assets": {
@@ -271,14 +269,14 @@
     "bulkDelete": {
       "noSelection": "請選擇要刪除的資產",
       "success": "{0} 個 {1} 資產刪除成功",
-      "error": "{0} 個資產刪除失敗"
+      "error": "資產刪除失敗"
     },
     "search": {
       "placeholder": "搜尋資產..."
     },
     "status": {
-      "working": "工作中",
-      "leave": "離職",
+      "working": "使用中",
+      "leave": "已離職",
       "repair": "維修中",
       "有異動": "有異動"
     },
@@ -288,49 +286,49 @@
         "description": "將 {0} 資料匯出到 Excel 檔案",
         "data": "匯出資料",
         "exportType": "匯出類型",
-        "template": "模板格式",
-        "allColumns": "所有欄位（包括自訂欄位）",
+        "template": "範本格式",
+        "allColumns": "所有欄位（包含自訂欄位）",
         "all": "所有 {0}",
         "allDepts": "所有部門",
         "eachDept": "每個部門（僅限盤點）",
-        "selected": "已選擇 {0} 個項目",
+        "selected": "已選擇 {0} 項",
         "noSelection": "未選擇任何項目",
         "department": "部門",
         "loadingDepts": "正在載入部門...",
         "selectDept": "選擇部門",
-        "selectDeptOrAll": "選擇部門（留空則匯出所有部門）",
-        "allColumnsDeptInfo": "留空部門以匯出所有部門",
+        "selectDeptOrAll": "選擇部門（留空為所有部門）",
+        "allColumnsDeptInfo": "留空部門欄位以匯出所有部門",
         "selectDeptDisabled": "選擇「所有部門」或「每個部門」以啟用",
         "info": {
-          "allColumns": "這將匯出所有 {0} 資料，包括自訂欄位到 Excel 檔案。",
-          "all": "這將把所有 {0} 資料匯出到格式正確的 Excel 檔案。",
-          "allDepts": "這將為所有部門分別匯出 {0} 資料到格式正確的 Excel 檔案。",
-          "allDeptsZip": "這將把所有部門的 {0} 資料打包成單一 ZIP 檔案，每個部門有獨立的 Excel 檔案。",
-          "singleDept": "這將把所選部門（{1}）的 {0} 資料匯出到格式正確的 Excel 檔案。",
-          "eachDept": "這將為每個部門分別匯出 {0} 資料到格式正確的 Excel 檔案以供盤點。",
-          "selected": "這將僅匯出所選的 {0} 項目到格式正確的 Excel 檔案。",
+          "allColumns": "這將匯出所有 {0} 資料，包含自訂欄位到 Excel 檔案。",
+          "all": "這將匯出所有 {0} 資料到 Excel 檔案並正確格式化。",
+          "allDepts": "這將為所有部門分別匯出 {0} 資料到 Excel 檔案並正確格式化。",
+          "allDeptsZip": "這將為所有部門打包匯出 {0} 資料到單一 ZIP 檔案，每個部門有獨立的 Excel 檔案。",
+          "singleDept": "這將為所選部門（{1}）匯出 {0} 資料到 Excel 檔案並正確格式化。",
+          "eachDept": "這將為每個部門分別匯出 {0} 資料到 Excel 檔案並正確格式化以供盤點使用。",
+          "selected": "這將僅匯出所選的 {0} 項目到 Excel 檔案並正確格式化。",
           "noSelection": "未選擇要匯出的項目。"
         },
         "allDeptsSelected": "將匯出所有部門",
         "button": "匯出資料",
         "exporting": "匯出中...",
         "starting": "開始匯出...",
-        "preparingDepts": "正在準備部門匯出...",
-        "processingDept": "正在處理部門：{0}",
-        "downloading": "正在下載檔案...",
-        "completing": "正在完成匯出...",
+        "preparingDepts": "準備部門匯出...",
+        "processingDept": "處理部門：{0}",
+        "downloading": "下載檔案中...",
+        "completing": "完成匯出...",
         "completed": "匯出完成",
         "success": "{0} 匯出完成",
-        "successSingleDept": "{0} 部門 {1} 匯出完成",
-        "successAllDepts": "{0} 所有部門匯出完成",
+        "successSingleDept": "{0} 匯出完成，部門 {1}",
+        "successAllDepts": "{0} 匯出完成，所有部門",
         "successAllDeptsZip": "{0} 匯出完成。已下載包含所有部門的 ZIP 檔案。",
         "error": "資產匯出失敗",
-        "timeout": "匯出超時。資料可能過大。",
+        "timeout": "匯出逾時。資料可能過大。",
         "unauthorized": "未經授權的存取。請重新登入。",
-        "deptFetchError": "從資料庫獲取部門失敗",
-        "noDepartments": "資料庫中未找到部門",
+        "deptFetchError": "從資料庫取得部門失敗",
+        "noDepartments": "資料庫中找不到部門",
         "emptyResponse": "伺服器返回空回應",
-        "deptTimeout": "部門 {0} 匯出超時",
+        "deptTimeout": "部門 {0} 匯出逾時",
         "deptError": "部門 {1} 的 {0} 匯出失敗"
       },
       "import": {
@@ -342,32 +340,32 @@
         "fileHint": "支援格式：.xlsx, .xls",
         "columnMapping": "對應 Excel 欄位",
         "columnMappingTitle": "欄位對應",
-        "noMappings": "未設定欄位對應。新增對應以連接 Excel 欄位和資料庫欄位。",
+        "noMappings": "未設定欄位對應。新增對應以連接 Excel 欄位與資料庫欄位。",
         "excelColumn": "Excel 欄位",
         "databaseField": "資料庫欄位",
         "selectExcelColumn": "選擇 Excel 欄位",
         "selectDatabaseField": "選擇資料庫欄位",
-        "mappingHelp": "對應 Excel 欄位名稱到資料庫欄位名稱以確保正確匯入資料。",
+        "mappingHelp": "對應 Excel 欄位名稱與資料庫欄位名稱以確保正確的資料匯入。",
         "customFieldsHelp": "此資產類型的自訂欄位也可用於對應。",
         "autoMap": "自動對應",
         "autoMapSuccess": "自動對應完成",
         "button": "匯入資料",
         "importing": "匯入中...",
         "success": "{0} 個資產匯入成功",
-        "partialSuccess": "{0} 個資產匯入成功，但有一些錯誤",
+        "partialSuccess": "{0} 個資產匯入成功，但有部分錯誤",
         "error": "資產匯入失敗",
         "successTitle": "匯入成功",
         "errorTitle": "匯入失敗",
         "errors": "錯誤：",
         "moreErrors": "還有 {0} 個錯誤",
-        "noFileSelected": "請選擇至少一個檔案進行匯入",
+        "noFileSelected": "請至少選擇一個檔案進行匯入",
         "columnExtractionError": "從 Excel 檔案提取欄位失敗",
-        "invalidFile": "無效的 Excel 檔案：未找到工作表",
+        "invalidFile": "無效的 Excel 檔案：找不到工作表",
         "progress": "匯入中... {0} / {1}",
         "eta": "預計剩餘時間：{0}",
         "seconds": "{0} 秒",
         "minutes": "{0} 分鐘",
-        "minutesSeconds": "{0} 分鐘 {1} 秒"
+        "minutesSeconds": "{0} 分 {1} 秒"
       }
     },
     "pc": {
@@ -383,8 +381,7 @@
       "pcName": "電腦名稱",
       "user": "使用者",
       "status": "狀態",
-      "note": "備註",
-      "office": "Office 版本"
+      "note": "備註"
     },
     "laptop": {
       "title": "筆電",
@@ -447,8 +444,8 @@
       "note": "備註"
     },
     "status": {
-      "working": "工作中",
-      "leave": "離職",
+      "working": "使用中",
+      "leave": "已離職",
       "repair": "維修中"
     },
     "overview": {
@@ -471,7 +468,7 @@
       "createdAt": "建立時間",
       "actions": "操作",
       "selected": "已選擇 {0} 個使用者",
-      "deleteSelected": "刪除選取"
+      "deleteSelected": "刪除所選"
     },
     "button": {
       "add": "新增使用者"
@@ -486,12 +483,12 @@
       "success": "使用者建立成功",
       "error": "使用者建立失敗",
       "title": "建立使用者",
-      "description": "新增新使用者到系統"
+      "description": "新增使用者到系統中"
     },
     "edit": {
       "unauthorized": "您沒有權限編輯使用者",
       "title": "編輯使用者",
-      "description": "編輯使用者詳細資料"
+      "description": "編輯使用者詳細資訊"
     },
     "update": {
       "unauthorized": "您沒有權限更新使用者",
@@ -559,12 +556,12 @@
       "success": "租戶建立成功",
       "error": "租戶建立失敗",
       "title": "建立租戶",
-      "description": "新增新租戶組織"
+      "description": "新增租戶組織"
     },
     "edit": {
       "unauthorized": "您沒有權限編輯租戶",
       "title": "編輯租戶",
-      "description": "編輯租戶詳細資料"
+      "description": "編輯租戶詳細資訊"
     },
     "update": {
       "unauthorized": "您沒有權限更新租戶",
@@ -608,14 +605,14 @@
       "title": "應用程式設定",
       "description": "自訂應用程式名稱和品牌",
       "name": "應用程式名稱",
-      "nameDescription": "設定出現在側邊欄和標題中的名稱",
+      "nameDescription": "設定顯示在側邊欄和標題中的名稱",
       "fullName": "完整應用程式名稱",
       "namePlaceholder": "輸入應用程式名稱",
       "characters": "字元",
       "shortName": "簡短名稱預覽",
-      "shortNameDescription": "這將出現在行動標題和小空間中",
+      "shortNameDescription": "這將顯示在行動標題和小空間中",
       "preview": "預覽",
-      "previewDescription": "查看應用程式名稱的顯示方式",
+      "previewDescription": "查看應用程式名稱的顯示效果",
       "desktopPreview": "桌面側邊欄",
       "mobilePreview": "行動標題",
       "reset": "重置為預設值",
@@ -657,15 +654,15 @@
       "description": "設定通知偏好",
       "email": {
         "title": "電子郵件通知",
-        "description": "設定電子郵件通知設定"
+        "description": "設定電子郵件通知"
       },
       "inApp": {
         "title": "應用程式內通知",
-        "description": "設定應用程式內通知設定"
+        "description": "設定應用程式內通知"
       },
       "push": {
         "title": "推播通知",
-        "description": "設定推播通知設定"
+        "description": "設定推播通知"
       },
       "types": {
         "assetUpdates": "資產更新",
@@ -673,11 +670,11 @@
         "maintenanceReminders": "維護提醒",
         "maintenanceRemindersDescription": "收到即將到來的維護排程通知",
         "licenseExpirations": "授權到期",
-        "licenseExpirationsDescription": "當授權即將到期時收到通知",
+        "licenseExpirationsDescription": "收到授權即將到期的通知",
         "userManagement": "使用者管理",
-        "userManagementDescription": "收到使用者帳戶變更通知",
+        "userManagementDescription": "收到使用者帳戶變更的通知",
         "systemAlerts": "系統警報",
-        "systemAlertsDescription": "收到重要系統事件通知"
+        "systemAlertsDescription": "收到重要系統事件的通知"
       },
       "channels": {
         "email": "電子郵件",
@@ -689,7 +686,7 @@
     },
     "security": {
       "title": "安全性",
-      "description": "管理安全性設定",
+      "description": "管理安全設定",
       "authentication": {
         "title": "認證",
         "description": "設定認證設定"
@@ -705,18 +702,18 @@
       "twoFactor": {
         "title": "雙因素認證",
         "enable": "啟用雙因素認證",
-        "description": "為您的帳戶新增額外的安全層"
+        "description": "為您的帳戶增加額外的安全層"
       },
       "sessions": {
-        "title": "活躍工作階段",
-        "description": "管理您跨裝置的活躍工作階段",
+        "title": "使用中工作階段",
+        "description": "管理您在各裝置上的使用中工作階段",
         "device": "裝置",
         "location": "位置",
         "lastActive": "最後活動",
         "status": "狀態",
         "actions": "操作",
         "current": "目前",
-        "active": "活躍",
+        "active": "使用中",
         "end": "結束工作階段",
         "endAll": "結束所有其他工作階段",
         "ended": "工作階段結束成功",
@@ -724,9 +721,9 @@
       },
       "sessionTimeout": "工作階段逾時（分鐘）",
       "save": "儲存設定",
-      "saveSuccess": "安全性設定儲存成功",
+      "saveSuccess": "安全設定儲存成功",
       "reset": "重置為預設值",
-      "resetSuccess": "安全性設定重置為預設值"
+      "resetSuccess": "安全設定重置為預設值"
     },
     "dataManagement": {
       "title": "資料管理",
@@ -794,10 +791,10 @@
         "title": "一般設定",
         "description": "基本審計日誌設定",
         "enabled": "啟用審計日誌",
-        "enabledDescription": "為您的組織開啟審計日誌",
+        "enabledDescription": "為您的組織啟用審計日誌",
         "retentionPeriod": "保留期間",
         "days": "天",
-        "retentionDescription": "自動刪除前保留審計日誌的時間"
+        "retentionDescription": "自動刪除審計日誌前的保留時間"
       },
       "events": {
         "title": "事件類型",
@@ -839,23 +836,23 @@
       "selectModel": "選擇資產類型",
       "requiredHelp": "建立或更新資產時需要填寫此欄位",
       "createDescription": "新增自訂欄位以擴展資產資訊",
-      "editDescription": "編輯自訂欄位詳細資料",
+      "editDescription": "編輯自訂欄位詳細資訊",
       "noFields": "未找到自訂欄位",
       "createFirst": "建立您的第一個自訂欄位",
       "allModels": "所有資產類型",
       "infoTitle": "自訂欄位",
-      "infoDescription": "自訂欄位允許您在資產中新增額外資訊。它們可以是文字、數字、日期或其他類型。",
+      "infoDescription": "自訂欄位允許您為資產新增額外資訊。可以是文字、數字、日期或其他類型。",
       "deleteConfirmTitle": "刪除自訂欄位",
       "deleteConfirmDescription": "您確定要刪除自訂欄位「{fieldName}」嗎？此操作無法復原，並將從所有現有資產中移除此欄位。",
       "helpTitle": "自訂欄位說明",
       "helpDescription": "學習如何有效使用自訂欄位",
       "whatAre": "什麼是自訂欄位？",
-      "whatAreDescription": "自訂欄位允許您在資產中新增標準欄位以外的額外資訊。您可以建立欄位來記錄保固資訊、採購單號碼或任何其他特定於您組織的資料。",
+      "whatAreDescription": "自訂欄位允許您在標準欄位之外為資產新增額外資訊。您可以建立欄位來記錄保固資訊、採購單號碼或任何其他特定於您組織的資料。",
       "fieldTypes": "欄位類型",
       "text": "文字",
       "textDescription": "單行文字",
       "textArea": "文字區域",
-      "textAreaDescription": "多行文字以進行較長的描述",
+      "textAreaDescription": "多行文字以供較長描述",
       "number": "數字",
       "numberDescription": "數值用於數量、價格等",
       "date": "日期",
@@ -872,7 +869,7 @@
       "practice5": "使用描述來幫助使用者了解應輸入什麼資訊",
       "practice6": "定期審查和清理未使用的自訂欄位",
       "usage": "使用",
-      "usageDescription": "一旦建立，自訂欄位將出現在資產表單和表格中。它們可以像標準欄位一樣用於篩選、排序和報告。"
+      "usageDescription": "建立後，自訂欄位將出現在資產表單和表格中。它們可以像標準欄位一樣用於篩選、排序和報告。"
     }
   },
   "roles": {
@@ -899,13 +896,13 @@
       "success": "角色建立成功",
       "error": "角色建立失敗",
       "title": "建立角色",
-      "description": "新增新角色到系統"
+      "description": "新增角色到系統中"
     },
     "button": "新增角色",
     "edit": {
       "unauthorized": "您沒有權限編輯角色",
       "title": "編輯角色",
-      "description": "編輯角色詳細資料和權限"
+      "description": "編輯角色詳細資訊和權限"
     },
     "update": {
       "unauthorized": "您沒有權限更新角色",
@@ -916,7 +913,9 @@
       "unauthorized": "您沒有權限刪除角色",
       "confirm": "您確定要刪除此角色嗎？此操作無法復原。",
       "success": "角色刪除成功",
-      "error": "角色刪除失敗"
+      "error": "角色刪除失敗",
+      "confirmTitle": "刪除角色",
+      "confirmDescription": "您確定要刪除此角色嗎？此操作無法復原。"
     },
     "bulkDelete": {
       "unauthorized": "您沒有權限批次刪除角色",
@@ -933,7 +932,7 @@
       "permissions": "權限",
       "nameRequired": "名稱為必填",
       "descriptionPlaceholder": "輸入角色描述（選填）",
-      "permissionsHelp": "選擇此角色應具有的權限",
+      "permissionsHelp": "選擇此角色應擁有的權限",
       "nameHelp": "為此角色輸入唯一名稱",
       "descriptionHelp": "描述此角色的用途",
       "selectAll": "全選"
@@ -945,7 +944,10 @@
         "create": "建立使用者",
         "edit": "編輯使用者",
         "delete": "刪除使用者",
-        "bulkDelete": "批次刪除使用者"
+        "bulkDelete": "批次刪除使用者",
+        "submitData": "提交資料",
+        "viewStatus": "查看狀態",
+        "healthCheck": "健康檢查"
       },
       "tenants": {
         "label": "租戶",
@@ -953,7 +955,10 @@
         "create": "建立租戶",
         "edit": "編輯租戶",
         "delete": "刪除租戶",
-        "bulkDelete": "批次刪除租戶"
+        "bulkDelete": "批次刪除租戶",
+        "submitData": "提交資料",
+        "viewStatus": "查看狀態",
+        "healthCheck": "健康檢查"
       },
       "assets": {
         "label": "資產",
@@ -963,7 +968,10 @@
         "delete": "刪除資產",
         "bulkDelete": "批次刪除資產",
         "assetSpecific": "資產特定權限",
-        "assetSpecificDescription": "設定特定資產類型的權限"
+        "assetSpecificDescription": "設定特定資產類型的權限",
+        "submitData": "提交資料",
+        "viewStatus": "查看狀態",
+        "healthCheck": "健康檢查"
       },
       "settings": {
         "label": "設定",
@@ -971,7 +979,10 @@
         "create": "建立設定",
         "edit": "編輯設定",
         "delete": "刪除設定",
-        "bulkDelete": "批次刪除設定"
+        "bulkDelete": "批次刪除設定",
+        "submitData": "提交資料",
+        "viewStatus": "查看狀態",
+        "healthCheck": "健康檢查"
       },
       "roles": {
         "label": "角色",
@@ -979,55 +990,76 @@
         "create": "建立角色",
         "edit": "編輯角色",
         "delete": "刪除角色",
-        "bulkDelete": "批次刪除角色"
+        "bulkDelete": "批次刪除角色",
+        "submitData": "提交資料",
+        "viewStatus": "查看狀態",
+        "healthCheck": "健康檢查"
       },
       "pc": {
         "label": "電腦",
-        "view": "查看資產",
-        "create": "建立資產",
-        "edit": "編輯資產",
-        "delete": "刪除資產",
-        "bulkDelete": "批次刪除資產"
+        "view": "查看電腦資產",
+        "create": "建立電腦資產",
+        "edit": "編輯電腦資產",
+        "delete": "刪除電腦資產",
+        "bulkDelete": "批次刪除電腦資產",
+        "submitData": "提交電腦資料",
+        "viewStatus": "查看電腦狀態",
+        "healthCheck": "電腦健康檢查"
       },
       "laptop": {
         "label": "筆電",
-        "view": "查看資產",
-        "create": "建立資產",
-        "edit": "編輯資產",
-        "delete": "刪除資產",
-        "bulkDelete": "批次刪除資產"
+        "view": "查看筆電資產",
+        "create": "建立筆電資產",
+        "edit": "編輯筆電資產",
+        "delete": "刪除筆電資產",
+        "bulkDelete": "批次刪除筆電資產",
+        "submitData": "提交筆電資料",
+        "viewStatus": "查看筆電狀態",
+        "healthCheck": "筆電健康檢查"
       },
       "printer": {
         "label": "印表機",
-        "view": "查看資產",
-        "create": "建立資產",
-        "edit": "編輯資產",
-        "delete": "刪除資產",
-        "bulkDelete": "批次刪除資產"
+        "view": "查看印表機資產",
+        "create": "建立印表機資產",
+        "edit": "編輯印表機資產",
+        "delete": "刪除印表機資產",
+        "bulkDelete": "批次刪除印表機資產",
+        "submitData": "提交印表機資料",
+        "viewStatus": "查看印表機狀態",
+        "healthCheck": "印表機健康檢查"
       },
       "license": {
         "label": "授權",
-        "view": "查看資產",
-        "create": "建立資產",
-        "edit": "編輯資產",
-        "delete": "刪除資產",
-        "bulkDelete": "批次刪除資產"
+        "view": "查看授權資產",
+        "create": "建立授權資產",
+        "edit": "編輯授權資產",
+        "delete": "刪除授權資產",
+        "bulkDelete": "批次刪除授權資產",
+        "submitData": "提交授權資料",
+        "viewStatus": "查看授權狀態",
+        "healthCheck": "授權健康檢查"
       },
       "warehouse": {
-        "label": "倉儲IT",
-        "view": "查看資產",
-        "create": "建立資產",
-        "edit": "編輯資產",
-        "delete": "刪除資產",
-        "bulkDelete": "批次刪除資產"
+        "label": "倉儲",
+        "view": "查看倉儲資產",
+        "create": "建立倉儲資產",
+        "edit": "編輯倉儲資產",
+        "delete": "刪除倉儲資產",
+        "bulkDelete": "批次刪除倉儲資產",
+        "submitData": "提交倉儲資料",
+        "viewStatus": "查看倉儲狀態",
+        "healthCheck": "倉儲健康檢查"
       },
       "internet": {
         "label": "網路",
-        "view": "查看資產",
-        "create": "建立資產",
-        "edit": "編輯資產",
-        "delete": "刪除資產",
-        "bulkDelete": "批次刪除資產"
+        "view": "查看網路資產",
+        "create": "建立網路資產",
+        "edit": "編輯網路資產",
+        "delete": "刪除網路資產",
+        "bulkDelete": "批次刪除網路資產",
+        "submitData": "提交網路資料",
+        "viewStatus": "查看網路狀態",
+        "healthCheck": "網路健康檢查"
       },
       "auditLogs": {
         "label": "審計日誌",
@@ -1035,113 +1067,88 @@
         "create": "建立審計日誌",
         "edit": "編輯審計日誌",
         "delete": "刪除審計日誌",
-        "bulkDelete": "批次刪除審計日誌"
+        "bulkDelete": "批次刪除審計日誌",
+        "submitData": "提交審計日誌資料",
+        "viewStatus": "查看審計日誌狀態",
+        "healthCheck": "審計日誌健康檢查"
+      },
+      "agent": {
+        "label": "代理",
+        "view": "查看代理",
+        "create": "建立代理",
+        "edit": "編輯代理",
+        "delete": "刪除代理",
+        "bulkDelete": "批次刪除代理",
+        "submitData": "提交代理資料",
+        "viewStatus": "查看代理狀態",
+        "healthCheck": "代理健康檢查",
+        "viewAgentList": "查看代理列表",
+        "viewAgentStatus": "查看代理狀態",
+        "deleteAgent": "刪除代理"
       }
     }
   },
-  "notifications": {
-    "auditLogTitle": "審計日誌",
-    "auditLogMessage": "{{user}} {{action}} {{model}}",
-    "userActivity": "{{user}} 對使用者執行了 {{action}} 操作",
-    "assetActivity": "{{user}} 對 {{modelType}} 資產執行了 {{action}} 操作",
-    "auditActivity": "{{user}} 對 {{modelType}} 執行了 {{action}} 操作"
-  },
   "agents": {
     "title": "代理管理",
-    "description": "管理和監控您的 IT 資產代理",
-    "loading": "正在載入代理...",
+    "description": "管理和監控 IT 資產代理",
     "search": {
-      "placeholder": "透過電腦名稱、IP 或 MAC 位址搜尋代理...",
-      "noResults": "找不到符合搜尋條件的代理",
-      "tryAgain": "請嘗試調整搜尋條件"
+      "placeholder": "搜尋代理..."
     },
-    "errors": {
-      "fetchFailed": "獲取代理失敗",
-      "ipRequired": "需要 IP 位址",
-      "addFailed": "新增代理失敗",
-      "updateFailed": "觸發更新失敗"
+    "table": {
+      "name": "名稱",
+      "status": "狀態",
+      "version": "版本",
+      "lastSeen": "最後見面",
+      "ipAddress": "IP 位址",
+      "macAddress": "MAC 位址",
+      "actions": "操作"
     },
-    "success": {
-      "added": "代理新增成功",
-      "updateTriggered": "更新觸發成功"
-    },
-    "delete": {
-      "confirmTitle": "刪除代理",
-      "confirm": "您確定要刪除代理 {0} 嗎？此操作無法復原。",
-      "success": "代理刪除成功",
-      "error": "代理刪除失敗"
+    "list": {
+      "title": "代理列表",
+      "description": "所有已註冊代理的列表"
     },
     "status": {
       "online": "線上",
       "offline": "離線",
-      "updating": "更新中",
-      "error": "錯誤",
       "unknown": "未知"
     },
-    "add": {
-      "title": "新增代理",
-      "description": "透過 IP 位址註冊新代理",
-      "ipLabel": "代理 IP 位址",
-      "ipPlaceholder": "輸入代理 IP 位址（例如：192.168.1.100）",
+    "create": {
       "button": "新增代理",
-      "adding": "新增中..."
+      "unauthorized": "您沒有權限建立代理",
+      "success": "代理建立成功",
+      "error": "代理建立失敗",
+      "title": "建立代理",
+      "description": "新增代理到系統中"
     },
-    "help": {
-      "title": "代理管理說明",
-      "description": "了解如何有效管理您的 IT 資產代理。",
-      "addingAgents": "新增代理",
-      "addingAgentsDesc": "要新增新代理，請點擊「新增代理」按鈕並輸入代理的 IP 位址。代理需要設定為連接到此伺服器。",
-      "statusIndicators": "狀態指示器",
-      "onlineDesc": "代理已連接並報告狀態",
-      "offlineDesc": "代理目前未連接",
-      "updatingDesc": "代理正在接收更新",
-      "errorDesc": "代理遇到錯誤",
-      "actions": "操作",
-      "actionsDesc": "使用「更新」按鈕觸發代理的立即更新。使用「刪除」按鈕將代理從監控中移除。"
+    "edit": {
+      "unauthorized": "您沒有權限編輯代理",
+      "title": "編輯代理",
+      "description": "編輯代理詳細資訊"
     },
-    "list": {
-      "title": "已註冊代理",
-      "description": "查看和管理所有已註冊代理"
+    "update": {
+      "unauthorized": "您沒有權限更新代理",
+      "success": "代理更新成功",
+      "error": "代理更新失敗"
     },
-    "empty": {
-      "title": "未註冊代理",
-      "description": "新增您的第一個代理以開始監控 IT 資產"
+    "delete": {
+      "unauthorized": "您沒有權限刪除代理",
+      "confirm": "您確定要刪除此代理嗎？此操作無法復原。",
+      "success": "代理刪除成功",
+      "error": "代理刪除失敗"
     },
-    "table": {
-      "agent": "代理",
-      "ipAddress": "IP 位址",
-      "pcName": "電腦名稱",
-      "lastSeen": "最後上線",
-      "lastUpdate": "最後更新",
-      "status": "狀態",
-      "actions": "操作"
+    "bulkDelete": {
+      "unauthorized": "您沒有權限批次刪除代理",
+      "confirm": "您確定要刪除 {0} 個代理嗎？",
+      "success": "{0} 個代理刪除成功",
+      "error": "代理刪除失敗"
     },
-    "actions": {
-      "update": "更新",
-      "updateAgent": "更新代理 {0}",
-      "deleteAgent": "刪除代理 {0}"
+    "error": {
+      "loading": "載入代理失敗"
     },
-    "sort": {
-      "lastSeenDesc": "最後上線（最新優先）",
-      "lastSeenAsc": "最後上線（最舊優先）",
-      "lastUpdateDesc": "最後更新（最新優先）",
-      "lastUpdateAsc": "最後更新（最舊優先）",
-      "pcNameAsc": "電腦名稱（A-Z）",
-      "pcNameDesc": "電腦名稱（Z-A）",
-      "ipAddressAsc": "IP 位址（A-Z）",
-      "ipAddressDesc": "IP 位址（Z-A）"
-    },
-    "configuration": {
-      "title": "代理設定",
-      "description": "設定代理更新參數",
-      "updateInterval": "更新間隔（分鐘）",
-      "updateIntervalHelp": "代理自動傳送更新的頻率",
-      "retryAttempts": "重試次數",
-      "retryAttemptsHelp": "更新失敗時的重試次數"
-    },
-    "info": {
-      "lastUpdated": "最後更新",
-      "lastUpdatedDescription": "資料最後更新於 {0}"
+    "form": {
+      "name": "名稱",
+      "description": "描述",
+      "nameRequired": "名稱為必填"
     }
   }
 }

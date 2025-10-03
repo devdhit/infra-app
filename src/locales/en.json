@@ -69,16 +69,15 @@
     "confirm": "Confirm",
     "search": "Search",
     "gotIt": "Got it",
-    "search": {
-      "placeholder": "Search assets..."
-    },
-    "filter": {
+    "searchPlaceholder": "Search assets...",
+    "filter": "Filter",
+    "filterOptions": {
       "status": "Status",
       "all": "All",
       "reset": "Reset",
       "clearAll": "Clear all filters"
     },
-    "filter": "Filter",
+    "filterLabel": "Filter",
     "sort": "Sort",
     "export": "Export",
     "import": "Import",
@@ -114,7 +113,6 @@
     "bulkDelete": "Bulk Delete",
     "update": "Update",
     "saving": "Saving...",
-    "create": "Create",
     "apply": "Apply",
     "reset": "Reset",
     "clearAll": "Clear all",
@@ -130,7 +128,7 @@
     "connected": "Connected",
     "disconnected": "Disconnected",
     "unknownUser": "Unknown User",
-    "actions": {
+    "actionVerbs": {
       "create": "created",
       "update": "updated",
       "delete": "deleted",
@@ -998,70 +996,70 @@
         "healthCheck": "Health check"
       },
       "pc": {
-        "label": "PCs",
-        "view": "View assets",
-        "create": "Create assets",
-        "edit": "Edit assets",
-        "delete": "Delete assets",
-        "bulkDelete": "Bulk delete assets",
-        "submitData": "Submit data",
-        "viewStatus": "View status",
-        "healthCheck": "Health check"
+        "label": "PC",
+        "view": "View PC assets",
+        "create": "Create PC assets",
+        "edit": "Edit PC assets",
+        "delete": "Delete PC assets",
+        "bulkDelete": "Bulk delete PC assets",
+        "submitData": "Submit PC data",
+        "viewStatus": "View PC status",
+        "healthCheck": "PC health check"
       },
       "laptop": {
-        "label": "Laptops",
-        "view": "View assets",
-        "create": "Create assets",
-        "edit": "Edit assets",
-        "delete": "Delete assets",
-        "bulkDelete": "Bulk delete assets",
-        "submitData": "Submit data",
-        "viewStatus": "View status",
-        "healthCheck": "Health check"
+        "label": "Laptop",
+        "view": "View laptop assets",
+        "create": "Create laptop assets",
+        "edit": "Edit laptop assets",
+        "delete": "Delete laptop assets",
+        "bulkDelete": "Bulk delete laptop assets",
+        "submitData": "Submit laptop data",
+        "viewStatus": "View laptop status",
+        "healthCheck": "Laptop health check"
       },
       "printer": {
-        "label": "Printers",
-        "view": "View assets",
-        "create": "Create assets",
-        "edit": "Edit assets",
-        "delete": "Delete assets",
-        "bulkDelete": "Bulk delete assets",
-        "submitData": "Submit data",
-        "viewStatus": "View status",
-        "healthCheck": "Health check"
+        "label": "Printer",
+        "view": "View printer assets",
+        "create": "Create printer assets",
+        "edit": "Edit printer assets",
+        "delete": "Delete printer assets",
+        "bulkDelete": "Bulk delete printer assets",
+        "submitData": "Submit printer data",
+        "viewStatus": "View printer status",
+        "healthCheck": "Printer health check"
       },
       "license": {
-        "label": "Licenses",
-        "view": "View assets",
-        "create": "Create assets",
-        "edit": "Edit assets",
-        "delete": "Delete assets",
-        "bulkDelete": "Bulk delete assets",
-        "submitData": "Submit data",
-        "viewStatus": "View status",
-        "healthCheck": "Health check"
+        "label": "License",
+        "view": "View license assets",
+        "create": "Create license assets",
+        "edit": "Edit license assets",
+        "delete": "Delete license assets",
+        "bulkDelete": "Bulk delete license assets",
+        "submitData": "Submit license data",
+        "viewStatus": "View license status",
+        "healthCheck": "License health check"
       },
       "warehouse": {
-        "label": "Warehouse IT",
-        "view": "View assets",
-        "create": "Create assets",
-        "edit": "Edit assets",
-        "delete": "Delete assets",
-        "bulkDelete": "Bulk delete assets",
-        "submitData": "Submit data",
-        "viewStatus": "View status",
-        "healthCheck": "Health check"
+        "label": "Warehouse",
+        "view": "View warehouse assets",
+        "create": "Create warehouse assets",
+        "edit": "Edit warehouse assets",
+        "delete": "Delete warehouse assets",
+        "bulkDelete": "Bulk delete warehouse assets",
+        "submitData": "Submit warehouse data",
+        "viewStatus": "View warehouse status",
+        "healthCheck": "Warehouse health check"
       },
       "internet": {
         "label": "Internet",
-        "view": "View assets",
-        "create": "Create assets",
-        "edit": "Edit assets",
-        "delete": "Delete assets",
-        "bulkDelete": "Bulk delete assets",
-        "submitData": "Submit data",
-        "viewStatus": "View status",
-        "healthCheck": "Health check"
+        "view": "View internet assets",
+        "create": "Create internet assets",
+        "edit": "Edit internet assets",
+        "delete": "Delete internet assets",
+        "bulkDelete": "Bulk delete internet assets",
+        "submitData": "Submit internet data",
+        "viewStatus": "View internet status",
+        "healthCheck": "Internet health check"
       },
       "auditLogs": {
         "label": "Audit Logs",
@@ -1070,126 +1068,87 @@
         "edit": "Edit audit logs",
         "delete": "Delete audit logs",
         "bulkDelete": "Bulk delete audit logs",
-        "submitData": "Submit data",
-        "viewStatus": "View status",
-        "healthCheck": "Health check"
+        "submitData": "Submit audit log data",
+        "viewStatus": "View audit log status",
+        "healthCheck": "Audit log health check"
       },
       "agent": {
         "label": "Agent",
-        "view": "View",
-        "create": "Create",
-        "edit": "Edit",
-        "delete": "Delete",
-        "bulkDelete": "Bulk delete",
-        "submitData": "Submit data",
-        "viewStatus": "View status",
-        "healthCheck": "Health check"
+        "view": "View agents",
+        "create": "Create agents",
+        "edit": "Edit agents",
+        "delete": "Delete agents",
+        "bulkDelete": "Bulk delete agents",
+        "submitData": "Submit agent data",
+        "viewStatus": "View agent status",
+        "healthCheck": "Agent health check",
+        "viewAgentList": "View agent list",
+        "viewAgentStatus": "View agent status",
+        "deleteAgent": "Delete agent"
       }
     }
   },
-  "notifications": {
-    "auditLogTitle": "Audit Log",
-    "auditLogMessage": "{{user}} {{action}} {{model}}",
-    "userActivity": "{{user}} performed {{action}} on User",
-    "assetActivity": "{{user}} performed {{action}} on {{modelType}} asset",
-    "auditActivity": "{{user}} performed {{action}} on {{modelType}}"
-  },
   "agents": {
     "title": "Agent Management",
-    "description": "Manage and monitor your IT asset agents",
-    "loading": "Loading agents...",
+    "description": "Manage and monitor IT asset agents",
     "search": {
-      "placeholder": "Search agents by PC name, IP or MAC address...",
-      "noResults": "No agents found matching your search",
-      "tryAgain": "Try adjusting your search terms"
+      "placeholder": "Search agents..."
     },
-    "errors": {
-      "fetchFailed": "Failed to fetch agents",
-      "ipRequired": "IP address is required",
-      "addFailed": "Failed to add agent",
-      "updateFailed": "Failed to trigger update"
+    "table": {
+      "name": "Name",
+      "status": "Status",
+      "version": "Version",
+      "lastSeen": "Last Seen",
+      "ipAddress": "IP Address",
+      "macAddress": "MAC Address",
+      "actions": "Actions"
     },
-    "success": {
-      "added": "Agent added successfully",
-      "updateTriggered": "Update triggered successfully"
-    },
-    "delete": {
-      "confirmTitle": "Delete Agent",
-      "confirm": "Are you sure you want to delete agent {0}? This action cannot be undone.",
-      "success": "Agent deleted successfully",
-      "error": "Failed to delete agent"
+    "list": {
+      "title": "Agent List",
+      "description": "A list of all registered agents"
     },
     "status": {
       "online": "Online",
       "offline": "Offline",
-      "updating": "Updating",
-      "error": "Error",
       "unknown": "Unknown"
     },
-    "add": {
-      "title": "Add New Agent",
-      "description": "Register a new agent by IP address",
-      "ipLabel": "Agent IP Address",
-      "ipPlaceholder": "Enter agent IP address (e.g., 192.168.1.100)",
+    "create": {
       "button": "Add Agent",
-      "adding": "Adding..."
+      "unauthorized": "You do not have permission to create agents",
+      "success": "Agent created successfully",
+      "error": "Failed to create agent",
+      "title": "Create Agent",
+      "description": "Add a new agent to the system"
     },
-    "help": {
-      "title": "Agent Management Help",
-      "description": "Learn how to manage your IT asset agents effectively.",
-      "addingAgents": "Adding Agents",
-      "addingAgentsDesc": "To add a new agent, click the \"Add Agent\" button and enter the agent's IP address. The agent will need to be configured to connect to this server.",
-      "statusIndicators": "Status Indicators",
-      "onlineDesc": "Agent is connected and reporting status",
-      "offlineDesc": "Agent is not currently connected",
-      "updatingDesc": "Agent is currently receiving updates",
-      "errorDesc": "Agent encountered an error",
-      "actions": "Actions",
-      "actionsDesc": "Use the Update button to trigger an immediate update on an agent. Use the Delete button to remove an agent from monitoring."
+    "edit": {
+      "unauthorized": "You do not have permission to edit agents",
+      "title": "Edit Agent",
+      "description": "Edit agent details"
     },
-    "list": {
-      "title": "Registered Agents",
-      "description": "View and manage all registered agents"
+    "update": {
+      "unauthorized": "You do not have permission to update agents",
+      "success": "Agent updated successfully",
+      "error": "Failed to update agent"
     },
-    "empty": {
-      "title": "No agents registered",
-      "description": "Add your first agent to start monitoring IT assets"
+    "delete": {
+      "unauthorized": "You do not have permission to delete agents",
+      "confirm": "Are you sure you want to delete this agent? This action cannot be undone.",
+      "success": "Agent deleted successfully",
+      "error": "Failed to delete agent"
     },
-    "table": {
-      "agent": "Agent",
-      "ipAddress": "IP Address",
-      "pcName": "PC Name",
-      "lastSeen": "Last Seen",
-      "lastUpdate": "Last Update",
-      "status": "Status",
-      "actions": "Actions"
+    "bulkDelete": {
+      "unauthorized": "You do not have permission to bulk delete agents",
+      "confirm": "Are you sure you want to delete {0} agents?",
+      "success": "{0} agents deleted successfully",
+      "error": "Failed to delete agents"
     },
-    "actions": {
-      "update": "Update",
-      "updateAgent": "Update agent {0}",
-      "deleteAgent": "Delete agent {0}"
+    "error": {
+      "loading": "Failed to load agents"
     },
-    "sort": {
-      "lastSeenDesc": "Last Seen (Newest first)",
-      "lastSeenAsc": "Last Seen (Oldest first)",
-      "lastUpdateDesc": "Last Update (Newest first)",
-      "lastUpdateAsc": "Last Update (Oldest first)",
-      "pcNameAsc": "PC Name (A-Z)",
-      "pcNameDesc": "PC Name (Z-A)",
-      "ipAddressAsc": "IP Address (A-Z)",
-      "ipAddressDesc": "IP Address (Z-A)"
-    },
-    "info": {
-      "lastUpdated": "Last updated",
-      "lastUpdatedDescription": "Data was last refreshed {0}"
-    },
-    "configuration": {
-      "title": "Agent Configuration",
-      "description": "Configure agent update settings",
-      "updateInterval": "Update Interval (minutes)",
-      "updateIntervalHelp": "How often agents should automatically send updates",
-      "retryAttempts": "Retry Attempts",
-      "retryAttemptsHelp": "Number of retry attempts for failed updates"
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "nameRequired": "Name is required"
     }
   }
 }

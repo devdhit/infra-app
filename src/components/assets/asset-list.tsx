@@ -282,7 +282,9 @@ const getAssetColumns = (
             }}
           />
         ) : (
-          <div className={isTextareaCustomField ? "whitespace-pre-wrap break-words max-h-32 overflow-y-auto p-1" : "overflow-hidden text-ellipsis whitespace-nowrap"}>
+          <div className={`p-2 rounded-lg min-h-[40px] flex items-center ${
+            isTextareaCustomField ? "whitespace-pre-wrap break-words max-h-32 overflow-y-auto bg-muted/30" : "overflow-hidden text-ellipsis whitespace-nowrap"
+          }`}>
             {column.render ? column.render(displayValue) : truncateTextForDisplay(displayValue || '')}
           </div>
         );
