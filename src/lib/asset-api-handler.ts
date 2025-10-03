@@ -391,6 +391,11 @@ export class AssetApiHandler<T extends BaseAsset> {
         
         if (statusValue) {
           // With status filter - 6 parameters: tenantId, searchQuery, statusValue, limit, offset
+          
+          // Validate status value before using in query
+          const validatedStatus = statusValue ? validateSearchInput(statusValue.toString()) : null;
+          
+          // Use validated parameters in the query
           const assetsQuery = `
             SELECT ${fieldList},
                    ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
@@ -418,9 +423,24 @@ export class AssetApiHandler<T extends BaseAsset> {
             ${statusCondition}
           `;
           
+          // Prepare query arguments with validation
+          const queryArgs = [
+            user.tenantId,
+            searchQuery,
+            validatedStatus, // Only include if status filtering is used
+            limit,
+            offset
+          ].filter(arg => arg !== undefined);
+          
+          const countQueryArgs = [
+            user.tenantId,
+            searchQuery,
+            validatedStatus // Only include if status filtering is used
+          ].filter(arg => arg !== undefined);
+          
           [assetsResult, countResult] = await Promise.all([
-            this.db.$queryRawUnsafe(assetsQuery, user.tenantId, searchQuery, statusValue, limit, offset),
-            this.db.$queryRawUnsafe(countQuery, user.tenantId, searchQuery, statusValue)
+            this.db.$queryRawUnsafe(assetsQuery, ...queryArgs),
+            this.db.$queryRawUnsafe(countQuery, ...countQueryArgs)
           ]);
         } else {
           // Without status filter - 5 parameters: tenantId, searchQuery, limit, offset

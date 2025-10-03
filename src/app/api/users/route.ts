@@ -79,17 +79,6 @@ export async function POST(request: NextRequest) {
     // Only admins can create users for other tenants
     const body = await request.json()
     
-    // Log the incoming request data for debugging
-    logger.info('User creation request data:', {
-      body: body,
-      currentUser: {
-        id: currentUser.id,
-        email: currentUser.email,
-        tenantId: currentUser.tenantId,
-        roleName: currentRoleName
-      }
-    });
-    
     // Validate required fields
     if (!body.email || !body.name || !body.password) {
       return errorResponse('Email, name, and password are required', 400)
@@ -110,27 +99,11 @@ export async function POST(request: NextRequest) {
     // Only admins can create users for other tenants
     const userTenantId = currentRoleName === 'admin' && body.tenantId ? body.tenantId : currentUser.tenantId;
     
-    // Debug: Log all roles for this tenant
-    const allTenantRoles = await db.role.findMany({
-      where: {
-        tenantId: userTenantId
-      }
-    });
-    
-    logger.info('All roles for tenant:', {
-      tenantId: userTenantId,
-      rolesCount: allTenantRoles.length,
-      roles: allTenantRoles.map(role => ({ id: role.id, name: role.name }))
-    });
-
     // Handle case when role is not provided - default to 'user'
     let roleId = body.roleId;
-    logger.info('Initial roleId from body:', { roleId: roleId, bodyRoleId: body.roleId });
     
     // If no roleId provided, try to find the default 'user' role
     if (!roleId) {
-      logger.info('No roleId provided, looking for default user role:', { tenantId: userTenantId });
-      
       const defaultRole = await db.role.findFirst({
         where: {
           name: 'user',
@@ -140,10 +113,7 @@ export async function POST(request: NextRequest) {
       
       if (defaultRole) {
         roleId = defaultRole.id;
-        logger.info('Found default user role:', { roleId: defaultRole.id, roleName: defaultRole.name });
       } else {
-        logger.info('Default user role not found, looking for any role:', { tenantId: userTenantId });
-        
         // If no default 'user' role exists, use the first available role
         const firstRole = await db.role.findFirst({
           where: {
@@ -153,9 +123,7 @@ export async function POST(request: NextRequest) {
         
         if (firstRole) {
           roleId = firstRole.id;
-          logger.info('Found first available role:', { roleId: firstRole.id, roleName: firstRole.name });
         } else {
-          logger.info('No roles found for tenant:', { tenantId: userTenantId });
           return errorResponse('No roles found for this tenant', 400)
         }
       }
@@ -163,8 +131,6 @@ export async function POST(request: NextRequest) {
 
     // Validate role
     if (roleId) {
-      logger.info('Validating role:', { roleId: roleId });
-      
       // Verify the role exists
       const role = await db.role.findUnique({
         where: {
@@ -173,55 +139,56 @@ export async function POST(request: NextRequest) {
       })
 
       if (!role) {
-        logger.error('Role not found with ID:', roleId);
-        return errorResponse('Role not found', 400)
+        return errorResponse('Invalid role specified', 400)
       }
 
       // Verify the role belongs to the correct tenant
-      // Add debugging information
-      logger.info('Role validation debug info:', {
-        roleId: roleId,
-        roleTenantId: role.tenantId,
-        expectedTenantId: userTenantId,
-        currentUserTenantId: currentUser.tenantId,
-        bodyTenantId: body.tenantId,
-        currentRoleName: currentRoleName,
-        isAdmin: currentRoleName === 'admin'
-      });
-      
       if (role.tenantId !== userTenantId) {
-        logger.error('Role tenant mismatch:', {
-          roleTenantId: role.tenantId,
-          expectedTenantId: userTenantId
-        });
         return errorResponse('Invalid role for this tenant', 400)
       }
 
       const hashedPassword = await hashPassword(body.password);
-      const user = await db.user.create({
-        data: {
-          email: body.email,
-          name: body.name,
-          password: hashedPassword,
-          roleId: roleId,
-          tenantId: userTenantId
+      
+      // Create user with error handling
+      try {
+        const user = await db.user.create({
+          data: {
+            email: body.email,
+            name: body.name,
+            password: hashedPassword,
+            roleId: roleId,
+            tenantId: userTenantId
+          }
+        })
+
+        // Remove password from response and include role relation
+        const { password, roleId: userRoleId, ...userWithoutPassword } = user
+        const userWithRole = {
+          ...userWithoutPassword,
+          role: role
         }
-      })
 
-      // Remove password from response and include role relation
-      const { password, roleId: userRoleId, ...userWithoutPassword } = user
-      const userWithRole = {
-        ...userWithoutPassword,
-        role: role
+        return successResponse(userWithRole, 201)
+      } catch (createError: any) {
+        // Handle specific database errors
+        if (createError.code === 'P2002') {
+          // Unique constraint violation
+          return errorResponse('A user with this email already exists', 409)
+        } else if (createError.code === 'P2003') {
+          // Foreign key constraint violation
+          return errorResponse('Invalid reference data provided', 400)
+        } else {
+          // Generic error for other database issues
+          logger.error('Error creating user:', createError)
+          return errorResponse('Failed to create user due to a database error', 500)
+        }
       }
-
-      return successResponse(userWithRole, 201)
     }
     
-    logger.error('No valid role ID found for user creation');
     return errorResponse('Failed to create user - no valid role found', 400)
   } catch (error: any) {
     logger.error('Error creating user:', error)
-    return errorResponse('Internal server error')
+    // Don't expose internal error details
+    return errorResponse('Failed to create user due to a server error', 500)
   }
 }

@@ -2,6 +2,71 @@ import { NextRequest } from 'next/server'
 import { errorResponse } from '@/lib/api-utils'
 import logger from '@/lib/logger'
 
+// Enhanced SQL injection patterns detection
+function containsSQLInjection(input: string): boolean {
+  if (!input) return false;
+  
+  // Convert to lowercase for case-insensitive matching
+  const lowerInput = input.toLowerCase();
+  
+  // More comprehensive SQL injection patterns
+  const sqlPatterns = [
+    // Classic SQL injection keywords
+    /\b(union|select|insert|update|delete|drop|create|alter|exec|execute|declare|cast|convert)\b/,
+    // SQL functions and expressions that could be dangerous
+    /\b(concat|group_concat|load_file|benchmark|sleep|waitfor|delay|extractvalue|updatexml)\b/,
+    // SQL comments
+    /(--|#|\/\*|\*\/)/,
+    // SQL operators that could be used maliciously
+    /(\b(or|and)\b\s*\d+\s*=\s*\d+)/,
+    // Hexadecimal encoding attempts
+    /0x[0-9a-f]+/,
+    // Multiple dots (potential object traversal)
+    /(\.){2,}/,
+    // Multiple slashes (potential path traversal)
+    /(\/){2,}/,
+    // Escaped quotes
+    /\\['"]/
+  ]
+  
+  for (const pattern of sqlPatterns) {
+    if (pattern.test(lowerInput)) {
+      return true
+    }
+  }
+  
+  return false
+}
+
+// Enhanced XSS patterns detection
+function containsXSS(input: string): boolean {
+  if (!input) return false;
+  
+  const lowerInput = input.toLowerCase();
+  
+  const xssPatterns = [
+    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+    /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
+    /<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi,
+    /<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi,
+    /javascript:/gi,
+    /vbscript:/gi,
+    /on\w+\s*=/gi,
+    /<img\b[^<]*\b(src|onerror)\b[^>]*>/gi,
+    /eval\s*\(/gi,
+    /expression\s*\(/gi,
+    /data\s*:/gi
+  ]
+  
+  for (const pattern of xssPatterns) {
+    if (pattern.test(lowerInput)) {
+      return true
+    }
+  }
+  
+  return false
+}
+
 // Security middleware to protect against common attacks
 export async function securityMiddleware(request: NextRequest) {
   try {
@@ -62,48 +127,6 @@ export async function securityMiddleware(request: NextRequest) {
     // Don't block requests due to middleware errors
     return null
   }
-}
-
-// Check for SQL injection patterns
-function containsSQLInjection(input: string): boolean {
-  const sqlPatterns = [
-    /\b(union|select|insert|update|delete|drop|create|alter|exec|execute)\b/i,
-    /(\bconcat\b|\bgroup_concat\b|\bload_file\b)/i,
-    /('|").*('|")/,
-    /(\bwaitfor\b\s+\bdelay\b)/i,
-    /(\bsleep\b\s*\()/i,
-    /(\/\*|\*\/|--|#)/
-  ]
-  
-  for (const pattern of sqlPatterns) {
-    if (pattern.test(input)) {
-      return true
-    }
-  }
-  
-  return false
-}
-
-// Check for XSS patterns
-function containsXSS(input: string): boolean {
-  const xssPatterns = [
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
-    /<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi,
-    /<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi,
-    /javascript:/gi,
-    /vbscript:/gi,
-    /on\w+\s*=/gi,
-    /<img\b[^<]*\b(src|onerror)\b[^>]*>/gi
-  ]
-  
-  for (const pattern of xssPatterns) {
-    if (pattern.test(input)) {
-      return true
-    }
-  }
-  
-  return false
 }
 
 // Rate limiting middleware

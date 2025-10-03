@@ -389,7 +389,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       
       // Add status filter if provided
       if (status) {
-        // Sanitize status input
+        // Sanitize status input using enhanced validation
         const sanitizedStatus = validateSearchInput(status);
         queryArgs.push(sanitizedStatus);
         const statusField = assetType === 'license' ? 'updateStatus' : 'status';

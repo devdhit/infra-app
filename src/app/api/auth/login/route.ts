@@ -165,42 +165,23 @@ export async function POST(request: NextRequest) {
       logger.warn('Invalid email format in login request', { 
         requestId, 
         ip, 
-        email, 
+        // Don't log the actual email in production to prevent enumeration attacks
         component: 'auth-login' 
       });
-      return errorResponse('Invalid email format', 400, { requestId })
+      return errorResponse('Invalid email or password', 401, { requestId })
     }
 
     // Find user by email with proper error handling
     let user;
     try {
-      logger.debug('Looking up user for login', { 
-        requestId, 
-        ip, 
-        email, 
-        component: 'auth-login' 
-      });
       user = await db.user.findUnique({
         where: { email },
         include: { role: true }
       });
-      
-      // Add validation for the user object
-      if (user) {
-        logger.debug('User found', { 
-          requestId, 
-          ip, 
-          userId: user.id,
-          hasPassword: !!user.password,
-          hasRole: !!user.role,
-          component: 'auth-login' 
-        });
-      }
     } catch (dbError: any) {
       logger.error('Database error during user lookup', { 
         requestId, 
         ip, 
-        email, 
         error: dbError.message, 
         stack: dbError.stack, 
         component: 'auth-login' 
@@ -216,9 +197,9 @@ export async function POST(request: NextRequest) {
       logger.warn('User not found during login attempt', { 
         requestId, 
         ip, 
-        email, 
         component: 'auth-login' 
       });
+      // Generic error message to prevent user enumeration
       return errorResponse('Invalid email or password', 401, { requestId })
     }
 
@@ -228,7 +209,6 @@ export async function POST(request: NextRequest) {
         requestId, 
         ip, 
         userId: user.id,
-        email,
         lockedUntil: user.lockedUntil,
         component: 'auth-login' 
       });
@@ -238,83 +218,7 @@ export async function POST(request: NextRequest) {
     // Verify password with proper error handling and rate limiting
     let isValidPassword;
     try {
-      logger.debug('Verifying password for user', { 
-        requestId, 
-        ip, 
-        userId: user.id, 
-        component: 'auth-login' 
-      });
-      
-      // Add detailed validation to ensure we have the required data
-      logger.debug('Validating password and user password hash', { 
-        requestId, 
-        ip, 
-        userId: user.id,
-        hasPassword: password !== undefined && password !== null,
-        hasUserPassword: user.password !== undefined && user.password !== null,
-        passwordType: typeof password,
-        userPasswordType: typeof user.password,
-        component: 'auth-login' 
-      });
-      
-      // Check for undefined or null values
-      if (password === undefined || password === null) {
-        logger.error('Password is undefined or null', { 
-          requestId, 
-          ip, 
-          userId: user.id,
-          component: 'auth-login' 
-        });
-        return errorResponse('Invalid credentials', 401, { requestId });
-      }
-      
-      if (user.password === undefined || user.password === null) {
-        logger.error('User password hash is undefined or null', { 
-          requestId, 
-          ip, 
-          userId: user.id,
-          component: 'auth-login' 
-        });
-        return errorResponse('Invalid credentials', 401, { requestId });
-      }
-      
-      // Check for empty strings
-      if (password === '') {
-        logger.error('Password is empty string', { 
-          requestId, 
-          ip, 
-          userId: user.id,
-          component: 'auth-login' 
-        });
-        return errorResponse('Invalid credentials', 401, { requestId });
-      }
-      
-      if (user.password === '') {
-        logger.error('User password hash is empty string', { 
-          requestId, 
-          ip, 
-          userId: user.id,
-          component: 'auth-login' 
-        });
-        return errorResponse('Invalid credentials', 401, { requestId });
-      }
-      
-      logger.debug('Calling verifyPassword function', { 
-        requestId, 
-        ip, 
-        userId: user.id,
-        component: 'auth-login' 
-      });
-      
       isValidPassword = await verifyPassword(password, user.password, ip);
-      
-      logger.debug('verifyPassword function completed', { 
-        requestId, 
-        ip, 
-        userId: user.id,
-        isValidPassword,
-        component: 'auth-login' 
-      });
     } catch (passwordError: any) {
       logger.error('Password verification error', { 
         requestId, 
@@ -359,6 +263,7 @@ export async function POST(request: NextRequest) {
         return errorResponse('Account is locked due to too many failed attempts. Please contact administrator.', 423, { requestId });
       }
       
+      // Generic error message to prevent user enumeration
       return errorResponse('Invalid email or password', 401, { requestId })
     }
 
