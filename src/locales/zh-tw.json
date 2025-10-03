@@ -249,7 +249,8 @@
     "licenseProductTypes": "產品類型",
     "licenseProductKeys": "產品金鑰",
     "licenseProductTypesDescription": "不同的產品類型",
-    "licenseProductKeysDescription": "具有產品金鑰的授權"
+    "licenseProductKeysDescription": "具有產品金鑰的授權",
+    "assetDetails": "資產詳細資訊"
   },
   "assets": {
     "title": "資產",

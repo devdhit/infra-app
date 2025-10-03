@@ -249,7 +249,8 @@
     "licenseProductTypes": "Product Types",
     "licenseProductKeys": "Product Keys",
     "licenseProductTypesDescription": "Different product types",
-    "licenseProductKeysDescription": "Licenses with product keys"
+    "licenseProductKeysDescription": "Licenses with product keys",
+    "assetDetails": "Asset Details"
   },
   "assets": {
     "title": "Assets",
