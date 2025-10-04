@@ -1105,7 +1105,11 @@
       "lastSeen": "Last Seen",
       "ipAddress": "IP Address",
       "macAddress": "MAC Address",
-      "actions": "Actions"
+      "actions": "Actions",
+      "actions.update": "Update",
+      "agent": "Agent",
+      "pcName": "PC Name",
+      "lastUpdate": "Last Update"
     },
     "list": {
       "title": "Agent List",
@@ -1148,6 +1152,10 @@
     },
     "error": {
       "loading": "Failed to load agents"
+    },
+    "empty": {
+      "title": "No agents found",
+      "description": "Get started by adding your first agent to the system"
     },
     "form": {
       "name": "Name",
