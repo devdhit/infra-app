@@ -1111,6 +1111,15 @@
       "pcName": "PC Name",
       "lastUpdate": "Last Update"
     },
+    "actions": {
+      "list": "List",
+      "status": "Status",
+      "create": "Create",
+      "edit": "Edit",
+      "update": "Update",
+      "delete": "Delete",
+      "bulkDelete": "Bulk Delete"
+    },
     "list": {
       "title": "Agent List",
       "description": "A list of all registered agents"

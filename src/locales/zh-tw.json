@@ -1111,6 +1111,16 @@
       "pcName": "電腦名稱",
       "lastUpdate": "最後更新"
     },
+    "actions": {
+      "create": "建立",
+      "edit": "編輯",
+      "delete": "刪除",
+      "bulkDelete": "批次刪除",
+      "view": "查看",
+      "viewStatus": "查看狀態",
+      "healthCheck": "健康檢查",
+      "update": "更新"
+    },
     "list": {
       "title": "代理列表",
       "description": "所有已註冊代理的列表"
