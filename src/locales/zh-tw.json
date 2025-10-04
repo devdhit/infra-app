@@ -1105,7 +1105,11 @@
       "lastSeen": "最後見面",
       "ipAddress": "IP 位址",
       "macAddress": "MAC 位址",
-      "actions": "操作"
+      "actions": "操作",
+      "actions.update": "更新",
+      "agent": "代理",
+      "pcName": "電腦名稱",
+      "lastUpdate": "最後更新"
     },
     "list": {
       "title": "代理列表",
@@ -1148,6 +1152,10 @@
     },
     "error": {
       "loading": "載入代理失敗"
+    },
+    "empty": {
+      "title": "未找到代理",
+      "description": "通過向系統添加您的第一個代理開始"
     },
     "form": {
       "name": "名稱",
