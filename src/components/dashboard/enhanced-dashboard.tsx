@@ -95,7 +95,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
     },
     { 
       name: 'Laptop', 
-      count: dashboardData?.laptop?.reduce((sum, item) => sum + (item?._count || 0), 0) || 0, 
+      count: dashboardData?.laptop?.reduce((sum, item) => sum + (Number(item?._count) || 0), 0) || 0, 
       icon: Laptop, 
       color: 'green', 
       iconColor: 'text-green-500',
@@ -104,7 +104,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
     },
     { 
       name: 'Printer', 
-      count: dashboardData?.printer?.reduce((sum, item) => sum + (item?._count || 0), 0) || 0, 
+      count: dashboardData?.printer?.reduce((sum, item) => sum + (Number(item?._count) || 0), 0) || 0, 
       icon: Printer, 
       color: 'yellow', 
       iconColor: 'text-yellow-500',
@@ -113,7 +113,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
     },
     { 
       name: 'License', 
-      count: dashboardData?.license?.reduce((sum, item) => sum + (item?._count || 0), 0) || 0, 
+      count: dashboardData?.license?.reduce((sum, item) => sum + (Number(item?._count) || 0), 0) || 0, 
       icon: Key, 
       color: 'red', 
       iconColor: 'text-red-500',
@@ -122,7 +122,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
     },
     { 
       name: 'warehouse', 
-      count: dashboardData?.warehouseIT?.reduce((sum, item) => sum + (item?._count || 0), 0) || 0, 
+      count: dashboardData?.warehouseIT?.reduce((sum, item) => sum + (Number(item?._count) || 0), 0) || 0, 
       icon: Warehouse, 
       color: 'purple', 
       iconColor: 'text-purple-500',
@@ -131,7 +131,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
     },
     { 
       name: 'internet', 
-      count: dashboardData?.internet?.reduce((sum, item) => sum + (item?._count || 0), 0) || 0, 
+      count: dashboardData?.internet?.reduce((sum, item) => sum + (Number(item?._count) || 0), 0) || 0, 
       icon: Wifi, 
       color: 'indigo', 
       iconColor: 'text-indigo-500',
@@ -561,7 +561,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                         fill="#8884d8"
                         dataKey="count"
                         nameKey="name"
-                        label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name}: ${((percent ?? 0) as number * 100).toFixed(0)}%`}
                       >
                         {assetTypeData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

@@ -98,7 +98,7 @@ async function readTemplateFile(templateName: string): Promise<ArrayBuffer> {
 /**
  * Export PC data to Excel file with template
  */
-export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
+export async function exportPCToExcel(data: PCAsset[], tenantName?: string): Promise<ArrayBuffer> {
   try {
     logger.debug(`Starting exportPCToExcel with ${data.length} records`);
     // Read the PC template
@@ -108,7 +108,30 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
     logger.debug('Workbook created, getting worksheet');
     const worksheet = workbook.sheet(0);
     logger.debug('Worksheet obtained, finding data start row');
+
+    // Update the header row (row 1) with dynamic information
+    // Find the cell containing "INVENTORY PC INFORMATION DAIHOA" and update it
+    const currentDate = new Date();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    const assetsName = 'PC'; // This is PC export
     
+    // Search for the header cell in row 1 and update it
+    for (let col = 1; col <= 20; col++) { // Check first 20 columns for the header
+      try {
+        const cellValue = worksheet.cell(1, col).value();
+        if (typeof cellValue === 'string' && cellValue.includes('INVENTORY PC INFORMATION DAIHOA')) {
+          // Replace with dynamic information (uppercase assets and tenant)
+          const newValue = `INVENTORY ${assetsName.toUpperCase()} INFORMATION ${tenantName ? tenantName.toUpperCase() : 'TENANT'} ${month}/${year}`;
+          worksheet.cell(1, col).value(newValue);
+          break;
+        }
+      } catch (error) {
+        // Continue to next column if there's an error reading this cell
+        continue;
+      }
+    }
+
     // Find the data start row (usually row 2, but we'll look for the first empty row after headers)
     let dataStartRow = 2;
     // Add a safety check to prevent infinite loop
@@ -133,7 +156,7 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
       }
     }
     logger.debug(`Data start row found at row ${dataStartRow}`);
-    
+
     // Find the footer row (look for a row after data that has content)
     let footerStartRow = dataStartRow;
     // Skip data rows - look for the first row with content after the data start row
@@ -162,13 +185,13 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
       }
     }
     logger.debug(`Footer start row found at row ${footerStartRow}`);
-    
+
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < 1000) {
       logger.debug('Footer detected, inserting rows');
       // Calculate how many rows we need to insert
       const rowsToInsert = data.length;
-      
+
       // Insert rows for our data (shift footer down)
       if (rowsToInsert > 0) {
         // Find the last row with content in the footer section
@@ -189,7 +212,7 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
           safetyCounter++;
           if (safetyCounter > MAX_ROWS) break;
         }
-        
+
         // Now shift all footer rows down by rowsToInsert positions
         // Work backwards to avoid overwriting data
         for (let row = lastFooterRow; row >= footerStartRow; row--) {
@@ -200,7 +223,7 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
             worksheet.cell(row, col).value('');
           }
         }
-        
+
         // Copy formatting from the template row (dataStartRow - 1) to all new data rows
         const templateRow = dataStartRow - 1;
         for (let i = 0; i < rowsToInsert; i++) {
@@ -210,7 +233,7 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
             try {
               const templateCell = worksheet.cell(templateRow, col);
               const currentCell = worksheet.cell(currentRow, col);
-              
+
               // Get all available styles from template cell
               const allStyles = templateCell.style([
                 "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
@@ -219,7 +242,7 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
                 "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
                 "borderStyle", "numberFormat"
               ]);
-              
+
               // Apply all styles to current cell
               currentCell.style(allStyles);
             } catch (styleError: any) {
@@ -230,7 +253,7 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
         }
       }
       logger.debug(`Shifted footer by ${rowsToInsert} rows`);
-      
+
       // Add data rows
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex
@@ -270,7 +293,7 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
       });
       logger.debug('Data rows added without footer preservation');
     }
-    
+
     logger.debug('Converting workbook to buffer');
     // Convert to buffer and return
     const result = await workbook.outputAsync() as ArrayBuffer;
@@ -285,7 +308,7 @@ export async function exportPCToExcel(data: PCAsset[]): Promise<ArrayBuffer> {
 /**
  * Export Laptop data to Excel file with template (header and data only)
  */
-export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuffer> {
+export async function exportLaptopToExcel(data: LaptopAsset[], tenantName?: string): Promise<ArrayBuffer> {
   try {
     logger.debug(`Starting exportLaptopToExcel with ${data.length} records`);
     // Read the Laptop template
@@ -295,7 +318,30 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
     logger.debug('Workbook created, getting worksheet');
     const worksheet = workbook.sheet(0);
     logger.debug('Worksheet obtained, finding data start row');
+
+    // Update the header row (row 1) with dynamic information
+    // Find the cell containing "INVENTORY PC INFORMATION DAIHOA" and update it
+    const currentDate = new Date();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    const assetsName = 'Laptop'; // This is Laptop export
     
+    // Search for the header cell in row 1 and update it
+    for (let col = 1; col <= 20; col++) { // Check first 20 columns for the header
+      try {
+        const cellValue = worksheet.cell(1, col).value();
+        if (typeof cellValue === 'string' && cellValue.includes('INVENTORY PC INFORMATION DAIHOA')) {
+          // Replace with dynamic information (uppercase assets and tenant)
+          const newValue = `INVENTORY ${assetsName.toUpperCase()} INFORMATION ${tenantName ? tenantName.toUpperCase() : 'TENANT'} ${month}/${year}`;
+          worksheet.cell(1, col).value(newValue);
+          break;
+        }
+      } catch (error) {
+        // Continue to next column if there's an error reading this cell
+        continue;
+      }
+    }
+
     // Find the data start row
     let dataStartRow = 2;
     // Add a safety check to prevent infinite loop
@@ -323,7 +369,7 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
       }
     }
     logger.debug(`Data start row found at row ${dataStartRow}`);
-    
+
     // Find the footer row (look for a row after data that has content)
     let footerStartRow = dataStartRow;
     // Skip data rows - look for the first row with content after the data start row
@@ -351,12 +397,12 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
         break;
       }
     }
-    
+
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < MAX_ROWS) {
       // Calculate how many rows we need to insert
       const rowsToInsert = data.length;
-      
+
       // Insert rows for our data (shift footer down)
       if (rowsToInsert > 0) {
         // For each row we need to insert, shift existing rows down
@@ -372,7 +418,7 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
             }
           }
         }
-        
+
         // Copy formatting from the template row (dataStartRow - 1) to all new data rows
         const templateRow = dataStartRow - 1;
         for (let i = 0; i < rowsToInsert; i++) {
@@ -382,7 +428,7 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
             try {
               const templateCell = worksheet.cell(templateRow, col);
               const currentCell = worksheet.cell(currentRow, col);
-              
+
               // Get all available styles from template cell
               const allStyles = templateCell.style([
                 "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
@@ -391,7 +437,7 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
                 "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
                 "borderStyle", "numberFormat"
               ]);
-              
+
               // Apply all styles to current cell
               currentCell.style(allStyles);
             } catch (styleError: any) {
@@ -401,7 +447,7 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
           }
         }
       }
-      
+
       // Add data rows
       logger.debug('Adding data rows');
       data.forEach((row, rowIndex) => {
@@ -482,7 +528,7 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
       });
       logger.debug('Data rows added without footer preservation');
     }
-    
+
     logger.debug('Converting workbook to buffer');
     // Convert to buffer and return
     logger.debug('Calling workbook.outputAsync()');
@@ -490,7 +536,7 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Workbook output timeout after 30 seconds')), 30000);
     });
-    
+
     const result = await Promise.race([
       workbook.outputAsync() as Promise<ArrayBuffer>,
       timeoutPromise
@@ -507,13 +553,36 @@ export async function exportLaptopToExcel(data: LaptopAsset[]): Promise<ArrayBuf
 /**
  * Export Printer data to Excel file with template (header and data only)
  */
-export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayBuffer> {
+export async function exportPrinterToExcel(data: PrinterAsset[], tenantName?: string): Promise<ArrayBuffer> {
   try {
     // Read the Printer template
     const templateBuffer = await readTemplateFile('Printer_Template.xlsx')
     const workbook = await XLSX.fromDataAsync(templateBuffer)
     const worksheet = workbook.sheet(0)
+
+    // Update the header row (row 1) with dynamic information
+    // Find the cell containing "INVENTORY PC INFORMATION DAIHOA" and update it
+    const currentDate = new Date();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    const assetsName = 'Printer'; // This is Printer export
     
+    // Search for the header cell in row 1 and update it
+    for (let col = 1; col <= 20; col++) { // Check first 20 columns for the header
+      try {
+        const cellValue = worksheet.cell(1, col).value();
+        if (typeof cellValue === 'string' && cellValue.includes('INVENTORY PC INFORMATION DAIHOA')) {
+          // Replace with dynamic information (uppercase assets and tenant)
+          const newValue = `INVENTORY ${assetsName.toUpperCase()} INFORMATION ${tenantName ? tenantName.toUpperCase() : 'TENANT'} ${month}/${year}`;
+          worksheet.cell(1, col).value(newValue);
+          break;
+        }
+      } catch (error) {
+        // Continue to next column if there's an error reading this cell
+        continue;
+      }
+    }
+
     // Find the data start row
     let dataStartRow = 2
     // Add a safety check to prevent infinite loop
@@ -537,7 +606,7 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
         break;
       }
     }
-    
+
     // Find the footer row (look for a row after data that has content)
     let footerStartRow = dataStartRow;
     // Skip data rows - look for the first row with content after the data start row
@@ -565,12 +634,12 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
         break;
       }
     }
-    
+
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < MAX_ROWS) {
       // Calculate how many rows we need to insert
       const rowsToInsert = data.length;
-      
+
       // Insert rows for our data (shift footer down)
       if (rowsToInsert > 0) {
         // For each row we need to insert, shift existing rows down
@@ -586,7 +655,7 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
             }
           }
         }
-        
+
         // Copy formatting from the template row (dataStartRow - 1) to all new data rows
         const templateRow = dataStartRow - 1;
         for (let i = 0; i < rowsToInsert; i++) {
@@ -596,7 +665,7 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
             try {
               const templateCell = worksheet.cell(templateRow, col);
               const currentCell = worksheet.cell(currentRow, col);
-              
+
               // Get all available styles from template cell
               const allStyles = templateCell.style([
                 "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
@@ -605,7 +674,7 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
                 "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
                 "borderStyle", "numberFormat"
               ]);
-              
+
               // Apply all styles to current cell
               currentCell.style(allStyles);
             } catch (styleError: any) {
@@ -615,7 +684,7 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
           }
         }
       }
-      
+
       // Add data rows
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex
@@ -644,7 +713,7 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
         worksheet.cell(currentRow, 9).value(row.note || 'N/A')
       });
     }
-    
+
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
   } catch (error) {
@@ -656,13 +725,36 @@ export async function exportPrinterToExcel(data: PrinterAsset[]): Promise<ArrayB
 /**
  * Export License data to Excel file with template (header and data only)
  */
-export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayBuffer> {
+export async function exportLicenseToExcel(data: LicenseAsset[], tenantName?: string): Promise<ArrayBuffer> {
   try {
     // Read the License template
     const templateBuffer = await readTemplateFile('Licenses_Template.xlsx')
     const workbook = await XLSX.fromDataAsync(templateBuffer)
     const worksheet = workbook.sheet(0)
+
+    // Update the header row (row 1) with dynamic information
+    // Find the cell containing "INVENTORY PC INFORMATION DAIHOA" and update it
+    const currentDate = new Date();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    const assetsName = 'License'; // This is License export
     
+    // Search for the header cell in row 1 and update it
+    for (let col = 1; col <= 20; col++) { // Check first 20 columns for the header
+      try {
+        const cellValue = worksheet.cell(1, col).value();
+        if (typeof cellValue === 'string' && cellValue.includes('INVENTORY PC INFORMATION DAIHOA')) {
+          // Replace with dynamic information (uppercase assets and tenant)
+          const newValue = `INVENTORY ${assetsName.toUpperCase()} INFORMATION ${tenantName ? tenantName.toUpperCase() : 'TENANT'} ${month}/${year}`;
+          worksheet.cell(1, col).value(newValue);
+          break;
+        }
+      } catch (error) {
+        // Continue to next column if there's an error reading this cell
+        continue;
+      }
+    }
+
     // Find the data start row
     let dataStartRow = 2
     // Add a safety check to prevent infinite loop
@@ -686,7 +778,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
         break;
       }
     }
-    
+
     // Find the footer row (look for a row after data that has content)
     let footerStartRow = dataStartRow;
     // Skip data rows - look for the first row with content after the data start row
@@ -714,12 +806,12 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
         break;
       }
     }
-    
+
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < MAX_ROWS) {
       // Calculate how many rows we need to insert
       const rowsToInsert = data.length;
-      
+
       // Insert rows for our data (shift footer down)
       if (rowsToInsert > 0) {
         // For each row we need to insert, shift existing rows down
@@ -735,7 +827,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
             }
           }
         }
-        
+
         // Copy formatting from the template row (dataStartRow - 1) to all new data rows
         const templateRow = dataStartRow - 1;
         for (let i = 0; i < rowsToInsert; i++) {
@@ -745,7 +837,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
             try {
               const templateCell = worksheet.cell(templateRow, col);
               const currentCell = worksheet.cell(currentRow, col);
-              
+
               // Get all available styles from template cell
               const allStyles = templateCell.style([
                 "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
@@ -754,7 +846,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
                 "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
                 "borderStyle", "numberFormat"
               ]);
-              
+
               // Apply all styles to current cell
               currentCell.style(allStyles);
             } catch (styleError: any) {
@@ -764,7 +856,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
           }
         }
       }
-      
+
       // Add data rows
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex
@@ -801,7 +893,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
         worksheet.cell(currentRow, 11).value(statusValue)
       });
     }
-    
+
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
   } catch (error) {
@@ -813,13 +905,36 @@ export async function exportLicenseToExcel(data: LicenseAsset[]): Promise<ArrayB
 /**
  * Export WarehouseIT data to Excel file with template (header and data only)
  */
-export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promise<ArrayBuffer> {
+export async function exportWarehouseITToExcel(data: WarehouseITAsset[], tenantName?: string): Promise<ArrayBuffer> {
   try {
     // Read the WarehouseIT template
     const templateBuffer = await readTemplateFile('WarehouseIT_Template.xlsx')
     const workbook = await XLSX.fromDataAsync(templateBuffer)
     const worksheet = workbook.sheet(0)
+
+    // Update the header row (row 1) with dynamic information
+    // Find the cell containing "INVENTORY PC INFORMATION DAIHOA" and update it
+    const currentDate = new Date();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    const assetsName = 'WarehouseIT'; // This is WarehouseIT export
     
+    // Search for the header cell in row 1 and update it
+    for (let col = 1; col <= 20; col++) { // Check first 20 columns for the header
+      try {
+        const cellValue = worksheet.cell(1, col).value();
+        if (typeof cellValue === 'string' && cellValue.includes('INVENTORY PC INFORMATION DAIHOA')) {
+          // Replace with dynamic information (uppercase assets and tenant)
+          const newValue = `INVENTORY ${assetsName.toUpperCase()} INFORMATION ${tenantName ? tenantName.toUpperCase() : 'TENANT'} ${month}/${year}`;
+          worksheet.cell(1, col).value(newValue);
+          break;
+        }
+      } catch (error) {
+        // Continue to next column if there's an error reading this cell
+        continue;
+      }
+    }
+
     // Find the data start row
     let dataStartRow = 2
     // Add a safety check to prevent infinite loop
@@ -843,7 +958,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         break;
       }
     }
-    
+
     // Find the footer row (look for a row after data that has content)
     let footerStartRow = dataStartRow;
     // Skip data rows - look for the first row with content after the data start row
@@ -871,7 +986,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         break;
       }
     }
-    
+
     // Get all unique custom field keys from the data
     const customFieldKeys = new Set<string>();
     data.forEach(row => {
@@ -882,15 +997,15 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         }
       });
     });
-    
+
     const customFieldArray = Array.from(customFieldKeys);
     logger.debug(`Found ${customFieldArray.length} custom fields:`, customFieldArray);
-    
+
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < MAX_ROWS) {
       // Calculate how many rows we need to insert
       const rowsToInsert = data.length;
-      
+
       // Insert rows for our data (shift footer down)
       if (rowsToInsert > 0) {
         // For each row we need to insert, shift existing rows down
@@ -906,7 +1021,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
             }
           }
         }
-        
+
         // Copy formatting from the template row (dataStartRow - 1) to all new data rows
         const templateRow = dataStartRow - 1;
         for (let i = 0; i < rowsToInsert; i++) {
@@ -916,7 +1031,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
             try {
               const templateCell = worksheet.cell(templateRow, col);
               const currentCell = worksheet.cell(currentRow, col);
-              
+
               // Get all available styles from template cell
               const allStyles = templateCell.style([
                 "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
@@ -925,7 +1040,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
                 "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
                 "borderStyle", "numberFormat"
               ]);
-              
+
               // Apply all styles to current cell
               currentCell.style(allStyles);
             } catch (styleError: any) {
@@ -935,7 +1050,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
           }
         }
       }
-      
+
       // Add data rows
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex
@@ -954,7 +1069,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
             logger.debug('Note column may not exist in WarehouseIT template, skipping note field');
           }
         }
-        
+
         // Add custom fields if there are any
         if (customFieldArray.length > 0) {
           try {
@@ -991,7 +1106,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
             logger.debug('Note column may not exist in WarehouseIT template, skipping note field');
           }
         }
-        
+
         // Add custom fields if there are any
         if (customFieldArray.length > 0) {
           try {
@@ -1010,7 +1125,7 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
         }
       });
     }
-    
+
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
   } catch (error) {
@@ -1022,13 +1137,36 @@ export async function exportWarehouseITToExcel(data: WarehouseITAsset[]): Promis
 /**
  * Export Internet data to Excel file with template (header and data only)
  */
-export async function exportInternetToExcel(data: InternetAsset[]): Promise<ArrayBuffer> {
+export async function exportInternetToExcel(data: InternetAsset[], tenantName?: string): Promise<ArrayBuffer> {
   try {
     // Read the Internet template
     const templateBuffer = await readTemplateFile('Internet_Template.xlsx')
     const workbook = await XLSX.fromDataAsync(templateBuffer)
     const worksheet = workbook.sheet(0)
+
+    // Update the header row (row 1) with dynamic information
+    // Find the cell containing "INVENTORY PC INFORMATION DAIHOA" and update it
+    const currentDate = new Date();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    const assetsName = 'Internet'; // This is Internet export
     
+    // Search for the header cell in row 1 and update it
+    for (let col = 1; col <= 20; col++) { // Check first 20 columns for the header
+      try {
+        const cellValue = worksheet.cell(1, col).value();
+        if (typeof cellValue === 'string' && cellValue.includes('INVENTORY PC INFORMATION DAIHOA')) {
+          // Replace with dynamic information (uppercase assets and tenant)
+          const newValue = `INVENTORY ${assetsName.toUpperCase()} INFORMATION ${tenantName ? tenantName.toUpperCase() : 'TENANT'} ${month}/${year}`;
+          worksheet.cell(1, col).value(newValue);
+          break;
+        }
+      } catch (error) {
+        // Continue to next column if there's an error reading this cell
+        continue;
+      }
+    }
+
     // Find the data start row
     let dataStartRow = 2
     // Add a safety check to prevent infinite loop
@@ -1052,7 +1190,7 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
         break;
       }
     }
-    
+
     // Find the footer row (look for a row after data that has content)
     let footerStartRow = dataStartRow;
     // Skip data rows - look for the first row with content after the data start row
@@ -1080,12 +1218,12 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
         break;
       }
     }
-    
+
     // If we found a footer, we need to insert rows for our data
     if (footerStartRow < MAX_ROWS) {
       // Calculate how many rows we need to insert
       const rowsToInsert = data.length;
-      
+
       // Insert rows for our data (shift footer down)
       if (rowsToInsert > 0) {
         // For each row we need to insert, shift existing rows down
@@ -1101,7 +1239,7 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
             }
           }
         }
-        
+
         // Copy formatting from the template row (dataStartRow - 1) to all new data rows
         const templateRow = dataStartRow - 1;
         for (let i = 0; i < rowsToInsert; i++) {
@@ -1111,7 +1249,7 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
             try {
               const templateCell = worksheet.cell(templateRow, col);
               const currentCell = worksheet.cell(currentRow, col);
-              
+
               // Get all available styles from template cell
               const allStyles = templateCell.style([
                 "bold", "italic", "underline", "strikethrough", "fontSize", "fontFamily", "fontColor",
@@ -1120,7 +1258,7 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
                 "rotateTextUp", "rotateTextDown", "verticalText", "fill", "border", "borderColor",
                 "borderStyle", "numberFormat"
               ]);
-              
+
               // Apply all styles to current cell
               currentCell.style(allStyles);
             } catch (styleError: any) {
@@ -1130,7 +1268,7 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
           }
         }
       }
-      
+
       // Add data rows
       data.forEach((row, rowIndex) => {
         const currentRow = dataStartRow + rowIndex
@@ -1161,7 +1299,7 @@ export async function exportInternetToExcel(data: InternetAsset[]): Promise<Arra
         worksheet.cell(currentRow, 8).value(row.note || 'N/A')
       });
     }
-    
+
     // Convert to buffer and return
     return await workbook.outputAsync() as ArrayBuffer
   } catch (error) {
@@ -1184,40 +1322,40 @@ export async function importFromExcelWithTemplate(
   try {
     // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer()
-    
+
     // Load workbook from ArrayBuffer
     const workbook = await XLSX.fromDataAsync(arrayBuffer)
     const worksheet = workbook.sheet(0) // Get the first sheet
-    
+
     // Get the used range
     const usedRange = worksheet.usedRange()
     if (!usedRange) {
       return []
     }
-    
+
     // Get all rows as an array of arrays
     const rows = usedRange.value()
-    
+
     if (rows.length === 0) {
       return []
     }
-    
+
     // First row is headers
     const headers = rows[0]
-    
+
     // Convert remaining rows to objects
     const data: Record<string, unknown>[] = []
     for (let i = 1; i < rows.length; i++) {
       // Check if the row has data (skip empty rows)
       const hasData = (rows[i] as unknown[]).some((cell: unknown) => cell !== null && cell !== undefined && cell !== '')
       if (!hasData) continue
-      
+
       const rowObject: Record<string, unknown> = {}
       for (let j = 0; j < headers.length; j++) {
         // Convert header to string to ensure it can be used as an index
         let header = String(headers[j]);
         let value = rows[i][j]
-        
+
         // Apply column mapping if provided
         if (columnMapping && columnMapping[header]) {
           const mappedHeader = columnMapping[header];
@@ -1225,7 +1363,7 @@ export async function importFromExcelWithTemplate(
             header = mappedHeader;
           }
         }
-        
+
         // Handle user field with email format (abc.xyz) - convert to string and handle empty values
         if (header === 'userName' || header === 'user') {  // Added check for 'userName' as well
           if (value === null || value === undefined || value === '') {
@@ -1377,12 +1515,12 @@ export async function importFromExcelWithTemplate(
             value = String(value);
           }
         }
-        
+
         rowObject[header] = value
       }
       data.push(rowObject)
     }
-    
+
     return data
   } catch (error) {
     logger.error('Error importing from Excel:', error)

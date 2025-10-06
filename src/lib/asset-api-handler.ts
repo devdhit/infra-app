@@ -130,18 +130,32 @@ export interface InternetAsset extends BaseAsset {
 // Union type for all asset types
 export type AssetType = PCAsset | LaptopAsset | PrinterAsset | LicenseAsset | WarehouseITAsset | InternetAsset;
 
-// Define the structure for asset operations with better typing
+/**
+ * Defines the structure for asset operations with better typing
+ */
 interface AssetOperations<T extends BaseAsset> {
+  /** The name of the Prisma model */
   modelName: string;
+  /** Required fields for the asset type */
   requiredFields?: (keyof Omit<T, keyof BaseAsset>)[];
+  /** Unique field for the asset type */
   uniqueField?: keyof Omit<T, keyof BaseAsset>;
+  /** Fields to search in when performing search operations */
   searchFields?: (keyof Omit<T, keyof BaseAsset>)[];
 }
 
-// Generic asset API handler with improved type safety
+/**
+ * Generic asset API handler with improved type safety
+ * Provides CRUD operations for different asset types with proper permission checking
+ */
 export class AssetApiHandler<T extends BaseAsset> {
   private resourceType: ResourceType;
 
+  /**
+   * Creates a new AssetApiHandler instance
+   * @param db - The Prisma database client
+   * @param operations - The asset operations configuration
+   */
   constructor(private db: PrismaClient, private operations: AssetOperations<T>) {
     // Map model names to resource types for permission checking
     const modelToResourceMap: Record<string, ResourceType> = {
@@ -156,13 +170,19 @@ export class AssetApiHandler<T extends BaseAsset> {
     this.resourceType = modelToResourceMap[this.operations.modelName] || 'assets';
   }
 
-  // Helper method to get the correct Prisma model name
+  /**
+   * Helper method to get the correct Prisma model name
+   * @returns The Prisma model for this asset type
+   */
   private getPrismaModel() {
     // Prisma client uses lowercase 'pC' for the PC model
     return this.operations.modelName === 'PC' ? this.db.pC : (this.db as any)[this.operations.modelName];
   }
 
-  // Helper method to get optimized select fields based on asset type
+  /**
+   * Helper method to get optimized select fields based on asset type
+   * @returns Object with fields to select for database queries
+   */
   private getSelectFieldsForAssetType() {
     // Base fields vary by model type as not all models have the same fields
     const getBaseFieldsForModel = (modelName: string) => {
@@ -293,7 +313,12 @@ export class AssetApiHandler<T extends BaseAsset> {
     }
   }
 
-  // Check if user has permission for an action
+  /**
+   * Check if user has permission for an action
+   * @param user - The user object
+   * @param action - The action to check permission for
+   * @returns Promise that resolves to true if user has permission, false otherwise
+   */
   private async checkPermission(user: any, action: PermissionAction) {
     // Handle case where role is null
     if (!user.role?.id) {
@@ -308,7 +333,12 @@ export class AssetApiHandler<T extends BaseAsset> {
     );
   }
 
-  // Get all assets with pagination and filtering
+  /**
+   * Get all assets with pagination and filtering
+   * @param user - The user object
+   * @param queryParams - Query parameters for pagination and filtering
+   * @returns Promise that resolves to a response with assets and pagination info
+   */
   async getAll(
     user: any, 
     queryParams: { page: number; limit: number; search: string | undefined; status: string | undefined }
@@ -559,7 +589,12 @@ export class AssetApiHandler<T extends BaseAsset> {
     }
   }
 
-  // Get a specific asset by ID
+  /**
+   * Get a specific asset by ID
+   * @param user - The user object
+   * @param id - The ID of the asset to retrieve
+   * @returns Promise that resolves to a response with the asset data
+   */
   async getById(user: any, id: string) {
     try {
       // Check permissions
@@ -621,7 +656,12 @@ export class AssetApiHandler<T extends BaseAsset> {
     }
   }
 
-  // Create a new asset
+  /**
+   * Create a new asset
+   * @param user - The user object
+   * @param body - The asset data to create
+   * @returns Promise that resolves to a response with the created asset
+   */
   async create(user: any, body: Omit<T, keyof BaseAsset> & { customFields?: Record<string, any> }) {
     try {
       // Check permissions
@@ -884,7 +924,13 @@ export class AssetApiHandler<T extends BaseAsset> {
     }
   }
 
-  // Update an existing asset
+  /**
+   * Update an existing asset
+   * @param user - The user object
+   * @param id - The ID of the asset to update
+   * @param body - The asset data to update
+   * @returns Promise that resolves to a response with the updated asset
+   */
   async update(user: any, id: string, body: Partial<Omit<T, keyof BaseAsset>> & { customFields?: Record<string, any> }) {
     try {
       if (process.env.NODE_ENV === 'development') {
@@ -1243,7 +1289,12 @@ export class AssetApiHandler<T extends BaseAsset> {
     }
   }
 
-  // Delete an asset
+  /**
+   * Delete an asset by ID
+   * @param user - The user object
+   * @param id - The ID of the asset to delete
+   * @returns Promise that resolves to a response indicating success or failure
+   */
   async delete(user: any, id: string) {
     try {
       // Check permissions
@@ -1356,7 +1407,12 @@ export class AssetApiHandler<T extends BaseAsset> {
     }
   }
 
-  // Bulk delete assets with optimized batch processing
+  /**
+   * Bulk delete multiple assets by IDs
+   * @param user - The user object
+   * @param ids - Array of asset IDs to delete
+   * @returns Promise that resolves to a response indicating success or failure
+   */
   async bulkDelete(user: any, ids: string[]) {
     try {
       // Check permissions

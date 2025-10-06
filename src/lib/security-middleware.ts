@@ -2,7 +2,11 @@ import { NextRequest } from 'next/server'
 import { errorResponse } from '@/lib/api-utils'
 import logger from '@/lib/logger'
 
-// Enhanced SQL injection patterns detection
+/**
+ * Checks if the input contains SQL injection patterns
+ * @param input - The string to check for SQL injection patterns
+ * @returns true if SQL injection patterns are detected, false otherwise
+ */
 function containsSQLInjection(input: string): boolean {
   if (!input) return false;
   
@@ -38,7 +42,11 @@ function containsSQLInjection(input: string): boolean {
   return false
 }
 
-// Enhanced XSS patterns detection
+/**
+ * Checks if the input contains XSS (Cross-Site Scripting) patterns
+ * @param input - The string to check for XSS patterns
+ * @returns true if XSS patterns are detected, false otherwise
+ */
 function containsXSS(input: string): boolean {
   if (!input) return false;
   
@@ -67,7 +75,11 @@ function containsXSS(input: string): boolean {
   return false
 }
 
-// Security middleware to protect against common attacks
+/**
+ * Security middleware to protect against common attacks including SQL injection and XSS
+ * @param request - The Next.js request object
+ * @returns Response object if a security threat is detected, null otherwise
+ */
 export async function securityMiddleware(request: NextRequest) {
   try {
     // Check for suspicious headers
@@ -129,12 +141,19 @@ export async function securityMiddleware(request: NextRequest) {
   }
 }
 
-// Rate limiting middleware
+/**
+ * Rate limiting middleware to prevent abuse
+ */
 export class RateLimitMiddleware {
   private requests: Map<string, number[]> = new Map()
   private windowMs: number
   private maxRequests: number
   
+  /**
+   * Creates a new rate limiter
+   * @param windowMs - The time window in milliseconds
+   * @param maxRequests - The maximum number of requests allowed in the window
+   */
   constructor(windowMs: number = 60000, maxRequests: number = 100) {
     this.windowMs = windowMs
     this.maxRequests = maxRequests
@@ -153,6 +172,11 @@ export class RateLimitMiddleware {
     }, 60000) // Clean up every minute
   }
   
+  /**
+   * Checks if a request should be rate limited
+   * @param request - The Next.js request object
+   * @returns Response object if rate limited, null otherwise
+   */
   async check(request: NextRequest) {
     try {
       const ip = request.headers.get('x-forwarded-for') || 

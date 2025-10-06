@@ -48,7 +48,11 @@ const SUSPICIOUS_CHARACTERS = [
   '~'
 ];
 
-// Check if input contains SQL injection patterns
+/**
+ * Checks if input contains SQL injection patterns
+ * @param input - The string to check for SQL injection patterns
+ * @returns true if SQL injection patterns are detected, false otherwise
+ */
 function containsSQLInjection(input: string): boolean {
   if (!input) return false;
   
@@ -88,7 +92,11 @@ function containsSQLInjection(input: string): boolean {
   return false;
 }
 
-// Validate and sanitize database identifiers (table names, column names)
+/**
+ * Validates database identifiers (table names, column names) to prevent injection
+ * @param identifier - The identifier to validate
+ * @returns true if the identifier is valid, false otherwise
+ */
 function validateDatabaseIdentifier(identifier: string): boolean {
   if (!identifier) return false;
   
@@ -109,7 +117,11 @@ function validateDatabaseIdentifier(identifier: string): boolean {
   return true;
 }
 
-// SQL Injection Middleware
+/**
+ * SQL Injection Middleware that checks for malicious patterns in requests
+ * @param request - The Next.js request object
+ * @returns Response object if SQL injection is detected, null otherwise
+ */
 export async function sqlInjectionMiddleware(request: NextRequest) {
   try {
     // Check query parameters
