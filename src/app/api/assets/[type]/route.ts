@@ -4,7 +4,18 @@ import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
 // Remove the CacheManager import as we'll use Redis instead
 import logger from '@/lib/logger';
-import { validateSearchInput } from '@/lib/security';
+import { 
+  successResponse, 
+  errorResponse, 
+  badRequestResponse,
+  unauthorizedResponse
+} from '@/lib/api-utils';
+import {
+  buildWhereClause,
+  buildSelectFields,
+  buildSearchQueries,
+  processSearchResults
+} from '@/lib/asset-api-utils';
 
 // Only import Redis cache on the server side
 let redisCache: any = null;
@@ -47,10 +58,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
   try {
     const user = await getCurrentUser(request);
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return unauthorizedResponse();
     }
 
     // Parse and validate query parameters
@@ -62,13 +70,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
     
     const validationResult = assetQuerySchema.safeParse(rawParams);
     if (!validationResult.success) {
-      return new Response(JSON.stringify({ 
-        error: 'Invalid query parameters',
-        details: validationResult.error.format() 
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return badRequestResponse('Invalid query parameters', validationResult.error.format());
     }
     
     const { page, limit, search, status } = validationResult.data;
@@ -76,18 +78,12 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
     // Get the asset type from the URL parameter
     const assetType = params.type;
     if (!assetType) {
-      return new Response(JSON.stringify({ error: 'Asset type is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return badRequestResponse('Asset type is required');
     }
 
     // Validate asset type
     if (!isValidAssetType(assetType)) {
-      return new Response(JSON.stringify({ error: `Invalid asset type: ${assetType}` }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return badRequestResponse(`Invalid asset type: ${assetType}`);
     }
 
     // Create a cache key based on parameters using Redis cache if available
@@ -109,117 +105,12 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
         logger.debug(`Returning cached data for key: ${cacheKey}`);
-        return new Response(JSON.stringify(cachedData), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': search || status ? 'no-cache' : 'max-age=60, stale-while-revalidate=59'
-          }
-        });
+        return successResponse(cachedData);
       }
     }
 
-    // Optimize database query with proper indexing and select
-    const whereClause: any = {
-      tenantId: user.tenantId
-    };
-
-    // Define search fields for both Prisma and raw SQL queries
-    // Create asset-type-specific search fields
-    let searchFields: string[] = [];
-    switch (assetType) {
-      case 'pc':
-        searchFields = [
-          'cpuBarcode',
-          'pcName',
-          'userName',
-          'dept',
-          'status'
-        ];
-        break;
-      case 'laptop':
-        searchFields = [
-          'barcode',
-          'userName',
-          'dept',
-          'model',
-          'status'
-        ];
-        break;
-      case 'printer':
-        searchFields = [
-          'barcode',
-          'dept',
-          'location',
-          'ip',
-          'model'
-        ];
-        break;
-      case 'license':
-        searchFields = [
-          'deviceName',
-          'userName',
-          'dept',
-          'productType',
-          'productKey',
-          'model',
-          'pc',
-          'mac',
-          'ip',
-          'updateStatus'
-        ];
-        break;
-      case 'warehouse':
-        searchFields = [
-          'barcode',
-          'sapCode',
-          'status'
-        ];
-        break;
-      case 'internet':
-        searchFields = [
-          'dept',
-          'manager',
-          'userName',
-          'email',
-          'ipAddress',
-          'internetAccess',
-          'status'
-        ];
-        break;
-      default:
-        searchFields = [
-          'barcode',
-          'pcName',
-          'userName',
-          'dept',
-          'ip',
-        ];
-    }
-
-    // Add search condition if provided with optimized indexing
-    if (search) {
-      // Sanitize search input to prevent injection
-      const sanitizedSearch = validateSearchInput(search);
-      
-      // Create search conditions for indexed fields
-      whereClause.OR = searchFields.map(field => ({
-        [field]: { contains: sanitizedSearch, mode: 'insensitive' }
-      }));
-      
-      // Also search in custom fields using proper JSON search
-      whereClause.OR.push({
-        customFields: {
-          path: [],
-          string_contains: sanitizedSearch
-        }
-      });
-    }
-
-    // Add status filter if provided
-    if (status) {
-      whereClause.status = status;
-    }
+    // Build where clause for database queries
+    const whereClause = buildWhereClause(user.tenantId, search, status, assetType);
 
     // Calculate pagination
     const skip = (page - 1) * limit;
@@ -230,185 +121,16 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
     
     // For search queries, we need to use raw SQL to properly search within custom field values
     if (search) {
-      // Build the raw SQL query with proper custom field searching
-      let baseQuery = '';
-      let countQuery = '';
-      const queryArgs: any[] = [user.tenantId];
+      // Build search queries
+      const { baseQuery, countQuery, queryArgs } = buildSearchQueries(
+        assetType,
+        user.tenantId,
+        search,
+        status,
+        limit,
+        skip
+      );
       
-      switch (assetType) {
-        case 'pc':
-          baseQuery = `
-            SELECT id, "cpuBarcode", "pcName", "userName", "dept", "status", "updatedAt", "customFields",
-                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
-            FROM "PC"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          countQuery = `
-            SELECT COUNT(*) as count
-            FROM "PC"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          break;
-        case 'laptop':
-          baseQuery = `
-            SELECT id, "barcode", "userName", "dept", "status", "updatedAt", "customFields",
-                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
-            FROM "Laptop"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          countQuery = `
-            SELECT COUNT(*) as count
-            FROM "Laptop"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          break;
-        case 'printer':
-          baseQuery = `
-            SELECT id, "barcode", "dept", "updatedAt", "customFields",
-                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
-            FROM "Printer"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          countQuery = `
-            SELECT COUNT(*) as count
-            FROM "Printer"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          break;
-        case 'license':
-          baseQuery = `
-            SELECT id, "userName", "dept", "updateStatus", "updatedAt", "customFields",
-                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
-            FROM "License"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          countQuery = `
-            SELECT COUNT(*) as count
-            FROM "License"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          break;
-        case 'warehouse':
-          baseQuery = `
-            SELECT id, "barcode", "sapCode", "status", "updatedAt", "customFields",
-                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
-            FROM "WarehouseIT"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          countQuery = `
-            SELECT COUNT(*) as count
-            FROM "WarehouseIT"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          break;
-        case 'internet':
-          baseQuery = `
-            SELECT id, "dept", "manager", "userName", "email", "ipAddress", "internetAccess", "status", "updatedAt", "customFields",
-                   ts_rank("search_vector", websearch_to_tsquery('english', $2)) AS rank
-            FROM "Internet"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          countQuery = `
-            SELECT COUNT(*) as count
-            FROM "Internet"
-            WHERE "tenantId" = $1
-            AND (
-              "search_vector" @@ websearch_to_tsquery('english', $2)
-              OR
-              "search_vector" @@ plainto_tsquery('english', $2)
-            )
-          `;
-          break;
-        default:
-          return new Response(JSON.stringify({ error: `Unsupported asset type: ${assetType}` }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' }
-          });
-      }
-      
-      // Sanitize search input to prevent injection
-      const sanitizedSearch = validateSearchInput(search);
-      
-      // Add search parameter to args
-      queryArgs.push(sanitizedSearch);
-      
-      // Add status filter if provided
-      if (status) {
-        // Sanitize status input using enhanced validation
-        const sanitizedStatus = validateSearchInput(status);
-        queryArgs.push(sanitizedStatus);
-        const statusField = assetType === 'license' ? 'updateStatus' : 'status';
-        baseQuery += ` AND "${statusField}" = $${queryArgs.length}`;
-        countQuery += ` AND "${statusField}" = $${queryArgs.length}`;
-      }
-      
-      // Add ordering by rank and then by update time
-      baseQuery += ' ORDER BY rank DESC, "updatedAt" DESC';
-      
-      // Add limit and skip to the query string
-      const limitIndex = queryArgs.length + 1;
-      const offsetIndex = queryArgs.length + 2;
-      baseQuery += ` LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
-      
-      // Add limit and skip parameters to queryArgs
-      queryArgs.push(limit, skip);
-      
-      // Execute queries
       // For count query, we need to remove limit and skip parameters
       const countQueryArgs = [...queryArgs];
       countQueryArgs.pop(); // Remove skip
@@ -423,16 +145,12 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       const countArray = countResult as Array<{count: string | number}>;
       totalCount = countArray && countArray.length > 0 && countArray[0] ? 
         parseInt(countArray[0].count.toString()) : 0;
-      assets = assetsResult as any[];
-      
-      // Remove rank from results before sending to client
-      assets = assets.map(asset => {
-        const { rank, ...cleanAsset } = asset;
-        return cleanAsset;
-      });
+      assets = processSearchResults(assetsResult as any[]);
 
     } else {
       // For non-search queries, use the existing Prisma queries
+      const selectFields = buildSelectFields(assetType);
+      
       switch (assetType) {
         case 'pc':
           [totalCount, assets] = await Promise.all([
@@ -442,17 +160,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               skip,
               take: limit,
               orderBy: { dept: 'asc' },
-              // Select only necessary fields to reduce payload size
-              select: {
-                id: true,
-                cpuBarcode: true,
-                pcName: true,
-                userName: true,
-                dept: true,
-                status: true,
-                updatedAt: true,
-                customFields: true // Include custom fields
-              }
+              select: selectFields
             })
           ]);
           break;
@@ -464,16 +172,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               skip,
               take: limit,
               orderBy: { dept: 'asc' },
-              // Select only necessary fields to reduce payload size
-              select: {
-                id: true,
-                barcode: true,
-                userName: true,
-                dept: true,
-                status: true,
-                updatedAt: true,
-                customFields: true // Include custom fields
-              }
+              select: selectFields
             })
           ]);
           break;
@@ -485,14 +184,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               skip,
               take: limit,
               orderBy: { dept: 'asc' },
-              // Select only necessary fields to reduce payload size
-              select: {
-                id: true,
-                barcode: true,
-                dept: true,
-                updatedAt: true,
-                customFields: true // Include custom fields
-              }
+              select: selectFields
             })
           ]);
           break;
@@ -504,16 +196,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               skip,
               take: limit,
               orderBy: { dept: 'asc' },
-              // Select only necessary fields to reduce payload size
-              select: {
-                id: true,
-                userName: true,
-                dept: true,
-                // License model uses updateStatus instead of status
-                updateStatus: true,
-                updatedAt: true,
-                customFields: true // Include custom fields
-              }
+              select: selectFields
             })
           ]);
           break;
@@ -525,15 +208,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               skip,
               take: limit,
               orderBy: { updatedAt: 'desc' },
-              // Select only necessary fields to reduce payload size
-              select: {
-                id: true,
-                barcode: true,
-                sapCode: true,
-                status: true,
-                updatedAt: true,
-                customFields: true // Include custom fields
-              }
+              select: selectFields
             })
           ]);
           break;
@@ -545,27 +220,12 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               skip,
               take: limit,
               orderBy: { updatedAt: 'desc' },
-              // Select only necessary fields to reduce payload size
-              select: {
-                id: true,
-                dept: true,
-                manager: true,
-                userName: true,
-                email: true,
-                ipAddress: true,
-                internetAccess: true,
-                status: true,
-                updatedAt: true,
-                customFields: true // Include custom fields
-              }
+              select: selectFields
             })
           ]);
           break;
         default:
-          return new Response(JSON.stringify({ error: `Unsupported asset type: ${assetType}` }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' }
-          });
+          return badRequestResponse(`Unsupported asset type: ${assetType}`);
       }
     }
 
@@ -588,18 +248,9 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       logger.debug(`Caching data for key: ${cacheKey}`);
     }
 
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': search || status ? 'no-cache' : 'max-age=60, stale-while-revalidate=59'
-      }
-    });
+    return successResponse(result);
   } catch (error) {
     logger.error(`Error fetching ${params.type} assets:`, error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return errorResponse('Internal server error');
   }
 }

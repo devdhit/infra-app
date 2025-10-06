@@ -22,15 +22,6 @@ const exportRequestSchema = z.object({
 // Constants for batch processing
 const BATCH_SIZE = 500;
 
-// Map asset types to their corresponding export functions
-const exportFunctions: Record<string, Function> = {
-  pc: exportPCToExcel,
-  laptop: exportLaptopToExcel,
-  printer: exportPrinterToExcel,
-  license: exportLicenseToExcel,
-  warehouse: exportWarehouseITToExcel
-};
-
 // Valid asset types
 const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse'] as const;
 type AssetType = typeof validAssetTypes[number];
@@ -196,6 +187,28 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    // Get tenant name for header information
+    let tenantName = 'Tenant';
+    try {
+      const tenant = await db.tenant.findUnique({
+        where: { id: user.tenantId }
+      });
+      if (tenant) {
+        tenantName = tenant.name;
+      }
+    } catch (error) {
+      logger.warn('Could not fetch tenant name for export header', error);
+    }
+
+    // Map asset types to their corresponding export functions
+    const exportFunctions: Record<string, Function> = {
+      pc: (data: any[]) => exportPCToExcel(data, tenantName),
+      laptop: (data: any[]) => exportLaptopToExcel(data, tenantName),
+      printer: (data: any[]) => exportPrinterToExcel(data, tenantName),
+      license: (data: any[]) => exportLicenseToExcel(data, tenantName),
+      warehouse: (data: any[]) => exportWarehouseITToExcel(data, tenantName)
+    };
 
     // Get the asset type from the URL parameter
     const assetType = params.type;

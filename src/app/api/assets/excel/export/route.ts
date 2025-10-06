@@ -47,6 +47,19 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Get tenant name for header information
+    let tenantName = 'Tenant';
+    try {
+      const tenant = await db.tenant.findUnique({
+        where: { id: user.tenantId }
+      });
+      if (tenant) {
+        tenantName = tenant.name;
+      }
+    } catch (error) {
+      logger.warn('Could not fetch tenant name for export header', error);
+    }
+
     const { searchParams } = new URL(request.url)
     const assetType = searchParams.get('assetType') as AssetType | null
     const selectedIds = searchParams.get('selectedIds')
@@ -145,7 +158,7 @@ export async function GET(request: NextRequest) {
           if (exportType === 'all-columns') {
             buffer = await exportAllColumnsToExcel(assetType, formattedPcData)
           } else {
-            buffer = await exportPCToExcel(formattedPcData)
+            buffer = await exportPCToExcel(formattedPcData, tenantName)
           }
           logger.debug(`PC Excel export completed in ${(Date.now() - pcExportStart) / 1000} seconds`);
         } catch (exportError: any) {
@@ -220,7 +233,7 @@ export async function GET(request: NextRequest) {
           if (exportType === 'all-columns') {
             buffer = await exportAllColumnsToExcel(assetType, formattedLaptopData)
           } else {
-            buffer = await exportLaptopToExcel(formattedLaptopData)
+            buffer = await exportLaptopToExcel(formattedLaptopData, tenantName)
           }
           logger.debug(`Laptop Excel export completed in ${(Date.now() - laptopExportStart) / 1000} seconds`);
         } catch (exportError: any) {
@@ -296,7 +309,7 @@ export async function GET(request: NextRequest) {
           if (exportType === 'all-columns') {
             buffer = await exportAllColumnsToExcel(assetType, formattedPrinterData)
           } else {
-            buffer = await exportPrinterToExcel(formattedPrinterData)
+            buffer = await exportPrinterToExcel(formattedPrinterData, tenantName)
           }
           logger.debug(`Printer Excel export completed in ${(Date.now() - printerExportStart) / 1000} seconds`);
         } catch (exportError: any) {
@@ -377,7 +390,7 @@ export async function GET(request: NextRequest) {
           if (exportType === 'all-columns') {
             buffer = await exportAllColumnsToExcel(assetType, formattedLicenseData)
           } else {
-            buffer = await exportLicenseToExcel(formattedLicenseData)
+            buffer = await exportLicenseToExcel(formattedLicenseData, tenantName)
           }
           logger.debug(`License Excel export completed in ${(Date.now() - licenseExportStart) / 1000} seconds`);
         } catch (exportError: any) {
@@ -437,7 +450,7 @@ export async function GET(request: NextRequest) {
           if (exportType === 'all-columns') {
             buffer = await exportAllColumnsToExcel(assetType, formattedWarehouseData)
           } else {
-            buffer = await exportWarehouseITToExcel(formattedWarehouseData)
+            buffer = await exportWarehouseITToExcel(formattedWarehouseData, tenantName)
           }
           logger.debug(`Warehouse Excel export completed in ${(Date.now() - warehouseExportStart) / 1000} seconds`);
         } catch (exportError: any) {
@@ -512,7 +525,7 @@ export async function GET(request: NextRequest) {
           if (exportType === 'all-columns') {
             buffer = await exportAllColumnsToExcel(assetType, formattedInternetData)
           } else {
-            buffer = await exportInternetToExcel(formattedInternetData)
+            buffer = await exportInternetToExcel(formattedInternetData, tenantName)
           }
           logger.debug(`Internet Excel export completed in ${(Date.now() - internetExportStart) / 1000} seconds`);
         } catch (exportError: any) {

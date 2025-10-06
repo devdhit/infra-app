@@ -39,10 +39,10 @@ if (typeof window === 'undefined') {
 }
 
 // Define permission actions with more flexible typing
-export type PermissionAction = string;
+export type PermissionAction = typeof COMMON_PERMISSION_ACTIONS[number] | string;
 
 // Define resource types with more flexible typing
-export type ResourceType = string;
+export type ResourceType = typeof COMMON_RESOURCE_TYPES[number] | string;
 
 // Define common resource types for better type safety
 export const COMMON_RESOURCE_TYPES = [
@@ -73,7 +73,7 @@ export const COMMON_PERMISSION_ACTIONS = [
   'healthCheck'
 ] as const;
 
-// Define default permissions for built-in roles
+// Define default permissions for built-in roles with better type safety
 const defaultPermissions: Record<string, Record<ResourceType, PermissionAction[]>> = {
   admin: {
     users: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
