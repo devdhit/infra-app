@@ -68,7 +68,7 @@ model User {
 model PC {
   id                String    @id @default(uuid())
   dept              String
-  cpuBarcode        String
+  cpuBarcode        String?
   cpuSapBarcode     String?
   monitorBarcode    String?
   monitorSapBarcode String?
@@ -96,7 +96,7 @@ model PC {
 model Laptop {
   id           String    @id @default(uuid())
   dept         String
-  barcode      String    @unique
+  barcode      String
   sapBarcode   String?
   dateBuy      DateTime?
   userName     String?
@@ -126,7 +126,7 @@ model Printer {
   ip           String?
   model        String?
   color        String    @default("Black & White")
-  barcode      String
+  barcode      String?
   sapCode      String?
   date         DateTime?
   note         String?
