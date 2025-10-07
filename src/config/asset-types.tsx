@@ -79,7 +79,7 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         name: "cpuBarcode",
         label: t('assets.pc.cpuBarcode') || "CPU Barcode",
         type: "text",
-        required: true,
+        required: false,
         placeholder: "CPU123456"
       },
       {
@@ -207,7 +207,7 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         name: "barcode",
         label: t('assets.laptop.assetTag') || "Barcode",
         type: "text",
-        required: true,
+        required: false,
         placeholder: t('assets.laptop.assetTag') || "LAPTOP123456"
       },
       {
@@ -336,7 +336,7 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         name: "barcode",
         label: t('assets.printer.barcode') || "Barcode",
         type: "text",
-        required: true,
+        required: false,
         placeholder: t('assets.printer.barcode') || "PRINTER123456"
       },
       {

@@ -60,7 +60,7 @@ export interface BaseAsset {
 
 export interface PCAsset extends BaseAsset {
   dept: string;
-  cpuBarcode: string;
+  cpuBarcode?: string;
   cpuSapBarcode?: string;
   monitorBarcode?: string;
   monitorSapBarcode?: string;
@@ -74,7 +74,7 @@ export interface PCAsset extends BaseAsset {
 
 export interface LaptopAsset extends BaseAsset {
   dept: string;
-  barcode: string;
+  barcode?: string;
   sapBarcode?: string;
   dateBuy?: string;
   userName?: string;
@@ -89,7 +89,7 @@ export interface PrinterAsset extends BaseAsset {
   ip?: string;
   model?: string;
   color: string;
-  barcode: string;
+  barcode?: string;
   sapCode?: string;
   date?: string;
   note?: string;
@@ -1601,8 +1601,7 @@ export class AssetApiHandler<T extends BaseAsset> {
 // Create handler for PC assets
 export const pcHandler = new AssetApiHandler<PCAsset>(db, {
   modelName: 'PC',
-  requiredFields: ['dept', 'cpuBarcode', 'pcName', 'status'],
-  uniqueField: 'cpuBarcode',
+  requiredFields: ['dept', 'pcName', 'status'],
   searchFields: ['cpuBarcode', 'pcName', 'userName', 'dept', 'status']
   // Remove the include option as customFields is a scalar field, not a relation
 })
@@ -1610,16 +1609,14 @@ export const pcHandler = new AssetApiHandler<PCAsset>(db, {
 // Create handler for Laptop assets
 export const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
   modelName: 'Laptop',
-  requiredFields: ['dept', 'barcode', 'status'],
-  uniqueField: 'barcode',
+  requiredFields: ['dept', 'status'],
   searchFields: ['barcode', 'userName', 'dept', 'model', 'status']
 })
 
 // Create handler for Printer assets
 export const printerHandler = new AssetApiHandler<PrinterAsset>(db, {
   modelName: 'Printer',
-  requiredFields: ['dept', 'barcode', 'color'],
-  uniqueField: 'barcode',
+  requiredFields: ['dept', 'color'],
   searchFields: ['barcode', 'dept', 'model', 'ip', 'note']
 })
 
