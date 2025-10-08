@@ -1,82 +1,28 @@
 import { NextRequest } from 'next/server'
-import { warehouseHandler } from '@/lib/asset-api-handler'
-import { getCurrentUser } from '@/lib/auth'
-import { 
-  unauthorizedResponse, 
-  errorResponse, 
-  badRequestResponse,
-  parseRequestBody
-} from '@/lib/api-utils'
-import logger from '@/lib/logger'
+import { ApiRouteHandler } from '@/lib/api-route-handler'
+import { warehouseHandler } from '@/lib/asset-api/warehouse-handler'
+import { WarehouseITAsset } from '@/types/asset-interfaces'
 
-// Define the WarehouseIT asset type
-interface WarehouseITAsset {
-  barcode?: string
-  sapCode?: string
-  status: string
-  note?: string
-  createdAt?: string
-  updatedAt?: string
-  customFields?: any
-}
+// Create API route handler for WarehouseIT assets
+const warehouseRouteHandler = new ApiRouteHandler<WarehouseITAsset>({
+  handler: warehouseHandler,
+  resourceName: 'Warehouse'
+});
 
 // GET /api/assets/warehouse/[id] - Get a specific WarehouseIT asset
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return unauthorizedResponse()
-    }
-
-    // Await params before using
-    const resolvedParams = await params;
-
-    return await warehouseHandler.getById(user, resolvedParams.id)
-  } catch (error) {
-    logger.error('Error in WarehouseIT GET by ID route:', error)
-    return errorResponse('Internal server error')
-  }
+  const resolvedParams = await params;
+  return warehouseRouteHandler.handleGetById(request, resolvedParams.id);
 }
 
 // PUT /api/assets/warehouse/[id] - Update a WarehouseIT asset
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return unauthorizedResponse()
-    }
-
-    // Await params before using
-    const resolvedParams = await params;
-
-    let body: Partial<WarehouseITAsset>
-    try {
-      body = await parseRequestBody<Partial<WarehouseITAsset>>(request)
-    } catch (parseError: any) {
-      return badRequestResponse(parseError.message)
-    }
-    
-    return await warehouseHandler.update(user, resolvedParams.id, body)
-  } catch (error) {
-    logger.error('Error in WarehouseIT PUT route:', error)
-    return errorResponse('Internal server error')
-  }
+  const resolvedParams = await params;
+  return warehouseRouteHandler.handlePut(request, resolvedParams.id);
 }
 
 // DELETE /api/assets/warehouse/[id] - Delete a WarehouseIT asset
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return unauthorizedResponse()
-    }
-
-    // Await params before using
-    const resolvedParams = await params;
-
-    return await warehouseHandler.delete(user, resolvedParams.id)
-  } catch (error) {
-    logger.error('Error in WarehouseIT DELETE route:', error)
-    return errorResponse('Internal server error')
-  }
+  const resolvedParams = await params;
+  return warehouseRouteHandler.handleDelete(request, resolvedParams.id);
 }

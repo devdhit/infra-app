@@ -1,29 +1,15 @@
 import { NextRequest } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
-import { 
-  unauthorizedResponse, 
-  parseRequestBody,
-  errorResponse
-} from '@/lib/api-utils'
-import { warehouseHandler } from '@/lib/asset-api-handler'
-import logger from '@/lib/logger'
+import { ApiRouteHandler } from '@/lib/api-route-handler'
+import { warehouseHandler } from '@/lib/asset-api/warehouse-handler'
+import { WarehouseITAsset } from '@/types/asset-interfaces'
+
+// Create API route handler for WarehouseIT assets
+const warehouseRouteHandler = new ApiRouteHandler<WarehouseITAsset>({
+  handler: warehouseHandler,
+  resourceName: 'Warehouse'
+});
 
 // POST /api/assets/warehouse/bulk-delete - Bulk delete WarehouseIT assets
 export async function POST(request: NextRequest) {
-  try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return unauthorizedResponse()
-    }
-
-    const body = await parseRequestBody<{ ids: string[] }>(request)
-    if (!body.ids || !Array.isArray(body.ids)) {
-      return errorResponse('Invalid request: ids array is required', 400)
-    }
-    
-    return await warehouseHandler.bulkDelete(user, body.ids)
-  } catch (error) {
-    logger.error('Error in WarehouseIT bulk DELETE route:', error)
-    return errorResponse('Internal server error')
-  }
+  return warehouseRouteHandler.handleBulkDelete(request);
 }

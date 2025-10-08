@@ -374,7 +374,7 @@ export async function GET(request: NextRequest) {
             pc: license.pc ?? undefined,
             mac: license.mac ?? undefined,
             ip: license.ip ?? undefined,
-            dateBuy: license.date ? license.date.toISOString().split('T')[0] : undefined, // Only include date part
+            date: license.date ? license.date.toISOString().split('T')[0] : undefined, // Only include date part
             // Normalize status values to lowercase to match standardized values
             status: license.updateStatus ? license.updateStatus.toLowerCase() : 'working',
             // Include custom fields
