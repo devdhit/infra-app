@@ -1,16 +1,14 @@
-import { PrismaClient } from '../generated/prisma'
-import { db } from './db'
+import { PrismaClient } from '../../generated/prisma';
 import { 
   successResponse, 
   errorResponse, 
   notFoundResponse, 
   badRequestResponse,
   conflictResponse,
-  validationErrorResponse,
-  errorResponse as apiErrorResponse
-} from './api-utils'
-import { hasPermission, ResourceType, PermissionAction } from './permissions'
-import { validateSearchInput } from './security'
+  validationErrorResponse
+} from '../api-utils';
+import { hasPermission, ResourceType, PermissionAction } from '../permissions';
+import { validateSearchInput } from '../security';
 
 // Only import Redis cache on the server side
 let CACHE_PREFIXES: any = null;
@@ -21,7 +19,7 @@ let cacheManager: any = null;
 let logger: any = null;
 if (typeof window === 'undefined') {
   try {
-    logger = require('./logger').default;
+    logger = require('../logger').default;
   } catch (error) {
     // Fallback to console if logger is not available
     logger = {
@@ -35,12 +33,12 @@ if (typeof window === 'undefined') {
 
 if (typeof window === 'undefined') {
   try {
-    const redisModule = require('./redis-cache');
+    const redisModule = require('../redis-cache');
     CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
     CACHE_TTL = redisModule.CACHE_TTL;
     
     // Import the new cache manager
-    cacheManager = require('./cache-manager').default;
+    cacheManager = require('../cache-manager').default;
   } catch (error: any) {
     logger.warn('Redis cache not available, using fallback', { 
       component: 'asset-api-handler', 
@@ -49,114 +47,33 @@ if (typeof window === 'undefined') {
   }
 }
 
-// Define comprehensive asset interfaces with proper typing
-export interface BaseAsset {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  tenantId: string;
-  customFields?: Record<string, any>;
-}
-
-export interface PCAsset extends BaseAsset {
-  dept: string;
-  cpuBarcode?: string;
-  cpuSapBarcode?: string;
-  monitorBarcode?: string;
-  monitorSapBarcode?: string;
-  upsBarcode?: string;
-  upsSapBarcode?: string;
-  pcName: string;
-  userName?: string;
-  status: string;
-  note?: string;
-}
-
-export interface LaptopAsset extends BaseAsset {
-  dept: string;
-  barcode?: string;
-  sapBarcode?: string;
-  dateBuy?: string;
-  userName?: string;
-  email?: string;
-  model?: string;
-  status: string;
-}
-
-export interface PrinterAsset extends BaseAsset {
-  dept: string;
-  location?: string;
-  ip?: string;
-  model?: string;
-  color: string;
-  barcode?: string;
-  sapCode?: string;
-  date?: string;
-  note?: string;
-}
-
-export interface LicenseAsset extends BaseAsset {
-  deviceName?: string;
-  userName?: string;
-  dept?: string;
-  productType?: string;
-  productKey?: string;
-  model?: string;
-  pc?: string;
-  mac?: string;
-  ip?: string;
-  date?: string;
-  updateStatus?: string;
-}
-
-export interface WarehouseITAsset extends BaseAsset {
-  barcode?: string;
-  sapCode?: string;
-  status: string;
-  note?: string;
-}
-
-export interface InternetAsset extends BaseAsset {
-  dept: string;
-  manager?: string;
-  userName?: string;
-  email?: string;
-  ipAddress?: string;
-  internetAccess?: string;
-  status: string;
-  note?: string;
-}
-
-// Union type for all asset types
-export type AssetType = PCAsset | LaptopAsset | PrinterAsset | LicenseAsset | WarehouseITAsset | InternetAsset;
-
 /**
  * Defines the structure for asset operations with better typing
  */
-interface AssetOperations<T extends BaseAsset> {
+export interface AssetOperations<T> {
   /** The name of the Prisma model */
   modelName: string;
   /** Required fields for the asset type */
-  requiredFields?: (keyof Omit<T, keyof BaseAsset>)[];
+  requiredFields?: (keyof Omit<T, 'id' | 'createdAt' | 'updatedAt' | 'tenantId' | 'customFields'>)[];
   /** Unique field for the asset type */
-  uniqueField?: keyof Omit<T, keyof BaseAsset>;
+  uniqueField?: keyof Omit<T, 'id' | 'createdAt' | 'updatedAt' | 'tenantId' | 'customFields'>;
   /** Fields to search in when performing search operations */
-  searchFields?: (keyof Omit<T, keyof BaseAsset>)[];
+  searchFields?: (keyof Omit<T, 'id' | 'createdAt' | 'updatedAt' | 'tenantId' | 'customFields'>)[];
 }
 
 /**
  * Generic asset API handler with improved type safety
  * Provides CRUD operations for different asset types with proper permission checking
  */
-export class AssetApiHandler<T extends BaseAsset> {
-  private resourceType: ResourceType;
+export class BaseAssetApiHandler<T> {
+  protected resourceType: ResourceType;
 
   /**
    * Creates a new AssetApiHandler instance
    * @param db - The Prisma database client
    * @param operations - The asset operations configuration
    */
-  constructor(private db: PrismaClient, private operations: AssetOperations<T>) {
+  constructor(protected db: PrismaClient, protected operations: AssetOperations<T>) {
     // Map model names to resource types for permission checking
     const modelToResourceMap: Record<string, ResourceType> = {
       'PC': 'pc',
@@ -174,7 +91,7 @@ export class AssetApiHandler<T extends BaseAsset> {
    * Helper method to get the correct Prisma model name
    * @returns The Prisma model for this asset type
    */
-  private getPrismaModel() {
+  protected getPrismaModel() {
     // Prisma client uses lowercase 'pC' for the PC model
     return this.operations.modelName === 'PC' ? this.db.pC : (this.db as any)[this.operations.modelName];
   }
@@ -183,7 +100,7 @@ export class AssetApiHandler<T extends BaseAsset> {
    * Helper method to get optimized select fields based on asset type
    * @returns Object with fields to select for database queries
    */
-  private getSelectFieldsForAssetType() {
+  protected getSelectFieldsForAssetType() {
     // Base fields vary by model type as not all models have the same fields
     const getBaseFieldsForModel = (modelName: string) => {
       // Default base fields for all models
@@ -319,7 +236,7 @@ export class AssetApiHandler<T extends BaseAsset> {
    * @param action - The action to check permission for
    * @returns Promise that resolves to true if user has permission, false otherwise
    */
-  private async checkPermission(user: any, action: PermissionAction) {
+  protected async checkPermission(user: any, action: PermissionAction) {
     // Handle case where role is null
     if (!user.role?.id) {
       return false;
@@ -347,10 +264,10 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Check permissions
       const hasViewPermission = await this.checkPermission(user, 'view');
       if (!hasViewPermission) {
-        return apiErrorResponse('Forbidden: Insufficient permissions to view assets', 403);
+        return errorResponse('Forbidden: Insufficient permissions to view assets', 403);
       }
 
-      const { page, limit, search, status } = queryParams
+      const { page, limit, search, status } = queryParams;
 
       // Create cache key for this specific query if Redis is available
       let cacheKey: string | null = null;
@@ -600,7 +517,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Check permissions
       const hasViewPermission = await this.checkPermission(user, 'view');
       if (!hasViewPermission) {
-        return apiErrorResponse('Forbidden: Insufficient permissions to view asset', 403);
+        return errorResponse('Forbidden: Insufficient permissions to view asset', 403);
       }
 
       // Create cache key for this specific asset if Redis is available
@@ -638,10 +555,10 @@ export class AssetApiHandler<T extends BaseAsset> {
           tenantId: user.tenantId 
         },
         select: selectFields
-      })
+      });
 
       if (!asset) {
-        return notFoundResponse(`${this.operations.modelName} asset not found`)
+        return notFoundResponse(`${this.operations.modelName} asset not found`);
       }
 
       // Cache the asset if Redis is available
@@ -649,10 +566,10 @@ export class AssetApiHandler<T extends BaseAsset> {
         await cacheManager.set(cacheKey, asset, CACHE_TTL ? CACHE_TTL.ASSETS : 300, { component: 'asset-api-handler' });
       }
 
-      return successResponse(asset)
+      return successResponse(asset);
     } catch (error) {
-      logger.error(`Error fetching ${this.operations.modelName} asset:`, error)
-      return errorResponse('Failed to fetch asset details. Please try again later.')
+      logger.error(`Error fetching ${this.operations.modelName} asset:`, error);
+      return errorResponse('Failed to fetch asset details. Please try again later.');
     }
   }
 
@@ -662,12 +579,12 @@ export class AssetApiHandler<T extends BaseAsset> {
    * @param body - The asset data to create
    * @returns Promise that resolves to a response with the created asset
    */
-  async create(user: any, body: Omit<T, keyof BaseAsset> & { customFields?: Record<string, any> }) {
+  async create(user: any, body: Omit<T, 'id' | 'createdAt' | 'updatedAt' | 'tenantId'> & { customFields?: Record<string, any> }) {
     try {
       // Check permissions
       const hasCreatePermission = await this.checkPermission(user, 'create');
       if (!hasCreatePermission) {
-        return apiErrorResponse('Forbidden: Insufficient permissions to create asset', 403);
+        return errorResponse('Forbidden: Insufficient permissions to create asset', 403);
       }
 
       // Get custom fields for this asset type and tenant to identify custom field names
@@ -707,12 +624,12 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Validate required fields using the standard fields body
-      const validationErrors: Record<string, string> = {}
+      const validationErrors: Record<string, string> = {};
       
       if (this.operations.requiredFields) {
         for (const field of this.operations.requiredFields) {
           if (standardFieldsBody[field] === undefined || standardFieldsBody[field] === null || standardFieldsBody[field] === "") {
-            validationErrors[String(field)] = `${String(field)} is required`
+            validationErrors[String(field)] = `${String(field)} is required`;
           }
         }
       }
@@ -743,7 +660,7 @@ export class AssetApiHandler<T extends BaseAsset> {
                   validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid number`;
                 }
                 break;
-              case 'date':
+              case 'dateBuy':
                 // Handle both date strings and Date objects
                 const dateValue = new Date(fieldValue as string);
                 if (isNaN(dateValue.getTime())) {
@@ -786,7 +703,7 @@ export class AssetApiHandler<T extends BaseAsset> {
 
       // Return validation errors if any
       if (Object.keys(validationErrors).length > 0) {
-        return validationErrorResponse(validationErrors)
+        return validationErrorResponse(validationErrors);
       }
 
       // Check if asset with unique field already exists
@@ -820,9 +737,9 @@ export class AssetApiHandler<T extends BaseAsset> {
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
         'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
-      }
+      };
 
-      const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
+      const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || [];
       if (process.env.NODE_ENV === 'development') {
         logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
@@ -840,7 +757,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           }
         }
         return acc;
-      }, {} as Partial<Omit<T, keyof BaseAsset>>);
+      }, {} as Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt' | 'tenantId'>>);
 
       const asset = await this.getPrismaModel().create({
         data: {
@@ -855,12 +772,12 @@ export class AssetApiHandler<T extends BaseAsset> {
           // Add other commonly used fields based on asset type
           ...this.getSelectFieldsForAssetType()
         }
-      })
+      });
 
       // Create audit log entry after asset creation
       try {
         // Import audit logs dynamically to avoid circular dependencies
-        const { createAuditLog } = await import('./audit-logs');
+        const { createAuditLog } = await import('../audit-logs');
         await createAuditLog(user.tenantId, {
           action: 'create',
           modelType: this.operations.modelName,
@@ -868,9 +785,9 @@ export class AssetApiHandler<T extends BaseAsset> {
           changes: standardFieldsBody as any,
           userId: user.id,
           tenantId: user.tenantId
-        }, 'create')
+        }, 'create');
       } catch (auditLogError) {
-        logger.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError)
+        logger.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError);
         // Continue with the operation even if audit log creation fails
       }
 
@@ -898,7 +815,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
       }
 
-      return successResponse(asset, 201)
+      return successResponse(asset, 201);
     } catch (error: any) {
       if (process.env.NODE_ENV === 'development') {
         logger.error(`Error creating ${this.operations.modelName} asset:`, { 
@@ -931,7 +848,7 @@ export class AssetApiHandler<T extends BaseAsset> {
    * @param body - The asset data to update
    * @returns Promise that resolves to a response with the updated asset
    */
-  async update(user: any, id: string, body: Partial<Omit<T, keyof BaseAsset>> & { customFields?: Record<string, any> }) {
+  async update(user: any, id: string, body: Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt' | 'tenantId'>> & { customFields?: Record<string, any> }) {
     try {
       if (process.env.NODE_ENV === 'development') {
         logger.info(`Updating ${this.operations.modelName} asset ${id} with data`, { 
@@ -944,7 +861,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Check permissions
       const hasEditPermission = await this.checkPermission(user, 'edit');
       if (!hasEditPermission) {
-        return apiErrorResponse('Forbidden: Insufficient permissions to edit asset', 403);
+        return errorResponse('Forbidden: Insufficient permissions to edit asset', 403);
       }
 
       // Check if asset exists and belongs to user's tenant
@@ -953,7 +870,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           id,
           tenantId: user.tenantId 
         }
-      })
+      });
 
       if (!existingAsset) {
         if (process.env.NODE_ENV === 'development') {
@@ -963,7 +880,7 @@ export class AssetApiHandler<T extends BaseAsset> {
             tenantId: user.tenantId 
           });
         }
-        return notFoundResponse(`${this.operations.modelName} asset not found`)
+        return notFoundResponse(`${this.operations.modelName} asset not found`);
       }
 
       // Get custom fields for this asset type and tenant to identify custom field names
@@ -1003,17 +920,17 @@ export class AssetApiHandler<T extends BaseAsset> {
       }
 
       // Validate required fields if they're being updated
-      const validationErrors: Record<string, string> = {}
+      const validationErrors: Record<string, string> = {};
       
       if (this.operations.requiredFields) {
         for (const field of this.operations.requiredFields) {
           // Only validate if the field is being updated
           if (field in standardFieldsBody && (standardFieldsBody[field] === undefined || standardFieldsBody[field] === null || standardFieldsBody[field] === "")) {
-            validationErrors[String(field)] = `${String(field)} is required`
+            validationErrors[String(field)] = `${String(field)} is required`;
           }
           // If field is not being updated, ensure it exists in the existing asset
           if (!(field in standardFieldsBody) && (existingAsset[field as keyof typeof existingAsset] === undefined || existingAsset[field as keyof typeof existingAsset] === null || existingAsset[field as keyof typeof existingAsset] === "")) {
-            validationErrors[String(field)] = `${String(field)} is required`
+            validationErrors[String(field)] = `${String(field)} is required`;
           }
         }
       }
@@ -1044,7 +961,7 @@ export class AssetApiHandler<T extends BaseAsset> {
                   validationErrors[`customFields.${customField.name}`] = `${customField.name} must be a valid number`;
                 }
                 break;
-              case 'date':
+              case 'dateBuy':
                 // Handle both date strings and Date objects
                 const dateValue = new Date(fieldValue as string);
                 if (isNaN(dateValue.getTime())) {
@@ -1093,18 +1010,18 @@ export class AssetApiHandler<T extends BaseAsset> {
             errors: validationErrors 
           });
         }
-        return validationErrorResponse(validationErrors)
+        return validationErrorResponse(validationErrors);
       }
 
       // Check if unique field is being updated and already exists for another asset
       if (this.operations.uniqueField && standardFieldsBody[this.operations.uniqueField] && 
-          standardFieldsBody[this.operations.uniqueField] !== existingAsset[this.operations.uniqueField]) {
+          standardFieldsBody[this.operations.uniqueField] !== (existingAsset as any)[this.operations.uniqueField]) {
         // For Printer and PC models, we use findFirst instead of findUnique since we removed the @unique constraint
         let existingAssetWithUniqueField;
         if (this.operations.modelName === 'Printer' || this.operations.modelName === 'PC') {
           existingAssetWithUniqueField = await this.getPrismaModel().findFirst({
             where: { 
-              [this.operations.uniqueField]: body[this.operations.uniqueField],
+              [this.operations.uniqueField]: body[this.operations.uniqueField as keyof typeof body],
               tenantId: user.tenantId,
               NOT: { id: id }
             }
@@ -1112,7 +1029,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         } else {
           existingAssetWithUniqueField = await this.getPrismaModel().findUnique({
             where: { 
-              [this.operations.uniqueField]: body[this.operations.uniqueField],
+              [this.operations.uniqueField]: body[this.operations.uniqueField as keyof typeof body],
               NOT: { id: id }
             }
           });
@@ -1120,14 +1037,14 @@ export class AssetApiHandler<T extends BaseAsset> {
 
         if (existingAssetWithUniqueField) {
           if (process.env.NODE_ENV === 'development') {
-            logger.info(`Asset with ${String(this.operations.uniqueField)} ${body[this.operations.uniqueField]} already exists`);
+            logger.info(`Asset with ${String(this.operations.uniqueField)} ${(body[this.operations.uniqueField as keyof typeof body])} already exists`);
           }
           return conflictResponse(`${this.operations.modelName} with this ${String(this.operations.uniqueField)} already exists`);
         }
       }
 
       // Create history record for changes
-      const changes: Record<string, { from: any; to: any }> = {}
+      const changes: Record<string, { from: any; to: any }> = {};
       Object.keys(standardFieldsBody).forEach(key => {
         // Skip undefined values to avoid setting fields to undefined
         if (standardFieldsBody[key] !== undefined && 
@@ -1135,9 +1052,9 @@ export class AssetApiHandler<T extends BaseAsset> {
           changes[key] = {
             from: (existingAsset as any)[key],
             to: standardFieldsBody[key]
-          }
+          };
         }
-      })
+      });
 
       // Also track changes in custom fields
       if (standardFieldsBody.customFields) {
@@ -1156,7 +1073,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       if (Object.keys(changes).length > 0) {
         try {
           // Import audit logs dynamically to avoid circular dependencies
-          const { createAuditLog } = await import('./audit-logs');
+          const { createAuditLog } = await import('../audit-logs');
           await createAuditLog(user.tenantId, {
             action: 'update',
             modelType: this.operations.modelName,
@@ -1164,7 +1081,7 @@ export class AssetApiHandler<T extends BaseAsset> {
             changes,
             userId: user.id,
             tenantId: user.tenantId
-          }, 'update')
+          }, 'update');
         } catch (auditLogError) {
           if (process.env.NODE_ENV === 'development') {
             logger.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError);
@@ -1182,9 +1099,9 @@ export class AssetApiHandler<T extends BaseAsset> {
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
         'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
-      }
+      };
 
-      const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || []
+      const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || [];
       if (process.env.NODE_ENV === 'development') {
         logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
@@ -1202,12 +1119,12 @@ export class AssetApiHandler<T extends BaseAsset> {
           }
         }
         return acc;
-      }, {} as Partial<Omit<T, keyof BaseAsset>>);
+      }, {} as Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt' | 'tenantId'>>);
       
       logger.debug("Update data to be sent to database", { 
-      component: 'asset-api-handler', 
-      data: updateData 
-    });
+        component: 'asset-api-handler', 
+        data: updateData 
+      });
 
       const asset = await this.getPrismaModel().update({
         where: { 
@@ -1223,7 +1140,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           // Add other commonly used fields based on asset type
           ...this.getSelectFieldsForAssetType()
         }
-      })
+      });
 
       // Use comprehensive cache invalidation strategy for better performance and consistency
       if (cacheManager && CACHE_PREFIXES) {
@@ -1259,11 +1176,11 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
       }
 
-      return successResponse(asset)
+      return successResponse(asset);
     } catch (error: any) {
       if (error.code === 'P2025') {
         logger.debug(`Asset ${id} not found during update`);
-        return notFoundResponse(`${this.operations.modelName} asset not found`)
+        return notFoundResponse(`${this.operations.modelName} asset not found`);
       }
       
       logger.error(`Error updating ${this.operations.modelName} asset:`, { 
@@ -1300,7 +1217,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Check permissions
       const hasDeletePermission = await this.checkPermission(user, 'delete');
       if (!hasDeletePermission) {
-        return apiErrorResponse('Forbidden: Insufficient permissions to delete asset', 403);
+        return errorResponse('Forbidden: Insufficient permissions to delete asset', 403);
       }
 
       // Check if asset exists and belongs to user's tenant
@@ -1309,12 +1226,12 @@ export class AssetApiHandler<T extends BaseAsset> {
           id,
           tenantId: user.tenantId 
         }
-      })
+      });
 
       // Create audit log entry
       try {
         // Import audit logs dynamically to avoid circular dependencies
-        const { createAuditLog } = await import('./audit-logs');
+        const { createAuditLog } = await import('../audit-logs');
         await createAuditLog(user.tenantId, {
           action: 'delete',
           modelType: this.operations.modelName,
@@ -1322,9 +1239,9 @@ export class AssetApiHandler<T extends BaseAsset> {
           changes: existingAsset || { id }, // Include at least the ID if asset doesn't exist
           userId: user.id,
           tenantId: user.tenantId
-        }, 'delete')
+        }, 'delete');
       } catch (auditLogError) {
-        logger.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError)
+        logger.error(`Failed to create audit log for ${this.operations.modelName}:`, auditLogError);
         // Continue with the operation even if audit log creation fails
       }
 
@@ -1335,7 +1252,7 @@ export class AssetApiHandler<T extends BaseAsset> {
             id,
             tenantId: user.tenantId 
           }
-        })
+        });
       } else {
         logger.warn(`${this.operations.modelName} asset ${id} not found during delete operation`);
       }
@@ -1374,7 +1291,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
       }
 
-      return successResponse<null>(null, 204)
+      return successResponse<null>(null, 204);
     } catch (error: any) {
       if (error.code === 'P2025') {
         // Even if Prisma reports not found, we still want to invalidate cache
@@ -1394,7 +1311,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           }
         }
         
-        return notFoundResponse(`${this.operations.modelName} asset not found`)
+        return notFoundResponse(`${this.operations.modelName} asset not found`);
       }
       
       logger.error(`Error deleting ${this.operations.modelName} asset:`, { 
@@ -1403,7 +1320,7 @@ export class AssetApiHandler<T extends BaseAsset> {
         modelName: this.operations.modelName,
         assetId: id
       });
-      return errorResponse('Failed to delete asset. Please try again later.')
+      return errorResponse('Failed to delete asset. Please try again later.');
     }
   }
 
@@ -1418,12 +1335,12 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Check permissions
       const hasBulkDeletePermission = await this.checkPermission(user, 'bulkDelete');
       if (!hasBulkDeletePermission) {
-        return apiErrorResponse('Forbidden: Insufficient permissions to bulk delete assets', 403);
+        return errorResponse('Forbidden: Insufficient permissions to bulk delete assets', 403);
       }
 
       // Validate input
       if (!ids || ids.length === 0) {
-        return badRequestResponse('No asset IDs provided')
+        return badRequestResponse('No asset IDs provided');
       }
 
       // Process in batches to avoid memory issues with large datasets
@@ -1446,7 +1363,7 @@ export class AssetApiHandler<T extends BaseAsset> {
             id: true,
             tenantId: true
           }
-        })
+        });
 
         // Log detailed information about the found assets for debugging
         if (process.env.NODE_ENV === 'development') {
@@ -1459,8 +1376,8 @@ export class AssetApiHandler<T extends BaseAsset> {
         }
 
         // Check if all requested assets were found
-        const foundIds = existingAssets.map((asset: any) => asset.id)
-        const missingIds = batchIds.filter(id => !foundIds.includes(id))
+        const foundIds = existingAssets.map((asset: any) => asset.id);
+        const missingIds = batchIds.filter(id => !foundIds.includes(id));
         
         // Track missing assets
         totalNotFound += missingIds.length;
@@ -1476,7 +1393,7 @@ export class AssetApiHandler<T extends BaseAsset> {
           // Use Promise.all for parallel processing
           const auditLogPromises = existingAssets.map((asset: any) => 
             // Import audit logs dynamically to avoid circular dependencies
-            import('./audit-logs').then(({ createAuditLog }) => 
+            import('../audit-logs').then(({ createAuditLog }) => 
               createAuditLog(user.tenantId, {
                 action: 'delete',
                 modelType: this.operations.modelName,
@@ -1500,7 +1417,7 @@ export class AssetApiHandler<T extends BaseAsset> {
               id: { in: foundIds }, // Only delete assets that were found
               tenantId: user.tenantId 
             }
-          })
+          });
 
           totalDeleted += deleteResult.count;
         }
@@ -1536,7 +1453,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Create audit log entry for the bulk delete operation itself
       try {
         // Import audit logs dynamically to avoid circular dependencies
-        const { createAuditLog } = await import('./audit-logs');
+        const { createAuditLog } = await import('../audit-logs');
         await createAuditLog(user.tenantId, {
           action: 'bulkDelete',
           modelType: this.operations.modelName,
@@ -1549,9 +1466,9 @@ export class AssetApiHandler<T extends BaseAsset> {
           },
           userId: user.id,
           tenantId: user.tenantId
-        }, 'bulkDelete')
+        }, 'bulkDelete');
       } catch (auditLogError) {
-        logger.error(`Failed to create bulk delete audit log for ${this.operations.modelName}:`, auditLogError)
+        logger.error(`Failed to create bulk delete audit log for ${this.operations.modelName}:`, auditLogError);
         // Continue with the operation even if audit log creation fails
       }
 
@@ -1582,7 +1499,7 @@ export class AssetApiHandler<T extends BaseAsset> {
       // Log completion of bulk delete operation
       logger.info(`Bulk delete operation completed for ${this.operations.modelName}: ${totalDeleted} deleted, ${totalNotFound} not found out of ${ids.length} requested`);
 
-      return successResponse<null>(null, 204)
+      return successResponse<null>(null, 204);
     } catch (error: any) {
       if (process.env.NODE_ENV === 'development') {
         logger.error(`Error bulk deleting ${this.operations.modelName} assets:`, error);
@@ -1590,53 +1507,10 @@ export class AssetApiHandler<T extends BaseAsset> {
       
       // Handle Prisma-specific errors
       if (error.code === 'P2025') {
-        return notFoundResponse(`${this.operations.modelName} assets not found`)
+        return notFoundResponse(`${this.operations.modelName} assets not found`);
       }
       
-      return errorResponse('Failed to delete assets. Please try again later.')
+      return errorResponse('Failed to delete assets. Please try again later.');
     }
   }
 }
-
-// Create handler for PC assets
-export const pcHandler = new AssetApiHandler<PCAsset>(db, {
-  modelName: 'PC',
-  requiredFields: ['dept', 'pcName', 'status'],
-  searchFields: ['cpuBarcode', 'pcName', 'userName', 'dept', 'status']
-  // Remove the include option as customFields is a scalar field, not a relation
-})
-
-// Create handler for Laptop assets
-export const laptopHandler = new AssetApiHandler<LaptopAsset>(db, {
-  modelName: 'Laptop',
-  requiredFields: ['dept', 'status'],
-  searchFields: ['barcode', 'userName', 'dept', 'model', 'status']
-})
-
-// Create handler for Printer assets
-export const printerHandler = new AssetApiHandler<PrinterAsset>(db, {
-  modelName: 'Printer',
-  requiredFields: ['dept', 'color'],
-  searchFields: ['barcode', 'dept', 'model', 'ip', 'note']
-})
-
-// Create handler for License assets
-export const licenseHandler = new AssetApiHandler<LicenseAsset>(db, {
-  modelName: 'License',
-  requiredFields: ['productKey'],
-  searchFields: ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'updateStatus']
-})
-
-// Create handler for WarehouseIT assets
-export const warehouseHandler = new AssetApiHandler<WarehouseITAsset>(db, {
-  modelName: 'WarehouseIT',
-  requiredFields: ['status'],
-  searchFields: ['barcode', 'sapCode', 'status', 'note']
-})
-
-// Create handler for Internet assets
-export const internetHandler = new AssetApiHandler<InternetAsset>(db, {
-  modelName: 'Internet',
-  requiredFields: ['dept', 'status'],
-  searchFields: ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note']
-})

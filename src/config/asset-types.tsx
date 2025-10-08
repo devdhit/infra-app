@@ -402,7 +402,7 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         label: t('assets.license.ip') || "IP Address"
       },
       {
-        key: "dateBuy",
+        key: "date",
         label: t('assets.license.purchaseDate') || "Purchase Date",
         render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
       },
@@ -482,7 +482,7 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         placeholder: "192.168.1.100"
       },
       {
-        name: "dateBuy",
+        name: "date",
         label: t('assets.license.purchaseDate') || "Purchase Date",
         type: "date"
       },

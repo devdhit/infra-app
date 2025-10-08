@@ -836,7 +836,7 @@ export async function POST(request: NextRequest) {
               // Also check for any remaining fields in licenseRowData that might be custom fields
               // but are not defined in the database yet (could be from Excel column mapping)
               const licenseModelFields = ['id', 'deviceName', 'userName', 'dept', 'productType', 
-                'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 
+                'productKey', 'model', 'pc', 'mac', 'ip', 'dateBuy', 'updateStatus', 
                 'tenantId', 'customFields', 'createdAt', 'updatedAt'];
                 
               // Check if there are any fields in licenseRowData that are not part of the License model

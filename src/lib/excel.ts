@@ -51,7 +51,7 @@ export interface LicenseAsset {
   pc?: string;
   mac?: string;
   ip?: string;
-  dateBuy?: string;
+  date?: string;
   status: string;
 }
 
@@ -869,7 +869,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[], tenantName?: st
         worksheet.cell(currentRow, 7).value(row.pc || 'N/A')
         worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
         worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
-        worksheet.cell(currentRow, 10).value(row.dateBuy || 'N/A')
+        worksheet.cell(currentRow, 10).value(row.date || 'N/A')
         // For License assets, preserve the original status value (including Chinese characters)
         const statusValue = row.status ? row.status : 'N/A';
         worksheet.cell(currentRow, 11).value(statusValue)
@@ -887,7 +887,7 @@ export async function exportLicenseToExcel(data: LicenseAsset[], tenantName?: st
         worksheet.cell(currentRow, 7).value(row.pc || 'N/A')
         worksheet.cell(currentRow, 8).value(row.mac || 'N/A')
         worksheet.cell(currentRow, 9).value(row.ip || 'N/A')
-        worksheet.cell(currentRow, 10).value(row.dateBuy || 'N/A')
+        worksheet.cell(currentRow, 10).value(row.date || 'N/A')
         // For License assets, preserve the original status value (including Chinese characters)
         const statusValue = row.status ? row.status : 'N/A';
         worksheet.cell(currentRow, 11).value(statusValue)
@@ -1594,7 +1594,7 @@ export function generateLicenseTemplate(): LicenseAsset[] {
     pc: '',
     mac: '',
     ip: '',
-    dateBuy: '',
+    date: '',
     status: 'working'  // Changed from 'active' to 'working'
   }]
 }
