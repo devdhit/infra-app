@@ -744,10 +744,38 @@ export class BaseAssetApiHandler<T> {
         logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
 
+      // Define date fields for each asset type
+      const dateFields: Record<string, string[]> = {
+        'PC': [],
+        'Laptop': ['dateBuy'],
+        'Printer': ['date'],
+        'License': ['date'],
+        'WarehouseIT': [],
+        'Internet': []
+      };
+
+      const modelDateFields = dateFields[this.operations.modelName as keyof typeof dateFields] || [];
+
       const createData = Object.keys(standardFieldsBody || {}).reduce((acc, key) => {
         // Allow both direct fields and customFields to be created
         if ((modelValidFields.includes(key) || key === 'customFields') && standardFieldsBody[key] !== undefined) {
-          (acc as any)[key] = standardFieldsBody[key];
+          // Handle date field conversion
+          if (modelDateFields.includes(key) && typeof standardFieldsBody[key] === 'string') {
+            try {
+              const dateValue = new Date(standardFieldsBody[key]);
+              if (!isNaN(dateValue.getTime())) {
+                (acc as any)[key] = dateValue;
+              } else {
+                // If date parsing fails, keep original value
+                (acc as any)[key] = standardFieldsBody[key];
+              }
+            } catch (e) {
+              // If date parsing fails, keep original value
+              (acc as any)[key] = standardFieldsBody[key];
+            }
+          } else {
+            (acc as any)[key] = standardFieldsBody[key];
+          }
         } else {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`Skipping field ${key} - not valid or undefined`, { 
@@ -1106,10 +1134,38 @@ export class BaseAssetApiHandler<T> {
         logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
 
+      // Define date fields for each asset type (same as in create method)
+      const dateFields: Record<string, string[]> = {
+        'PC': [],
+        'Laptop': ['dateBuy'],
+        'Printer': ['date'],
+        'License': ['date'],
+        'WarehouseIT': [],
+        'Internet': []
+      };
+
+      const modelDateFields = dateFields[this.operations.modelName as keyof typeof dateFields] || [];
+
       const updateData = Object.keys(standardFieldsBody || {}).reduce((acc, key) => {
         // Allow both direct fields and customFields to be updated
         if ((modelValidFields.includes(key) || key === 'customFields') && standardFieldsBody[key] !== undefined) {
-          (acc as any)[key] = standardFieldsBody[key];
+          // Handle date field conversion
+          if (modelDateFields.includes(key) && typeof standardFieldsBody[key] === 'string') {
+            try {
+              const dateValue = new Date(standardFieldsBody[key]);
+              if (!isNaN(dateValue.getTime())) {
+                (acc as any)[key] = dateValue;
+              } else {
+                // If date parsing fails, keep original value
+                (acc as any)[key] = standardFieldsBody[key];
+              }
+            } catch (e) {
+              // If date parsing fails, keep original value
+              (acc as any)[key] = standardFieldsBody[key];
+            }
+          } else {
+            (acc as any)[key] = standardFieldsBody[key];
+          }
         } else {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`Skipping field ${key} - not valid or undefined`, { 
