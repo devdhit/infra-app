@@ -36,7 +36,6 @@ export const isCustomField = (
   }
   
   // Fallback: check if field exists in asset.customFields but not directly on asset
-  // This is a more reliable check than just checking if the field exists in customFields
   return asset?.customFields && 
          fieldName in asset.customFields && 
          !(fieldName in asset);

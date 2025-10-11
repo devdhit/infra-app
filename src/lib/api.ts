@@ -29,17 +29,17 @@ export class ValidationError extends ApiError {
 // Create an axios instance with default configuration
 const apiClient: AxiosInstance = axios.create({
   baseURL: '/api',
-  timeout: 30000, // Increased timeout
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
-})
+});
 
 // Initialize token from localStorage if available
 if (typeof window !== 'undefined') {
-  const token = localStorage.getItem('auth-token')
+  const token = localStorage.getItem('auth-token');
   if (token) {
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   }
 }
 
@@ -48,20 +48,46 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Add auth token if available
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('auth-token')
+      const token = localStorage.getItem('auth-token');
       if (token) {
         config.headers = {
           ...config.headers,
           Authorization: `Bearer ${token}`
-        } as any
+        } as any;
       }
     }
-    return config
+    return config;
   },
   (error: AxiosError) => {
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
+
+// Centralized error handler
+const handleApiError = (error: unknown): ApiError => {
+  let apiError: ApiError;
+  
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status || 500;
+    const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'An unexpected error occurred';
+    const errorData = error.response?.data;
+    
+    // Check if it's a validation error
+    if (status === 400 && errorData?.details?.type === 'validation') {
+      apiError = new ValidationError(
+        errorMessage,
+        errorData.details.validationErrors,
+        errorData
+      );
+    } else {
+      apiError = new ApiError(status, errorMessage, errorData);
+    }
+  } else {
+    apiError = new ApiError(500, 'An unexpected error occurred', undefined);
+  }
+  
+  return apiError;
+};
 
 // Response interceptor
 apiClient.interceptors.response.use(
@@ -99,30 +125,25 @@ apiClient.interceptors.response.use(
     }
     
     // Create appropriate error based on response
-    let apiError: ApiError;
-    
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status || 500;
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'An unexpected error occurred';
-      const errorData = error.response?.data;
-      
-      // Check if it's a validation error
-      if (status === 400 && errorData?.details?.type === 'validation') {
-        apiError = new ValidationError(
-          errorMessage,
-          errorData.details.validationErrors,
-          errorData
-        );
-      } else {
-        apiError = new ApiError(status, errorMessage, errorData);
-      }
-    } else {
-      apiError = new ApiError(500, 'An unexpected error occurred', undefined);
-    }
-    
+    const apiError = handleApiError(error);
     return Promise.reject(apiError);
   }
-)
+);
+
+// Wrapper functions for common HTTP methods with consistent timeout handling
+const createRequestWithTimeout = async <T>(requestPromise: Promise<AxiosResponse<T>>): Promise<T> => {
+  try {
+    // Add timeout promise to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 30000);
+    });
+    
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 
 // Wrapper functions for common HTTP methods
 export const api = {
@@ -133,14 +154,8 @@ export const api = {
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       
-      // Add timeout promise to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
-      
       const responsePromise = apiClient.get<T>(urlWithCacheBuster, config);
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-      return response.data;
+      return await createRequestWithTimeout(responsePromise);
     } catch (error) {
       throw error;
     }
@@ -163,14 +178,8 @@ export const api = {
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       
-      // Add timeout promise to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
-      
       const responsePromise = apiClient.post<T>(urlWithCacheBuster, data, config);
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-      return response.data;
+      return await createRequestWithTimeout(responsePromise);
     } catch (error) {
       throw error;
     }
@@ -183,14 +192,8 @@ export const api = {
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       
-      // Add timeout promise to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
-      
       const responsePromise = apiClient.put<T>(urlWithCacheBuster, data, config);
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-      return response.data;
+      return await createRequestWithTimeout(responsePromise);
     } catch (error) {
       throw error;
     }
@@ -203,14 +206,8 @@ export const api = {
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       
-      // Add timeout promise to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
-      
       const responsePromise = apiClient.delete<T>(urlWithCacheBuster, config);
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-      return response.data;
+      return await createRequestWithTimeout(responsePromise);
     } catch (error) {
       throw error;
     }

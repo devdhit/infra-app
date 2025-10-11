@@ -7,15 +7,15 @@ import { useState, useEffect, useCallback } from 'react'
 
 // Generic API hook with direct API calls instead of React Query
 export function useApiCall<T>(url: string, options: { enabled?: boolean } = {}) {
-  const [data, setData] = useState<T | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<ApiError | null>(null)
+  const [data, setData] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
   
   const fetchData = useCallback(async () => {
-    if (options.enabled === false) return Promise.resolve()
+    if (options.enabled === false) return Promise.resolve();
     
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
     
     try {
       // Add cache-busting timestamp to prevent browser caching
@@ -23,263 +23,215 @@ export function useApiCall<T>(url: string, options: { enabled?: boolean } = {}) 
       const separator = url.includes('?') ? '&' : '?';
       const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
       
-      const response = await api.get<T>(urlWithCacheBuster)
-      setData(response)
-      return response
+      const response = await api.get<T>(urlWithCacheBuster);
+      setData(response);
+      return response;
     } catch (err) {
-      setError(err as ApiError)
-      console.error('API Error:', err)
-      throw err
+      setError(err as ApiError);
+      console.error('API Error:', err);
+      throw err;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [url, options.enabled])
+  }, [url, options.enabled]);
   
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    fetchData();
+  }, [fetchData]);
   
-  return { data, isLoading, error, refetch: fetchData }
+  return { data, isLoading, error, refetch: fetchData };
 }
 
-// Asset-specific hooks
-export function useAssets<T>(assetType: string, params: Record<string, any> = {}) {
-  const queryString = new URLSearchParams(params).toString()
-  const url = `/assets/${assetType}${queryString ? `?${queryString}` : ''}`
-  return useApiCall<T>(url)
-}
-
-export function useAsset<T>(assetType: string, id: string) {
-  return useApiCall<T>(`/assets/${assetType}/${id}`)
-}
+// Centralized error handling for mutations
+const handleMutationError = (err: unknown, defaultMessage: string): string => {
+  let message = defaultMessage;
+  
+  if (err instanceof ValidationError) {
+    message = 'Validation failed. Please check the form for errors.';
+  } else if ((err as ApiError).status === 409) {
+    message = 'Conflict. The resource may already exist.';
+  } else if ((err as ApiError).status === 403) {
+    message = 'Access denied. You do not have permission to perform this action.';
+  } else if ((err as ApiError).status === 400) {
+    message = 'Bad request. Please check the form data.';
+  } else if ((err as ApiError).status === 404) {
+    message = 'Resource not found. It may have been deleted.';
+  } else if ((err as ApiError).status === 500) {
+    message = 'Server error. Please try again later.';
+  } else if ((err as ApiError).message) {
+    message = (err as ApiError).message;
+  }
+  
+  return message;
+};
 
 // Generic mutation hook for POST requests
 export function useApiMutation<T, V>(url: string) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<ApiError | null>(null)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
   
   const mutate = async (data: V) => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
     
     try {
-      const response = await api.post<T, V>(url, data)
-      return response
+      const response = await api.post<T, V>(url, data);
+      return response;
     } catch (err) {
-      setError(err as ApiError)
-      throw err
+      setError(err as ApiError);
+      throw err;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
   
-  return { mutate, isLoading, error }
+  return { mutate, isLoading, error };
 }
 
 // Generic mutation hook for PUT requests
 export function useApiUpdate<T, V>(url: string) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<ApiError | null>(null)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
   
   const mutate = async (data: V) => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
     
     try {
-      const response = await api.put<T, V>(url, data)
-      return response
+      const response = await api.put<T, V>(url, data);
+      return response;
     } catch (err) {
-      setError(err as ApiError)
-      throw err
+      setError(err as ApiError);
+      throw err;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
   
-  return { mutate, isLoading, error }
+  return { mutate, isLoading, error };
 }
 
 // Generic mutation hook for DELETE requests
 export function useApiDelete<T>(url: string) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<ApiError | null>(null)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
   
   const mutate = async () => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
     
     try {
-      const response = await api.delete<T>(url)
-      return response
+      const response = await api.delete<T>(url);
+      return response;
     } catch (err) {
-      setError(err as ApiError)
-      throw err
+      setError(err as ApiError);
+      throw err;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
   
-  return { mutate, isLoading, error }
+  return { mutate, isLoading, error };
 }
 
 // Generic mutation hook for DELETE requests with ID parameter
 export function useApiDeleteWithId<T>(url: string) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<ApiError | null>(null)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
   
   const mutate = async (id: string) => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
     
     try {
       // Ensure the URL is properly constructed
       // Remove leading slash if present to avoid double slashes
       const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
       const fullUrl = `${cleanUrl}/${id}`;
-      const response = await api.delete<T>(fullUrl)
-      return response
+      const response = await api.delete<T>(fullUrl);
+      return response;
     } catch (err) {
-      setError(err as ApiError)
-      throw err
+      setError(err as ApiError);
+      throw err;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
   
-  return { mutate, isLoading, error }
+  return { mutate, isLoading, error };
 }
 
 export function useCreateAsset<T, V>(assetType: string) {
-  const { mutate, isLoading, error } = useApiMutation<T, V>(`/assets/${assetType}`)
+  const { mutate, isLoading, error } = useApiMutation<T, V>(`/assets/${assetType}`);
   
   const createAsset = async (data: V) => {
     try {
-      const response = await mutate(data)
-      toast.success(`${assetType} created successfully`)
-      return response
+      const response = await mutate(data);
+      toast.success(`${assetType} created successfully`);
+      return response;
     } catch (err) {
-      // Error creating asset
-      let message = `Failed to create ${assetType}`
-      
-      if (err instanceof ValidationError) {
-        message = 'Validation failed. Please check the form for errors.'
-      } else if ((err as ApiError).status === 409) {
-        message = 'An asset with this identifier already exists.'
-      } else if ((err as ApiError).status === 403) {
-        message = 'Access denied. You do not have permission to create this asset.'
-      } else if ((err as ApiError).status === 400) {
-        message = 'Bad request. Please check the form data.'
-      } else if ((err as ApiError).status === 500) {
-        message = 'Server error. Please try again later.'
-      } else if ((err as ApiError).message) {
-        message = (err as ApiError).message
-      }
-      
-      toast.error(message)
-      throw err
+      const message = handleMutationError(err, `Failed to create ${assetType}`);
+      toast.error(message);
+      throw err;
     }
-  }
+  };
   
-  return { createAsset, isLoading, error }
+  return { createAsset, isLoading, error };
 }
 
 export function useUpdateAsset<T, V>(assetType: string, id: string) {
-  const { mutate, isLoading, error } = useApiUpdate<T, V>(`/assets/${assetType}/${id}`)
+  const { mutate, isLoading, error } = useApiUpdate<T, V>(`/assets/${assetType}/${id}`);
   
   const updateAsset = async (data: V) => {
     try {
-      const response = await mutate(data)
-      toast.success(`${assetType} updated successfully`)
-      return response
+      const response = await mutate(data);
+      toast.success(`${assetType} updated successfully`);
+      return response;
     } catch (err) {
-      // Error updating asset
-      let message = `Failed to update ${assetType}`
-      
-      if (err instanceof ValidationError) {
-        message = 'Validation failed. Please check the form for errors.'
-      } else if ((err as ApiError).status === 409) {
-        message = 'An asset with this identifier already exists.'
-      } else if ((err as ApiError).status === 403) {
-        message = 'Access denied. You do not have permission to update this asset.'
-      } else if ((err as ApiError).status === 400) {
-        message = 'Bad request. Please check the form data.'
-      } else if ((err as ApiError).status === 404) {
-        message = 'Asset not found. It may have been deleted.'
-      } else if ((err as ApiError).status === 500) {
-        message = 'Server error. Please try again later.'
-      } else if ((err as ApiError).message) {
-        message = (err as ApiError).message
-      }
-      
-      toast.error(message)
-      throw err
+      const message = handleMutationError(err, `Failed to update ${assetType}`);
+      toast.error(message);
+      throw err;
     }
-  }
+  };
   
-  return { updateAsset, isLoading, error }
+  return { updateAsset, isLoading, error };
 }
 
 export function useDeleteAsset<T>(assetType: string) {
-  const { mutate, isLoading, error } = useApiDeleteWithId<T>(`/assets/${assetType}`)
+  const { mutate, isLoading, error } = useApiDeleteWithId<T>(`/assets/${assetType}`);
   
   const deleteAsset = async (id: string) => {
     try {
-      const response = await mutate(id)
-      toast.success(`${assetType} deleted successfully`)
-      return response
+      const response = await mutate(id);
+      toast.success(`${assetType} deleted successfully`);
+      return response;
     } catch (err) {
-      // Error deleting asset
-      let message = `Failed to delete ${assetType}`
-      
-      if ((err as ApiError).status === 403) {
-        message = 'Access denied. You do not have permission to delete this asset.'
-      } else if ((err as ApiError).status === 404) {
-        message = 'Asset not found. It may have been deleted.'
-      } else if ((err as ApiError).status === 500) {
-        message = 'Server error. Please try again later.'
-      } else if ((err as ApiError).message) {
-        message = (err as ApiError).message
-      }
-      
-      toast.error(message)
-      throw err
+      const message = handleMutationError(err, `Failed to delete ${assetType}`);
+      toast.error(message);
+      throw err;
     }
-  }
+  };
   
-  return { deleteAsset, isLoading, error }
+  return { deleteAsset, isLoading, error };
 }
 
 // Bulk delete assets hook
 export function useBulkDeleteAssets<T>(assetType: string) {
-  const { mutate, isLoading, error } = useApiMutation<T, { ids: string[] }>(`/assets/${assetType}/bulk-delete`)
+  const { mutate, isLoading, error } = useApiMutation<T, { ids: string[] }>(`/assets/${assetType}/bulk-delete`);
   
   const bulkDeleteAssets = async (ids: string[]) => {
     try {
-      const response = await mutate({ ids })
-      toast.success(`${assetType} assets deleted successfully`)
-      return response
+      const response = await mutate({ ids });
+      toast.success(`${assetType} assets deleted successfully`);
+      return response;
     } catch (err) {
-      // Error bulk deleting assets
-      let message = `Failed to delete ${assetType} assets`
-      
-      if ((err as ApiError).status === 403) {
-        message = 'Access denied. You do not have permission to delete these assets.'
-      } else if ((err as ApiError).status === 400) {
-        message = 'Bad request. No assets selected for deletion.'
-      } else if ((err as ApiError).status === 404) {
-        message = 'Some assets were not found. They may have already been deleted.'
-      } else if ((err as ApiError).status === 500) {
-        message = 'Server error. Please try again later.'
-      } else if ((err as ApiError).message) {
-        message = (err as ApiError).message
-      }
-      
-      toast.error(message)
-      throw err
+      const message = handleMutationError(err, `Failed to delete ${assetType} assets`);
+      toast.error(message);
+      throw err;
     }
-  }
+  };
   
-  return { bulkDeleteAssets, isLoading, error }
+  return { bulkDeleteAssets, isLoading, error };
 }
 
 // Auth hooks
@@ -758,7 +710,18 @@ export function useCurrentUser() {
     (localStorage.getItem('auth-token') || api.getToken());
   
   // Ensure we only enable the query if we have a token
-  return useApiCall<User>('/auth/me', { enabled: !!hasToken && hasToken.length > 0 })
+  return useApiCall<User>('/auth/me', { enabled: !!hasToken && hasToken.length > 0 });
+}
+
+// Asset-specific hooks
+export function useAssets<T>(assetType: string, params: Record<string, any> = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const url = `/assets/${assetType}${queryString ? `?${queryString}` : ''}`;
+  return useApiCall<T>(url);
+}
+
+export function useAsset<T>(assetType: string, id: string) {
+  return useApiCall<T>(`/assets/${assetType}/${id}`);
 }
 
 // Custom Fields hooks
