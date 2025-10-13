@@ -187,6 +187,7 @@ const getAssetColumns = (
     size: 100,
     minSize: 80,
     maxSize: 150,
+    enableHiding: false,
   }
 
   // Create data columns
@@ -273,7 +274,7 @@ const getAssetColumns = (
     }
   })
 
-  return [selectionColumn, ...dataColumns, actionsColumn]
+  return [actionsColumn, selectionColumn, ...dataColumns]
 }
 
 // Add a helper function to generate a unique key for localStorage based on assetType
