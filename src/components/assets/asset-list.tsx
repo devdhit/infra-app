@@ -195,7 +195,7 @@ const getAssetColumns = (
     const isCustom = customFieldsData?.some((cf: any) => cf.name === column.key) || false
     
     // Set column sizing based on column type
-    let columnWidth = 200
+    let columnWidth = 250
     let minWidth = 150
     let maxWidth = 800
     
@@ -204,7 +204,7 @@ const getAssetColumns = (
       minWidth = 100
       maxWidth = 100
     } else if (isCustom) {
-      columnWidth = 200
+      columnWidth = 250
       minWidth = 200
       maxWidth = 800
     } else {
