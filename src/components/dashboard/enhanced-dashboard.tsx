@@ -8,7 +8,6 @@ import {
   Printer, 
   Key, 
   Warehouse,
-  TrendingUp,
   Cpu,
   Battery,
   Server,
@@ -21,10 +20,9 @@ import {
   ArrowDown,
   ChevronDown,
   ChevronRight,
-  Home,
   Wifi
 } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, PieChart as RechartsPieChart, Pie, Legend, AreaChart, Area } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useTranslation } from "@/hooks/use-translation";
 import { DashboardSummaryData } from "@/types/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
@@ -362,20 +360,13 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
 
       {/* Dashboard Tabs - Simplified structure */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-muted/50 p-1 rounded-lg">
+        <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 rounded-lg">
           <TabsTrigger 
             value="overview" 
             className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
           >
             <BarChart3 className="h-4 w-4" />
             <span>{t('dashboard.overview')}</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="assets" 
-            className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
-          >
-            <Home className="h-4 w-4" />
-            <span>{t('nav.assets')}</span>
           </TabsTrigger>
           <TabsTrigger 
             value="analytics" 
@@ -525,120 +516,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
           )}
         </TabsContent>
         
-        <TabsContent value="assets" className="space-y-6 mt-6">
-          {/* Filters - Collapsible on mobile */}
-          <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full">
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Filter className="h-4 w-4 mr-2" />
-                {t('common.filter')}
-                {isFiltersOpen ? (
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <DashboardFilters 
-                    onFilterChange={handleFilterChange} 
-                    onReset={handleResetFilters} 
-                  />
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
 
-          {/* Asset Details Section */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">{t('dashboard.assetDetails')}</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Asset Type Distribution */}
-              <ChartCard 
-                title={t('dashboard.assetBreakdown') || 'Asset Breakdown'}
-                description={t('dashboard.assetBreakdownDescription') || 'Distribution of assets by type'}
-                icon={BarChart3}
-              >
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={assetTypeData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={true}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="count"
-                        nameKey="name"
-                        label={({ name, percent }) => `${name}: ${((percent ?? 0) as number * 100).toFixed(0)}%`}
-                      >
-                        {assetTypeData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value) => [value, t('common.count')]}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--background))',
-                          borderColor: 'hsl(var(--border))',
-                          borderRadius: 'var(--radius)',
-                          color: 'hsl(var(--foreground))'
-                        }}
-                      />
-                      <Legend />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
-              </ChartCard>
-              
-              {/* Trend Analysis Chart */}
-              <ChartCard 
-                title={t('dashboard.assetGrowth') || 'Asset Growth'}
-                description={t('dashboard.assetGrowthDescription') || 'Historical trend of asset acquisition'}
-                icon={TrendingUp}
-              >
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={[
-                        { month: 'Jan', assets: 400 },
-                        { month: 'Feb', assets: 300 },
-                        { month: 'Mar', assets: 200 },
-                        { month: 'Apr', assets: 278 },
-                        { month: 'May', assets: 189 },
-                        { month: 'Jun', assets: 239 },
-                        { month: 'Jul', assets: 349 },
-                        { month: 'Aug', assets: 400 },
-                        { month: 'Sep', assets: 380 },
-                        { month: 'Oct', assets: 430 },
-                        { month: 'Nov', assets: 450 },
-                        { month: 'Dec', assets: 500 },
-                      ]}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--background))',
-                          borderColor: 'hsl(var(--border))',
-                          borderRadius: 'var(--radius)',
-                          color: 'hsl(var(--foreground))'
-                        }}
-                      />
-                      <Area type="monotone" dataKey="assets" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </ChartCard>
-            </div>
-          </div>
-        </TabsContent>
         
         <TabsContent value="analytics" className="space-y-6 mt-6">
           {/* Filters - Collapsible on mobile */}
