@@ -34,7 +34,7 @@ cp tsconfig.json $DEPLOY_DIR/
 cp tsconfig.build.json $DEPLOY_DIR/
 cp ecosystem.config.js $DEPLOY_DIR/
 cp server.js $DEPLOY_DIR/
-cp next.config.mjs $DEPLOY_DIR/
+cp next.config.ts $DEPLOY_DIR/  # Changed from next.config.mjs to next.config.ts
 cp .env.production $DEPLOY_DIR/ 2>/dev/null || echo "No .env.production file found"
 cp .env $DEPLOY_DIR/ 2>/dev/null || echo "No .env file found"
 cp .gitignore $DEPLOY_DIR/
@@ -44,6 +44,12 @@ cp LICENSE $DEPLOY_DIR/ 2>/dev/null || echo "No LICENSE file found"
 # Create dist directory structure
 echo "Creating dist directory structure..."
 mkdir -p $DEPLOY_DIR/dist
+
+# Remove any existing source maps from the deployment package
+echo "Removing source maps and development files..."
+find $DEPLOY_DIR -name "*.map" -type f -delete
+find $DEPLOY_DIR -name "*.tsbuildinfo" -type f -delete
+find $DEPLOY_DIR -name "tsconfig.tsbuildinfo" -type f -delete
 
 # Create a tarball for deployment
 echo "Creating deployment package..."

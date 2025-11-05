@@ -48,7 +48,11 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "allowUnreachableCode": false,
-    "allowUnusedLabels": false
+    "allowUnusedLabels": false,
+    // Security settings
+    "sourceMap": false,
+    "inlineSourceMap": false,
+    "inlineSources": false
   },
   "include": [
     "**/*.ts",

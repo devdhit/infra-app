@@ -36,6 +36,9 @@
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "downlevelIteration": true,
+    "sourceMap": false,
+    "inlineSourceMap": false,
+    "inlineSources": false,
     "paths": {
       "@/*": ["./src/*"]
     },

@@ -1,3 +1,75 @@
+# Security Implementation
+
+This document outlines the security measures implemented in the ITAMS application to prevent source code exposure and protect against common web vulnerabilities.
+
+## Source Code Protection
+
+### 1. Next.js Configuration
+- Disabled source maps in production by setting `productionBrowserSourceMaps: false` in [next.config.ts](file:///c:/infra-app/next.config.ts)
+- This prevents browser-based tools from accessing the original source code
+
+### 2. TypeScript Configuration
+- Disabled source map generation in both [tsconfig.json](file:///c:/infra-app/tsconfig.json) and [tsconfig.build.json](file:///c:/infra-app/tsconfig.build.json)
+- Set `sourceMap: false`, `inlineSourceMap: false`, and `inlineSources: false`
+
+### 3. Server Configuration
+- Added security headers in [server.js](file:///c:/infra-app/server.js) to prevent information leakage:
+  - `X-Content-Type-Options: nosniff`
+  - `X-Frame-Options: DENY`
+  - `X-XSS-Protection: 1; mode=block`
+  - `Strict-Transport-Security`
+  - `Content-Security-Policy`
+  - Removed `X-Powered-By` header to hide server technology
+
+### 4. Deployment Scripts
+- Updated [package-for-deployment.sh](file:///c:/infra-app/scripts/package-for-deployment.sh) to remove source maps and development files
+- Updated [deploy.sh](file:///c:/infra-app/scripts/deploy.sh) to clean up source maps after build
+- Set `NODE_ENV=production` environment variable
+
+### 5. Process Management
+- Updated [ecosystem.config.js](file:///c:/infra-app/ecosystem.config.js) to disable source map support in PM2
+
+### 6. Security Middleware
+- Enhanced [security-middleware.ts](file:///c:/infra-app/src/lib/security-middleware.ts) to block direct access to source files:
+  - Blocks requests to `.ts`, `.tsx`, `.map` files
+  - Blocks access to `/src/`, `/node_modules/` directories
+  - Blocks access to environment and configuration files
+
+## Additional Security Measures
+
+### SQL Injection Protection
+- Implemented pattern-based detection for SQL injection attempts
+- Validates query parameters and request bodies
+- Blocks suspicious requests with 403 Forbidden responses
+
+### XSS Protection
+- Detects and blocks cross-site scripting attempts
+- Validates input against known XSS patterns
+
+### Rate Limiting
+- Global rate limiting (100 requests per minute)
+- Stricter rate limiting for authentication endpoints (10 requests per minute)
+
+### User Agent Blocking
+- Blocks requests from known security scanning tools (sqlmap, nikto, etc.)
+
+## Deployment Best Practices
+
+1. Always deploy with `NODE_ENV=production`
+2. Ensure source maps are not included in production builds
+3. Regularly update dependencies to patch security vulnerabilities
+4. Use environment variables for sensitive configuration
+5. Implement proper access controls and authentication
+
+## Verification
+
+To verify that source code is not exposed:
+
+1. Check that no `.map` files are accessible via browser
+2. Verify that direct access to source files returns 403 Forbidden
+3. Confirm that server headers do not reveal technology stack information
+4. Test that security middleware blocks malicious requests
+
 # Security Implementation Guide
 
 This document provides comprehensive guidance on the security measures implemented in the IT Asset Management System (ITAMS), including authentication, authorization, data protection, and compliance considerations.
