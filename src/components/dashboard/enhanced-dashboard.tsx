@@ -339,17 +339,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* Page header with enhanced styling */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
             {t('dashboard.title')}
           </h1>
-          <p className="text-muted-foreground">{t('dashboard.welcome')}</p>
+          <p className="text-muted-foreground mt-1">{t('dashboard.welcome')}</p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           <DashboardExport onExport={handleExport} />
-          <Button size="sm" className="rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200" onClick={handleRefresh}>
+          <Button 
+            size="sm" 
+            className="rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition-all duration-200 hover:shadow-md" 
+            onClick={handleRefresh}
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             {t('common.refresh')}
           </Button>
@@ -358,16 +362,25 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
 
       {/* Dashboard Tabs - Simplified structure */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-3 bg-muted/50 p-1 rounded-lg">
+          <TabsTrigger 
+            value="overview" 
+            className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+          >
             <BarChart3 className="h-4 w-4" />
             <span>{t('dashboard.overview')}</span>
           </TabsTrigger>
-          <TabsTrigger value="assets" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="assets" 
+            className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+          >
             <Home className="h-4 w-4" />
             <span>{t('nav.assets')}</span>
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="analytics" 
+            className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+          >
             <PieChart className="h-4 w-4" />
             <span>{t('common.analytics')}</span>
           </TabsTrigger>
@@ -1072,40 +1085,49 @@ interface SummaryCardProps {
 
 function SummaryCard({ title, value, icon: Icon, color, description, trend, percentage }: SummaryCardProps) {
   const colorClasses = {
-    blue: "border-t-blue-500 dark:border-t-blue-400 bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300",
-    green: "border-t-green-500 dark:border-t-green-400 bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300",
-    yellow: "border-t-yellow-500 dark:border-t-yellow-400 bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-300",
-    red: "border-t-red-500 dark:border-t-red-400 bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300",
-    purple: "border-t-purple-500 dark:border-t-purple-400 bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-300",
-    indigo: "border-t-indigo-500 dark:border-t-indigo-400 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300",
+    blue: "border-t-blue-500 dark:border-t-blue-400 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300",
+    green: "border-t-green-500 dark:border-t-green-400 bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-300",
+    yellow: "border-t-yellow-500 dark:border-t-yellow-400 bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300",
+    red: "border-t-red-500 dark:border-t-red-400 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300",
+    purple: "border-t-purple-500 dark:border-t-purple-400 bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300",
+    indigo: "border-t-indigo-500 dark:border-t-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300",
   };
 
   return (
-    <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 dark:border-t-4 h-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-t-4 dark:border-t-4 h-full bg-gradient-to-br from-background to-muted/30 overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div>
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <CardTitle className="text-sm font-semibold">{title}</CardTitle>
           {description && (
-            <CardDescription className="text-xs mt-1">{description}</CardDescription>
+            <CardDescription className="text-xs mt-1 opacity-80">{description}</CardDescription>
           )}
         </div>
-        <div className={`p-2 rounded-full ${colorClasses[color as keyof typeof colorClasses]}`}>
-          <Icon className="h-4 w-4" />
+        <div className={`p-3 rounded-full ${colorClasses[color as keyof typeof colorClasses]}`}>
+          <Icon className="h-5 w-5" />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-end justify-between">
-          <div className="text-2xl font-bold">{value}</div>
+        <div className="flex items-end justify-between mt-2">
+          <div className="text-3xl font-bold">{value}</div>
           {trend !== undefined && (
-            <div className={`flex items-center text-xs ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {trend >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+            <div className={`flex items-center text-sm font-medium ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {trend >= 0 ? <ArrowUp className="h-4 w-4 mr-1" /> : <ArrowDown className="h-4 w-4 mr-1" />}
               {Math.abs(trend)}%
             </div>
-          )}
+          )
+        }
         </div>
         {percentage !== undefined && percentage > 0 && (
-          <div className="mt-2 text-xs text-muted-foreground">
-            {percentage}% of total
+          <div className="mt-3 flex items-center">
+            <div className="w-full bg-muted rounded-full h-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all duration-500 ease-out" 
+                style={{ width: `${percentage}%` }}
+              ></div>
+            </div>
+            <span className="ml-2 text-xs text-muted-foreground whitespace-nowrap">
+              {percentage}%
+            </span>
           </div>
         )}
       </CardContent>
@@ -1123,16 +1145,20 @@ interface ChartCardProps {
 
 function ChartCard({ title, description, icon: Icon, children }: ChartCardProps) {
   return (
-    <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full">
+    <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full bg-gradient-to-br from-background to-muted/30 border-t-4 border-t-blue-500 dark:border-t-blue-400 overflow-hidden">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Icon className="h-5 w-5 mr-2 text-blue-500 dark:text-blue-400" />
+        <CardTitle className="flex items-center text-lg font-semibold">
+          <div className="p-2 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 mr-3">
+            <Icon className="h-5 w-5" />
+          </div>
           {title}
         </CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription className="opacity-80">{description}</CardDescription>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        {children}
+      <CardContent className="overflow-x-auto pt-0">
+        <div className="pt-4 min-h-[300px] flex items-center justify-center">
+          {children}
+        </div>
       </CardContent>
     </Card>
   );

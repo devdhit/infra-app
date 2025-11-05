@@ -222,13 +222,19 @@ const Page = () => {
       description={t('settings.customFields.description')}
       currentPage={t('settings.customFields.title')}
     >
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm border border-muted">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            {t('settings.customFields.title')}
+          </h1>
+          <p className="text-muted-foreground mt-1">{t('settings.customFields.description')}</p>
+        </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowHelp(true)}>
+          <Button variant="outline" onClick={() => setShowHelp(true)} className="transition-all duration-200 hover:shadow-md">
             <HelpCircle className="h-4 w-4 mr-2" />
             {t('common.help')}
           </Button>
-          <Button onClick={handleCreate}>
+          <Button onClick={handleCreate} className="transition-all duration-200 hover:shadow-md">
             <Plus className="h-4 w-4 mr-2" />
             {t('settings.customFields.add')}
           </Button>

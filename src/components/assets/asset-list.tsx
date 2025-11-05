@@ -196,8 +196,8 @@ const getAssetColumns = (
     
     // Set column sizing based on column type
     let columnWidth = 200
-    let minWidth = 120
-    let maxWidth = 500
+    let minWidth = 150
+    let maxWidth = 800
     
     if (column.key === 'select') {
       columnWidth = 100
@@ -205,12 +205,12 @@ const getAssetColumns = (
       maxWidth = 100
     } else if (isCustom) {
       columnWidth = 200
-      minWidth = 150
-      maxWidth = 600
+      minWidth = 200
+      maxWidth = 800
     } else {
-      columnWidth = 150
-      minWidth = 120
-      maxWidth = 500
+      columnWidth = 250
+      minWidth = 150
+      maxWidth = 800
     }
     
     return {
@@ -898,7 +898,7 @@ export function AssetList({
     const pageNumbers = getPageNumbers()
     
     return (
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap w-full">
         <div className="text-sm text-muted-foreground">
           {t('common.pagination.showing', 
             `Showing {0} to {1} of {2} items`,
@@ -907,20 +907,21 @@ export function AssetList({
             pagination.total
           )}
         </div>
-        <div className="flex gap-1 items-center">
+        <div className="flex gap-1 items-center bg-muted/30 p-1 rounded-lg">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1 || isLoading}
             aria-label={t('common.pagination.previous', "Previous page")}
+            className="transition-all duration-200 hover:shadow-sm"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
           {pageNumbers.map((page, index) => (
             page === 'ellipsis' ? (
-              <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">...</span>
+              <span key={`ellipsis-${index}`} className="px-3 py-2 text-muted-foreground">...</span>
             ) : (
               <Button
                 key={page}
@@ -928,7 +929,7 @@ export function AssetList({
                 size="sm"
                 onClick={() => setCurrentPage(page as number)}
                 disabled={isLoading}
-                className={page === currentPage ? "bg-primary text-primary-foreground" : ""}
+                className={`transition-all duration-200 ${page === currentPage ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:shadow-sm"}`}
               >
                 {page}
               </Button>
@@ -941,6 +942,7 @@ export function AssetList({
             onClick={() => setCurrentPage(prev => Math.min(pagination.pages, prev + 1))}
             disabled={currentPage === pagination.pages || isLoading}
             aria-label={t('common.pagination.next', "Next page")}
+            className="transition-all duration-200 hover:shadow-sm"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -951,19 +953,21 @@ export function AssetList({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm border border-muted">
         <div>
-          <h1 className="text-3xl font-bold">{t(`assets.${assetType}.title`, title)}</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
+            {t(`assets.${assetType}.title`, title)}
+          </h1>
+          <p className="text-muted-foreground mt-1">
             {t('assets.list.description', `Manage your {0} assets`, t(`assets.${assetType}.title`, title).toLowerCase())}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           <div className="flex gap-2">
             <Button 
               variant="outline" 
               size="sm" 
-              className="hidden sm:flex border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
+              className="hidden sm:flex border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition-all duration-200 hover:shadow-md shadow-sm"
               onClick={() => setIsExportDialogOpen(true)}
               disabled={canView === false}
             >
@@ -973,7 +977,7 @@ export function AssetList({
             <Button 
               variant="outline" 
               size="sm" 
-              className="hidden sm:flex border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
+              className="hidden sm:flex border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition-all duration-200 hover:shadow-md shadow-sm"
               onClick={() => setIsImportDialogOpen(true)}
               disabled={canCreate === false}
             >
@@ -983,7 +987,7 @@ export function AssetList({
             <Button 
               variant="outline" 
               size="icon" 
-              className="sm:hidden border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
+              className="sm:hidden border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition-all duration-200 hover:shadow-md shadow-sm"
               onClick={() => setIsExportDialogOpen(true)}
               disabled={canView === false}
             >
@@ -992,7 +996,7 @@ export function AssetList({
             <Button 
               variant="outline" 
               size="icon" 
-              className="sm:hidden border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
+              className="sm:hidden border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition-all duration-200 hover:shadow-md shadow-sm"
               onClick={() => setIsImportDialogOpen(true)}
               disabled={canCreate === false}
             >
@@ -1000,7 +1004,12 @@ export function AssetList({
             </Button>
           </div>
           {selectedAssets.length > 0 && canBulkDelete && (
-            <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={handleBulkDelete}
+              className="transition-all duration-200 hover:shadow-md shadow-sm"
+            >
               <Trash className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">{t('common.delete', "Delete")}</span> 
               <span className="sm:hidden">{selectedAssets.length}</span>
@@ -1011,14 +1020,18 @@ export function AssetList({
             onClick={handleRefresh}
             variant="outline" 
             size="sm"
-            className="border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200"
+            className="border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition-all duration-200 hover:shadow-md shadow-sm"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{t('common.refresh', "Refresh")}</span>
             <span className="sm:hidden">{t('common.refresh', "Refresh")}</span>
           </Button>
           {canCreate && (
-            <Button size="sm" onClick={handleCreate}>
+            <Button 
+              size="sm" 
+              onClick={handleCreate}
+              className="transition-all duration-200 hover:shadow-md shadow-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+            >
               <Plus className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">{t('common.create', "Create")} {t(`assets.${assetType}.title`, title)}</span>
               <span className="sm:hidden">{t('common.create', "Create")}</span>
@@ -1027,19 +1040,19 @@ export function AssetList({
         </div>
       </div>
       
-      <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
-        <CardHeader>
+      <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500 bg-gradient-to-br from-background to-muted/30 overflow-hidden">
+        <CardHeader className="pb-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <CardTitle>{t(`assets.${assetType}.title`, title)} {t('common.list', "List")}</CardTitle>
-              <CardDescription className="flex items-center gap-2">
+              <CardTitle className="text-2xl font-bold">{t(`assets.${assetType}.title`, title)} {t('common.list', "List")}</CardTitle>
+              <CardDescription className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
                 <span>
                   {t('assets.list.description', `Manage your {0} assets`, t(`assets.${assetType}.title`, title).toLowerCase())}
                 </span>
                 <Button 
                   variant="link" 
                   size="sm" 
-                  className="p-0 h-auto text-xs"
+                  className="p-0 h-auto text-xs w-fit"
                   onClick={() => router.push('/settings/custom-fields')}
                 >
                   <Settings className="h-3 w-3 mr-1" />
@@ -1047,11 +1060,11 @@ export function AssetList({
                 </Button>
               </CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 w-full">
-              <div className="relative w-full sm:w-auto">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 {isSearching && (
-                  <div className="absolute right-2.5 top-2.5 h-4 w-4">
+                  <div className="absolute right-3 top-3 h-4 w-4">
                     <div className="h-4 w-4 rounded-full border-2 border-muted-foreground border-r-transparent animate-spin" />
                   </div>
                 )}
@@ -1062,21 +1075,25 @@ export function AssetList({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
                   onFocus={handleSearchFocus}
                   onBlur={handleSearchBlur}
-                  className="pl-8 w-full sm:w-64 pr-8"
+                  className="pl-9 w-full pr-9 border-muted focus:border-primary transition-colors duration-200"
                   disabled={canView === false}
                 />
               </div>
-              <div className="flex gap-2 w-full sm:w-auto justify-end">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto" disabled={canView === false}>
+                    <Button 
+                      variant="outline" 
+                      className="w-full sm:w-auto transition-all duration-200 hover:shadow-sm"
+                      disabled={canView === false}
+                    >
                       {statusFilter 
                         ? t(`assets.status.${statusFilter}`, statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1))
                         : t('common.filter', "Filter")}
                       <ChevronDown className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="bg-background border border-muted shadow-lg">
                     <DropdownMenuItem onClick={() => handleStatusFilterChange("")}>
                       {t('common.all', "All")}
                     </DropdownMenuItem>
@@ -1095,49 +1112,56 @@ export function AssetList({
                 {/* Moved column visibility control to card header for better accessibility */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto" disabled={canView === false}>
+                    <Button 
+                      variant="outline" 
+                      className="w-full sm:w-auto transition-all duration-200 hover:shadow-sm"
+                      disabled={canView === false}
+                    >
                       <Eye className="h-4 w-4 mr-2" />
                       {t('common.columns', "Columns")}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80" align="end">
+                  <PopoverContent className="w-80 bg-background border border-muted shadow-lg" align="end">
                     <div className="grid gap-4">
                       <div className="space-y-2">
-                        <h4 className="font-medium leading-none">{t('common.columns', "Columns")}</h4>
+                        <h4 className="font-semibold leading-none">{t('common.columns', "Columns")}</h4>
                         <p className="text-sm text-muted-foreground">
                           {t('assets.list.columnVisibility', "Select which columns to display")}
                         </p>
                       </div>
                       <Separator />
-                      <div className="grid gap-2 max-h-60 overflow-y-auto">
-                        <div className="flex items-center justify-between">
+                      <div className="grid gap-3 max-h-60 overflow-y-auto">
+                        <div className="flex items-center justify-between bg-muted/30 p-2 rounded-lg">
                           <span className="text-sm font-medium">{t('common.selectAll', "Select All")}</span>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => toggleAllColumns(true)}
-                            className="h-8 px-2"
-                            disabled={canView === false}
-                          >
-                            {t('common.show', "Show")}
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => toggleAllColumns(false)}
-                            className="h-8 px-2"
-                            disabled={canView === false}
-                          >
-                            {t('common.hide', "Hide")}
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => toggleAllColumns(true)}
+                              className="h-8 px-2 text-xs"
+                              disabled={canView === false}
+                            >
+                              {t('common.show', "Show")}
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => toggleAllColumns(false)}
+                              className="h-8 px-2 text-xs"
+                              disabled={canView === false}
+                            >
+                              {t('common.hide', "Hide")}
+                            </Button>
+                          </div>
                         </div>
                         {allColumns.map((column) => (
-                          <div key={column.key} className="flex items-center justify-between">
+                          <div key={column.key} className="flex items-center justify-between p-2 hover:bg-muted/30 rounded-lg transition-colors duration-150">
                             <span className="text-sm">{t(column.label, column.label)}</span>
                             <Checkbox
                               checked={columnVisibility[column.key]}
                               onCheckedChange={() => toggleColumnVisibility(column.key)}
                               disabled={canView === false}
+                              className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                             />
                           </div>
                         ))}
@@ -1149,8 +1173,8 @@ export function AssetList({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-hidden">
+        <CardContent className="p-0">
+          <div className="rounded-b-xl border-x border-b overflow-hidden bg-background">
             <DataTable
               columns={dataTableColumns}
               data={assets}
@@ -1184,7 +1208,9 @@ export function AssetList({
             />
           </div>
 
-          {renderPagination()}
+          <div className="p-4 bg-muted/30 border-t border-muted">
+            {renderPagination()}
+          </div>
         </CardContent>
       </Card>
       

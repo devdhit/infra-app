@@ -160,11 +160,13 @@ export default function ManagementPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          {t('nav.management')}
-        </h1>
-        <p className="text-muted-foreground">{t('management.description') || "Manage your system organizations and users"}</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm border border-muted">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            {t('nav.management')}
+          </h1>
+          <p className="text-muted-foreground mt-1">{t('management.description') || "Manage your system organizations and users"}</p>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -174,7 +176,7 @@ export default function ManagementPage() {
             href={section.href}
             className="group block"
           >
-            <Card className="h-full hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
+            <Card className="h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500 bg-gradient-to-br from-background to-muted/30 overflow-hidden">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className={`p-3 rounded-full ${section.color}`}>
