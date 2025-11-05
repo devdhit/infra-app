@@ -12,7 +12,7 @@ import { toast } from "sonner"
 import { useTranslation } from "@/hooks/use-translation"
 import apiClient from "@/lib/api"
 import { Loader2, Download } from "lucide-react"
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import {
   Select,
   SelectContent,
@@ -76,6 +76,19 @@ export function ExcelExportDialog({
     }
   }, [isOpen, showByDeptOption, fetchDepartments])
 
+  // Store previous export option to detect changes
+  const prevExportOptionRef = useRef<ExportOption | null>(null)
+
+  // Reset department selection when export option changes to ensure clean state
+  useEffect(() => {
+    // Reset department when switching between different export options
+    // This prevents the department selection from persisting across different options
+    if (prevExportOptionRef.current !== null && prevExportOptionRef.current !== exportOption) {
+      setDepartment('')
+    }
+    prevExportOptionRef.current = exportOption
+  }, [exportOption])
+
   // Add reset function for when there's an error
   const resetExport = useCallback(() => {
     setIsExporting(false)
@@ -114,212 +127,123 @@ export function ExcelExportDialog({
         setExportStatus(t('assets.excel.export.preparingDepts', 'Preparing departmental exports...'))
         setExportProgress(20)
 
-        // For allDepts, create a ZIP file containing all department exports
-        if (exportOption === 'allDepts') {
-          setExportStatus(t('assets.excel.export.preparingZip', 'Preparing ZIP file with all departments...'))
+        // For both allDepts and eachDept, create a ZIP file containing all department exports
+        // This addresses the user's request to use ZIP for "Each Department" option
+        setExportStatus(t('assets.excel.export.preparingZip', 'Preparing ZIP file with department exports...'))
+        
+        // Create a new ZIP file
+        const zip = new JSZip()
+        
+        // Export each department and add to ZIP
+        let completedDepts = 0
+        const totalDepts = departmentsToExport.length
+        
+        for (const dept of departmentsToExport) {
+          try {
+            setExportStatus(t('assets.excel.export.processingDept', 'Processing department: {0}', dept))
           
-          // Create a new ZIP file
-          const zip = new JSZip()
+            // Calculate progress percentage based on completed departments
+            const deptProgress = 20 + Math.floor((completedDepts / totalDepts) * 70)
+            setExportProgress(deptProgress)
           
-          // Export each department and add to ZIP
-          let completedDepts = 0
-          const totalDepts = departmentsToExport.length
+            // Build URL with query parameters
+            const params = new URLSearchParams({
+              assetType,
+              dept,
+              // Add exportType parameter for allColumns functionality
+              exportType: getExportType()
+            })
           
-          for (const dept of departmentsToExport) {
-            try {
-              setExportStatus(t('assets.excel.export.processingDept', 'Processing department: {0}', dept))
-            
-              // Calculate progress percentage based on completed departments
-              const deptProgress = 20 + Math.floor((completedDepts / totalDepts) * 70)
-              setExportProgress(deptProgress)
-            
-              // Build URL with query parameters
-              const params = new URLSearchParams({
-                assetType,
-                dept,
-                // Add exportType parameter for allColumns functionality
-                exportType: getExportType()
-              })
-            
-              // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
-              const url = `/assets/excel/export?${params.toString()}`
-            
-              // Use apiClient with timeout and proper authentication
-              const config: AxiosRequestConfig = {
-                responseType: 'blob',
-                timeout: exportTimeout,
-                headers: {
-                  'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                  'Cache-Control': 'no-store, no-cache'
-                }
+            // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
+            const url = `/assets/excel/export?${params.toString()}`
+          
+            // Use apiClient with timeout and proper authentication
+            const config: AxiosRequestConfig = {
+              responseType: 'blob',
+              timeout: exportTimeout,
+              headers: {
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Cache-Control': 'no-store, no-cache'
               }
-
-              const response = await apiClient.get(url, config)
-            
-              // Check if the response is empty or invalid
-              if (response.data.size === 0) {
-                throw new Error(t('assets.excel.export.emptyResponse', 'Server returned an empty response'))
-              }
-            
-              // Add file to ZIP
-              zip.file(`${assetType}-${dept}-export.xlsx`, response.data)
-            
-              completedDepts++
-            } catch (deptError: any) {
-              // Log error details for debugging (in development only)
-              if (process.env.NODE_ENV === 'development') {
-                console.error(`Export error for department ${dept}:`, deptError)
-              }
-            
-              // Handle different types of errors
-              let errorMessage = ''
-              if (deptError.code === 'ECONNABORTED') {
-                errorMessage = t('assets.excel.export.deptTimeout', 'Export timed out for department {0}', dept)
-              } else if (deptError.response?.status === 401) {
-                errorMessage = t('assets.excel.export.unauthorized', 'Unauthorized access. Please log in again.')
-                // Redirect to login page
-                if (typeof window !== 'undefined') {
-                  window.location.href = '/auth/login'
-                }
-              } else {
-                errorMessage = t('assets.excel.export.deptError', 'Failed to export {0} for department {1}', title, dept)
-              }
-            
-              toast.error(errorMessage)
-            
-              // Continue with the next department instead of stopping the entire process
-              completedDepts++
             }
-          }
 
-          setExportStatus(t('assets.excel.export.creatingZip', 'Creating ZIP file...'))
-          setExportProgress(90)
+            const response = await apiClient.get(url, config)
           
-          // Generate the ZIP file
-          const zipBlob = await zip.generateAsync({ type: 'blob' })
-          
-          setExportStatus(t('assets.excel.export.downloading', 'Downloading ZIP file...'))
-          setExportProgress(95)
-          
-          // Create a blob URL and trigger download
-          const urlObj = window.URL.createObjectURL(zipBlob)
-          const a = document.createElement('a')
-          a.href = urlObj
-          a.download = `${assetType}-all-departments-export.zip`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          window.URL.revokeObjectURL(urlObj)
-
-          setExportStatus(t('assets.excel.export.completing', 'Completing export...'))
-          setExportProgress(100)
-        
-          toast.success(t('assets.excel.export.successAllDeptsZip', '{0} export completed. ZIP file with all departments downloaded.', title))
-          
-          // Close dialog automatically on success
-          setTimeout(() => {
-            onClose()
-          }, 1500)
-        } else {
-          // Handle eachDept option (separate files)
-          // Export each department separately
-          let completedDepts = 0
-          const totalDepts = departmentsToExport.length
-        
-          for (const dept of departmentsToExport) {
-            try {
-              setExportStatus(t('assets.excel.export.processingDept', 'Processing department: {0}', dept))
-            
-              // Calculate progress percentage based on completed departments
-              const deptProgress = 20 + Math.floor((completedDepts / totalDepts) * 70)
-              setExportProgress(deptProgress)
-            
-              // Build URL with query parameters
-              const params = new URLSearchParams({
-                assetType,
-                dept,
-                // Add exportType parameter for allColumns functionality
-                exportType: getExportType()
-              })
-            
-              // Fix the URL - remove the extra /api prefix since apiClient includes the base URL
-              const url = `/assets/excel/export?${params.toString()}`
-            
-              // Use apiClient with timeout and proper authentication
-              const config: AxiosRequestConfig = {
-                responseType: 'blob',
-                timeout: exportTimeout,
-                headers: {
-                  'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                  'Cache-Control': 'no-store, no-cache'
-                }
-              }
-
-              const response = await apiClient.get(url, config)
-            
-              setExportStatus(t('assets.excel.export.downloading', 'Downloading file...'))
-              setExportProgress(80)
-            
-              // Check if the response is empty or invalid
-              if (response.data.size === 0) {
-                throw new Error(t('assets.excel.export.emptyResponse', 'Server returned an empty response'))
-              }
-            
-              // Create a blob URL and trigger download
-              const urlObj = window.URL.createObjectURL(new Blob([response.data]))
-              const a = document.createElement('a')
-              a.href = urlObj
-              a.download = `${assetType}-${dept}-export.xlsx`
-              document.body.appendChild(a)
-              a.click()
-              document.body.removeChild(a)
-              window.URL.revokeObjectURL(urlObj)
-            
-              completedDepts++
-            } catch (deptError: any) {
-              // Log error details for debugging (in development only)
-              if (process.env.NODE_ENV === 'development') {
-                console.error(`Export error for department ${dept}:`, deptError)
-              }
-            
-              // Handle different types of errors
-              let errorMessage = ''
-              if (deptError.code === 'ECONNABORTED') {
-                errorMessage = t('assets.excel.export.deptTimeout', 'Export timed out for department {0}', dept)
-              } else if (deptError.response?.status === 401) {
-                errorMessage = t('assets.excel.export.unauthorized', 'Unauthorized access. Please log in again.')
-                // Redirect to login page
-                if (typeof window !== 'undefined') {
-                  window.location.href = '/auth/login'
-                }
-              } else {
-                errorMessage = t('assets.excel.export.deptError', 'Failed to export {0} for department {1}', title, dept)
-              }
-            
-              toast.error(errorMessage)
-            
-              // Continue with the next department instead of stopping the entire process
-              completedDepts++
+            // Check if the response is empty or invalid
+            if (response.data.size === 0) {
+              throw new Error(t('assets.excel.export.emptyResponse', 'Server returned an empty response'))
             }
           
-            // Add a small delay between downloads to prevent browser issues
-            await new Promise(resolve => setTimeout(resolve, 1000))
-          }
-
-          setExportStatus(t('assets.excel.export.completing', 'Completing export...'))
-          setExportProgress(100)
-        
-          if (exportOption === 'eachDept' && department) {
-            toast.success(t('assets.excel.export.successSingleDept', '{0} export completed for department {1}', title, department))
-          } else {
-            toast.success(t('assets.excel.export.successAllDepts', '{0} export completed for all departments', title))
-          }
+            // Add file to ZIP
+            zip.file(`${assetType}-${dept}-export.xlsx`, response.data)
           
-          // Close dialog automatically on success
-          setTimeout(() => {
-            onClose()
-          }, 1500)
+            completedDepts++
+          } catch (deptError: any) {
+            // Log error details for debugging (in development only)
+            if (process.env.NODE_ENV === 'development') {
+              console.error(`Export error for department ${dept}:`, deptError)
+            }
+          
+            // Handle different types of errors
+            let errorMessage = ''
+            if (deptError.code === 'ECONNABORTED') {
+              errorMessage = t('assets.excel.export.deptTimeout', 'Export timed out for department {0}', dept)
+            } else if (deptError.response?.status === 401) {
+              errorMessage = t('assets.excel.export.unauthorized', 'Unauthorized access. Please log in again.')
+              // Redirect to login page
+              if (typeof window !== 'undefined') {
+                window.location.href = '/auth/login'
+              }
+            } else {
+              errorMessage = t('assets.excel.export.deptError', 'Failed to export {0} for department {1}', title, dept)
+            }
+          
+            toast.error(errorMessage)
+          
+            // Continue with the next department instead of stopping the entire process
+            completedDepts++
+          }
         }
+
+        setExportStatus(t('assets.excel.export.creatingZip', 'Creating ZIP file...'))
+        setExportProgress(90)
+        
+        // Generate the ZIP file
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        
+        setExportStatus(t('assets.excel.export.downloading', 'Downloading ZIP file...'))
+        setExportProgress(95)
+        
+        // Create a blob URL and trigger download
+        const urlObj = window.URL.createObjectURL(zipBlob)
+        const a = document.createElement('a')
+        a.href = urlObj
+        a.download = exportOption === 'allDepts' 
+          ? `${assetType}-all-departments-export.zip` 
+          : `${assetType}-departments-export.zip`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(urlObj)
+
+        setExportStatus(t('assets.excel.export.completing', 'Completing export...'))
+        setExportProgress(100)
+      
+        if (exportOption === 'allDepts') {
+          toast.success(t('assets.excel.export.successAllDeptsZip', '{0} export completed. ZIP file with all departments downloaded.', title))
+        } else {
+          // For eachDept option
+          if (department) {
+            toast.success(t('assets.excel.export.successSingleDeptZip', '{0} export completed. ZIP file for department {1} downloaded.', title, department))
+          } else {
+            toast.success(t('assets.excel.export.successEachDeptZip', '{0} export completed. ZIP file with all departments downloaded.', title))
+          }
+        }
+        
+        // Close dialog automatically on success
+        setTimeout(() => {
+          onClose()
+        }, 1500)
       } else {
         // Handle single file exports (all, selected, by department, allColumns)
         // Build URL with query parameters

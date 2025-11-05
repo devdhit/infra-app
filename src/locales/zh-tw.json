@@ -326,6 +326,8 @@
         "successSingleDept": "{0} 匯出完成，部門 {1}",
         "successAllDepts": "{0} 匯出完成，所有部門",
         "successAllDeptsZip": "{0} 匯出完成。已下載包含所有部門的 ZIP 檔案。",
+        "successSingleDeptZip": "{0} 匯出完成。已下載部門 {1} 的 ZIP 檔案。",
+        "successEachDeptZip": "{0} 匯出完成。已下載包含所有部門的 ZIP 檔案。",
         "error": "資產匯出失敗",
         "timeout": "匯出逾時。資料可能過大。",
         "unauthorized": "未經授權的存取。請重新登入。",

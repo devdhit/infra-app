@@ -326,6 +326,8 @@
         "successSingleDept": "{0} export completed for department {1}",
         "successAllDepts": "{0} export completed for all departments",
         "successAllDeptsZip": "{0} export completed. ZIP file with all departments downloaded.",
+        "successSingleDeptZip": "{0} export completed. ZIP file for department {1} downloaded.",
+        "successEachDeptZip": "{0} export completed. ZIP file with all departments downloaded.",
         "error": "Failed to export assets",
         "timeout": "Export timed out. The data might be too large.",
         "unauthorized": "Unauthorized access. Please log in again.",
