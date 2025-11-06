@@ -47,6 +47,7 @@ import { AssetFormSkeleton } from "./asset-form-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { getModelType } from "@/lib/custom-fields";
 import { formatInputDate } from "@/lib/utils";
+import logger from "@/lib/logger";
 
 interface AssetFormProps {
   assetType: string;
@@ -360,7 +361,7 @@ export function AssetFormDialog({
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error("Form submission error:", error);
+      logger.error("Form submission error:", error);
       
       // Handle validation errors specifically
       if (error instanceof ValidationError) {
@@ -388,7 +389,7 @@ export function AssetFormDialog({
   
   // Handle form errors
   const onError = (errors: any) => {
-    console.error("Form validation errors:", errors);
+    logger.error("Form validation errors:", errors);
     // Provide more specific error feedback
     const errorCount = Object.keys(errors).length;
     const message = errorCount === 1 

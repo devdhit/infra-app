@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios'
+import logger from './logger'
 
 // Define custom error types
 export class ApiError extends Error {
@@ -119,7 +120,7 @@ apiClient.interceptors.response.use(
           // We can't use toast here directly because it's not available in this file
           // The error will be handled by the calling component
           // Using errorMessage to prevent TypeScript error
-          console.warn('403 Forbidden -', errorMessage);
+          logger.warn('403 Forbidden -', errorMessage);
         }
       }
     }
@@ -165,10 +166,10 @@ export const api = {
     try {
       // Log request for debugging permission checks
       if (url.includes('permissions/check')) {
-        console.log('Sending permission check request:', { url, data, config });
+        logger.debug('Sending permission check request:', { url, data, config });
         // Ensure we have valid data
         if (!data || Object.keys(data).length === 0) {
-          console.warn('Empty data being sent to permissions check - preventing request');
+          logger.warn('Empty data being sent to permissions check - preventing request');
           throw new Error('Permission check requires resource and action parameters');
         }
       }
@@ -269,7 +270,7 @@ export const api = {
                 // We can't use toast here directly because it's not available in this file
                 // The error will be handled by the calling component
                 // Using errorMessage to prevent TypeScript error
-                console.warn('403 Forbidden -', errorMessage);
+                logger.warn('403 Forbidden -', errorMessage);
               }
             }
           }

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select"
 import { useCustomFields } from "@/hooks/useApi"
 import { getModelType } from "@/lib/custom-fields"
+import logger from "@/lib/logger"
 
 interface ExcelImportDialogProps {
   assetType: string
@@ -149,7 +150,7 @@ export function ExcelImportDialog({
       
       setExcelColumns(headers);
     } catch (error) {
-      console.error('Error extracting Excel columns:', error);
+      logger.error('Error extracting Excel columns:', error);
       toast.error(t('assets.excel.import.columnExtractionError', 'Failed to extract columns from Excel file'));
     }
   }, [t])
@@ -205,13 +206,13 @@ export function ExcelImportDialog({
 
   // Function to generate automatic mappings based on column name similarity
   const generateAutomaticMappings = useCallback(() => {
-    console.log('generateAutomaticMappings called with:', {
+    logger.debug('generateAutomaticMappings called with:', {
       excelColumns,
       databaseFields
     });
     
     if (excelColumns.length === 0 || databaseFields.length === 0) {
-      console.log('Skipping automatic mapping - no data');
+      logger.debug('Skipping automatic mapping - no data');
       return;
     }
     
@@ -278,7 +279,7 @@ export function ExcelImportDialog({
       }
     });
     
-    console.log('Generated automatic mappings:', autoMappings);
+    logger.debug('Generated automatic mappings:', autoMappings);
     
     // Update the mappings state with the auto-generated mappings
     setColumnMappings(autoMappings);
@@ -429,7 +430,7 @@ export function ExcelImportDialog({
         onImportSuccess();
       }
     } catch (error: any) {
-      console.error('Import error:', error);
+      logger.error('Import error:', error);
       const message = error.message || t('assets.excel.import.error', 'Failed to import assets');
       setImportResult({
         success: false,

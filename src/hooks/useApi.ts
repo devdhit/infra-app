@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { getModelType } from '@/lib/custom-fields'
 import { User, UserCreateUpdate } from '@/types/users'
 import { useState, useEffect, useCallback } from 'react'
+import logger from '@/lib/logger'
 
 // Generic API hook with direct API calls instead of React Query
 export function useApiCall<T>(url: string, options: { enabled?: boolean } = {}) {
@@ -28,7 +29,7 @@ export function useApiCall<T>(url: string, options: { enabled?: boolean } = {}) 
       return response;
     } catch (err) {
       setError(err as ApiError);
-      console.error('API Error:', err);
+      logger.error('API Error:', err);
       throw err;
     } finally {
       setIsLoading(false);

@@ -146,7 +146,7 @@ export async function PUT(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' }
     })
   } catch (error) {
-    console.error('Error updating audit logs settings:', error)
+    logger.error('Error updating audit logs settings:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

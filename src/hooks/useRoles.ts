@@ -1,4 +1,5 @@
 import { api, ApiError } from '@/lib/api'
+import logger from '@/lib/logger'
 import { Role, RoleFormValues } from '@/types/roles'
 import { useState, useEffect, useCallback } from 'react'
 
@@ -17,7 +18,7 @@ export function useRoles() {
       setData(response)
     } catch (err) {
       setError(err as ApiError)
-      console.error('API Error:', err)
+      logger.error('API Error:', err)
     } finally {
       setIsLoading(false)
     }
@@ -145,7 +146,7 @@ export function useRole(id: string) {
       setData(response)
     } catch (err) {
       setError(err as ApiError)
-      console.error('API Error:', err)
+      logger.error('API Error:', err)
     } finally {
       setIsLoading(false)
     }

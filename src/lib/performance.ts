@@ -5,6 +5,8 @@
  * Note: This file should NOT contain React hooks. See performance-hooks.ts for React-specific utilities.
  */
 
+import logger from "./logger";
+
 /**
  * Type-safe debounce function
  * @param func The function to debounce
@@ -107,7 +109,7 @@ export async function measureExecutionTime<T>(
   const result = await fn();
   const end = performance.now();
   
-  console.log(`${label} execution time: ${Math.round(end - start)}ms`);
+  logger.debug(`${label} execution time: ${Math.round(end - start)}ms`);
   
   return result;
 }

@@ -28,6 +28,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import logger from '@/lib/logger'
 
 interface InlineEditCellProps {
   asset: Asset
@@ -127,7 +128,7 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
         onUpdate(processedValue)
       }, 100); // Reduced delay for faster UI updates
     } catch (error: any) {
-      console.error("Inline edit error:", error)
+      logger.error("Inline edit error:", error)
       let message = t('assets.update.error', 'Failed to update {0}', field.label)
       
       if (error.message) {

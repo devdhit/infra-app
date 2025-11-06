@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Language, defaultLanguage, getTranslations, translate as translateFunction, hasTranslation } from '@/lib/i18n'
+import logger from '@/lib/logger'
 
 type I18nContextType = {
   language: Language
@@ -32,7 +33,7 @@ export function I18nProvider({
         const loadedTranslations = await getTranslations(language)
         setTranslations(loadedTranslations)
       } catch (error) {
-        console.error('Failed to load translations:', error)
+        logger.error('Failed to load translations:', error)
         // Fallback to empty translations
         setTranslations({})
       } finally {

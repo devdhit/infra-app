@@ -4,6 +4,8 @@
  * This file contains utilities for monitoring and optimizing navigation performance.
  */
 
+import logger from "./logger";
+
 // Performance monitoring for navigation transitions
 export class NavigationPerformanceMonitor {
   private static instance: NavigationPerformanceMonitor;
@@ -24,7 +26,7 @@ export class NavigationPerformanceMonitor {
     // Check if performance API is available (browser only)
     if (typeof performance !== 'undefined' && performance.now) {
       this.navigationStart = performance.now();
-      console.log('[NAVIGATION] Navigation started');
+      logger.debug('[NAVIGATION] Navigation started');
     }
   }
 
@@ -36,14 +38,14 @@ export class NavigationPerformanceMonitor {
     }
     
     if (!this.navigationStart) {
-      console.warn('[NAVIGATION] Navigation timing not started');
+      logger.warn('[NAVIGATION] Navigation timing not started');
       return null;
     }
 
     this.navigationEnd = performance.now();
     const duration = this.navigationEnd - this.navigationStart;
     
-    console.log(`[NAVIGATION] Navigation to ${navigationPath} took ${duration.toFixed(2)}ms`);
+    logger.debug(`[NAVIGATION] Navigation to ${navigationPath} took ${duration.toFixed(2)}ms`);
     
     // Reset timing for next navigation
     this.navigationStart = null;

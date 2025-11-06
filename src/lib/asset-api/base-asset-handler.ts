@@ -501,7 +501,7 @@ export class BaseAssetApiHandler<T> {
         return successResponse(result);
       }
     } catch (error) {
-      console.error(`Error fetching ${this.operations.modelName} assets:`, error);
+      logger.error(`Error fetching ${this.operations.modelName} assets:`, error);
       return errorResponse('Failed to fetch assets. Please try again later.');
     }
   }

@@ -23,6 +23,7 @@ import { useTranslation } from "@/hooks/use-translation"
 import { UserFormValues } from "@/components/users/types"
 import { UserFormProps } from "@/components/users/types"
 import { useRoles } from '@/hooks/useRoles'
+import logger from '@/lib/logger'
 
 export function UserForm({ 
   open, 
@@ -38,13 +39,13 @@ export function UserForm({
   // Log roles and tenants for debugging
   useEffect(() => {
     if (roles && roles.length > 0) {
-      console.log('Available roles:', roles);
+      logger.debug('Available roles:', roles);
     }
     if (error) {
-      console.error('Error loading roles:', error);
+      logger.error('Error loading roles:', error);
     }
     if (tenants && tenants.length > 0) {
-      console.log('Available tenants:', tenants);
+      logger.debug('Available tenants:', tenants);
     }
   }, [roles, error, tenants]);
   
@@ -113,7 +114,7 @@ export function UserForm({
     if (!validateForm()) return
     
     // Log the data being sent for debugging
-    console.log('Submitting user data:', {
+    logger.debug('Submitting user data:', {
       id: editingUser?.id,
       email: formData.email,
       name: formData.name,
@@ -135,11 +136,11 @@ export function UserForm({
   const handleInputChange = (field: keyof UserFormValues, value: string) => {
     // Log role selection for debugging
     if (field === 'role') {
-      console.log('Role selected:', value);
+      logger.debug('Role selected:', value);
       // Find the role object to get more details
       const selectedRole = roles?.find(role => role.id === value);
       if (selectedRole) {
-        console.log('Selected role details:', selectedRole);
+        logger.debug('Selected role details:', selectedRole);
       }
     }
     

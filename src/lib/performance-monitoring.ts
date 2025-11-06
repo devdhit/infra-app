@@ -5,6 +5,8 @@
  * throughout the application.
  */
 
+import logger from "./logger";
+
 // Performance monitoring class
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor;
@@ -33,7 +35,7 @@ export class PerformanceMonitor {
     const duration = measure.duration;
     
     // Log the timing
-    console.log(`[PERFORMANCE] ${operation} took ${duration.toFixed(2)}ms`);
+    logger.debug(`[PERFORMANCE] ${operation} took ${duration.toFixed(2)}ms`);
     
     // Store metric for aggregation
     if (!this.metrics.has(operation)) {

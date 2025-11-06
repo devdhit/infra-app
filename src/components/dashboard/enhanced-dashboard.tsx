@@ -37,6 +37,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import logger from "@/lib/logger";
 
 interface EnhancedDashboardProps {
   onRefresh?: () => void;
@@ -62,21 +63,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
   // Handle filter changes
   const handleFilterChange = (newFilters: Record<string, any>) => {
     // In a real implementation, this would trigger a refetch with new filters
-    console.log('Filters changed:', newFilters);
+    logger.debug('Filters changed:', newFilters);
     toast.info(t('dashboard.filtersApplied') || 'Filters applied');
   };
 
   // Handle reset filters
   const handleResetFilters = () => {
     // In a real implementation, this would trigger a refetch without filters
-    console.log('Filters reset');
+    logger.debug('Filters reset');
     toast.info(t('dashboard.filtersReset') || 'Filters reset');
   };
 
   // Handle export
   const handleExport = (format: 'csv' | 'excel' | 'pdf' | 'json') => {
     // In a real implementation, this would trigger an export
-    console.log('Exporting as', format);
+    logger.debug('Exporting as', format);
     toast.success(t('dashboard.exportSuccess', undefined, format.toUpperCase()) || `Data exported as ${format.toUpperCase()}`);
   };
 

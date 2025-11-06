@@ -22,6 +22,7 @@ import { useTranslation } from "@/hooks/use-translation"
 import { UsersTableProps } from "@/types/users"
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
+import logger from '@/lib/logger'
 
 export function UsersTable({ 
   users, 
@@ -69,7 +70,7 @@ export function UsersTable({
       toast.success(t('users.unlock.success') || 'User account unlocked successfully')
     } catch (error) {
       toast.error(t('users.unlock.error') || 'Failed to unlock user account')
-      console.error('Unlock user error:', error)
+      logger.error('Unlock user error:', error)
     }
   }
 

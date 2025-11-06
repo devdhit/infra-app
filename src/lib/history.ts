@@ -1,4 +1,5 @@
 import { db } from './db'
+import logger from './logger';
 
 export interface HistoryRecord {
   action: string;
@@ -29,7 +30,7 @@ export async function createHistoryRecord(record: HistoryRecord) {
     
     return historyRecord;
   } catch (error) {
-    console.error('Error creating history record:', error);
+    logger.error('Error creating history record:', error);
     throw error;
   }
 }
@@ -63,7 +64,7 @@ export async function getHistoryForRecord(modelType: string, recordId: string, t
     
     return historyRecords;
   } catch (error) {
-    console.error('Error fetching history records:', error);
+    logger.error('Error fetching history records:', error);
     throw error;
   }
 }
@@ -97,7 +98,7 @@ export async function getTenantHistory(tenantId: string, modelType?: string, lim
     
     return historyRecords;
   } catch (error) {
-    console.error('Error fetching tenant history:', error);
+    logger.error('Error fetching tenant history:', error);
     throw error;
   }
 }

@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { AxiosRequestConfig } from 'axios'
 import JSZip from 'jszip'
+import logger from "@/lib/logger"
 
 interface ExcelExportDialogProps {
   assetType: string
@@ -181,7 +182,7 @@ export function ExcelExportDialog({
           } catch (deptError: any) {
             // Log error details for debugging (in development only)
             if (process.env.NODE_ENV === 'development') {
-              console.error(`Export error for department ${dept}:`, deptError)
+              logger.error(`Export error for department ${dept}:`, deptError)
             }
           
             // Handle different types of errors
@@ -310,7 +311,7 @@ export function ExcelExportDialog({
         } catch (singleExportError: any) {
           // Log error details for debugging (in development only)
           if (process.env.NODE_ENV === 'development') {
-            console.error('Single export error:', singleExportError)
+            logger.error('Single export error:', singleExportError)
           }
         
           // Handle different types of errors
@@ -334,7 +335,7 @@ export function ExcelExportDialog({
     } catch (error: any) {
       // Log error details for debugging (in development only)
       if (process.env.NODE_ENV === 'development') {
-        console.error('Export error:', error)
+        logger.error('Export error:', error)
       }
       // Error is already handled in the inner catch blocks
     } finally {
