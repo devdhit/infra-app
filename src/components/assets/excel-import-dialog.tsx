@@ -101,6 +101,9 @@ export function ExcelImportDialog({
         case 'internet':
           fields = ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note']
           break
+        case 'fixed-asset':
+          fields = ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note']
+          break
         default:
           fields = []
       }

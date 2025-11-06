@@ -23,6 +23,7 @@ model Tenant {
   users              User[]
   warehouseITs       WarehouseIT[]
   internets          Internet[]
+  fixedAssets        FixedAsset[]
   auditLogsSettings  AuditLogsSettings?
   roles              Role[]
 
@@ -215,6 +216,33 @@ model Internet {
   @@index([dept])
   @@index([email])
   @@index([ipAddress])
+  @@index([createdAt])
+  @@index([search_vector], type: Gin)
+}
+
+model FixedAsset {
+  id           String    @id @default(uuid())
+  dept         String
+  barcode      String?
+  sapCode      String?
+  name         String
+  place        String?
+  inputDate    DateTime?
+  location     String?
+  status       String    @default("working")
+  note         String?
+  tenantId     String
+  customFields Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  search_vector Unsupported("tsvector")?
+
+  @@index([tenantId])
+  @@index([dept])
+  @@index([status])
+  @@index([barcode])
+  @@index([sapCode])
   @@index([createdAt])
   @@index([search_vector], type: Gin)
 }

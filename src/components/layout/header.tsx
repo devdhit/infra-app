@@ -73,6 +73,7 @@ const navigationItems: NavigationItem[] = [
       { nameKey: "nav.license", href: "/assets/license", icon: Key, requiredPermission: { resource: 'license', action: 'view' } },
       { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse, requiredPermission: { resource: 'warehouse', action: 'view' } },
       { nameKey: "nav.internet", href: "/assets/internet", icon: Wifi, requiredPermission: { resource: 'internet', action: 'view' } },
+      { nameKey: "nav.fixedAsset", href: "/assets/fixed-asset", icon: Home, requiredPermission: { resource: 'fixed-asset', action: 'view' } },
     ]
   },
   { 
@@ -148,6 +149,7 @@ export function Header() {
     canViewLicense,
     canViewWarehouse,
     canViewInternet,
+    canViewFixedAsset,
     canViewAuditLogs,
     canViewAgents
   } = usePermissions();
@@ -161,6 +163,7 @@ export function Header() {
     'license': false,
     'warehouse': false,
     'internet': false,
+    'fixed-asset': false,
     'users': false,
     'tenants': false,
     'roles': false,
@@ -198,6 +201,7 @@ export function Header() {
           'license': true,
           'warehouse': true,
           'internet': true,
+          'fixed-asset': true,
           'users': true,
           'tenants': true,
           'roles': true,
@@ -219,6 +223,7 @@ export function Header() {
           { key: 'license', check: canViewLicense },
           { key: 'warehouse', check: canViewWarehouse },
           { key: 'internet', check: canViewInternet },
+          { key: 'fixed-asset', check: canViewFixedAsset },
           { key: 'users', check: canViewUsers },
           { key: 'tenants', check: canViewTenants },
           { key: 'roles', check: canViewRoles },
@@ -256,7 +261,7 @@ export function Header() {
     };
     
     checkAllPermissions();
-  }, [userRole, isLoading, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAuditLogs, canViewAgents]);
+  }, [userRole, isLoading, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, canViewFixedAsset, canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAuditLogs, canViewAgents]);
 
   // Filter navigation items
   const filteredNavigationItems = useMemo(() => {

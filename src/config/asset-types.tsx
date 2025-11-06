@@ -684,5 +684,123 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         placeholder: t('assets.internet.note') || "Additional information about this asset"
       }
     ]
+  },
+  {
+    name: "Fixed Asset",
+    key: "fixed-asset",
+    columns: [
+      {
+        key: "dept",
+        label: t('assets.fixedAsset.department') || "Department"
+      },
+      {
+        key: "barcode",
+        label: t('assets.fixedAsset.barcode') || "Barcode"
+      },
+      {
+        key: "sapCode",
+        label: t('assets.fixedAsset.sapCode') || "SAP Code"
+      },
+      {
+        key: "name",
+        label: t('assets.fixedAsset.name') || "Name"
+      },
+      {
+        key: "place",
+        label: t('assets.fixedAsset.place') || "Place"
+      },
+      {
+        key: "inputDate",
+        label: t('assets.fixedAsset.inputDate') || "Input Date",
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
+      },
+      {
+        key: "location",
+        label: t('assets.fixedAsset.location') || "Location"
+      },
+      {
+        key: "status",
+        label: t('assets.fixedAsset.status') || "Status",
+        render: (value: string) => {
+          const statusClass: Record<string, string> = {
+            working: "bg-green-100 text-green-800",
+            leave: "bg-blue-100 text-blue-800",
+            repair: "bg-yellow-100 text-yellow-800"
+          };
+          
+          return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass[value] || ""}`}>
+              {t(`assets.status.${value}`) || value}
+            </span>
+          );
+        }
+      },
+      {
+        key: "note",
+        label: t('assets.fixedAsset.note') || "Note"
+      }
+    ],
+    formFields: [
+      {
+        name: "dept",
+        label: t('assets.fixedAsset.department') || "Department",
+        type: "text",
+        required: true,
+        placeholder: t('assets.fixedAsset.department') || "IT Department"
+      },
+      {
+        name: "barcode",
+        label: t('assets.fixedAsset.barcode') || "Barcode",
+        type: "text",
+        placeholder: t('assets.fixedAsset.barcode') || "FIXED123456"
+      },
+      {
+        name: "sapCode",
+        label: t('assets.fixedAsset.sapCode') || "SAP Code",
+        type: "text",
+        placeholder: t('assets.fixedAsset.sapCode') || "SAP-FIXED123456"
+      },
+      {
+        name: "name",
+        label: t('assets.fixedAsset.name') || "Name",
+        type: "text",
+        required: true,
+        placeholder: t('assets.fixedAsset.name') || "Asset Name"
+      },
+      {
+        name: "place",
+        label: t('assets.fixedAsset.place') || "Place",
+        type: "text",
+        placeholder: t('assets.fixedAsset.place') || "Building A, Floor 2"
+      },
+      {
+        name: "inputDate",
+        label: t('assets.fixedAsset.inputDate') || "Input Date",
+        type: "date"
+      },
+      {
+        name: "location",
+        label: t('assets.fixedAsset.location') || "Location",
+        type: "text",
+        placeholder: t('assets.fixedAsset.location') || "Storage Room 1"
+      },
+      { 
+        name: "status", 
+        label: t('assets.fixedAsset.status') || "Status", 
+        type: "select", 
+        required: true,
+        options: [
+          { label: t('assets.status.working') || "Working", value: "working" },
+          { label: t('assets.status.leave') || "Leave", value: "leave" },
+          { label: t('assets.status.repair') || "Repair", value: "repair" }
+        ]
+      },
+      {
+        name: "note",
+        label: t('assets.fixedAsset.note') || "Note",
+        type: "textarea",
+        placeholder: t('assets.fixedAsset.note') || "Additional information about this asset"
+      }
+    ]
   }
 ];

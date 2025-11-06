@@ -81,7 +81,8 @@ export class BaseAssetApiHandler<T> {
       'Printer': 'printer',
       'License': 'license',
       'WarehouseIT': 'warehouse',
-      'Internet': 'internet'
+      'Internet': 'internet',
+      'FixedAsset': 'fixed-asset'
     };
     
     this.resourceType = modelToResourceMap[this.operations.modelName] || 'assets';
@@ -222,6 +223,19 @@ export class BaseAssetApiHandler<T> {
           note: true,
           customFields: true // Include custom fields
         };
+      case 'FixedAsset':
+        return {
+          ...cleanBaseFields,
+          barcode: true,
+          sapCode: true,
+          name: true,
+          place: true,
+          inputDate: true,
+          location: true,
+          status: true,
+          note: true,
+          customFields: true // Include custom fields
+        };
       default:
         return {
           ...cleanBaseFields,
@@ -307,7 +321,8 @@ export class BaseAssetApiHandler<T> {
           'Printer': 'Printer',
           'License': 'License',
           'WarehouseIT': 'WarehouseIT',
-          'Internet': 'Internet'
+          'Internet': 'Internet',
+          'FixedAsset': 'FixedAsset'
         };
         
         const actualTableName = tableNames[tableName] || tableName;
@@ -736,7 +751,8 @@ export class BaseAssetApiHandler<T> {
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
-        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
+        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields'],
+        'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields']
       };
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || [];
@@ -751,7 +767,8 @@ export class BaseAssetApiHandler<T> {
         'Printer': ['date'],
         'License': ['date'],
         'WarehouseIT': [],
-        'Internet': []
+        'Internet': [],
+        'FixedAsset': ['inputDate']
       };
 
       const modelDateFields = dateFields[this.operations.modelName as keyof typeof dateFields] || [];
@@ -1126,7 +1143,8 @@ export class BaseAssetApiHandler<T> {
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
-        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
+        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields'],
+        'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields']
       };
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || [];
@@ -1141,7 +1159,8 @@ export class BaseAssetApiHandler<T> {
         'Printer': ['date'],
         'License': ['date'],
         'WarehouseIT': [],
-        'Internet': []
+        'Internet': [],
+        'FixedAsset': ['inputDate']
       };
 
       const modelDateFields = dateFields[this.operations.modelName as keyof typeof dateFields] || [];

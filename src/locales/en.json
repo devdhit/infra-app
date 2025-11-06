@@ -8,6 +8,7 @@
     "license": "License",
     "warehouse": "Warehouse IT",
     "internet": "Internet",
+    "fixedAsset": "Fixed Asset",
     "users": "Users",
     "tenants": "Tenants",
     "settings": "Settings",
@@ -446,6 +447,18 @@
       "userName": "User Name",
       "ipAddress": "IP Address",
       "internetAccess": "Internet Access",
+      "status": "Status",
+      "note": "Note"
+    },
+    "fixedAsset": {
+      "title": "Fixed Asset",
+      "department": "Department",
+      "barcode": "Barcode",
+      "sapCode": "SAP Code",
+      "name": "Name",
+      "place": "Place",
+      "inputDate": "Input Date",
+      "location": "Location",
       "status": "Status",
       "note": "Note"
     },

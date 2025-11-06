@@ -220,6 +220,12 @@ export function usePermissions() {
       canEditInternet: () => Promise.resolve(false),
       canDeleteInternet: () => Promise.resolve(false),
       canBulkDeleteInternet: () => Promise.resolve(false),
+      // Fixed Asset permissions
+      canViewFixedAsset: () => Promise.resolve(false),
+      canCreateFixedAsset: () => Promise.resolve(false),
+      canEditFixedAsset: () => Promise.resolve(false),
+      canDeleteFixedAsset: () => Promise.resolve(false),
+      canBulkDeleteFixedAsset: () => Promise.resolve(false),
       // Settings permissions
       canViewSettings: () => Promise.resolve(false),
       canEditSettings: () => Promise.resolve(false),
@@ -283,6 +289,12 @@ export function usePermissions() {
       canEditInternet: () => Promise.resolve(true),
       canDeleteInternet: () => Promise.resolve(true),
       canBulkDeleteInternet: () => Promise.resolve(true),
+      // Fixed Asset permissions
+      canViewFixedAsset: () => Promise.resolve(true),
+      canCreateFixedAsset: () => Promise.resolve(true),
+      canEditFixedAsset: () => Promise.resolve(true),
+      canDeleteFixedAsset: () => Promise.resolve(true),
+      canBulkDeleteFixedAsset: () => Promise.resolve(true),
       // Settings permissions
       canViewSettings: () => Promise.resolve(true),
       canEditSettings: () => Promise.resolve(true),
@@ -359,7 +371,8 @@ export function usePermissions() {
     checkPermission('printer', 'view'),
     checkPermission('license', 'view'),
     checkPermission('warehouse', 'view'),
-    checkPermission('internet', 'view')
+    checkPermission('internet', 'view'),
+    checkPermission('fixed-asset', 'view')
   ]).then(results => results.some(result => result));
 
   // User management permissions
@@ -416,6 +429,12 @@ export function usePermissions() {
     canEditInternet,
     canDeleteInternet,
     canBulkDeleteInternet,
+    // Fixed Asset permissions
+    canViewFixedAsset: () => checkPermission('fixed-asset', 'view'),
+    canCreateFixedAsset: () => checkPermission('fixed-asset', 'create'),
+    canEditFixedAsset: () => checkPermission('fixed-asset', 'edit'),
+    canDeleteFixedAsset: () => checkPermission('fixed-asset', 'delete'),
+    canBulkDeleteFixedAsset: () => checkPermission('fixed-asset', 'bulkDelete'),
     // Settings permissions
     canViewSettings,
     canEditSettings,

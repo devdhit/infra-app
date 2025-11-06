@@ -6,8 +6,9 @@ import {
   exportLaptopToExcel, 
   exportPrinterToExcel, 
   exportLicenseToExcel, 
-  exportWarehouseITToExcel 
-} from '@/lib/excel';
+  exportWarehouseToExcel,
+  exportFixedAssetToExcel
+} from '@/lib/excel/excel-export';
 import { z } from 'zod';
 import { calculateOptimalBatchSize, processArrayInChunks } from '@/lib/performance';
 import logger from '@/lib/logger';
@@ -23,7 +24,7 @@ const exportRequestSchema = z.object({
 const BATCH_SIZE = 500;
 
 // Valid asset types
-const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse'] as const;
+const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse', 'fixed-asset'] as const;
 type AssetType = typeof validAssetTypes[number];
 
 // Type guard for asset types
@@ -73,6 +74,9 @@ async function fetchAssetsInBatches(assetType: string, tenantId: string, options
     case 'warehouse':
       totalCount = await db.warehouseIT.count({ where: whereClause });
       break;
+    case 'fixed-asset':
+      totalCount = await db.fixedAsset.count({ where: whereClause });
+      break;
     default:
       throw new Error(`Unsupported asset type: ${assetType}`);
   }
@@ -98,6 +102,10 @@ async function fetchAssetsInBatches(assetType: string, tenantId: string, options
         });
       case 'warehouse':
         return await db.warehouseIT.findMany({
+          where: whereClause
+        });
+      case 'fixed-asset':
+        return await db.fixedAsset.findMany({
           where: whereClause
         });
       default:
@@ -144,6 +152,13 @@ async function fetchAssetsInBatches(assetType: string, tenantId: string, options
           break;
         case 'warehouse':
           results.push(...await db.warehouseIT.findMany({
+            where: whereClause,
+            skip,
+            take
+          }));
+          break;
+        case 'fixed-asset':
+          results.push(...await db.fixedAsset.findMany({
             where: whereClause,
             skip,
             take
@@ -207,7 +222,8 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
       laptop: (data: any[]) => exportLaptopToExcel(data, tenantName),
       printer: (data: any[]) => exportPrinterToExcel(data, tenantName),
       license: (data: any[]) => exportLicenseToExcel(data, tenantName),
-      warehouse: (data: any[]) => exportWarehouseITToExcel(data, tenantName)
+      warehouse: (data: any[]) => exportWarehouseToExcel(data, tenantName),
+      'fixed-asset': (data: any[]) => exportFixedAssetToExcel(data, tenantName)
     };
 
     // Get the asset type from the URL parameter
