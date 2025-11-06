@@ -137,6 +137,15 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
       description: t('assets.internet.title') || 'Internet',
       trend: Math.floor(Math.random() * 20) - 10
     },
+    { 
+      name: 'fixedAsset', 
+      count: dashboardData?.fixedAsset?.total || 0, 
+      icon: Server, 
+      color: 'orange', 
+      iconColor: 'text-orange-500',
+      description: t('assets.fixedAsset.title') || 'Fixed Assets',
+      trend: Math.floor(Math.random() * 20) - 10
+    },
   ], [dashboardData, t]);
 
   // Memoize PC Component Data for new cards with better descriptions
@@ -259,6 +268,11 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
   
   const internetCustomFields = useMemo(() => 
     dashboardData?.customFields?.filter(field => field.modelType === 'Internet') || [], 
+    [dashboardData?.customFields]
+  );
+
+  const fixedAssetCustomFields = useMemo(() => 
+    dashboardData?.customFields?.filter(field => field.modelType === 'FixedAsset') || [], 
     [dashboardData?.customFields]
   );
 
@@ -409,7 +423,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
             <h2 className="text-2xl font-bold">{t('dashboard.assetOverview')}</h2>
             
             {/* Asset Type Summary Cards - Responsive grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
               {assetTypeData.map((asset, index) => (
                 <SummaryCard 
                   key={index}
@@ -892,6 +906,72 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                     return chartData.length > 0 ? (
                       <ChartCard 
                         key={`internet-${index}`}
+                        title={field.name}
+                        description={t('dashboard.customFieldDistribution', undefined, total.toString())}
+                        icon={Server}
+                      >
+                        <div className="h-64 min-w-full">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={300}>
+                            <BarChart
+                              data={chartData}
+                              layout="vertical"
+                              margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis type="number" />
+                              <YAxis 
+                                type="category" 
+                                dataKey="name" 
+                                width={90}
+                                tick={{ fontSize: 12 }}
+                                tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                              />
+                              <Tooltip 
+                                formatter={(value) => [value, t('common.count')]}
+                                labelFormatter={(value) => {
+                                  // Find the full name for the truncated label
+                                  const item = chartData.find(d => d.name === value);
+                                  return item?.fullName || value;
+                                }}
+                                contentStyle={{ 
+                                  backgroundColor: 'hsl(var(--background))',
+                                  borderColor: 'hsl(var(--border))',
+                                  borderRadius: 'var(--radius)',
+                                  color: 'hsl(var(--foreground))'
+                                }}
+                              />
+                              <Bar 
+                                dataKey="count" 
+                                fill="#8884d8"
+                                name={t('common.count')}
+                              >
+                                {chartData.map((_, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </ChartCard>
+                    ) : null
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* FixedAsset Custom Fields */}
+            {fixedAssetCustomFields.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">{t('assets.fixedAsset.title')}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {fixedAssetCustomFields.map((field, index) => {
+                    const chartData = prepareCustomFieldChartData(field.name, 'FixedAsset')
+                    const key = `FixedAsset_${field.name}`
+                    const total = dashboardData?.customFieldStats?.[key]?.count || 0
+                    
+                    return chartData.length > 0 ? (
+                      <ChartCard 
+                        key={`fixed-asset-${index}`}
                         title={field.name}
                         description={t('dashboard.customFieldDistribution', undefined, total.toString())}
                         icon={Server}

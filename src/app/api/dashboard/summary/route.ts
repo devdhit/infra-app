@@ -159,6 +159,16 @@ export async function GET(request: NextRequest) {
       throw new Error('Failed to fetch internet data');
     });
 
+    // Get FixedAsset summary data: total by department, status
+    const fixedAssetSummary = await db.fixedAsset.groupBy({
+      by: ['dept', 'status'],
+      where: { tenantId: user.tenantId },
+      _count: true
+    }).catch(error => {
+      logger.error('Error fetching fixed asset summary data:', error);
+      throw new Error('Failed to fetch fixed asset data');
+    });
+
     // Get custom fields for all asset types
     const customFields = await db.customField.findMany({
       where: {
@@ -171,7 +181,7 @@ export async function GET(request: NextRequest) {
 
     // Get all assets to calculate custom field statistics with optimized queries
     // Only fetch customFields column to reduce data transfer
-    const [allPcs, allLaptops, allPrinters, allLicenses, allWarehouseItems, allInternetItems] = await Promise.all([
+    const [allPcs, allLaptops, allPrinters, allLicenses, allWarehouseItems, allInternetItems, allFixedAssets] = await Promise.all([
       db.pC.findMany({
         where: { tenantId: user.tenantId },
         select: { customFields: true }
@@ -213,6 +223,13 @@ export async function GET(request: NextRequest) {
       }).catch(error => {
         logger.error('Error fetching internet items for custom field stats:', error);
         throw new Error('Failed to fetch internet items for custom field statistics');
+      }),
+      db.fixedAsset.findMany({
+        where: { tenantId: user.tenantId },
+        select: { customFields: true }
+      }).catch(error => {
+        logger.error('Error fetching fixed assets for custom field stats:', error);
+        throw new Error('Failed to fetch fixed assets for custom field statistics');
       })
     ]);
 
@@ -226,6 +243,7 @@ export async function GET(request: NextRequest) {
     const licenseCustomFields = customFields.filter((field: any) => field.modelType === 'License')
     const warehouseCustomFields = customFields.filter((field: any) => field.modelType === 'WarehouseIT')
     const internetCustomFields = customFields.filter((field: any) => field.modelType === 'Internet')
+    const fixedAssetCustomFields = customFields.filter((field: any) => field.modelType === 'FixedAsset')
     
     // Create a map to track which asset type each custom field belongs to
     const customFieldAssetMap: Record<string, string> = {}
@@ -250,6 +268,7 @@ export async function GET(request: NextRequest) {
     populateAssetMap(licenseCustomFields, 'License')
     populateAssetMap(warehouseCustomFields, 'WarehouseIT')
     populateAssetMap(internetCustomFields, 'Internet')
+    populateAssetMap(fixedAssetCustomFields, 'FixedAsset')
     
     // Helper function to process custom fields for any asset type
     const processCustomFields = (assets: any[], customFieldsConfig: any[], assetType: string) => {
@@ -291,6 +310,15 @@ export async function GET(request: NextRequest) {
     processCustomFields(allLicenses, licenseCustomFields, 'License')
     processCustomFields(allWarehouseItems, warehouseCustomFields, 'WarehouseIT')
     processCustomFields(allInternetItems, internetCustomFields, 'Internet')
+    processCustomFields(allFixedAssets, fixedAssetCustomFields, 'FixedAsset')
+
+    // Get total FixedAsset count
+    const totalFixedAssets = await db.fixedAsset.count({
+      where: { tenantId: user.tenantId }
+    }).catch(error => {
+      logger.error('Error counting FixedAssets:', error);
+      throw new Error('Failed to count FixedAssets');
+    });
 
     // Prepare response data with optimized structure
     const responseData = {
@@ -306,6 +334,10 @@ export async function GET(request: NextRequest) {
       license: licenseSummary,
       warehouseIT: warehouseITSummary,
       internet: internetSummary,
+      fixedAsset: {
+        total: totalFixedAssets,
+        details: fixedAssetSummary
+      },
       customFields,
       customFieldStats
     }

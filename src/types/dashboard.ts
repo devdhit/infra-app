@@ -7,6 +7,7 @@ export interface AssetCounts {
   printer: number;
   license: number;
   warehouse: number;
+  fixedAsset: number;
 }
 
 export interface StatusBreakdownItem {
@@ -107,6 +108,17 @@ export interface InternetSummary {
   _count: number;
 }
 
+export interface FixedAssetSummary {
+  dept: string | null;
+  status: string | null;
+  _count: number;
+}
+
+export interface FixedAssetStats {
+  total: number;
+  details: FixedAssetSummary[];
+}
+
 export interface CustomFieldStat {
   count: number;
   values: Record<string, number>;
@@ -119,6 +131,7 @@ export interface DashboardSummaryData {
   license: LicenseSummary[];
   warehouseIT: WarehouseITSummary[];
   internet: InternetSummary[];
+  fixedAsset: FixedAssetStats;
   customFields: CustomField[];
   customFieldStats: Record<string, CustomFieldStat>;
 }

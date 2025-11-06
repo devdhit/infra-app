@@ -8,7 +8,7 @@
     "license": "License",
     "warehouse": "Warehouse IT",
     "internet": "Internet",
-    "fixedAsset": "Fixed Asset",
+    "fixedasset": "Fixed Asset",
     "users": "Users",
     "tenants": "Tenants",
     "settings": "Settings",
