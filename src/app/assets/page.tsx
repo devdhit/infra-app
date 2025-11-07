@@ -168,7 +168,7 @@ export default function AssetsPage() {
             <div className="flex flex-col items-center justify-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
               <HomeIcon className="h-8 w-8 text-indigo-500 mb-2" />
               <div className="text-2xl font-bold">0</div>
-              <div className="text-sm text-muted-foreground">{t('nav.fixedAsset') || 'Total Fixed Assets'}</div>
+              <div className="text-sm text-muted-foreground">{t('nav.fixedasset') || 'Total Fixed Assets'}</div>
             </div>
           </div>
         </CardContent>

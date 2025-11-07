@@ -73,7 +73,7 @@ const navigationItems: NavigationItem[] = [
       { nameKey: "nav.license", href: "/assets/license", icon: Key, requiredPermission: { resource: 'license', action: 'view' } },
       { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse, requiredPermission: { resource: 'warehouse', action: 'view' } },
       { nameKey: "nav.internet", href: "/assets/internet", icon: Wifi, requiredPermission: { resource: 'internet', action: 'view' } },
-      { nameKey: "nav.fixedAsset", href: "/assets/fixed-asset", icon: Home, requiredPermission: { resource: 'fixed-asset', action: 'view' } },
+      { nameKey: "nav.fixedasset", href: "/assets/fixed-asset", icon: Home, requiredPermission: { resource: 'fixed-asset', action: 'view' } },
     ]
   },
   { 
