@@ -6,7 +6,7 @@ import { AssetListSkeleton } from "@/components/assets/asset-list-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 import { getAssetTypes } from "@/config/asset-types";
 import { usePermissions } from "@/hooks/use-permissions";
-import { useCurrentUser } from '@/hooks/useApi';
+import { useCurrentUser } from '@/contexts/current-user-context';
 import { Suspense } from "react";
 import logger from '@/lib/logger';
 

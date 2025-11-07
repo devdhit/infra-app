@@ -1,14 +1,14 @@
 'use client'
 
 import { ReactNode, useEffect, useState, useCallback } from "react";
-import { useCurrentUser } from "@/hooks/useApi";
+import { useCurrentUser } from "@/contexts/current-user-context";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/lib/api";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const { data: user, isLoading: userLoading, error } = useCurrentUser();
+  const { user, isLoading: userLoading, error } = useCurrentUser();
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);

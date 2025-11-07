@@ -276,6 +276,18 @@
       "success": "{0} 個 {1} 資產刪除成功",
       "error": "資產刪除失敗"
     },
+    "duplicate": {
+      "title": "發現重複資產",
+      "description": "系統中偵測到重複的資產。",
+      "warning": "警告",
+      "defaultMessage": "您輸入的條碼已在其他資產類型中存在。",
+      "inlineEditMessage": "您輸入的條碼已在其他資產類型中存在。",
+      "barcode": "條碼",
+      "assetType": "資產類型",
+      "department": "部門",
+      "proceed": "仍然繼續",
+      "proceedWarning": "如果您繼續，重複的資產將被自動刪除。"
+    },
     "search": {
       "placeholder": "搜尋資產..."
     },

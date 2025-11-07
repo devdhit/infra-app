@@ -150,10 +150,14 @@ const createRequestWithTimeout = async <T>(requestPromise: Promise<AxiosResponse
 export const api = {
   get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add more aggressive cache-busting with timestamp and random value
-      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      // Only add cache-busting if not already present in the URL
+      let urlWithCacheBuster = url;
+      if (!url.includes('_t=') && !url.includes('_r=')) {
+        // Add more aggressive cache-busting with timestamp and random value
+        const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const responsePromise = apiClient.get<T>(urlWithCacheBuster, config);
       return await createRequestWithTimeout(responsePromise);
@@ -174,10 +178,14 @@ export const api = {
         }
       }
       
-      // Add more aggressive cache-busting with timestamp and random value
-      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      // Only add cache-busting if not already present in the URL
+      let urlWithCacheBuster = url;
+      if (!url.includes('_t=') && !url.includes('_r=')) {
+        // Add more aggressive cache-busting with timestamp and random value
+        const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const responsePromise = apiClient.post<T>(urlWithCacheBuster, data, config);
       return await createRequestWithTimeout(responsePromise);
@@ -188,10 +196,14 @@ export const api = {
   
   put: async <T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add more aggressive cache-busting with timestamp and random value
-      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      // Only add cache-busting if not already present in the URL
+      let urlWithCacheBuster = url;
+      if (!url.includes('_t=') && !url.includes('_r=')) {
+        // Add more aggressive cache-busting with timestamp and random value
+        const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const responsePromise = apiClient.put<T>(urlWithCacheBuster, data, config);
       return await createRequestWithTimeout(responsePromise);
@@ -202,10 +214,14 @@ export const api = {
   
   delete: async <T = void>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add more aggressive cache-busting with timestamp and random value
-      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      // Only add cache-busting if not already present in the URL
+      let urlWithCacheBuster = url;
+      if (!url.includes('_t=') && !url.includes('_r=')) {
+        // Add more aggressive cache-busting with timestamp and random value
+        const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const responsePromise = apiClient.delete<T>(urlWithCacheBuster, config);
       return await createRequestWithTimeout(responsePromise);

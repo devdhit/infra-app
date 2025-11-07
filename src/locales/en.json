@@ -276,6 +276,18 @@
       "success": "{0} {1} assets deleted successfully",
       "error": "Failed to delete {0} assets"
     },
+    "duplicate": {
+      "title": "Duplicate Asset Found",
+      "description": "A duplicate asset was detected in the system.",
+      "warning": "Warning",
+      "defaultMessage": "The barcode you entered already exists in another asset type.",
+      "inlineEditMessage": "The barcode you entered already exists in another asset type.",
+      "barcode": "Barcode",
+      "assetType": "Asset Type",
+      "department": "Department",
+      "proceed": "Proceed Anyway",
+      "proceedWarning": "If you proceed, the duplicate asset will be automatically deleted."
+    },
     "search": {
       "placeholder": "Search assets..."
     },

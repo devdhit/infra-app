@@ -19,10 +19,19 @@ export function useApiCall<T>(url: string, options: { enabled?: boolean } = {}) 
     setError(null);
     
     try {
-      // Add cache-busting timestamp to prevent browser caching
-      const cacheBuster = `_t=${Date.now()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      // Use less aggressive cache-busting for auth endpoints
+      let urlWithCacheBuster = url;
+      if (url.includes('/auth/me')) {
+        // For auth endpoints, use simpler cache-busting to allow some caching
+        const cacheBuster = `_t=${Math.floor(Date.now() / 60000)}`; // Cache for 1 minute
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      } else {
+        // For other endpoints, add cache-busting timestamp to prevent browser caching
+        const cacheBuster = `_t=${Date.now()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const response = await api.get<T>(urlWithCacheBuster);
       setData(response);

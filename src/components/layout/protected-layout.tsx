@@ -1,6 +1,6 @@
 'use client'
 
-import { useCurrentUser } from '@/hooks/useApi'
+import { useCurrentUser } from '@/contexts/current-user-context'
 import { usePathname, useRouter } from 'next/navigation'
 import { Header } from './header'
 import { useEffect, useState } from 'react'
@@ -15,7 +15,7 @@ interface ProtectedLayoutProps {
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { data: user, isLoading, error } = useCurrentUser()
+  const { user, isLoading, error } = useCurrentUser()
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
   // Monitor navigation performance
