@@ -12,6 +12,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentUser } from '@/hooks/useApi';
 import { useState, useEffect } from 'react';
+import { LoadingLayout } from '@/components/ui/loading-layout';
 import logger from '@/lib/logger';
 
 // Define the structure of our permissions state
@@ -141,9 +142,7 @@ export default function ManagementPage() {
   // Show loading state
   if (isUserLoading) {
     return (
-      <div className="flex items-center justify-center h-52">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
+      <LoadingLayout size="md" height="md" />
     );
   }
 

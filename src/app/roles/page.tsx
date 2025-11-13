@@ -20,6 +20,7 @@ import { RoleFormValues, Role } from "@/types/roles"
 import { Plus, Shield } from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
 import { api } from '@/lib/api'
+import { LoadingLayout } from '@/components/ui/loading-layout'
 import logger from '@/lib/logger'
 
 export default function RolesPage() {
@@ -190,11 +191,11 @@ export default function RolesPage() {
   // Show loading state while checking permissions
   if (canView === null || isUserLoading) {
     return (
-      <div className="flex items-center justify-center h-52">
-        <div className="text-center">
-          <p>Loading permissions...</p>
-        </div>
-      </div>
+      <LoadingLayout 
+        size="md" 
+        height="md"
+        loadingText={t('common.loadingPermissions')}
+      />
     );
   }
 

@@ -20,6 +20,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useTranslation } from '@/hooks/use-translation'
+import { LoadingLayout } from '@/components/ui/loading-layout'
 
 // Add dnd-kit imports for drag and drop functionality
 import {
@@ -222,6 +224,7 @@ export function DataTable<TData, TValue>({
   columnVisibility, // Add this prop
   onColumnVisibilityChange, // Add this prop
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation();
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   // Use the provided columnVisibility prop or fallback to internal state
@@ -346,11 +349,11 @@ export function DataTable<TData, TValue>({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 bg-background rounded-xl border border-muted animate-pulse">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"></div>
-        <div className="text-lg font-medium text-foreground">Loading data...</div>
-        <div className="text-sm text-muted-foreground mt-1">Please wait while we fetch the latest information</div>
-      </div>
+      <LoadingLayout 
+        size="lg" 
+        height="lg"
+        descriptionText={t('common.pleaseWait') || 'Please wait while we fetch the latest information'}
+      />
     )
   }
 

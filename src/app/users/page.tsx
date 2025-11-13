@@ -21,6 +21,7 @@ import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"
 import { User, UserCreateUpdate } from "@/types/users"
 import { Plus} from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
+import { LoadingLayout } from '@/components/ui/loading-layout'
 import logger from '@/lib/logger'
 
 const Page = () => {
@@ -182,11 +183,11 @@ const Page = () => {
   // Show loading state while checking permissions
   if (canView === null || isUserLoading) {
     return (
-      <div className="flex items-center justify-center h-52">
-        <div className="text-center">
-          <p>Loading permissions...</p>
-        </div>
-      </div>
+      <LoadingLayout 
+        size="md" 
+        height="md"
+        loadingText={t('common.loadingPermissions')}
+      />
     );
   }
 

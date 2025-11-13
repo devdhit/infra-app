@@ -88,6 +88,8 @@
     "import": "Import",
     "refresh": "Refresh",
     "loading": "Loading...",
+    "loadingPermissions": "Checking your permissions...",
+    "pleaseWait": "Please wait while we fetch the latest information",
     "error": "Error",
     "success": "Success",
     "warning": "Warning",

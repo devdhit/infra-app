@@ -9,6 +9,7 @@ import { useTranslation } from "@/hooks/use-translation"
 import { toast } from "sonner"
 import { SettingsLayout } from "@/components/settings/settings-layout"
 import { getApplicationSettings, updateApplicationSettings, resetApplicationSettings } from '@/lib/api/application'
+import { LoadingLayout } from '@/components/ui/loading-layout'
 
 export default function ApplicationSettingsPage() {
   const { t } = useTranslation()
@@ -113,7 +114,7 @@ export default function ApplicationSettingsPage() {
         currentPage={t('settings.application.title') || 'Application'}
       >
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          <LoadingLayout size="md" height="lg" />
         </div>
       </SettingsLayout>
     )

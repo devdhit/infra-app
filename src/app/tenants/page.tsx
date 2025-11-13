@@ -20,6 +20,7 @@ import { BulkDeleteDialog } from "@/components/tenants/bulk-delete-dialog"
 import { Tenant } from "@/hooks/useApi"
 import { Plus, Building as BuildingIcon } from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
+import { LoadingLayout } from '@/components/ui/loading-layout'
 import logger from '@/lib/logger'
 
 const Page = () => {
@@ -189,11 +190,11 @@ const Page = () => {
   if (canView === null || isUserLoading) {
     logger.debug('Showing loading state:', { canView, isUserLoading });
     return (
-      <div className="flex items-center justify-center h-52">
-        <div className="text-center">
-          <p>Loading permissions...</p>
-        </div>
-      </div>
+      <LoadingLayout 
+        size="md" 
+        height="md"
+        loadingText={t('common.loadingPermissions')}
+      />
     );
   }
 
@@ -212,9 +213,7 @@ const Page = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-52">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
+      <LoadingLayout size="md" height="md" />
     )
   }
 

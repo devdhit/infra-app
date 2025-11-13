@@ -87,6 +87,8 @@
     "import": "匯入",
     "refresh": "重新整理",
     "loading": "載入中...",
+    "loadingPermissions": "正在檢查您的權限...",
+    "pleaseWait": "請稍候，我們正在獲取最新資訊",
     "error": "錯誤",
     "success": "成功",
     "warning": "警告",

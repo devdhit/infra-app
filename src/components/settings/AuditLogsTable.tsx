@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useTranslation } from '@/hooks/use-translation';
+import { LoadingLayout } from '@/components/ui/loading-layout';
 import { 
   Table, 
   TableBody, 
@@ -53,6 +55,7 @@ interface AuditLog {
 }
 
 export function AuditLogsTable() {
+  const { t } = useTranslation();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +160,13 @@ export function AuditLogsTable() {
 
   // Show loading state
   if (hasPermission === null) {
-    return <div>Checking permissions...</div>;
+    return (
+      <LoadingLayout 
+        size="md" 
+        height="md"
+        loadingText={t('common.loadingPermissions')}
+      />
+    );
   }
 
   // Show access denied message
@@ -174,7 +183,12 @@ export function AuditLogsTable() {
   }
 
   if (loading) {
-    return <div>Loading audit logs...</div>;
+    return (
+      <LoadingLayout 
+        size="md" 
+        height="md"
+      />
+    );
   }
 
   if (error) {

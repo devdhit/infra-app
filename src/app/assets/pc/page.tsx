@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { AssetList } from "@/components/assets/asset-list";
 import { AssetListSkeleton } from "@/components/assets/asset-list-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
+import { LoadingLayout } from "@/components/ui/loading-layout";
 import { getAssetTypes } from "@/config/asset-types";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentUser } from '@/contexts/current-user-context';
@@ -166,9 +167,7 @@ export default function PCAssetsPage() {
   if (canView === null || isUserLoading || loading) {
     logger.debug('Showing loading state:', { canView, isUserLoading, loading });
     return (
-      <div className="flex items-center justify-center h-52">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
+      <LoadingLayout size="md" height="md" />
     );
   }
 
@@ -188,9 +187,7 @@ export default function PCAssetsPage() {
   // Show loading state while translations are loading
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-52">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
+      <LoadingLayout size="md" height="md" />
     );
   }
 
