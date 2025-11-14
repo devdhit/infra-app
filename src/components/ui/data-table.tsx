@@ -234,8 +234,6 @@ export function DataTable<TData, TValue>({
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   // State for column resizing
   const [columnSizing, setColumnSizing] = React.useState<Record<string, number>>({})
-  // State for mobile view toggle
-  const [isMobileView, setIsMobileView] = React.useState(false);
   // State for column order
   const [columnOrder, setColumnOrder] = React.useState<string[]>(() => 
     columns.map(column => column.id as string || (column as any).accessorKey)
@@ -377,147 +375,6 @@ export function DataTable<TData, TValue>({
         )}
       </div>
     )
-  }
-
-  // Render mobile view - card-based layout
-  if (isMobileView) {
-    return (
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-muted/30 rounded-lg">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setIsMobileView(false)}
-              className="flex items-center gap-2 transition-all duration-200 hover:shadow-sm"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                <line x1="3" x2="21" y1="9" y2="9" />
-                <line x1="3" x2="21" y1="15" y2="15" />
-                <line x1="9" x2="9" y1="3" y2="21" />
-                <line x1="15" x2="15" y1="3" y2="21" />
-              </svg>
-              <span>Table View</span>
-            </Button>
-            
-            <div className="text-sm text-muted-foreground">
-              {table.getFilteredSelectedRowModel().rows.length} of{' '}
-              {table.getFilteredRowModel().rows.length} row(s) selected.
-            </div>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="transition-all duration-200 hover:shadow-sm"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="sr-only sm:not-sr-only sm:ml-1">Previous</span>
-            </Button>
-            <div className="text-sm bg-background px-3 py-1 rounded-md border border-muted flex items-center">
-              <span className="hidden sm:inline">Page</span>
-              <span className="font-semibold mx-1">{table.getState().pagination.pageIndex + 1}</span>
-              <span className="hidden sm:inline">of</span>
-              <span className="font-semibold ml-1">{table.getPageCount() || 1}</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="transition-all duration-200 hover:shadow-sm"
-            >
-              <span className="sr-only sm:not-sr-only sm:mr-1">Next</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        <div className="space-y-4">
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <div key={row.id} className="modern-data-table-card bg-background border border-muted rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200">
-                <div className="grid grid-cols-1 gap-3 p-4">
-                  {row.getVisibleCells().map((cell) => {
-                    // Skip checkbox column in card view
-                    if (cell.column.id === 'select') return null;
-                    
-                    const header = cell.column.columnDef.header;
-                    return (
-                      <div key={cell.id} className="modern-data-table-card-field">
-                        <span className="modern-data-table-card-label text-sm font-medium text-muted-foreground">
-                          {typeof header === 'string' ? header : header?.toString() || cell.column.id}
-                        </span>
-                        <span className="modern-data-table-card-value whitespace-nowrap overflow-hidden text-ellipsis text-foreground py-2 px-3 rounded-lg bg-muted/30">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                {onRowClick && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2 w-full mx-4 mb-4 hover:bg-accent transition-colors duration-200"
-                    onClick={() => onRowClick(row.original)}
-                  >
-                    View Details
-                  </Button>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-xl">
-              <div className="text-lg mb-2">No results found</div>
-              <div className="text-sm">Try adjusting your search or filter criteria</div>
-            </div>
-          )}
-        </div>
-        
-        {/* Enhanced Mobile Pagination */}
-        {pagination && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg">
-            <div className="text-sm text-muted-foreground">
-              {table.getFilteredSelectedRowModel().rows.length} of{' '}
-              {table.getFilteredRowModel().rows.length} row(s) selected.
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                className="transition-all duration-200 hover:shadow-sm shadow-sm"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:ml-1">Previous</span>
-              </Button>
-              <div className="text-sm bg-background px-3 py-1 rounded-md border border-muted flex items-center">
-                <span className="hidden sm:inline">Page</span>
-                <span className="font-semibold mx-1">{table.getState().pagination.pageIndex + 1}</span>
-                <span className="hidden sm:inline">of</span>
-                <span className="font-semibold ml-1">{table.getPageCount() || 1}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                className="transition-all duration-200 hover:shadow-sm shadow-sm"
-              >
-                <span className="sr-only sm:not-sr-only sm:mr-1">Next</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
   }
 
   // Add optimized rendering for large datasets
@@ -670,24 +527,6 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      {/* Enhanced Table Controls */}
-      <div className="flex flex-col sm:flex-row justify-between gap-3">
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setIsMobileView(true)}
-            className="flex items-center gap-2 sm:hidden bg-background hover:bg-accent transition-colors duration-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-              <line x1="3" x2="21" y1="9" y2="9" />
-            </svg>
-            Card View
-          </Button>
-        </div>
-      </div>
-      
       {/* Enhanced Table Container with Better Styling */}
       <div className="modern-data-table-container rounded-xl border border-muted shadow-sm overflow-hidden bg-background transition-all duration-300 hover:shadow-md">
         <div className="overflow-x-auto">
