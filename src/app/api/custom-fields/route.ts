@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate model type
-    const validModelTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet']
+    const validModelTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet', 'FixedAsset']
     if (!validModelTypes.includes(body.modelType)) {
       logger.warn('Invalid custom field model type', { 
         requestId, 

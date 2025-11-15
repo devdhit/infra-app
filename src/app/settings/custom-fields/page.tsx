@@ -74,6 +74,7 @@ const modelTypes: ModelTypeOption[] = [
   { value: "License", label: "License" },
   { value: "WarehouseIT", label: "Warehouse" },
   { value: "Internet", label: "Internet" },
+  { value: "FixedAsset", label: "Fixed Asset" },
 ];
 
 const fieldTypes: FieldTypeOption[] = [
@@ -133,7 +134,7 @@ const Page = () => {
       name: field.name,
       description: field.description || "",
       type: field.type as "text" | "textarea" | "number" | "date" | "boolean" | "select",
-      modelType: field.modelType as "PC" | "Laptop" | "Printer" | "License" | "WarehouseIT" | "Internet",
+      modelType: field.modelType as "PC" | "Laptop" | "Printer" | "License" | "WarehouseIT" | "Internet" | "FixedAsset",
       required: field.required,
     });
     setIsFormOpen(true);
@@ -529,7 +530,7 @@ const Page = () => {
           <DialogHeader>
             <DialogTitle>{t('settings.customFields.deleteConfirmTitle')}</DialogTitle>
             <DialogDescription>
-              {t('settings.customFields.deleteConfirmDescription', fieldToDelete?.name || '')}
+              { fieldToDelete?.name || ''}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:space-x-0">
@@ -578,7 +579,7 @@ const Page = () => {
             <div>
               <h3 className="font-medium text-lg">{t('settings.customFields.fieldTypes')}</h3>
               <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                <li><strong>{t('settings.customFields.text')}</strong> - {t('settings.customFields.textDescription')}</li>
+                <li><strong>{t('settings.customFields.text')}</strong> - {t('customFields.textDescription')}</li>
                 <li><strong>{t('settings.customFields.textArea')}</strong> - {t('settings.customFields.textAreaDescription')}</li>
                 <li><strong>{t('settings.customFields.number')}</strong> - {t('settings.customFields.numberDescription')}</li>
                 <li><strong>{t('settings.customFields.date')}</strong> - {t('settings.customFields.dateDescription')}</li>
@@ -588,21 +589,21 @@ const Page = () => {
             </div>
             
             <div>
-              <h3 className="font-medium text-lg">{t('settings.customFields.bestPractices')}</h3>
+              <h3 className="font-medium text-lg">{t('customFields.bestPractices')}</h3>
               <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                <li>{t('settings.customFields.practice1')}</li>
-                <li>{t('settings.customFields.practice2')}</li>
-                <li>{t('settings.customFields.practice3')}</li>
-                <li>{t('settings.customFields.practice4')}</li>
-                <li>{t('settings.customFields.practice5')}</li>
-                <li>{t('settings.customFields.practice6')}</li>
+                <li>{t('customFields.practice1')}</li>
+                <li>{t('customFields.practice2')}</li>
+                <li>{t('customFields.practice3')}</li>
+                <li>{t('customFields.practice4')}</li>
+                <li>{t('customFields.practice5')}</li>
+                <li>{t('customFields.practice6')}</li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-medium text-lg">{t('settings.customFields.usage')}</h3>
+              <h3 className="font-medium text-lg">{t('customFields.usage')}</h3>
               <p className="text-muted-foreground mt-1">
-                {t('settings.customFields.usageDescription')}
+                {t('customFields.usageDescription')}
               </p>
             </div>
           </div>

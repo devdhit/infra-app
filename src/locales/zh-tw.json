@@ -876,7 +876,7 @@
       "infoTitle": "自訂欄位",
       "infoDescription": "自訂欄位允許您為資產新增額外資訊。可以是文字、數字、日期或其他類型。",
       "deleteConfirmTitle": "刪除自訂欄位",
-      "deleteConfirmDescription": "您確定要刪除自訂欄位「{fieldName}」嗎？此操作無法復原，並將從所有現有資產中移除此欄位。",
+      "deleteConfirmDescription": "您確定要刪除自訂欄位「{0}」嗎？此操作無法復原，並將從所有現有資產中移除此欄位。",
       "helpTitle": "自訂欄位說明",
       "helpDescription": "學習如何有效使用自訂欄位",
       "whatAre": "什麼是自訂欄位？",

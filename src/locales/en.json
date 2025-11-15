@@ -876,7 +876,7 @@
       "infoTitle": "Custom Fields",
       "infoDescription": "Custom fields allow you to add additional information to your assets. They can be text, numbers, dates, or other types.",
       "deleteConfirmTitle": "Delete Custom Field",
-      "deleteConfirmDescription": "Are you sure you want to delete the custom field \"{fieldName}\"? This action cannot be undone and will remove this field from all existing assets.",
+      "deleteConfirmDescription": "Are you sure you want to delete the custom field \"{name}\"? This action cannot be undone and will remove this field from all existing assets.",
       "helpTitle": "Custom Fields Help",
       "helpDescription": "Learn how to use custom fields effectively",
       "whatAre": "What are Custom Fields?",
