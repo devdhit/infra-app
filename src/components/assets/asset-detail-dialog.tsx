@@ -222,6 +222,183 @@ export function AssetDetailDialog({
           </div>
         </div>
         
+        {/* Internet Access Information Section - Only show for PC assets with internet access info */}
+        {assetType === 'pc' && displayAsset.internetAccessInfo && (
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-semibold">{t('assets.pc.internetAccessInfo', 'Internet Access Information')}</h3>
+            </div>
+            <div className="p-4">
+              <div className="grid gap-4">
+                {Array.isArray(displayAsset.internetAccessInfo) ? (
+                  // Multiple Internet assets
+                  displayAsset.internetAccessInfo.map((internetAsset: any, index: number) => (
+                    <div key={internetAsset.id} className="border rounded-lg p-4">
+                      <h4 className="font-medium mb-2">{t('assets.pc.internetAccessItem', 'Internet Access {0}', (index + 1).toString())}</h4>
+                      <div className="grid gap-3">
+                        <div className="flex items-start gap-3 py-1">
+                          <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="grid gap-1 flex-1">
+                            <div className="text-sm font-medium leading-none text-muted-foreground">
+                              {t('assets.internet.userName', 'User Name')}
+                            </div>
+                            <div className="text-sm">
+                              {internetAsset.userName || '-'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 py-1">
+                          <Building className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="grid gap-1 flex-1">
+                            <div className="text-sm font-medium leading-none text-muted-foreground">
+                              {t('assets.internet.department', 'Department')}
+                            </div>
+                            <div className="text-sm">
+                              {internetAsset.dept || '-'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 py-1">
+                          <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="grid gap-1 flex-1">
+                            <div className="text-sm font-medium leading-none text-muted-foreground">
+                              {t('assets.internet.ipAddress', 'IP Address')}
+                            </div>
+                            <div className="text-sm">
+                              {internetAsset.ipAddress || '-'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 py-1">
+                          <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="grid gap-1 flex-1">
+                            <div className="text-sm font-medium leading-none text-muted-foreground">
+                              {t('assets.internet.internetAccess', 'Internet Access')}
+                            </div>
+                            <div className="text-sm">
+                              {internetAsset.internetAccess || '-'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 py-1">
+                          <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="grid gap-1 flex-1">
+                            <div className="text-sm font-medium leading-none text-muted-foreground">
+                              {t('assets.internet.status', 'Status')}
+                            </div>
+                            <div className="text-sm">
+                              {internetAsset.status 
+                                ? <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    internetAsset.status === 'working' ? 'bg-green-100 text-green-800' :
+                                    internetAsset.status === 'leave' ? 'bg-blue-100 text-blue-800' :
+                                    internetAsset.status === 'repair' ? 'bg-yellow-100 text-yellow-800' :
+                                    internetAsset.status === '有異動' ? 'bg-purple-100 text-purple-800' : ''
+                                  }`}>
+                                    {t(`assets.status.${internetAsset.status}`, internetAsset.status)}
+                                  </span>
+                                : '-'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  // Single Internet asset
+                  <>
+                    <div className="flex items-start gap-3 py-1">
+                      <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="grid gap-1 flex-1">
+                        <div className="text-sm font-medium leading-none text-muted-foreground">
+                          {t('assets.internet.userName', 'User Name')}
+                        </div>
+                        <div className="text-sm">
+                          {displayAsset.internetAccessInfo.userName || '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 py-1">
+                      <Building className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="grid gap-1 flex-1">
+                        <div className="text-sm font-medium leading-none text-muted-foreground">
+                          {t('assets.internet.department', 'Department')}
+                        </div>
+                        <div className="text-sm">
+                          {displayAsset.internetAccessInfo.dept || '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 py-1">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="grid gap-1 flex-1">
+                        <div className="text-sm font-medium leading-none text-muted-foreground">
+                          {t('assets.internet.ipAddress', 'IP Address')}
+                        </div>
+                        <div className="text-sm">
+                          {displayAsset.internetAccessInfo.ipAddress || '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 py-1">
+                      <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="grid gap-1 flex-1">
+                        <div className="text-sm font-medium leading-none text-muted-foreground">
+                          {t('assets.internet.internetAccess', 'Internet Access')}
+                        </div>
+                        <div className="text-sm">
+                          {displayAsset.internetAccessInfo.internetAccess || '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 py-1">
+                      <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="grid gap-1 flex-1">
+                        <div className="text-sm font-medium leading-none text-muted-foreground">
+                          {t('assets.internet.status', 'Status')}
+                        </div>
+                        <div className="text-sm">
+                          {displayAsset.internetAccessInfo.status 
+                            ? <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                displayAsset.internetAccessInfo.status === 'working' ? 'bg-green-100 text-green-800' :
+                                displayAsset.internetAccessInfo.status === 'leave' ? 'bg-blue-100 text-blue-800' :
+                                displayAsset.internetAccessInfo.status === 'repair' ? 'bg-yellow-100 text-yellow-800' :
+                                displayAsset.internetAccessInfo.status === '有異動' ? 'bg-purple-100 text-purple-800' : ''
+                              }`}>
+                                {t(`assets.status.${displayAsset.internetAccessInfo.status}`, displayAsset.internetAccessInfo.status)}
+                              </span>
+                            : '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Notification for PC assets without internet access */}
+        {assetType === 'pc' && displayAsset.userName && !displayAsset.internetAccessInfo && (
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-semibold">{t('assets.pc.internetAccessInfo', 'Internet Access Information')}</h3>
+            </div>
+            <div className="p-4">
+              <div className="flex items-start gap-3 py-2">
+                <Info className="h-5 w-5 text-yellow-500 mt-0.5" />
+                <div className="grid gap-1">
+                  <div className="text-sm font-medium leading-none">
+                    {t('assets.pc.noInternetAccess', 'No Internet Access Found')}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {t('assets.pc.noInternetAccessMessage', 'The user {0} does not have any associated internet access records.', displayAsset.userName)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* System Information Section */}
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
           <div className="p-4 border-b">

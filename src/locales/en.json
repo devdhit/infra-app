@@ -402,7 +402,10 @@
       "pcName": "PC Name",
       "user": "User",
       "status": "Status",
-      "note": "Note"
+      "note": "Note",
+      "internetAccessInfo": "Internet Access Information",
+      "noInternetAccess": "No Internet Access Found",
+      "noInternetAccessMessage": "The user {0} does not have any associated internet access records."
     },
     "laptop": {
       "title": "Laptops",

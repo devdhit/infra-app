@@ -2,8 +2,9 @@ import { db } from '../db';
 import { BaseAssetApiHandler, AssetOperations } from './base-asset-handler';
 import { PCAsset } from '@/types/asset-interfaces';
 import { checkForDuplicateBarcode, getDuplicateBarcodeInfo } from '@/lib/asset-duplicate-check';
-import { conflictResponse } from '@/lib/api-utils';
+import { conflictResponse, errorResponse, notFoundResponse, successResponse } from '@/lib/api-utils';
 import logger from '@/lib/logger';
+import { CACHE_TTL } from '../redis-cache';
 
 // Import cache manager for proper cache invalidation
 let cacheManager: any = null;
@@ -227,4 +228,114 @@ pcHandler.update = async (user: any, id: string, body: Partial<Omit<PCAsset, 'id
   // Call the original update method
   logger.debug('PC Handler: Updating PC asset');
   return BaseAssetApiHandler.prototype.update.call(pcHandler, user, id, body);
+};
+
+// Override getById method to include related Internet access information
+pcHandler.getById = async (user: any, id: string) => {
+  try {
+    // Check permissions
+    const hasViewPermission = await pcHandler['checkPermission'](user, 'view');
+    if (!hasViewPermission) {
+      return errorResponse('Forbidden: Insufficient permissions to view asset', 403);
+    }
+
+    // Create cache key for this specific asset if Redis is available
+    let cacheKey: string | null = null;
+    if (cacheManager && CACHE_PREFIXES) {
+      cacheKey = cacheManager.createCompositeKey(
+        CACHE_PREFIXES.ASSETS,
+        pcHandler['operations'].modelName,
+        user.tenantId,
+        id
+      );
+    }
+
+    // Try to get cached result first if Redis is available
+    if (cacheManager && cacheKey) {
+      const cachedAsset = await cacheManager.get(cacheKey, { component: 'pc-handler' });
+      if (cachedAsset) {
+        return successResponse(cachedAsset);
+      }
+    }
+
+    // Get select fields for this asset type
+    const selectFields = {
+      id: true,
+      createdAt: true,
+      updatedAt: true,
+      tenantId: true,
+      // Add other commonly used fields based on asset type
+      ...pcHandler['getSelectFieldsForAssetType']()
+    };
+    
+    const asset = await pcHandler['getPrismaModel']().findUnique({
+      where: { 
+        id,
+        tenantId: user.tenantId 
+      },
+      select: selectFields
+    });
+
+    if (!asset) {
+      return notFoundResponse(`${pcHandler['operations'].modelName} asset not found`);
+    }
+
+    // If the PC asset has a userName, fetch related Internet access information
+    let internetAccessInfo = null;
+    let hasInternetAccess = false;
+    if (asset.userName) {
+      try {
+        // Find Internet assets with the same userName
+        const internetAssets = await db.internet.findMany({
+          where: {
+            tenantId: user.tenantId,
+            userName: asset.userName
+          },
+          select: {
+            id: true,
+            dept: true,
+            manager: true,
+            userName: true,
+            email: true,
+            ipAddress: true,
+            internetAccess: true,
+            status: true,
+            note: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        });
+
+        // If we found Internet assets, include the first one (or all if there are multiple)
+        if (internetAssets.length > 0) {
+          internetAccessInfo = internetAssets.length === 1 ? internetAssets[0] : internetAssets;
+          hasInternetAccess = true;
+        }
+      } catch (error) {
+        logger.warn('Failed to fetch Internet access information for PC asset:', { 
+          error: error instanceof Error ? error.message : String(error),
+          pcAssetId: id,
+          userName: asset.userName
+        });
+        // Continue without Internet access info if there's an error
+      }
+    }
+
+    // Add Internet access information to the asset object
+    const assetWithInternetInfo = {
+      ...asset,
+      internetAccessInfo,
+      hasInternetAccess
+    };
+
+    // Cache the asset if Redis is available
+    if (cacheManager && cacheKey) {
+      await cacheManager.set(cacheKey, assetWithInternetInfo, CACHE_TTL ? CACHE_TTL.ASSETS : 300, { component: 'pc-handler' });
+    }
+
+    return successResponse(assetWithInternetInfo);
+  } catch (error) {
+    logger.error(`Error fetching ${pcHandler['operations'].modelName} asset:`, error);
+    return errorResponse('Failed to fetch asset details. Please try again later.');
+  }
 };

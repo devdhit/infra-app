@@ -280,6 +280,33 @@ const getAssetColumns = (
 // Add a helper function to generate a unique key for localStorage based on assetType
 const getColumnVisibilityStorageKey = (assetType: string) => `assetListColumnVisibility_${assetType}`
 
+// Add a helper function to check internet access for a PC asset
+const checkInternetAccess = async (asset: Asset, assetType: string, t: (key: string, fallback?: string) => string) => {
+  // Only check for PC assets with valid userName (not empty and not "N/A")
+  if (assetType !== 'pc' || !asset.userName || asset.userName === 'N/A') return;
+  
+  try {
+    // Import the API client
+    const { api } = await import('@/lib/api');
+    
+    // Make API call to check if there's an internet asset with the same userName
+    const response: any = await api.get(`/assets/internet?userName=${encodeURIComponent(asset.userName)}`);
+    
+    // If no internet assets found, show notification
+    // The response structure is { data: [...], pagination: {...} }
+    if (!response || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      toast.warning(
+        t('assets.pc.noInternetAccess', 'No Internet Access Found'),
+        {
+          description: t('assets.pc.noInternetAccessMessage', 'The user {0} does not have any associated internet access records.').replace('{0}', asset.userName),
+        }
+      );
+    }
+  } catch (error) {
+    logger.error("Error checking internet access:", { error: error instanceof Error ? error.message : String(error) });
+  }
+};
+
 export function AssetList({
   assetType,
   title,
@@ -321,6 +348,9 @@ export function AssetList({
   const [columnOrder, setColumnOrder] = useState<string[]>([])
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({})
   
+  // Add state for tracking which assets have been checked
+  const [checkedAssets, setCheckedAssets] = useState<Set<string>>(new Set())
+  
   // Optimized robust refetch function with better error handling
   const robustRefetch = useCallback(async (refetchFn: () => Promise<any>, t: (key: string, fallback?: string, ...args: any[]) => string) => {
     try {
@@ -354,7 +384,23 @@ export function AssetList({
       setError(assetsApiError || null)
     }
   }, [assetsData, assetsLoading, assetsApiError])
-  
+
+  // Check internet access for PC assets
+  useEffect(() => {
+    if (assetType === 'pc' && assetsData?.data) {
+      assetsData.data.forEach((asset: Asset) => {
+        // Check if we've already checked this asset
+        // Only check assets with valid userName (not empty and not "N/A")
+        if (asset.userName && asset.userName !== 'N/A' && !checkedAssets.has(asset.id)) {
+          // Mark as checked to prevent duplicate notifications
+          setCheckedAssets(prev => new Set(prev).add(asset.id))
+          // Check internet access for this asset
+          checkInternetAccess(asset, assetType, t)
+        }
+      })
+    }
+  }, [assetsData, assetType, checkedAssets, t])
+
   // Fetch custom fields
   const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(assetType)
   
@@ -848,6 +894,25 @@ export function AssetList({
     const selectedIds = Object.keys(selectedRows).filter(key => selectedRows[key])
     setSelectedAssets(selectedIds)
   }, [])
+  
+  // Add effect to check internet access for PC assets
+  useEffect(() => {
+    if (assetType === 'pc' && assets.length > 0) {
+      // Filter PC assets that have userName but haven't been checked yet
+      const uncheckedAssets = assets.filter(asset => 
+        asset.userName && !checkedAssets.has(asset.id)
+      );
+      
+      // Check each unchecked asset
+      uncheckedAssets.forEach(asset => {
+        // Mark this asset as checked to prevent duplicate checks
+        setCheckedAssets(prev => new Set(prev).add(asset.id));
+        
+        // Check internet access for this asset
+        checkInternetAccess(asset, assetType, t);
+      });
+    }
+  }, [assets, assetType, checkedAssets, t]);
   
   // Pagination component
   const renderPagination = () => {

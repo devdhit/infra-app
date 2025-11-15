@@ -402,7 +402,10 @@
       "pcName": "電腦名稱",
       "user": "使用者",
       "status": "狀態",
-      "note": "備註"
+      "note": "備註",
+      "internetAccessInfo": "網路存取資訊",
+      "noInternetAccess": "未找到網路存取",
+      "noInternetAccessMessage": "使用者 {0} 沒有任何相關的網路存取記錄。"
     },
     "laptop": {
       "title": "筆電",
