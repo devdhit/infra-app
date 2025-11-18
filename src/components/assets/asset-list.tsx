@@ -282,28 +282,105 @@ const getColumnVisibilityStorageKey = (assetType: string) => `assetListColumnVis
 
 // Add a helper function to check internet access for a PC asset
 const checkInternetAccess = async (asset: Asset, assetType: string, t: (key: string, fallback?: string) => string) => {
-  // Only check for PC assets with valid userName (not empty and not "N/A")
-  if (assetType !== 'pc' || !asset.userName || asset.userName === 'N/A') return;
+  // Only check for PC assets
+  if (assetType !== 'pc') return;
   
   try {
     // Import the API client
     const { api } = await import('@/lib/api');
     
-    // Make API call to check if there's an internet asset with the same userName
-    const response: any = await api.get(`/assets/internet?userName=${encodeURIComponent(asset.userName)}`);
+    // Check by IP address first if available
+    const ipAddress = asset.customFields?.IP;
+    if (ipAddress && ipAddress !== 'N/A') {
+      // Make API call to check if there's an internet asset with the same IP address
+      const response: any = await api.get(`/assets/internet?ip=${encodeURIComponent(ipAddress)}`);
+      
+      // If internet assets found, no need to check further
+      if (response && response.data && Array.isArray(response.data) && response.data.length > 0) {
+        return;
+      }
+    }
     
-    // If no internet assets found, show notification
-    // The response structure is { data: [...], pagination: {...} }
-    if (!response || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+    // If no IP-based internet access found, check by userName if available
+    if (asset.userName && asset.userName !== 'N/A') {
+      // Make API call to check if there's an internet asset with the same userName
+      const response: any = await api.get(`/assets/internet?userName=${encodeURIComponent(asset.userName)}`);
+      
+      // If no internet assets found, show notification
+      if (!response || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+        toast.warning(
+          t('assets.pc.noInternetAccess', 'No Internet Access Found'),
+          {
+            description: t('assets.pc.noInternetAccessMessage', 'The asset (IP: {0}, User: {1}) does not have any associated internet access records.')
+              .replace('{0}', ipAddress || 'N/A')
+              .replace('{1}', asset.userName),
+          }
+        );
+      }
+    } else if (ipAddress && ipAddress !== 'N/A') {
+      // Only IP address is available, show notification with IP
       toast.warning(
         t('assets.pc.noInternetAccess', 'No Internet Access Found'),
         {
-          description: t('assets.pc.noInternetAccessMessage', 'The user {0} does not have any associated internet access records.').replace('{0}', asset.userName),
+          description: t('assets.pc.noInternetAccessMessage', 'The asset with IP address {0} does not have any associated internet access records.')
+            .replace('{0}', ipAddress),
         }
       );
     }
   } catch (error) {
     logger.error("Error checking internet access:", { error: error instanceof Error ? error.message : String(error) });
+  }
+};
+
+// Add a helper function to check license status for a PC asset
+const checkLicenseStatus = async (asset: Asset, assetType: string, t: (key: string, fallback?: string) => string) => {
+  // Only check for PC assets
+  if (assetType !== 'pc') return;
+  
+  try {
+    // Import the API client
+    const { api } = await import('@/lib/api');
+    
+    // Check by IP address first if available
+    const ipAddress = asset.customFields?.IP;
+    if (ipAddress && ipAddress !== 'N/A') {
+      // Make API call to check if there's a license asset with the same IP address
+      const response: any = await api.get(`/assets/license?ip=${encodeURIComponent(ipAddress)}`);
+      
+      // If license assets found, no need to check further
+      if (response && response.data && Array.isArray(response.data) && response.data.length > 0) {
+        return;
+      }
+    }
+    
+    // If no IP-based license found, check by userName if available
+    if (asset.userName && asset.userName !== 'N/A') {
+      // Make API call to check if there's a license asset with the same userName
+      const response: any = await api.get(`/assets/license?userName=${encodeURIComponent(asset.userName)}`);
+      
+      // If no license assets found, show notification
+      if (!response || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+        toast.warning(
+          t('assets.pc.noLicense', 'No License Found'),
+          {
+            description: t('assets.pc.noLicenseMessage', 'The asset (IP: {0}, User: {1}) does not have any associated license records.')
+              .replace('{0}', ipAddress || 'N/A')
+              .replace('{1}', asset.userName),
+          }
+        );
+      }
+    } else if (ipAddress && ipAddress !== 'N/A') {
+      // Only IP address is available, show notification with IP
+      toast.warning(
+        t('assets.pc.noLicense', 'No License Found'),
+        {
+          description: t('assets.pc.noLicenseMessage', 'The asset with IP address {0} does not have any associated license records.')
+            .replace('{0}', ipAddress),
+        }
+      );
+    }
+  } catch (error) {
+    logger.error("Error checking license status:", { error: error instanceof Error ? error.message : String(error) });
   }
 };
 
@@ -323,6 +400,7 @@ export function AssetList({
   
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const toastCountRef = useRef<number>(0)
   
   // State management
   const [assets, setAssets] = useState<Asset[]>([])
@@ -385,7 +463,7 @@ export function AssetList({
     }
   }, [assetsData, assetsLoading, assetsApiError])
 
-  // Check internet access for PC assets
+  // Check internet access and license status for PC assets
   useEffect(() => {
     if (assetType === 'pc' && assetsData?.data) {
       assetsData.data.forEach((asset: Asset) => {
@@ -396,6 +474,8 @@ export function AssetList({
           setCheckedAssets(prev => new Set(prev).add(asset.id))
           // Check internet access for this asset
           checkInternetAccess(asset, assetType, t)
+          // Check license status for this asset
+          checkLicenseStatus(asset, assetType, t)
         }
       })
     }
@@ -898,6 +978,9 @@ export function AssetList({
   // Add effect to check internet access for PC assets
   useEffect(() => {
     if (assetType === 'pc' && assets.length > 0) {
+      // Reset toast count for each new batch of assets
+      toastCountRef.current = 0;
+      
       // Filter PC assets that have userName but haven't been checked yet
       const uncheckedAssets = assets.filter(asset => 
         asset.userName && !checkedAssets.has(asset.id)
@@ -910,6 +993,8 @@ export function AssetList({
         
         // Check internet access for this asset
         checkInternetAccess(asset, assetType, t);
+        // Check license status for this asset
+        checkLicenseStatus(asset, assetType, t);
       });
     }
   }, [assets, assetType, checkedAssets, t]);

@@ -405,7 +405,13 @@
       "note": "Note",
       "internetAccessInfo": "Internet Access Information",
       "noInternetAccess": "No Internet Access Found",
-      "noInternetAccessMessage": "The user {0} does not have any associated internet access records."
+      "noInternetAccessMessage": "The asset (IP: {0}, User: {1}) does not have any associated internet access records.",
+      "licenseInfo": "License Information",
+      "licenseItem": "License {0}",
+      "noLicense": "No License Found",
+      "noLicenseMessage": "The asset (IP: {0}, User: {1}) does not have any associated license records.",
+      "noLicenseMessageUser": "The user {0} does not have any associated license records.",
+      "noLicenseMessageIP": "The IP address {0} does not have any associated license records."
     },
     "laptop": {
       "title": "Laptops",
@@ -446,7 +452,8 @@
       "ip": "IP Address",
       "purchaseDate": "Purchase Date",
       "status": "Status",
-      "note": "Note"
+      "note": "Note",
+      "updateStatus": "Update Status"
     },
     "warehouse": {
       "title": "Warehouse IT",

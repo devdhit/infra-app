@@ -230,7 +230,7 @@ pcHandler.update = async (user: any, id: string, body: Partial<Omit<PCAsset, 'id
   return BaseAssetApiHandler.prototype.update.call(pcHandler, user, id, body);
 };
 
-// Override getById method to include related Internet access information
+// Override getById method to include related Internet access and License information
 pcHandler.getById = async (user: any, id: string) => {
   try {
     // Check permissions
@@ -321,19 +321,107 @@ pcHandler.getById = async (user: any, id: string) => {
       }
     }
 
-    // Add Internet access information to the asset object
-    const assetWithInternetInfo = {
+    // Fetch related License information based on IP address or userName
+    let licenseInfo = null;
+    let hasLicense = false;
+    
+    // First, try to find licenses by IP address if available in custom fields
+    if (asset.customFields?.IP) {
+      try {
+        const licenseAssets = await db.license.findMany({
+          where: {
+            tenantId: user.tenantId,
+            ip: asset.customFields.IP
+          },
+          select: {
+            id: true,
+            deviceName: true,
+            userName: true,
+            dept: true,
+            productType: true,
+            productKey: true,
+            model: true,
+            pc: true,
+            mac: true,
+            ip: true,
+            date: true,
+            updateStatus: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        });
+
+        // If we found License assets, include them
+        if (licenseAssets.length > 0) {
+          licenseInfo = licenseAssets.length === 1 ? licenseAssets[0] : licenseAssets;
+          hasLicense = true;
+        }
+      } catch (error) {
+        logger.warn('Failed to fetch License information for PC asset by IP:', { 
+          error: error instanceof Error ? error.message : String(error),
+          pcAssetId: id,
+          ipAddress: asset.customFields.IP
+        });
+        // Continue without License info if there's an error
+      }
+    }
+    
+    // If no licenses found by IP, try to find by userName
+    if (!hasLicense && asset.userName) {
+      try {
+        const licenseAssets = await db.license.findMany({
+          where: {
+            tenantId: user.tenantId,
+            userName: asset.userName
+          },
+          select: {
+            id: true,
+            deviceName: true,
+            userName: true,
+            dept: true,
+            productType: true,
+            productKey: true,
+            model: true,
+            pc: true,
+            mac: true,
+            ip: true,
+            date: true,
+            updateStatus: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        });
+
+        // If we found License assets, include them
+        if (licenseAssets.length > 0) {
+          licenseInfo = licenseAssets.length === 1 ? licenseAssets[0] : licenseAssets;
+          hasLicense = true;
+        }
+      } catch (error) {
+        logger.warn('Failed to fetch License information for PC asset by userName:', { 
+          error: error instanceof Error ? error.message : String(error),
+          pcAssetId: id,
+          userName: asset.userName
+        });
+        // Continue without License info if there's an error
+      }
+    }
+
+    // Add Internet access and License information to the asset object
+    const assetWithAdditionalInfo = {
       ...asset,
       internetAccessInfo,
-      hasInternetAccess
+      hasInternetAccess,
+      licenseInfo,
+      hasLicense
     };
 
     // Cache the asset if Redis is available
     if (cacheManager && cacheKey) {
-      await cacheManager.set(cacheKey, assetWithInternetInfo, CACHE_TTL ? CACHE_TTL.ASSETS : 300, { component: 'pc-handler' });
+      await cacheManager.set(cacheKey, assetWithAdditionalInfo, CACHE_TTL ? CACHE_TTL.ASSETS : 300, { component: 'pc-handler' });
     }
 
-    return successResponse(assetWithInternetInfo);
+    return successResponse(assetWithAdditionalInfo);
   } catch (error) {
     logger.error(`Error fetching ${pcHandler['operations'].modelName} asset:`, error);
     return errorResponse('Failed to fetch asset details. Please try again later.');

@@ -405,7 +405,13 @@
       "note": "備註",
       "internetAccessInfo": "網路存取資訊",
       "noInternetAccess": "未找到網路存取",
-      "noInternetAccessMessage": "使用者 {0} 沒有任何相關的網路存取記錄。"
+      "noInternetAccessMessage": "資產 (IP: {0}, 使用者: {1}) 沒有任何相關的網路存取記錄。",
+      "licenseInfo": "授權資訊",
+      "licenseItem": "授權 {0}",
+      "noLicense": "未找到授權",
+      "noLicenseMessage": "資產 (IP: {0}, 使用者: {1}) 沒有任何相關的授權記錄。",
+      "noLicenseMessageUser": "使用者 {0} 沒有任何相關的授權記錄。",
+      "noLicenseMessageIP": "IP 位址 {0} 沒有任何相關的授權記錄。"
     },
     "laptop": {
       "title": "筆電",
@@ -446,7 +452,8 @@
       "ip": "IP 位址",
       "purchaseDate": "購買日期",
       "status": "狀態",
-      "note": "備註"
+      "note": "備註",
+      "updateStatus": "更新狀態"
     },
     "warehouse": {
       "title": "倉儲IT",
