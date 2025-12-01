@@ -75,6 +75,7 @@ const modelTypes: ModelTypeOption[] = [
   { value: "WarehouseIT", label: "Warehouse" },
   { value: "Internet", label: "Internet" },
   { value: "FixedAsset", label: "Fixed Asset" },
+  { value: "ITPurchasing", label: "IT Purchasing" },
 ];
 
 const fieldTypes: FieldTypeOption[] = [
@@ -134,7 +135,7 @@ const Page = () => {
       name: field.name,
       description: field.description || "",
       type: field.type as "text" | "textarea" | "number" | "date" | "boolean" | "select",
-      modelType: field.modelType as "PC" | "Laptop" | "Printer" | "License" | "WarehouseIT" | "Internet" | "FixedAsset",
+      modelType: field.modelType as "PC" | "Laptop" | "Printer" | "License" | "WarehouseIT" | "Internet" | "FixedAsset" | "ITPurchasing",
       required: field.required,
     });
     setIsFormOpen(true);

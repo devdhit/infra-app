@@ -14,6 +14,24 @@ type I18nContextType = {
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined)
 
+// Helper function to read language from cookie
+function getLanguageFromCookie(): Language | null {
+  if (typeof document === 'undefined') return null
+  
+  const cookies = document.cookie.split('; ')
+  const localeCookie = cookies.find(cookie => cookie.startsWith('NEXT_LOCALE='))
+  
+  if (localeCookie) {
+    const value = localeCookie.split('=')[1]
+    // Validate that it's a supported language
+    if (value === 'en' || value === 'zh-tw') {
+      return value as Language
+    }
+  }
+  
+  return null
+}
+
 export function I18nProvider({
   children,
   initialLanguage,
@@ -21,7 +39,11 @@ export function I18nProvider({
   children: React.ReactNode
   initialLanguage?: Language
 }) {
-  const [language, setLanguageState] = useState<Language>(initialLanguage || defaultLanguage)
+  // Try to get language from cookie first, then initialLanguage prop, then default
+  const [language, setLanguageState] = useState<Language>(() => {
+    const cookieLanguage = getLanguageFromCookie()
+    return cookieLanguage || initialLanguage || defaultLanguage
+  })
   const [translations, setTranslations] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
 
