@@ -1,115 +1,69 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
-import { hasPermission } from '@/lib/permissions'
+import { tenantService } from '@/lib/management'
+import {
+  checkPermission,
+  parseRequestBody,
+  apiSuccess,
+  apiError,
+  apiBadRequest,
+  apiConflict,
+} from '@/lib/management/api-helpers'
+import type { CreateTenantData } from '@/types/management'
 import logger from '@/lib/logger';
 
 // GET /api/tenants - Get all tenants (requires view permission)
 export async function GET(request: NextRequest) {
+  const {  error } = await checkPermission(request, 'tenants', 'view');
+  if (error) return error;
+
   try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    const result = await tenantService.getAllTenants();
+
+    if (!result.success) {
+      return apiError(result.error.message, 'INTERNAL_ERROR', 500);
     }
 
-    // Check if user has permission to view tenants
-    const hasViewPermission = await hasPermission(
-      user.role?.id || '',
-      user.tenantId,
-      'tenants',
-      'view'
-    )
-    
-    if (!hasViewPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    const tenants = await db.tenant.findMany({
-      include: {
-        _count: {
-          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true, warehouseITs: true, internets: true }
-        }
-      }
-    })
-
-    return new Response(JSON.stringify(tenants), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error) {
-    logger.error('Error fetching tenants:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    // Return paginated response
+    return apiSuccess({
+      data: result.data,
+      pagination: {
+        page: 1,
+        limit: result.data.length,
+        total: result.data.length,
+        totalPages: 1,
+      },
+    });
+  } catch (error: unknown) {
+    logger.error('Error fetching tenants:', error);
+    return apiError('Failed to fetch tenants', 'INTERNAL_ERROR', 500);
   }
 }
 
 // POST /api/tenants - Create a new tenant (requires create permission)
 export async function POST(request: NextRequest) {
+  const { error: permError } = await checkPermission(request, 'tenants', 'create');
+  if (permError) return permError;
+
+  const { data: body, error: parseError } = await parseRequestBody<CreateTenantData>(request);
+  if (parseError || !body) return parseError || apiBadRequest('Invalid request body');
+
   try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
+    const result = await tenantService.createTenant(body);
 
-    // Check if user has permission to create tenants
-    const hasCreatePermission = await hasPermission(
-      user.role?.id || '',
-      user.tenantId,
-      'tenants',
-      'create'
-    )
-    
-    if (!hasCreatePermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    const body = await request.json()
-    
-    // Validate required fields
-    if (!body.name || body.name.trim().length === 0) {
-      return new Response(JSON.stringify({ error: 'Name is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    const tenant = await db.tenant.create({
-      data: {
-        name: body.name.trim(),
-        description: body.description || ''
+    if (!result.success) {
+      // Check for specific error types
+      if (result.error.message.includes('already exists')) {
+        return apiConflict(result.error.message);
       }
-    })
-
-    return new Response(JSON.stringify(tenant), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error: any) {
-    if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
-      return new Response(JSON.stringify({ error: 'A tenant with this name already exists' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      if (result.error.message.includes('Validation')) {
+        return apiBadRequest(result.error.message);
+      }
+      return apiError(result.error.message, 'INTERNAL_ERROR', 500);
     }
-    
-    logger.error('Error creating tenant:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+
+    return apiSuccess(result.data, 201);
+  } catch (error: unknown) {
+    logger.error('Error creating tenant:', error);
+    return apiError('Failed to create tenant', 'INTERNAL_ERROR', 500);
   }
 }

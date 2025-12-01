@@ -220,6 +220,10 @@ async function verifyUserPassword(password: string, user: any, ip: string, reque
 
 // Handle failed login attempt
 async function handleFailedLoginAttempt(user: any, ip: string, requestId: string, request: NextRequest) {
+  // Check if user has 'agent' role - agents should not be locked
+  // because they send information requests to the server every 6 hours
+  const isAgentUser = user.role?.name === 'agent';
+  
   // Increment failed login attempts
   const updatedUser = await db.user.update({
     where: { id: user.id },
@@ -229,8 +233,9 @@ async function handleFailedLoginAttempt(user: any, ip: string, requestId: string
       },
       lastLoginAttempt: new Date(),
       // Lock account if failed attempts exceed threshold
-      lockedAt: user.failedLoginAttempts + 1 >= MAX_ATTEMPTS ? new Date() : user.lockedAt,
-      lockedUntil: user.failedLoginAttempts + 1 >= MAX_ATTEMPTS ? 
+      // BUT skip locking for agent users
+      lockedAt: (!isAgentUser && user.failedLoginAttempts + 1 >= MAX_ATTEMPTS) ? new Date() : user.lockedAt,
+      lockedUntil: (!isAgentUser && user.failedLoginAttempts + 1 >= MAX_ATTEMPTS) ? 
         new Date(Date.now() + ACCOUNT_LOCKOUT_DURATION) : user.lockedUntil
     }
   });
@@ -240,13 +245,15 @@ async function handleFailedLoginAttempt(user: any, ip: string, requestId: string
     requestId, 
     ip, 
     userId: user.id,
+    userRole: user.role?.name,
+    isAgentUser,
     failedAttempts: updatedUser.failedLoginAttempts,
-    isLocked: updatedUser.failedLoginAttempts >= MAX_ATTEMPTS,
+    isLocked: updatedUser.failedLoginAttempts >= MAX_ATTEMPTS && !isAgentUser,
     component: 'auth-login' 
   });
   
-  // If account is now locked, log the lockout and return specific error
-  if (updatedUser.failedLoginAttempts >= MAX_ATTEMPTS) {
+  // If account is now locked (and not an agent), log the lockout and return specific error
+  if (!isAgentUser && updatedUser.failedLoginAttempts >= MAX_ATTEMPTS) {
     await logUserLockout(user.id, user.tenantId, ip, request.headers.get('user-agent') || undefined)
     return errorResponse('Account is locked due to too many failed attempts. Please contact administrator.', 423, { requestId });
   }
