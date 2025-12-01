@@ -163,12 +163,7 @@ Built with modern technologies like Next.js 15, TypeScript, and Prisma ORM, ITAM
    cd itams
    ```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
+2. **Set up environment variables**
    Create a `.env` file in the root directory:
    ```env
    DATABASE_URL="postgresql://postgres:Abcd_2025@localhost:5432/infrasys_db?schema=public"
@@ -176,10 +171,14 @@ Built with modern technologies like Next.js 15, TypeScript, and Prisma ORM, ITAM
    REDIS_URL="redis://localhost:6379"
    ```
 
-4. **Set up the database**
+3. **Set up the database**
    ```bash
    npx prisma migrate dev --name init
    npx prisma generate
+   ```
+4. **Install dependencies**
+   ```bash
+   npm install
    ```
 
 5. **Seed the database (optional)**
