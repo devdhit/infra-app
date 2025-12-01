@@ -9,23 +9,24 @@ datasource db {
 }
 
 model Tenant {
-  id                 String             @id @default(uuid())
-  name               String
-  description        String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  customFields       CustomField[]
-  histories          History[]
-  laptops            Laptop[]
-  licenses           License[]
-  pcs                PC[]
-  printers           Printer[]
-  users              User[]
-  warehouseITs       WarehouseIT[]
-  internets          Internet[]
-  fixedAssets        FixedAsset[]
-  auditLogsSettings  AuditLogsSettings?
-  roles              Role[]
+  id                String             @id @default(uuid())
+  name              String
+  description       String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  customFields      CustomField[]
+  histories         History[]
+  laptops           Laptop[]
+  licenses          License[]
+  pcs               PC[]
+  printers          Printer[]
+  users             User[]
+  warehouseITs      WarehouseIT[]
+  internets         Internet[]
+  fixedAssets       FixedAsset[]
+  itPurchasings     ITPurchasing[]
+  auditLogsSettings AuditLogsSettings?
+  roles             Role[]
 
   @@index([id])
 }
@@ -41,33 +42,33 @@ model Role {
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   users       User[]
 
-  @@index([tenantId])
   @@unique([name, tenantId])
+  @@index([tenantId])
 }
 
 model User {
-  id                   String    @id @default(uuid())
-  email                String    @unique
-  password             String
-  name                 String
-  roleId               String?
-  tenantId             String
-  failedLoginAttempts  Int       @default(0)
-  lockedAt             DateTime?
-  lockedUntil          DateTime?
-  lastLoginAttempt     DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  histories            History[]
-  tenant               Tenant    @relation(fields: [tenantId], references: [id])
-  role                 Role?     @relation(fields: [roleId], references: [id])
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  password            String
+  name                String
+  roleId              String?
+  tenantId            String
+  failedLoginAttempts Int       @default(0)
+  lockedAt            DateTime?
+  lockedUntil         DateTime?
+  lastLoginAttempt    DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  histories           History[]
+  tenant              Tenant    @relation(fields: [tenantId], references: [id])
+  role                Role?     @relation(fields: [roleId], references: [id])
 
   @@index([tenantId])
   @@index([roleId])
 }
 
 model PC {
-  id                String    @id @default(uuid())
+  id                String                   @id @default(uuid())
   dept              String
   cpuBarcode        String?
   cpuSapBarcode     String?
@@ -77,13 +78,13 @@ model PC {
   upsSapBarcode     String?
   pcName            String
   userName          String?
-  status            String    @default("working")
+  status            String                   @default("working")
   note              String?
   tenantId          String
   customFields      Json?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  tenant            Tenant                   @relation(fields: [tenantId], references: [id])
   search_vector     Unsupported("tsvector")?
 
   @@index([tenantId])
@@ -95,20 +96,20 @@ model PC {
 }
 
 model Laptop {
-  id           String    @id @default(uuid())
-  dept         String
-  barcode      String
-  sapBarcode   String?
-  dateBuy      DateTime?
-  userName     String?
-  email        String?
-  model        String?
-  status       String    @default("working")
-  tenantId     String
-  customFields Json?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  id            String                   @id @default(uuid())
+  dept          String
+  barcode       String
+  sapBarcode    String?
+  dateBuy       DateTime?
+  userName      String?
+  email         String?
+  model         String?
+  status        String                   @default("working")
+  tenantId      String
+  customFields  Json?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id])
   search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
@@ -121,21 +122,21 @@ model Laptop {
 }
 
 model Printer {
-  id           String    @id @default(uuid())
-  dept         String
-  location     String?
-  ip           String?
-  model        String?
-  color        String    @default("Black & White")
-  barcode      String?
-  sapCode      String?
-  date         DateTime?
-  note         String?
-  tenantId     String
-  customFields Json?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  id            String                   @id @default(uuid())
+  dept          String
+  location      String?
+  ip            String?
+  model         String?
+  color         String                   @default("Black & White")
+  barcode       String?
+  sapCode       String?
+  date          DateTime?
+  note          String?
+  tenantId      String
+  customFields  Json?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id])
   search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
@@ -146,23 +147,23 @@ model Printer {
 }
 
 model License {
-  id           String    @id @default(uuid())
-  deviceName   String?
-  userName     String?
-  dept         String?
-  productType  String?
-  productKey   String?
-  model        String?
-  pc           String?
-  mac          String?
-  ip           String?
-  date         DateTime?
-  updateStatus String?   @default("working")
-  tenantId     String
-  customFields Json?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  id            String                   @id @default(uuid())
+  deviceName    String?
+  userName      String?
+  dept          String?
+  productType   String?
+  productKey    String?
+  model         String?
+  pc            String?
+  mac           String?
+  ip            String?
+  date          DateTime?
+  updateStatus  String?                  @default("working")
+  tenantId      String
+  customFields  Json?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id])
   search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
@@ -175,16 +176,16 @@ model License {
 }
 
 model WarehouseIT {
-  id           String    @id @default(uuid())
-  barcode      String?
-  sapCode      String?
-  status       String    @default("working")
-  note         String?
-  tenantId     String
-  customFields Json?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  id            String                   @id @default(uuid())
+  barcode       String?
+  sapCode       String?
+  status        String                   @default("working")
+  note          String?
+  tenantId      String
+  customFields  Json?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id])
   search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
@@ -194,20 +195,20 @@ model WarehouseIT {
 }
 
 model Internet {
-  id             String    @id @default(uuid())
+  id             String                   @id @default(uuid())
   dept           String
   manager        String?
   userName       String?
   email          String?
   ipAddress      String?
   internetAccess String?
-  status         String    @default("working")
+  status         String                   @default("working")
   note           String?
   tenantId       String
   customFields   Json?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  tenant         Tenant                   @relation(fields: [tenantId], references: [id])
   search_vector  Unsupported("tsvector")?
 
   @@index([tenantId])
@@ -221,21 +222,21 @@ model Internet {
 }
 
 model FixedAsset {
-  id           String    @id @default(uuid())
-  dept         String
-  barcode      String?
-  sapCode      String?
-  name         String
-  place        String?
-  inputDate    DateTime?
-  location     String?
-  status       String    @default("working")
-  note         String?
-  tenantId     String
-  customFields Json?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  id            String                   @id @default(uuid())
+  dept          String
+  barcode       String?
+  sapCode       String?
+  name          String
+  place         String?
+  inputDate     DateTime?
+  location      String?
+  status        String                   @default("working")
+  note          String?
+  tenantId      String
+  customFields  Json?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id])
   search_vector Unsupported("tsvector")?
 
   @@index([tenantId])
@@ -243,6 +244,34 @@ model FixedAsset {
   @@index([status])
   @@index([barcode])
   @@index([sapCode])
+  @@index([createdAt])
+  @@index([search_vector], type: Gin)
+}
+
+model ITPurchasing {
+  id            String                   @id @default(uuid())
+  bpmName       String
+  bpmContent    String
+  bpmId         String
+  deptCode      String
+  statusBPM     String
+  prId          String?
+  statusPR      String?
+  statusReceive String?
+  dateReceive   DateTime?
+  noted         String?
+  tenantId      String
+  customFields  Json?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id])
+  search_vector Unsupported("tsvector")?
+
+  @@index([tenantId])
+  @@index([deptCode])
+  @@index([statusBPM])
+  @@index([bpmId])
+  @@index([prId])
   @@index([createdAt])
   @@index([search_vector], type: Gin)
 }
@@ -264,16 +293,16 @@ model CustomField {
 }
 
 model History {
-  id        String      @id @default(uuid())
+  id        String   @id @default(uuid())
   action    String
   modelType String
   recordId  String
   changes   Json
   userId    String?
   tenantId  String
-  createdAt DateTime    @default(now())
-  tenant    Tenant      @relation(fields: [tenantId], references: [id])
-  user      User?       @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
   @@index([userId])
@@ -281,23 +310,23 @@ model History {
 }
 
 model AuditLogsSettings {
-  id                    String   @id @default(uuid())
-  tenantId              String   @unique
-  enabled               Boolean  @default(true)
-  retentionPeriod       Int      @default(90)
-  logAssetCreation      Boolean  @default(true)
-  logAssetUpdates       Boolean  @default(true)
-  logAssetDeletion      Boolean  @default(true)
-  logUserLogin          Boolean  @default(true)
-  logUserLogout         Boolean  @default(true)
-  logPermissionChanges  Boolean  @default(true)
-  notifyOnCriticalEvents Boolean @default(true)
-  emailNotifications    Boolean  @default(true)
-  slackNotifications    Boolean  @default(false)
-  notificationEmail     String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+  id                     String   @id @default(uuid())
+  tenantId               String   @unique
+  enabled                Boolean  @default(true)
+  retentionPeriod        Int      @default(90)
+  logAssetCreation       Boolean  @default(true)
+  logAssetUpdates        Boolean  @default(true)
+  logAssetDeletion       Boolean  @default(true)
+  logUserLogin           Boolean  @default(true)
+  logUserLogout          Boolean  @default(true)
+  logPermissionChanges   Boolean  @default(true)
+  notifyOnCriticalEvents Boolean  @default(true)
+  emailNotifications     Boolean  @default(true)
+  slackNotifications     Boolean  @default(false)
+  notificationEmail      String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  tenant                 Tenant   @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
 }

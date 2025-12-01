@@ -20,7 +20,7 @@ import { ResourceType, PermissionAction, COMMON_RESOURCE_TYPES, COMMON_PERMISSIO
 
 // Define common resource types and actions for the UI
 const COMMON_RESOURCE_TYPES_ARRAY: ResourceType[] = [...COMMON_RESOURCE_TYPES]
-const ASSET_TYPES: ResourceType[] = ['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet']
+const ASSET_TYPES: ResourceType[] = ['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset', 'it-purchasing']
 const COMMON_PERMISSION_ACTIONS_ARRAY: PermissionAction[] = [...COMMON_PERMISSION_ACTIONS]
 
 export function RoleForm({ 

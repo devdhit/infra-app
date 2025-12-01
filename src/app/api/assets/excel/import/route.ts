@@ -75,15 +75,17 @@ export async function POST(request: NextRequest) {
       let warehouseCustomFieldsConfig: any[] = [];
       let internetCustomFieldsConfig: any[] = [];
       let fixedAssetCustomFieldsConfig: any[] = [];
+      let itPurchasingCustomFieldsConfig: any[] = [];
       
       // Use a single transaction for fetching all custom fields to reduce connection usage
-      if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset'].includes(assetType)) {
+      if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset', 'it-purchasing'].includes(assetType)) {
         const customFieldModelType = assetType === 'pc' ? 'PC' : 
                                     assetType === 'laptop' ? 'Laptop' : 
                                     assetType === 'printer' ? 'Printer' : 
                                     assetType === 'license' ? 'License' : 
                                     assetType === 'warehouse' ? 'WarehouseIT' : 
-                                    assetType === 'internet' ? 'Internet' : 'FixedAsset';
+                                    assetType === 'internet' ? 'Internet' : 
+                                    assetType === 'fixed-asset' ? 'FixedAsset' : 'ITPurchasing';
         
         const customFields = await db.customField.findMany({
           where: {
@@ -100,6 +102,7 @@ export async function POST(request: NextRequest) {
         else if (assetType === 'warehouse') warehouseCustomFieldsConfig = customFields;
         else if (assetType === 'internet') internetCustomFieldsConfig = customFields;
         else if (assetType === 'fixed-asset') fixedAssetCustomFieldsConfig = customFields;
+        else if (assetType === 'it-purchasing') itPurchasingCustomFieldsConfig = customFields;
       }
       
       // Process each row in the batch
@@ -1336,6 +1339,112 @@ export async function POST(request: NextRequest) {
               if (redisCache && CACHE_PREFIXES) {
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:FixedAsset:${user.tenantId}:*`);
                 await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:FixedAsset:${user.tenantId}:*`);
+              }
+              break;
+
+            case 'it-purchasing':
+              // Validate required fields for IT Purchasing
+              if (!row.bpmName || !row.bpmContent || !row.bpmId || !row.deptCode || !row.statusBPM) {
+                errors.push(`Row missing required fields: bpmName, bpmContent, bpmId, deptCode, statusBPM`);
+                continue;
+              }
+
+              // Prepare IT Purchasing data
+              const { ...itPurchasingRowData } = row as any;
+              
+              // Extract custom fields from row data
+              let itPurchasingCustomFields: Record<string, any> | undefined;
+              
+              if (itPurchasingCustomFieldsConfig.length > 0) {
+                itPurchasingCustomFields = {};
+                for (const customField of itPurchasingCustomFieldsConfig) {
+                  if (itPurchasingRowData[customField.name] !== undefined && itPurchasingRowData[customField.name] !== null) {
+                    // Handle different custom field types
+                    switch (customField.type) {
+                      case 'number':
+                        const numValue = Number(itPurchasingRowData[customField.name]);
+                        itPurchasingCustomFields[customField.name] = isNaN(numValue) ? itPurchasingRowData[customField.name] : numValue;
+                        break;
+                      case 'boolean':
+                        if (typeof itPurchasingRowData[customField.name] === 'string') {
+                          const strValue = (itPurchasingRowData[customField.name] as string).toLowerCase();
+                          itPurchasingCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                        } else {
+                          itPurchasingCustomFields[customField.name] = Boolean(itPurchasingRowData[customField.name]);
+                        }
+                        break;
+                      case 'date':
+                        if (typeof itPurchasingRowData[customField.name] === 'string') {
+                          const dateValue = new Date(itPurchasingRowData[customField.name]);
+                          itPurchasingCustomFields[customField.name] = isNaN(dateValue.getTime()) ? itPurchasingRowData[customField.name] : dateValue.toISOString();
+                        } else {
+                          itPurchasingCustomFields[customField.name] = itPurchasingRowData[customField.name];
+                        }
+                        break;
+                      default:
+                        itPurchasingCustomFields[customField.name] = itPurchasingRowData[customField.name];
+                    }
+                    delete itPurchasingRowData[customField.name];
+                  }
+                }
+              }
+              
+              // Check for any remaining fields that might be custom fields
+              const itPurchasingModelFields = ['id', 'bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 
+                'prId', 'statusPR', 'statusReceive', 'dateReceive', 'noted', 'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+                
+              for (const [key, value] of Object.entries(itPurchasingRowData)) {
+                if (!itPurchasingModelFields.includes(key)) {
+                  if (!itPurchasingCustomFields) {
+                    itPurchasingCustomFields = {};
+                  }
+                  itPurchasingCustomFields[key] = value;
+                  delete itPurchasingRowData[key];
+                }
+              }
+
+              // Handle dateReceive field
+              let dateReceiveValue = null;
+              if (itPurchasingRowData.dateReceive) {
+                if (typeof itPurchasingRowData.dateReceive === 'string') {
+                  const dateValue = new Date(itPurchasingRowData.dateReceive);
+                  if (!isNaN(dateValue.getTime()) && dateValue.getFullYear() >= 1900 && dateValue.getFullYear() <= 2100) {
+                    dateReceiveValue = dateValue;
+                  }
+                } else if (itPurchasingRowData.dateReceive instanceof Date) {
+                  dateReceiveValue = itPurchasingRowData.dateReceive;
+                }
+              }
+
+              // Create the IT Purchasing record
+              const createdITPurchasing = await db.iTPurchasing.create({
+                data: {
+                  ...itPurchasingRowData,
+                  dateReceive: dateReceiveValue,
+                  ...(itPurchasingCustomFields ? { customFields: itPurchasingCustomFields } : {}),
+                  tenantId: user.tenantId
+                }
+              });
+
+              // Create audit log
+              await createAuditLog(user.tenantId, {
+                action: 'import',
+                modelType: 'ITPurchasing',
+                recordId: createdITPurchasing.id,
+                changes: {
+                  ...row,
+                  id: createdITPurchasing.id
+                },
+                userId: user.id,
+                tenantId: user.tenantId
+              }, 'import');
+              
+              createdCount++;
+              
+              // Invalidate Redis cache for IT Purchasing assets
+              if (redisCache && CACHE_PREFIXES) {
+                await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:ITPurchasing:${user.tenantId}:*`);
+                await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:ITPurchasing:${user.tenantId}:*`);
               }
               break;
 

@@ -226,6 +226,12 @@ export function usePermissions() {
       canEditFixedAsset: () => Promise.resolve(false),
       canDeleteFixedAsset: () => Promise.resolve(false),
       canBulkDeleteFixedAsset: () => Promise.resolve(false),
+      // IT Purchasing permissions
+      canViewITPurchasing: () => Promise.resolve(false),
+      canCreateITPurchasing: () => Promise.resolve(false),
+      canEditITPurchasing: () => Promise.resolve(false),
+      canDeleteITPurchasing: () => Promise.resolve(false),
+      canBulkDeleteITPurchasing: () => Promise.resolve(false),
       // Settings permissions
       canViewSettings: () => Promise.resolve(false),
       canEditSettings: () => Promise.resolve(false),
@@ -295,6 +301,12 @@ export function usePermissions() {
       canEditFixedAsset: () => Promise.resolve(true),
       canDeleteFixedAsset: () => Promise.resolve(true),
       canBulkDeleteFixedAsset: () => Promise.resolve(true),
+      // IT Purchasing permissions
+      canViewITPurchasing: () => Promise.resolve(true),
+      canCreateITPurchasing: () => Promise.resolve(true),
+      canEditITPurchasing: () => Promise.resolve(true),
+      canDeleteITPurchasing: () => Promise.resolve(true),
+      canBulkDeleteITPurchasing: () => Promise.resolve(true),
       // Settings permissions
       canViewSettings: () => Promise.resolve(true),
       canEditSettings: () => Promise.resolve(true),
@@ -435,6 +447,12 @@ export function usePermissions() {
     canEditFixedAsset: () => checkPermission('fixed-asset', 'edit'),
     canDeleteFixedAsset: () => checkPermission('fixed-asset', 'delete'),
     canBulkDeleteFixedAsset: () => checkPermission('fixed-asset', 'bulkDelete'),
+    // IT Purchasing permissions
+    canViewITPurchasing: () => checkPermission('it-purchasing', 'view'),
+    canCreateITPurchasing: () => checkPermission('it-purchasing', 'create'),
+    canEditITPurchasing: () => checkPermission('it-purchasing', 'edit'),
+    canDeleteITPurchasing: () => checkPermission('it-purchasing', 'delete'),
+    canBulkDeleteITPurchasing: () => checkPermission('it-purchasing', 'bulkDelete'),
     // Settings permissions
     canViewSettings,
     canEditSettings,

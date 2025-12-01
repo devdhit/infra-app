@@ -58,6 +58,7 @@ export const COMMON_RESOURCE_TYPES = [
   'warehouse', 
   'internet',
   'fixed-asset',
+  'it-purchasing',
   'auditLogs',
   'agent'
 ] as const;
@@ -89,6 +90,7 @@ const defaultPermissions: Record<string, Record<ResourceType, PermissionAction[]
     warehouse: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     internet: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     'fixed-asset': ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    'it-purchasing': ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     auditLogs: ['view'],
     agent: ['submitData', 'viewStatus', 'healthCheck']
   },
@@ -105,6 +107,7 @@ const defaultPermissions: Record<string, Record<ResourceType, PermissionAction[]
     warehouse: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     internet: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     'fixed-asset': ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    'it-purchasing': ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     auditLogs: [], // Regular users cannot view audit logs by default
     agent: ['submitData', 'viewStatus', 'healthCheck']
   }
@@ -211,7 +214,7 @@ export async function hasPermission(
     }
 
     // If no specific permission for this asset type, fall back to generic assets permission
-    if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset'].includes(resource)) {
+    if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset', 'it-purchasing'].includes(resource)) {
       if (permissions['assets'] && permissions['assets'].includes(action)) {
         return true;
       }

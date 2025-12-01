@@ -13,7 +13,8 @@ export const getModelType = (assetType: string): string => {
     license: "License",
     warehouse: "WarehouseIT",
     internet: "Internet",
-    "fixed-asset": "FixedAsset"
+    "fixed-asset": "FixedAsset",
+    "it-purchasing": "ITPurchasing"
   };
   
   return modelTypeMap[assetType] || assetType;

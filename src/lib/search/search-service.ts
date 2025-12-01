@@ -83,6 +83,12 @@ const ASSET_TYPE_CONFIG: Record<string, {
     searchFields: ['assetName', 'assetNumber', 'dept', 'location'],
     filterFields: ['status', 'dept', 'category'],
     columns: ['id', 'assetNumber', 'assetName', 'category', 'purchaseDate', 'purchasePrice', 'currentValue', 'dept', 'location', 'status', 'note', 'tenantId', 'customFields', 'createdAt', 'updatedAt']
+  },
+  'it-purchasing': {
+    tableName: 'ITPurchasing',
+    searchFields: ['bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 'prId', 'statusPR', 'statusReceive', 'noted'],
+    filterFields: ['deptCode', 'statusBPM', 'statusPR', 'statusReceive'],
+    columns: ['id', 'bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 'prId', 'statusPR', 'statusReceive', 'dateReceive', 'noted', 'tenantId', 'customFields', 'createdAt', 'updatedAt']
   }
 };
 
