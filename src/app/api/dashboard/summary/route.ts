@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     // Get PC summary data: total counts for CPU, Monitor, UPS
     const pcSummary = await db.pC.groupBy({
-      by: ['cpuBarcode', 'monitorBarcode', 'upsBarcode'],
+      by: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode'],
       where: { tenantId: user.tenantId },
       _count: true
     }).catch(error => {
@@ -90,24 +90,35 @@ export async function GET(request: NextRequest) {
       throw new Error('Failed to count PCs');
     });
     
-    // Count only non-null and non-'N/A' values
-    const totalCpus = pcSummary.filter((pc: any) => 
-      pc.cpuBarcode && 
-      pc.cpuBarcode !== 'N/A' && 
-      String(pc.cpuBarcode).trim() !== ''
-    ).length;
+    // Helper function to check if a field value is excluded
+    const isExcludedValue = (value: string | null | undefined): boolean => {
+      if (!value) return true;
+      const trimmedValue = String(value).trim().toLowerCase();
+      return trimmedValue === '' || trimmedValue === 'n/a' || trimmedValue === 'no use';
+    };
     
-    const totalMonitors = pcSummary.filter((pc: any) => 
-      pc.monitorBarcode && 
-      pc.monitorBarcode !== 'N/A' && 
-      String(pc.monitorBarcode).trim() !== ''
-    ).length;
+    // Count CPUs: at least one of cpuBarcode or cpuSapBarcode has valid data
+    // Exclude when both are 'No use' or 'N/A'
+    const totalCpus = pcSummary.filter((pc: { cpuBarcode: string | null; cpuSapBarcode: string | null }) => {
+      const cpuBarcodeExcluded = isExcludedValue(pc.cpuBarcode);
+      const cpuSapBarcodeExcluded = isExcludedValue(pc.cpuSapBarcode);
+      // Count if at least one field has valid data (not both excluded)
+      return !(cpuBarcodeExcluded && cpuSapBarcodeExcluded);
+    }).length;
     
-    const totalUps = pcSummary.filter((pc: any) => 
-      pc.upsBarcode && 
-      pc.upsBarcode !== 'N/A' && 
-      String(pc.upsBarcode).trim() !== ''
-    ).length;
+    // Count Monitors: at least one of monitorBarcode or monitorSapBarcode has valid data
+    const totalMonitors = pcSummary.filter((pc: { monitorBarcode: string | null; monitorSapBarcode: string | null }) => {
+      const monitorBarcodeExcluded = isExcludedValue(pc.monitorBarcode);
+      const monitorSapBarcodeExcluded = isExcludedValue(pc.monitorSapBarcode);
+      return !(monitorBarcodeExcluded && monitorSapBarcodeExcluded);
+    }).length;
+    
+    // Count UPS: at least one of upsBarcode or upsSapBarcode has valid data
+    const totalUps = pcSummary.filter((pc: { upsBarcode: string | null; upsSapBarcode: string | null }) => {
+      const upsBarcodeExcluded = isExcludedValue(pc.upsBarcode);
+      const upsSapBarcodeExcluded = isExcludedValue(pc.upsSapBarcode);
+      return !(upsBarcodeExcluded && upsSapBarcodeExcluded);
+    }).length;
 
     // Get Laptop summary data: total by status, by model, and custom-fields fields
     const laptopSummary = await db.laptop.groupBy({

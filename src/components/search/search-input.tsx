@@ -224,7 +224,11 @@ export function SearchInput({
   }, [autoFocus]);
 
   return (
-    <Popover open={isOpen && allSuggestions.length > 0} onOpenChange={setIsOpen}>
+    <Popover 
+      open={isOpen && allSuggestions.length > 0} 
+      onOpenChange={setIsOpen}
+      modal={false}
+    >
       <PopoverTrigger asChild>
         <div className={cn('relative flex items-center', className)}>
           <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />

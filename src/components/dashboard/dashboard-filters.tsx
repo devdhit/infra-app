@@ -132,7 +132,7 @@ export function DashboardFilters({ onFilterChange, onReset }: DashboardFiltersPr
               </Select>
             )}
             {option.type === 'date' && (
-              <Popover>
+              <Popover modal={false}>
                 <PopoverTrigger asChild>
                   <Button
                     variant={"outline"}
