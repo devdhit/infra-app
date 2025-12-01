@@ -670,9 +670,12 @@ export function useDashboard<T = DashboardData>() {
 
 export interface DashboardSummaryData {
   pc: Array<{
-    cpu: string | null;
+    cpuBarcode: string | null;
+    cpuSapBarcode: string | null;
     monitorBarcode: string | null;
+    monitorSapBarcode: string | null;
     upsBarcode: string | null;
+    upsSapBarcode: string | null;
     _count: number;
   }>;
   laptop: Array<{

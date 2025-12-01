@@ -108,14 +108,23 @@ export async function GET(request: NextRequest) {
       select: {
         dept: true,
         monitorBarcode: true,
-        upsBarcode: true
+        monitorSapBarcode: true,
+        upsBarcode: true,
+        upsSapBarcode: true
       }
     }).catch(error => {
       logger.error('Error fetching PC assets for department stats:', error);
       throw new Error('Failed to fetch PC assets for department statistics');
     })
 
-    // Group PC assets by department and count monitors and UPSs (excluding 'N/A' values)
+    // Helper function to check if a field value is excluded
+    const isExcludedValue = (value: string | null | undefined): boolean => {
+      if (!value) return true;
+      const trimmedValue = String(value).trim().toLowerCase();
+      return trimmedValue === '' || trimmedValue === 'n/a' || trimmedValue === 'no use';
+    };
+
+    // Group PC assets by department and count monitors and UPSs
     const pcDepartmentStatsMap: Record<string, { count: number; monitorCount: number; upsCount: number }> = {}
     
     pcAssets.forEach(pc => {
@@ -132,12 +141,17 @@ export async function GET(request: NextRequest) {
       if (deptStats) {
         deptStats.count += 1;
         
-        // Count monitors and UPSs only if they exist and are not 'N/A'
-        if (pc.monitorBarcode && pc.monitorBarcode !== 'N/A' && String(pc.monitorBarcode).trim() !== '') {
+        // Count monitors if at least one of monitorBarcode or monitorSapBarcode has valid data
+        const monitorBarcodeExcluded = isExcludedValue(pc.monitorBarcode);
+        const monitorSapBarcodeExcluded = isExcludedValue(pc.monitorSapBarcode);
+        if (!(monitorBarcodeExcluded && monitorSapBarcodeExcluded)) {
           deptStats.monitorCount += 1;
         }
         
-        if (pc.upsBarcode && pc.upsBarcode !== 'N/A' && String(pc.upsBarcode).trim() !== '') {
+        // Count UPS if at least one of upsBarcode or upsSapBarcode has valid data
+        const upsBarcodeExcluded = isExcludedValue(pc.upsBarcode);
+        const upsSapBarcodeExcluded = isExcludedValue(pc.upsSapBarcode);
+        if (!(upsBarcodeExcluded && upsSapBarcodeExcluded)) {
           deptStats.upsCount += 1;
         }
       }

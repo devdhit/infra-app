@@ -514,12 +514,43 @@ export function AssetList({
   // Fetch custom fields
   const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(assetType)
   
-  // Fetch search suggestions when input changes
+  // Debounce ref for suggestions fetching
+  const suggestionsFetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Extract fetchSuggestions to ensure stable reference
+  const { fetchSuggestions } = enhancedSearch
+  
+  // Fetch search suggestions when input changes (debounced to prevent infinite loops)
+  const fetchSuggestionsDebounced = useCallback(
+    (prefix: string) => {
+      // Clear previous timeout
+      if (suggestionsFetchTimeoutRef.current) {
+        clearTimeout(suggestionsFetchTimeoutRef.current)
+      }
+      
+      // Only fetch if prefix is long enough
+      if (prefix && prefix.length > 1) {
+        // Debounce the API call to prevent excessive requests
+        suggestionsFetchTimeoutRef.current = setTimeout(() => {
+          fetchSuggestions(prefix)
+        }, 300) // 300ms debounce for suggestions
+      }
+    },
+    [fetchSuggestions] // Depend on the extracted function
+  )
+  
   useEffect(() => {
-    if (searchInputValue && searchInputValue.length > 1) {
-      enhancedSearch.fetchSuggestions(searchInputValue)
+    fetchSuggestionsDebounced(searchInputValue)
+  }, [searchInputValue, fetchSuggestionsDebounced])
+  
+  // Cleanup suggestions timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (suggestionsFetchTimeoutRef.current) {
+        clearTimeout(suggestionsFetchTimeoutRef.current)
+      }
     }
-  }, [searchInputValue, enhancedSearch])
+  }, [])
   
   // Asset deletion hooks
   const { deleteAsset, isLoading: deleteLoading } = useDeleteAsset<Asset>(assetType)
@@ -1327,7 +1358,7 @@ export function AssetList({
                 </DropdownMenu>
                 
                 {/* Moved column visibility control to card header for better accessibility */}
-                <Popover>
+                <Popover modal={false}>
                   <PopoverTrigger asChild>
                     <Button 
                       variant="outline" 
