@@ -10,6 +10,8 @@ import {
 } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAssets, useDeleteAsset, useBulkDeleteAssets } from "@/hooks/useApi"
+import useEnhancedSearch from "@/hooks/useEnhancedSearch"
+import { useSearchContextOptional } from "@/contexts/search-context"
 import {
   Button,
   Card,
@@ -18,12 +20,12 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
-  Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Separator,
 } from "@/components/ui"
+import { SearchInput } from "@/components/search"
 import { DataTable } from "@/components/ui/data-table"
 import {
   DropdownMenu,
@@ -37,7 +39,6 @@ import {
   MoreHorizontal,
   Edit,
   Trash,
-  Search,
   Download,
   Upload,
   Eye,
@@ -443,30 +444,59 @@ export function AssetList({
     }
   }, [])
 
-  // Fetch assets with current parameters
+  // Enhanced search functionality with fast API
+  const searchContext = useSearchContextOptional()
+  const enhancedSearch = useEnhancedSearch(assetType, {
+    autoSearch: false,
+    enableCache: true,
+    debounceMs: 300, // Faster debounce
+  })
+  
+  // Use enhanced search results when searching, otherwise use regular API
+  const isUsingEnhancedSearch = search && search.length > 0
+  
+  // Fetch assets with current parameters (only when NOT searching)
   const { data: assetsData, isLoading: assetsLoading, error: assetsApiError, refetch } = useAssets<AssetResponse<Asset>>(assetType, {
     page: currentPage,
     limit: 20,
-    search,
+    search: isUsingEnhancedSearch ? '' : search, // Empty when using enhanced search
     status: statusFilter
   })
   
+  // Determine which data source to use (memoized to prevent infinite loops)
+  const activeAssets = useMemo(() => 
+    isUsingEnhancedSearch && enhancedSearch.results ? enhancedSearch.results.data : (assetsData?.data || []),
+    [isUsingEnhancedSearch, enhancedSearch.results, assetsData?.data]
+  )
+  
+  const activeLoading = isUsingEnhancedSearch ? enhancedSearch.isLoading : assetsLoading
+  const activeError = isUsingEnhancedSearch ? enhancedSearch.error : assetsApiError
+  
+  const activePagination = useMemo(() => 
+    isUsingEnhancedSearch && enhancedSearch.results 
+      ? {
+          page: enhancedSearch.results.page,
+          limit: enhancedSearch.results.limit,
+          total: enhancedSearch.results.total,
+          pages: enhancedSearch.results.totalPages
+        }
+      : (assetsData?.pagination || { page: 1, limit: 20, total: 0, pages: 1 }),
+    [isUsingEnhancedSearch, enhancedSearch.results, assetsData?.pagination]
+  )
+  
   // Update state when assets data changes
   useEffect(() => {
-    if (assetsData) {
-      setAssets(assetsData.data || [])
-      setPagination(assetsData.pagination || { page: 1, limit: 10, total: 0, pages: 1 })
-      setIsLoading(assetsLoading)
-      // isError is not a property of useAssets hook, using error instead
-      setIsError(!!assetsApiError)
-      setError(assetsApiError || null)
-    }
-  }, [assetsData, assetsLoading, assetsApiError])
+    setAssets(activeAssets)
+    setPagination(activePagination)
+    setIsLoading(activeLoading)
+    setIsError(!!activeError)
+    setError(activeError as ApiError | null)
+  }, [activeAssets, activePagination, activeLoading, activeError])
 
   // Check internet access and license status for PC assets
   useEffect(() => {
-    if (assetType === 'pc' && assetsData?.data) {
-      assetsData.data.forEach((asset: Asset) => {
+    if (assetType === 'pc' && activeAssets && activeAssets.length > 0) {
+      activeAssets.forEach((asset: Asset) => {
         // Check if we've already checked this asset
         // Only check assets with valid userName (not empty and not "N/A")
         if (asset.userName && asset.userName !== 'N/A' && !checkedAssets.has(asset.id)) {
@@ -479,10 +509,17 @@ export function AssetList({
         }
       })
     }
-  }, [assetsData, assetType, checkedAssets, t])
+  }, [activeAssets, assetType, checkedAssets, t])
 
   // Fetch custom fields
   const { data: customFieldsData, refetch: refetchCustomFields } = useCustomFields(assetType)
+  
+  // Fetch search suggestions when input changes
+  useEffect(() => {
+    if (searchInputValue && searchInputValue.length > 1) {
+      enhancedSearch.fetchSuggestions(searchInputValue)
+    }
+  }, [searchInputValue, enhancedSearch])
   
   // Asset deletion hooks
   const { deleteAsset, isLoading: deleteLoading } = useDeleteAsset<Asset>(assetType)
@@ -510,56 +547,50 @@ export function AssetList({
     }
   }, [isError, error, t])
   
-  // Optimized search with smart debouncing
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  
+  // Optimized search with enhanced API
   const handleSearchChange = useCallback((value: string) => {
     setSearchInputValue(value)
+    setSearch(value)
     
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
-    }
-    
-    if (value === '') {
-      setSearch(value)
-      setIsSearching(true)
-      return
-    }
-    
-    searchTimeoutRef.current = setTimeout(() => {
-      setSearch(value)
-      setIsSearching(true)
-    }, 500)
-  }, [])
-  
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current)
+    // Use enhanced search API when there's a query
+    if (value && value.length > 0) {
+      // Add to search history
+      if (searchContext) {
+        searchContext.addToHistory({
+          query: value,
+          assetType,
+          timestamp: Date.now(),
+          filters: statusFilter ? { status: statusFilter } : undefined,
+        })
       }
-    }
-  }, [])
-  
-  // Better focus management
-  const handleSearchFocus = useCallback(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
-    }
-  }, [])
-  
-  const handleSearchBlur = useCallback(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
-      setSearch(searchInputValue)
+      
+      // Execute enhanced search with filters
+      enhancedSearch.search(value, {
+        page: currentPage,
+        limit: 20,
+        filters: statusFilter ? { status: statusFilter } : {},
+      })
+    } else {
+      // Clear search - will use regular API
       setIsSearching(true)
     }
-  }, [searchInputValue])
+  }, [searchContext, assetType, statusFilter, currentPage, enhancedSearch])
   
+  // Handle status filter with enhanced search support
   const handleStatusFilterChange = useCallback((status: string) => {
     setStatusFilter(status)
-    setIsSearching(true)
-  }, [])
+    
+    // If currently searching, re-execute search with new filter
+    if (search && search.length > 0) {
+      enhancedSearch.search(search, {
+        page: currentPage,
+        limit: 20,
+        filters: status ? { status } : {},
+      })
+    } else {
+      setIsSearching(true)
+    }
+  }, [search, currentPage, enhancedSearch])
   
   const handleDelete = useCallback(async (id: string) => {
     setDeleteAssetId(id)
@@ -1061,7 +1092,18 @@ export function AssetList({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            onClick={() => {
+              const newPage = Math.max(1, currentPage - 1)
+              setCurrentPage(newPage)
+              // Re-execute search if active
+              if (search && search.length > 0) {
+                enhancedSearch.search(search, {
+                  page: newPage,
+                  limit: 20,
+                  filters: statusFilter ? { status: statusFilter } : {},
+                })
+              }
+            }}
             disabled={currentPage === 1 || isLoading}
             aria-label={t('common.pagination.previous', "Previous page")}
             className="transition-all duration-200 hover:shadow-sm"
@@ -1077,7 +1119,17 @@ export function AssetList({
                 key={page}
                 variant={page === currentPage ? "default" : "outline"}
                 size="sm"
-                onClick={() => setCurrentPage(page as number)}
+                onClick={() => {
+                  setCurrentPage(page as number)
+                  // Re-execute search if active
+                  if (search && search.length > 0) {
+                    enhancedSearch.search(search, {
+                      page: page as number,
+                      limit: 20,
+                      filters: statusFilter ? { status: statusFilter } : {},
+                    })
+                  }
+                }}
                 disabled={isLoading}
                 className={`transition-all duration-200 ${page === currentPage ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:shadow-sm"}`}
               >
@@ -1089,7 +1141,18 @@ export function AssetList({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(prev => Math.min(pagination.pages, prev + 1))}
+            onClick={() => {
+              const newPage = Math.min(pagination.pages, currentPage + 1)
+              setCurrentPage(newPage)
+              // Re-execute search if active
+              if (search && search.length > 0) {
+                enhancedSearch.search(search, {
+                  page: newPage,
+                  limit: 20,
+                  filters: statusFilter ? { status: statusFilter } : {},
+                })
+              }
+            }}
             disabled={currentPage === pagination.pages || isLoading}
             aria-label={t('common.pagination.next', "Next page")}
             className="transition-all duration-200 hover:shadow-sm"
@@ -1211,22 +1274,26 @@ export function AssetList({
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                {isSearching && (
-                  <div className="absolute right-3 top-3 h-4 w-4">
-                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground border-r-transparent animate-spin" />
-                  </div>
-                )}
-                <Input
-                  ref={searchInputRef}
-                  placeholder={t('common.search.placeholder', "Search assets...")}
+              <div className="w-full sm:w-64">
+                <SearchInput
                   value={searchInputValue}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
-                  onFocus={handleSearchFocus}
-                  onBlur={handleSearchBlur}
-                  className="pl-9 w-full pr-9 border-muted focus:border-primary transition-colors duration-200"
+                  onChange={handleSearchChange}
+                  onClear={() => {
+                    setSearchInputValue('')
+                    setSearch('')
+                    setIsSearching(true)
+                  }}
+                  onDeleteHistory={(query) => {
+                    // Remove from context history
+                    if (searchContext) {
+                      searchContext.removeSearchFromHistory(query)
+                    }
+                  }}
+                  placeholder={t('common.search.placeholder', "Search assets...")}
+                  suggestions={enhancedSearch.suggestions}
                   disabled={canView === false}
+                  showSuggestions={searchContext?.preferences.showSuggestions !== false}
+                  className="w-full"
                 />
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
