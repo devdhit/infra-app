@@ -272,11 +272,17 @@ export function UserForm({
                     <SelectValue placeholder={t('users.form.selectRole') || 'Select a role'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles && roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {role.name}
+                    {Array.isArray(roles) && roles.length > 0 ? (
+                      roles.map((role) => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-roles" disabled>
+                        {t('users.form.noRoles') || 'No roles available'}
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.role && <p className="text-sm text-red-500 mt-1">{errors.role}</p>}

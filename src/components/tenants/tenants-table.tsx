@@ -14,12 +14,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Search, MoreHorizontal, Edit, Trash } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
-import { Tenant } from "@/hooks/useApi"
+import type { Tenant } from "@/types/management"
 import logger from '@/lib/logger';
 
 // Define the interface directly in this file to avoid import issues
 interface TenantsTableProps {
-  tenants: Tenant[];
+  tenants: readonly Tenant[];
   onEdit?: (tenant: Tenant | null) => void;
   onDelete?: (id: string | string[]) => void;
   isDeleting: boolean;
@@ -208,7 +208,7 @@ export function TenantsTable({
       tenant.name.toLowerCase().includes(term) || 
       (tenant.description && tenant.description.toLowerCase().includes(term))
     )
-  }, [tenants, search])
+  }, [tenants, search]) as Tenant[]
 
   // Handle bulk delete
   const handleBulkDelete = useCallback(() => {

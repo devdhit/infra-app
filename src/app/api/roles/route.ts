@@ -1,126 +1,55 @@
 import { NextRequest } from 'next/server'
-import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
-import { hasPermission } from '@/lib/permissions'
-import { successResponse, errorResponse, badRequestResponse, conflictResponse } from '@/lib/api-utils'
+import { roleService } from '@/lib/management/services/role.service'
+import { checkPermission, apiSuccess, apiError, apiBadRequest } from '@/lib/management/api-helpers'
 import logger from '@/lib/logger';
 
 // GET /api/roles - Get all roles
 export async function GET(request: NextRequest) {
+  const { user, error } = await checkPermission(request, 'roles', 'view')
+  if (error) return error
+
   try {
-    const currentUser = await getCurrentUser(request)
-    if (!currentUser) {
-      return errorResponse('Unauthorized', 401)
+    const result = await roleService.getTenantRoles(user!.tenantId)
+    
+    if (!result.success) {
+      return apiError(result.error.message, 'INTERNAL_ERROR')
     }
 
-    // Check if user has permission to view roles
-    const hasViewPermission = await hasPermission(
-      currentUser.role?.id || '',
-      currentUser.tenantId,
-      'roles',
-      'view'
-    )
-    
-    // For debugging in development only
-    if (process.env.NODE_ENV === 'development') {
-      logger.info('Role permission check:', {
-        userId: currentUser.id,
-        userEmail: currentUser.email,
-        userRole: currentUser.role?.name,
-        userRoleId: currentUser.role?.id,
-        tenantId: currentUser.tenantId,
-        hasViewPermission
-      });
-    }
-    
-    if (!hasViewPermission) {
-      return errorResponse('Forbidden', 403)
-    }
-
-    // Get all roles for the tenant
-    const roles = await db.role.findMany({
-      where: {
-        tenantId: currentUser.tenantId
+    return apiSuccess({
+      data: result.data,
+      pagination: {
+        page: 1,
+        limit: result.data.length,
+        total: result.data.length,
+        totalPages: 1,
       },
-      orderBy: {
-        name: 'asc'
-      }
     })
-
-    return successResponse(roles)
-  } catch (error: any) {
-    // Log errors only in development
+  } catch (error: unknown) {
     if (process.env.NODE_ENV === 'development') {
       logger.error('Error fetching roles:', error)
     }
-    return errorResponse('Internal server error')
+    return apiError('Internal server error', 'INTERNAL_ERROR')
   }
 }
 
 // POST /api/roles - Create a new role
 export async function POST(request: NextRequest) {
+  const { user, error } = await checkPermission(request, 'roles', 'create')
+  if (error) return error
+
   try {
-    const currentUser = await getCurrentUser(request)
-    if (!currentUser) {
-      return errorResponse('Unauthorized', 401)
-    }
-
-    // Check if user has permission to create roles
-    const hasCreatePermission = await hasPermission(
-      currentUser.role?.id || '',
-      currentUser.tenantId,
-      'roles',
-      'create'
-    )
+    const body = await request.json()
+    const result = await roleService.createRole(body, user!.tenantId)
     
-    if (!hasCreatePermission) {
-      return errorResponse('Forbidden', 403)
+    if (!result.success) {
+      return apiBadRequest(result.error.message)
     }
 
-    let body
-    try {
-      body = await request.json()
-    } catch (error) {
-      return badRequestResponse('Invalid JSON in request body')
-    }
-
-    // Validate required fields
-    if (!body.name) {
-      return badRequestResponse('Role name is required')
-    }
-
-    // Normalize the role name for comparison (trim whitespace)
-    const normalizedName = body.name.trim()
-
-    // Validate permissions structure if provided
-    if (body.permissions && typeof body.permissions !== 'object') {
-      return badRequestResponse('Invalid permissions structure')
-    }
-
-    // Check if role already exists and create in a single operation
-    try {
-      const role = await db.role.create({
-        data: {
-          name: normalizedName,
-          description: body.description || '',
-          permissions: body.permissions || {},
-          tenantId: currentUser.tenantId
-        }
-      })
-
-      return successResponse(role, 201)
-    } catch (error: any) {
-      // Check if it's a unique constraint violation
-      if (error.code === 'P2002') {
-        return conflictResponse('A role with this name already exists')
-      }
-      throw error
-    }
-  } catch (error: any) {
-    // Log errors only in development
+    return apiSuccess(result.data, 201)
+  } catch (error: unknown) {
     if (process.env.NODE_ENV === 'development') {
       logger.error('Error creating role:', error)
     }
-    return errorResponse('Internal server error')
+    return apiBadRequest('Invalid request body')
   }
 }

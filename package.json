@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm run build:server && nodemon server.js",
+    "dev": "npm run build:server && nodemon",
     "build": "next build",
     "build:windows": "next build --turbopack",
     "build:server": "tsc -p tsconfig.build.json",

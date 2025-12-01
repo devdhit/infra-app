@@ -1,0 +1,22 @@
+{
+  "watch": ["server.js", "dist"],
+  "ext": "js,json",
+  "ignore": [
+    ".next",
+    "node_modules",
+    "src",
+    "*.test.js",
+    "*.spec.js"
+  ],
+  "exec": "node --max-old-space-size=4096 server.js",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 1000,
+  "verbose": false,
+  "restartable": "rs",
+  "colours": true,
+  "events": {
+    "restart": "echo 'Restarting server...'"
+  }
+}
