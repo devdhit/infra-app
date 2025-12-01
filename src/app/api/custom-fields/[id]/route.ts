@@ -149,28 +149,121 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return badRequestResponse('Description must be no more than 255 characters')
     }
 
+    // Validate modelType if provided
+    if (body.modelType) {
+      const validModelTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet', 'FixedAsset', 'ITPurchasing']
+      if (!validModelTypes.includes(body.modelType)) {
+        logger.warn('Invalid custom field model type in update', { 
+          requestId, 
+          userId: user.id, 
+          tenantId: user.tenantId, 
+          modelType: body.modelType, 
+          component: 'custom-fields-id' 
+        });
+        return badRequestResponse(`Invalid model type. Must be one of: ${validModelTypes.join(', ')}`)
+      }
+    }
+
     // Check if updating the name would create a duplicate
+    // Use the new modelType if provided, otherwise use the existing one
+    const targetModelType = body.modelType || existingCustomField.modelType;
     if (body.name && body.name !== existingCustomField.name) {
       const duplicateField = await db.customField.findFirst({
         where: {
           name: body.name,
-          modelType: existingCustomField.modelType,
+          modelType: targetModelType,
           tenantId: user.tenantId,
           NOT: { id: resolvedParams.id }
         }
       })
 
       if (duplicateField) {
-        return conflictResponse(`A custom field with name "${body.name}" already exists for ${existingCustomField.modelType}`)
+        return conflictResponse(`A custom field with name "${body.name}" already exists for ${targetModelType}`)
+      }
+    }
+    
+    // Also check for duplicate when only changing modelType (not name)
+    if (body.modelType && body.modelType !== existingCustomField.modelType && !body.name) {
+      const duplicateField = await db.customField.findFirst({
+        where: {
+          name: existingCustomField.name,
+          modelType: body.modelType,
+          tenantId: user.tenantId,
+          NOT: { id: resolvedParams.id }
+        }
+      })
+
+      if (duplicateField) {
+        return conflictResponse(`A custom field with name "${existingCustomField.name}" already exists for ${body.modelType}`)
       }
     }
 
     const updateData: Partial<CustomField> = {
       ...(body.name !== undefined && { name: body.name }),
       ...(body.type !== undefined && { type: body.type as any }),
+      ...(body.modelType !== undefined && { modelType: body.modelType as any }),
       ...(body.description !== undefined && { description: body.description || null }),
       ...(body.required !== undefined && { required: body.required })
     };
+    
+    // If modelType is being changed, we need to clean up custom field data from assets of the old type
+    if (body.modelType && body.modelType !== existingCustomField.modelType) {
+      const oldModelType = existingCustomField.modelType;
+      const fieldName = body.name || existingCustomField.name;
+      
+      logger.info(`Changing custom field modelType from ${oldModelType} to ${body.modelType}, cleaning up old data`, {
+        requestId,
+        userId: user.id,
+        tenantId: user.tenantId,
+        fieldId: resolvedParams.id,
+        fieldName,
+        component: 'custom-fields-id'
+      });
+      
+      // Remove this field from all assets of the old model type
+      try {
+        const modelName = oldModelType; // Already in correct format (PC, Laptop, etc.)
+        const assets = await (db as any)[modelName].findMany({
+          where: {
+            tenantId: user.tenantId
+          },
+          select: {
+            id: true,
+            customFields: true
+          }
+        });
+        
+        // Update each asset to remove this custom field
+        for (const asset of assets) {
+          if (asset.customFields && fieldName in asset.customFields) {
+            const updatedCustomFields = { ...asset.customFields };
+            delete updatedCustomFields[fieldName];
+            
+            await (db as any)[modelName].update({
+              where: { id: asset.id },
+              data: { customFields: updatedCustomFields }
+            });
+          }
+        }
+        
+        logger.info(`Removed custom field "${fieldName}" from ${assets.length} ${oldModelType} assets`, {
+          requestId,
+          userId: user.id,
+          tenantId: user.tenantId,
+          component: 'custom-fields-id'
+        });
+      } catch (cleanupError: any) {
+        logger.error('Error cleaning up custom field data from old model type', {
+          requestId,
+          userId: user.id,
+          tenantId: user.tenantId,
+          error: cleanupError.message,
+          stack: cleanupError.stack,
+          component: 'custom-fields-id'
+        });
+        // Don't fail the entire operation if cleanup fails, but log the error
+      }
+    }
     
     const customField = await db.customField.update({
       where: { 
@@ -180,8 +273,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data: updateData
     })
 
-    // Invalidate cache for this model type
+    // Invalidate cache for both old and new model types
     await invalidateCustomFieldsCache(user.tenantId, existingCustomField.modelType)
+    if (body.modelType && body.modelType !== existingCustomField.modelType) {
+      await invalidateCustomFieldsCache(user.tenantId, body.modelType)
+    }
 
     return successResponse(customField)
   } catch (error: any) {
