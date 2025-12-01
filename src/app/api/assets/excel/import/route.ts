@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
               }
 
               // Process date fields
-              let dateBuyValue = null;
+              let dateBuyValue: Date | null = null;
               if (row.dateBuy && typeof row.dateBuy === 'string' && row.dateBuy !== 'N/A') {
                 try {
                   // Handle various date formats
@@ -280,19 +280,19 @@ export async function POST(request: NextRequest) {
                   // If it's already an ISO string, use it directly but remove time component
                   if (dateStr.includes('T') && dateStr.includes('Z')) {
                     const dateObj = new Date(dateStr);
-                    // Set time to midnight and format as ISO string without time component
+                    // Set time to midnight
                     dateObj.setUTCHours(0, 0, 0, 0);
-                    // Store as ISO string without time component
-                    dateBuyValue = dateObj.toISOString().split('T')[0];
+                    // Store as Date object for Prisma
+                    dateBuyValue = dateObj;
                   } else {
                     // Try to parse different date formats
                     // Handle Excel serial date numbers
                     if (!isNaN(Number(dateStr)) && Number(dateStr) > 1000) {
                       // Convert Excel serial date to JavaScript Date
                       const dateObj = new Date((Number(dateStr) - 25569) * 86400 * 1000);
-                      // Set time to midnight and format as ISO string without time component
+                      // Set time to midnight
                       dateObj.setUTCHours(0, 0, 0, 0);
-                      dateBuyValue = dateObj.toISOString().split('T')[0];
+                      dateBuyValue = dateObj;
                     } else {
                       // Try common date formats
                       // const formats = [
@@ -329,9 +329,9 @@ export async function POST(request: NextRequest) {
                       if (isNaN(dateObj.getTime()) || dateObj.getFullYear() < 1900 || dateObj.getFullYear() > 2100) {
                         dateBuyValue = null;
                       } else {
-                        // Set time to midnight and format as ISO string without time component
+                        // Set time to midnight
                         dateObj.setUTCHours(0, 0, 0, 0);
-                        dateBuyValue = dateObj.toISOString().split('T')[0];
+                        dateBuyValue = dateObj;
                       }
                     }
                   }
