@@ -1161,7 +1161,8 @@ export class BaseAssetApiHandler<T> {
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
         'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields'],
-        'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields']
+        'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields'],
+        'ITPurchasing': ['bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 'prId', 'statusPR', 'statusReceive', 'dateReceive', 'noted', 'customFields']
       };
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || [];
@@ -1177,7 +1178,8 @@ export class BaseAssetApiHandler<T> {
         'License': ['date'],
         'WarehouseIT': [],
         'Internet': [],
-        'FixedAsset': ['inputDate']
+        'FixedAsset': ['inputDate'],
+        'ITPurchasing': ['dateReceive']
       };
 
       const modelDateFields = dateFields[this.operations.modelName as keyof typeof dateFields] || [];
