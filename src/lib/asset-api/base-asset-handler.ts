@@ -82,7 +82,8 @@ export class BaseAssetApiHandler<T> {
       'License': 'license',
       'WarehouseIT': 'warehouse',
       'Internet': 'internet',
-      'FixedAsset': 'fixed-asset'
+      'FixedAsset': 'fixed-asset',
+      'ITPurchasing': 'it-purchasing'
     };
     
     this.resourceType = modelToResourceMap[this.operations.modelName] || 'assets';
@@ -234,6 +235,20 @@ export class BaseAssetApiHandler<T> {
           location: true,
           status: true,
           note: true,
+          customFields: true // Include custom fields
+        };
+      case 'ITPurchasing':
+        return {
+          bpmName: true,
+          bpmContent: true,
+          bpmId: true,
+          deptCode: true,
+          statusBPM: true,
+          prId: true,
+          statusPR: true,
+          statusReceive: true,
+          dateReceive: true,
+          noted: true,
           customFields: true // Include custom fields
         };
       default:
@@ -752,7 +767,8 @@ export class BaseAssetApiHandler<T> {
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
         'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields'],
-        'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields']
+        'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields'],
+        'ITPurchasing': ['bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 'prId', 'statusPR', 'statusReceive', 'dateReceive', 'noted', 'customFields']
       };
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || [];
@@ -768,7 +784,8 @@ export class BaseAssetApiHandler<T> {
         'License': ['date'],
         'WarehouseIT': [],
         'Internet': [],
-        'FixedAsset': ['inputDate']
+        'FixedAsset': ['inputDate'],
+        'ITPurchasing': ['dateReceive']
       };
 
       const modelDateFields = dateFields[this.operations.modelName as keyof typeof dateFields] || [];

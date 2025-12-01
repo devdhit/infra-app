@@ -104,6 +104,9 @@ export function ExcelImportDialog({
         case 'fixed-asset':
           fields = ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note']
           break
+        case 'it-purchasing':
+          fields = ['bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 'prId', 'statusPR', 'statusReceive', 'dateReceive', 'noted']
+          break
         default:
           fields = []
       }

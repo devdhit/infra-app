@@ -9,6 +9,7 @@
     "warehouse": "Warehouse IT",
     "internet": "Internet",
     "fixedasset": "Fixed Asset",
+    "itpurchasing": "IT Purchasing",
     "users": "Users",
     "tenants": "Tenants",
     "settings": "Settings",
@@ -485,6 +486,19 @@
       "location": "Location",
       "status": "Status",
       "note": "Note"
+    },
+    "itPurchasing": {
+      "title": "IT Purchasing",
+      "bpmName": "BPM Name",
+      "bpmContent": "BPM Content",
+      "bpmId": "BPM ID",
+      "deptCode": "Department Code",
+      "statusBPM": "BPM Status",
+      "prId": "PR ID",
+      "statusPR": "PR Status",
+      "statusReceive": "Receive Status",
+      "dateReceive": "Receive Date",
+      "noted": "Notes"
     },
     "status": {
       "working": "Working",
@@ -1103,6 +1117,28 @@
         "submitData": "Submit internet data",
         "viewStatus": "View internet status",
         "healthCheck": "Internet health check"
+      },
+      "fixed-asset": {
+        "label": "Fixed Asset",
+        "view": "View fixed assets",
+        "create": "Create fixed assets",
+        "edit": "Edit fixed assets",
+        "delete": "Delete fixed assets",
+        "bulkDelete": "Bulk delete fixed assets",
+        "submitData": "Submit fixed asset data",
+        "viewStatus": "View fixed asset status",
+        "healthCheck": "Fixed asset health check"
+      },
+      "it-purchasing": {
+        "label": "IT Purchasing",
+        "view": "View IT purchasing",
+        "create": "Create IT purchasing",
+        "edit": "Edit IT purchasing",
+        "delete": "Delete IT purchasing",
+        "bulkDelete": "Bulk delete IT purchasing",
+        "submitData": "Submit IT purchasing data",
+        "viewStatus": "View IT purchasing status",
+        "healthCheck": "IT purchasing health check"
       },
       "auditLogs": {
         "label": "Audit Logs",

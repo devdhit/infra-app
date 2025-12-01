@@ -9,6 +9,7 @@
     "warehouse": "倉儲IT",
     "internet": "網路",
     "fixedasset": "固定資產",
+    "itpurchasing": "IT採購",
     "users": "使用者",
     "tenants": "租戶",
     "settings": "設定",
@@ -485,6 +486,19 @@
       "location": "位置",
       "status": "狀態",
       "note": "備註"
+    },
+    "itPurchasing": {
+      "title": "IT採購",
+      "bpmName": "BPM名稱",
+      "bpmContent": "BPM內容",
+      "bpmId": "BPM編號",
+      "deptCode": "部門代碼",
+      "statusBPM": "BPM狀態",
+      "prId": "採購單號",
+      "statusPR": "採購單狀態",
+      "statusReceive": "接收狀態",
+      "dateReceive": "接收日期",
+      "noted": "備註"
     },
     "status": {
       "working": "使用中",
@@ -1103,6 +1117,28 @@
         "submitData": "提交網路資料",
         "viewStatus": "查看網路狀態",
         "healthCheck": "網路健康檢查"
+      },
+      "fixed-asset": {
+        "label": "固定資產",
+        "view": "查看固定資產",
+        "create": "建立固定資產",
+        "edit": "編輯固定資產",
+        "delete": "刪除固定資產",
+        "bulkDelete": "批次刪除固定資產",
+        "submitData": "提交固定資產資料",
+        "viewStatus": "查看固定資產狀態",
+        "healthCheck": "固定資產健康檢查"
+      },
+      "it-purchasing": {
+        "label": "IT採購",
+        "view": "查看IT採購",
+        "create": "建立IT採購",
+        "edit": "編輯IT採購",
+        "delete": "刪除IT採購",
+        "bulkDelete": "批次刪除IT採購",
+        "submitData": "提交IT採購資料",
+        "viewStatus": "查看IT採購狀態",
+        "healthCheck": "IT採購健康檢查"
       },
       "auditLogs": {
         "label": "審計日誌",

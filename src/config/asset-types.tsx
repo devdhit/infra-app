@@ -802,5 +802,118 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         placeholder: t('assets.fixedAsset.note') || "Additional information about this asset"
       }
     ]
+  },
+  {
+    name: "IT Purchasing",
+    key: "it-purchasing",
+    columns: [
+      {
+        key: "bpmName",
+        label: t('assets.itPurchasing.bpmName') || "BPM Name"
+      },
+      {
+        key: "bpmContent",
+        label: t('assets.itPurchasing.bpmContent') || "BPM Content"
+      },
+      {
+        key: "bpmId",
+        label: t('assets.itPurchasing.bpmId') || "BPM ID"
+      },
+      {
+        key: "deptCode",
+        label: t('assets.itPurchasing.deptCode') || "Department Code"
+      },
+      {
+        key: "statusBPM",
+        label: t('assets.itPurchasing.statusBPM') || "BPM Status"
+      },
+      {
+        key: "prId",
+        label: t('assets.itPurchasing.prId') || "PR ID"
+      },
+      {
+        key: "statusPR",
+        label: t('assets.itPurchasing.statusPR') || "PR Status"
+      },
+      {
+        key: "statusReceive",
+        label: t('assets.itPurchasing.statusReceive') || "Receive Status"
+      },
+      {
+        key: "dateReceive",
+        label: t('assets.itPurchasing.dateReceive') || "Receive Date",
+        render: (date: string) => date ? formatDate(date, { year: "numeric", month: "short", day: "numeric" }) : "-"
+      },
+      {
+        key: "noted",
+        label: t('assets.itPurchasing.noted') || "Notes"
+      }
+    ],
+    formFields: [
+      {
+        name: "bpmName",
+        label: t('assets.itPurchasing.bpmName') || "BPM Name",
+        type: "text",
+        required: true,
+        placeholder: t('assets.itPurchasing.bpmName') || "Enter BPM Name"
+      },
+      {
+        name: "bpmContent",
+        label: t('assets.itPurchasing.bpmContent') || "BPM Content",
+        type: "textarea",
+        required: true,
+        placeholder: t('assets.itPurchasing.bpmContent') || "Enter BPM Content"
+      },
+      {
+        name: "bpmId",
+        label: t('assets.itPurchasing.bpmId') || "BPM ID",
+        type: "text",
+        required: true,
+        placeholder: t('assets.itPurchasing.bpmId') || "Enter BPM ID"
+      },
+      {
+        name: "deptCode",
+        label: t('assets.itPurchasing.deptCode') || "Department Code",
+        type: "text",
+        required: true,
+        placeholder: t('assets.itPurchasing.deptCode') || "Enter Department Code"
+      },
+      {
+        name: "statusBPM",
+        label: t('assets.itPurchasing.statusBPM') || "BPM Status",
+        type: "text",
+        required: true,
+        placeholder: t('assets.itPurchasing.statusBPM') || "Enter BPM Status"
+      },
+      {
+        name: "prId",
+        label: t('assets.itPurchasing.prId') || "PR ID",
+        type: "text",
+        placeholder: t('assets.itPurchasing.prId') || "Enter PR ID"
+      },
+      {
+        name: "statusPR",
+        label: t('assets.itPurchasing.statusPR') || "PR Status",
+        type: "text",
+        placeholder: t('assets.itPurchasing.statusPR') || "Enter PR Status"
+      },
+      {
+        name: "statusReceive",
+        label: t('assets.itPurchasing.statusReceive') || "Receive Status",
+        type: "text",
+        placeholder: t('assets.itPurchasing.statusReceive') || "Enter Receive Status"
+      },
+      {
+        name: "dateReceive",
+        label: t('assets.itPurchasing.dateReceive') || "Receive Date",
+        type: "date"
+      },
+      {
+        name: "noted",
+        label: t('assets.itPurchasing.noted') || "Notes",
+        type: "textarea",
+        placeholder: t('assets.itPurchasing.noted') || "Additional notes"
+      }
+    ]
   }
 ];

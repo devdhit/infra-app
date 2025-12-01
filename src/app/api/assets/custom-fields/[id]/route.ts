@@ -64,7 +64,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Validate that the asset type is supported
-    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet', 'FixedAsset']
+    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet', 'FixedAsset', 'ITPurchasing']
     if (!supportedAssetTypes.includes(assetType)) {
       return badRequestResponse(`Unsupported asset type: ${assetType}`)
     }
@@ -76,6 +76,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                      assetType === 'License' ? 'License' : 
                      assetType === 'Internet' ? 'Internet' :
                      assetType === 'FixedAsset' ? 'FixedAsset' :
+                     assetType === 'ITPurchasing' ? 'ITPurchasing' :
                      'WarehouseIT'
 
     logger.debug(`Updating custom fields for ${assetType} asset ${resolvedParams.id} with data:`, body);
@@ -408,7 +409,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Validate that the asset type is supported
-    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet', 'FixedAsset']
+    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet', 'FixedAsset', 'ITPurchasing']
     if (!supportedAssetTypes.includes(assetType)) {
       return badRequestResponse(`Unsupported asset type: ${assetType}`)
     }
@@ -420,6 +421,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                      assetType === 'License' ? 'License' : 
                      assetType === 'Internet' ? 'Internet' :
                      assetType === 'FixedAsset' ? 'FixedAsset' :
+                     assetType === 'ITPurchasing' ? 'ITPurchasing' :
                      'WarehouseIT'
 
     // Get the asset with custom fields
