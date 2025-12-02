@@ -672,20 +672,38 @@ export function AssetList({
   const confirmDelete = useCallback(async () => {
     if (!deleteAssetId) return
     
+    // Store original asset for potential rollback
+    const originalAsset = assets.find(a => a.id === deleteAssetId)
+    
     try {
-      // Call the delete function with the specific asset ID
-      await deleteAsset(deleteAssetId)
-      toast.success(t('assets.delete.success', `{0} deleted successfully`, title))
+      // OPTIMISTIC DELETE: Remove from UI immediately
+      setAssets(prevAssets => prevAssets.filter(a => a.id !== deleteAssetId))
       setIsDeleteDialogOpen(false)
       setDeleteAssetId(null)
       
       // Clear selection if the deleted asset was selected
       setSelectedAssets(prev => prev.filter(id => id !== deleteAssetId))
       
-      // Refetch data to ensure UI updates
-      await refetch()
+      // Call the delete API in background
+      await deleteAsset(deleteAssetId)
+      
+      // Refresh data sources after successful delete
+      if (isUsingEnhancedSearch && enhancedSearch.refetch) {
+        // Refetch search results AND regular data (for when user clears search)
+        await Promise.all([enhancedSearch.refetch(), refetch()])
+      } else {
+        // Refetch regular data
+        await refetch()
+      }
+      
+      // Show success message after API confirms
+      toast.success(t('assets.delete.success', `{0} deleted successfully`, title))
     } catch (error: any) {
-      logger.error("Delete error:", { error: error instanceof Error ? error.message : String(error) })
+      // ROLLBACK: Restore the deleted asset on error
+      if (originalAsset) {
+        setAssets(prevAssets => [originalAsset, ...prevAssets])
+      }
+      
       const apiError = error as ApiError
       let message = t('assets.delete.error', `Failed to delete {0}`, title)
       
@@ -693,37 +711,43 @@ export function AssetList({
         message = apiError.message
       }
       
-      // Even if there was an error, the asset might have been deleted
-      // So we still clear the selection and refresh the data
-      setIsDeleteDialogOpen(false)
-      setDeleteAssetId(null)
-      
-      // Clear selection if the deleted asset was selected
-      setSelectedAssets(prev => prev.filter(id => id !== deleteAssetId))
-      
-      // Refetch data to ensure UI updates
-      await refetch()
-      
       toast.error(message)
     }
-  }, [deleteAssetId, deleteAsset, t, title, refetch])
+  }, [deleteAssetId, deleteAsset, t, title, assets, isUsingEnhancedSearch, enhancedSearch, refetch])
 
   const confirmBulkDelete = useCallback(async () => {
+    // Store original assets for potential rollback
+    const originalAssets = assets.filter(a => selectedAssets.includes(a.id))
+    
     try {
+      // OPTIMISTIC DELETE: Remove all selected assets from UI immediately
+      setAssets(prevAssets => prevAssets.filter(a => !selectedAssets.includes(a.id)))
+      setIsBulkDeleteDialogOpen(false)
+      setSelectedAssets([])
+      
+      // Call the bulk delete API in background
       await bulkDeleteAssets(selectedAssets)
+      
+      // Refresh data sources after successful delete
+      if (isUsingEnhancedSearch && enhancedSearch.refetch) {
+        // Refetch search results AND regular data (for when user clears search)
+        await Promise.all([enhancedSearch.refetch(), refetch()])
+      } else {
+        // Refetch regular data
+        await refetch()
+      }
+      
+      // Show success message after API confirms
       toast.success(t('assets.bulkDelete.success', `{0} {1} assets deleted successfully`, selectedAssets.length.toString(), title))
       
-      // Clear selection after successful deletion
-      setSelectedAssets([])
-      setIsBulkDeleteDialogOpen(false)
-      
-      // Reset to first page after deletion to ensure we're showing current data
+      // Reset to first page after deletion
       setCurrentPage(1)
-      
-      // Refetch data to ensure UI updates
-      await refetch()
     } catch (error: any) {
-      logger.error("Bulk delete error:", { error: error instanceof Error ? error.message : String(error) })
+      // ROLLBACK: Restore all deleted assets on error
+      if (originalAssets.length > 0) {
+        setAssets(prevAssets => [...originalAssets, ...prevAssets])
+      }
+      
       const apiError = error as ApiError
       let message = t('assets.bulkDelete.error', `Failed to delete {0} assets`, title)
       
@@ -731,20 +755,9 @@ export function AssetList({
         message = apiError.message
       }
       
-      // Even if there was an error, some assets might have been deleted
-      // So we still clear the selection and refresh the data
-      setSelectedAssets([])
-      setIsBulkDeleteDialogOpen(false)
-      
-      // Reset to first page after deletion
-      setCurrentPage(1)
-      
-      // Refetch data to ensure UI updates
-      await refetch()
-      
       toast.error(message)
     }
-  }, [bulkDeleteAssets, selectedAssets, t, title, refetch])
+  }, [bulkDeleteAssets, selectedAssets, t, title, assets, isUsingEnhancedSearch, enhancedSearch, refetch])
   
   const handleView = useCallback((asset: Asset) => {
     setViewAsset(asset)

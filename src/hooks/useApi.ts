@@ -213,11 +213,10 @@ export function useDeleteAsset<T>(assetType: string) {
   const deleteAsset = async (id: string) => {
     try {
       const response = await mutate(id);
-      toast.success(`${assetType} deleted successfully`);
+      // Don't show toast here - let the caller handle it for optimistic updates
       return response;
     } catch (err) {
-      const message = handleMutationError(err, `Failed to delete ${assetType}`);
-      toast.error(message);
+      // Don't show toast here - let the caller handle it
       throw err;
     }
   };
@@ -232,11 +231,10 @@ export function useBulkDeleteAssets<T>(assetType: string) {
   const bulkDeleteAssets = async (ids: string[]) => {
     try {
       const response = await mutate({ ids });
-      toast.success(`${assetType} assets deleted successfully`);
+      // Don't show toast here - let the caller handle it for optimistic updates
       return response;
     } catch (err) {
-      const message = handleMutationError(err, `Failed to delete ${assetType} assets`);
-      toast.error(message);
+      // Don't show toast here - let the caller handle it
       throw err;
     }
   };
