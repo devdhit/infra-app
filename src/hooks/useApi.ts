@@ -864,8 +864,8 @@ export function useAssetCustomFields(assetType: string, id: string) {
 }
 
 // Hook for updating asset custom fields
-export function useUpdateAssetCustomFields(assetType: string, id: string) {
-  const { mutate, isLoading, error } = useApiUpdate<any, any>(`/assets/custom-fields/${id}?assetType=${assetType}`)
+export function useUpdateAssetCustomFields(modelType: string, id: string) {
+  const { mutate, isLoading, error } = useApiUpdate<any, any>(`/assets/custom-fields/${id}?assetType=${modelType}`)
   
   const updateAssetCustomFields = async (data: any) => {
     try {

@@ -261,20 +261,46 @@ const getAssetColumns = (
               if (isOptimistic) {
                 // Update local asset state immediately for instant UI feedback
                 setAssets((prevAssets: Asset[]) => 
-                  prevAssets.map((a: Asset) => 
-                    a.id === asset.id 
-                      ? { ...a, [column.key]: newValue } 
-                      : a
-                  )
+                  prevAssets.map((a: Asset) => {
+                    if (a.id === asset.id) {
+                      // For custom fields, update the customFields object
+                      if (isCustom) {
+                        return { 
+                          ...a, 
+                          customFields: { 
+                            ...a.customFields, 
+                            [column.key]: newValue 
+                          } 
+                        };
+                      } else {
+                        // For standard fields, update directly
+                        return { ...a, [column.key]: newValue };
+                      }
+                    }
+                    return a;
+                  })
                 )
               } else {
                 // This is a rollback - restore original value in local state
                 setAssets((prevAssets: Asset[]) => 
-                  prevAssets.map((a: Asset) => 
-                    a.id === asset.id 
-                      ? { ...a, [column.key]: newValue } 
-                      : a
-                  )
+                  prevAssets.map((a: Asset) => {
+                    if (a.id === asset.id) {
+                      // For custom fields, update the customFields object
+                      if (isCustom) {
+                        return { 
+                          ...a, 
+                          customFields: { 
+                            ...a.customFields, 
+                            [column.key]: newValue 
+                          } 
+                        };
+                      } else {
+                        // For standard fields, update directly
+                        return { ...a, [column.key]: newValue };
+                      }
+                    }
+                    return a;
+                  })
                 )
               }
               // NO refetch needed - optimistic update already handled UI changes
@@ -282,11 +308,24 @@ const getAssetColumns = (
             onRollback={(originalValue) => {
               // Rollback local state on error
               setAssets((prevAssets: Asset[]) => 
-                prevAssets.map((a: Asset) => 
-                  a.id === asset.id 
-                    ? { ...a, [column.key]: originalValue } 
-                    : a
-                )
+                prevAssets.map((a: Asset) => {
+                  if (a.id === asset.id) {
+                    // For custom fields, update the customFields object
+                    if (isCustom) {
+                      return { 
+                        ...a, 
+                        customFields: { 
+                          ...a.customFields, 
+                          [column.key]: originalValue 
+                        } 
+                      };
+                    } else {
+                      // For standard fields, update directly
+                      return { ...a, [column.key]: originalValue };
+                    }
+                  }
+                  return a;
+                })
               )
             }}
           />
