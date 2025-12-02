@@ -31,7 +31,7 @@ export async function GET(
     const { assetType } = await params;
 
     // Validate asset type
-    const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixedasset', 'it-purchasing'];
+    const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset', 'it-purchasing'];
     if (!validAssetTypes.includes(assetType)) {
       return badRequestResponse('Invalid asset type');
     }

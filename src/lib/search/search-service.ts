@@ -78,11 +78,11 @@ const ASSET_TYPE_CONFIG: Record<string, {
     filterFields: ['status', 'dept', 'internetAccess'],
     columns: ['id', 'dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'tenantId', 'customFields', 'createdAt', 'updatedAt']
   },
-  'fixedasset': {
+  'fixed-asset': {
     tableName: 'FixedAsset',
-    searchFields: ['assetName', 'assetNumber', 'dept', 'location'],
-    filterFields: ['status', 'dept', 'category'],
-    columns: ['id', 'assetNumber', 'assetName', 'category', 'purchaseDate', 'purchasePrice', 'currentValue', 'dept', 'location', 'status', 'note', 'tenantId', 'customFields', 'createdAt', 'updatedAt']
+    searchFields: ['name', 'barcode', 'sapCode', 'dept', 'location', 'place'],
+    filterFields: ['status', 'dept'],
+    columns: ['id', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'tenantId', 'customFields', 'createdAt', 'updatedAt']
   },
   'it-purchasing': {
     tableName: 'ITPurchasing',

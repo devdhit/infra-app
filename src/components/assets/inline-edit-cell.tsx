@@ -39,12 +39,13 @@ interface InlineEditCellProps {
   assetType: string
   field: AssetFormField
   value: any
-  onUpdate: (newValue: any) => void
+  onUpdate: (newValue: any, optimisticUpdate?: boolean) => void
   isCustomField?: boolean
   customFieldsData?: any[]
+  onRollback?: (originalValue: any) => void
 }
 
-export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField, customFieldsData }: InlineEditCellProps) {
+export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField, customFieldsData, onRollback }: InlineEditCellProps) {
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value || '')
@@ -152,28 +153,39 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
         }
       }
       
+      // Exit edit mode first for instant UI feedback
+      setIsEditing(false)
+      
+      // Immediately update UI optimistically (no waiting for server)
+      onUpdate(processedValue, true)
+      
       // Create update data using utility function
       const updateData = createUpdateData(field.name, processedValue, isCustom, asset);
       
-      // Send the update to the server
+      // Send the update to the server in the background
       // Check which type of mutation we have
-      if ('updateAssetCustomFields' in updateMutation) {
-        await updateMutation.updateAssetCustomFields(updateData);
-      } else if ('updateAsset' in updateMutation) {
-        await updateMutation.updateAsset(updateData);
+      const serverUpdate = async () => {
+        if ('updateAssetCustomFields' in updateMutation) {
+          return await updateMutation.updateAssetCustomFields(updateData);
+        } else if ('updateAsset' in updateMutation) {
+          return await updateMutation.updateAsset(updateData);
+        }
+      };
+      
+      // Use optimistic update pattern - update UI immediately, sync with server in background
+      try {
+        await serverUpdate();
+        // Show success message after server confirms
+        toast.success(t('assets.update.success', '{0} updated successfully', field.label))
+      } catch (serverError: any) {
+        // If server update fails, rollback the optimistic update
+        logger.error("Server update failed, rolling back:", serverError)
+        onUpdate(value, false) // Rollback to original value
+        if (onRollback) {
+          onRollback(value)
+        }
+        throw serverError; // Re-throw to be caught by outer catch
       }
-      
-      // Exit edit mode first for better UX
-      setIsEditing(false)
-      
-      // Show success message
-      toast.success(t('assets.update.success', '{0} updated successfully', field.label))
-      
-      // Call onUpdate to notify parent component of the change
-      // Use a more aggressive delay to ensure cache operations complete
-      setTimeout(() => {
-        onUpdate(processedValue)
-      }, 100); // Reduced delay for faster UI updates
     } catch (error: any) {
       logger.error("Inline edit error:", error)
       let message = t('assets.update.error', 'Failed to update {0}', field.label)

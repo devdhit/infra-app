@@ -1,5 +1,5 @@
 import { useCurrentUser } from '@/hooks/useApi';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api'; // Import the API object with methods
 import logger from '@/lib/logger';
@@ -9,6 +9,21 @@ const globalPermissionCache = new Map<string, { value: boolean; timestamp: numbe
 
 // Cache timeout (10 minutes)
 const CACHE_TIMEOUT = 10 * 60 * 1000;
+
+// Function to clear permission cache (exported for external use)
+export function clearPermissionCache() {
+  logger.debug('Clearing permission cache');
+  globalPermissionCache.clear();
+}
+
+// Function to clear permission cache for a specific user/role
+export function clearUserPermissionCache(userId?: string) {
+  if (userId) {
+    logger.debug('Clearing permission cache for user:', userId);
+  }
+  // For now, clear all cache since permissions are role-based
+  globalPermissionCache.clear();
+}
 
 // Define the permission check structure
 interface PermissionCheck {
@@ -53,9 +68,9 @@ async function processPermissionQueue() {
       }));
 
       try {
-        // Increase timeout to 20 seconds for larger batches
+        // Increase timeout to 25 seconds for larger batches
         const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Permission check timeout')), 20000)
+          setTimeout(() => reject(new Error('Permission check timeout')), 25000)
         );
         
         // Make batch API call using the existing API client with proper authentication
@@ -117,6 +132,28 @@ export function usePermissions() {
   const { data: user, isLoading } = useCurrentUser();
   const [permissionErrors, setPermissionErrors] = useState<Record<string, boolean>>({});
   
+  // Clear permission cache when user changes (login/logout/role change)
+  const [lastUserId, setLastUserId] = useState<string | null>(null);
+  const [lastUserRole, setLastUserRole] = useState<string | null>(null);
+  
+  // Use useEffect to detect user or role changes and clear cache
+  useEffect(() => {
+    if (user?.id !== lastUserId || user?.role?.name !== lastUserRole) {
+      if (lastUserId !== null || lastUserRole !== null) {
+        // User changed or role changed, clear cache
+        logger.debug('User or role changed, clearing permission cache', {
+          prevUserId: lastUserId,
+          newUserId: user?.id,
+          prevRole: lastUserRole,
+          newRole: user?.role?.name
+        });
+        globalPermissionCache.clear();
+      }
+      setLastUserId(user?.id || null);
+      setLastUserRole(user?.role?.name || null);
+    }
+  }, [user?.id, user?.role?.name, lastUserId, lastUserRole]);
+  
   // Helper function to check permissions via API with global caching
   const checkPermission = useCallback(async (resource: string, action: string) => {
     // For admin users, return true immediately without making API calls
@@ -135,10 +172,11 @@ export function usePermissions() {
     
     // For non-admin users, use batch checking for better performance
     return new Promise<boolean>((resolve, reject) => {
-      // Increase timeout to 10 seconds to prevent premature timeouts
+      // Increase timeout to 30 seconds to handle slow responses
       const timeoutId = setTimeout(() => {
+        logger.warn(`Permission check timeout for ${resource}:${action}`);
         reject(new Error(`Permission check timeout for ${resource}:${action}`));
-      }, 10000);
+      }, 30000);
       
       // Wrap resolve and reject to clear timeout
       const wrappedResolve = (value: boolean) => {
@@ -168,17 +206,18 @@ export function usePermissions() {
         [cacheKey]: true
       }));
       
-      // Show user-friendly error message
+      // Show user-friendly error message only for non-timeout errors
       if (error?.message?.includes('401')) {
         toast.error(`Authentication error. Please log in again.`);
       } else if (error?.message?.includes('timeout')) {
         // Don't show toast for timeouts to avoid spam, but log it
-        logger.warn(`Permission check timed out for ${resource}:${action}`);
+        logger.warn(`Permission check timed out for ${resource}:${action} - defaulting to false`);
       } else {
-        toast.error(`Unable to check permissions. You may not have permission to perform this action.`);
+        // Only show error for unexpected errors
+        logger.error(`Unexpected error checking permissions for ${resource}:${action}`, error);
       }
       
-      // Return false on error but don't cache it
+      // Return false on error (deny permission by default)
       return false;
     });
   }, [user?.role?.name]);

@@ -3,6 +3,28 @@ import logger from '@/lib/logger'
 import { Role, RoleFormValues } from '@/types/roles'
 import { useState, useEffect, useCallback } from 'react'
 
+// Type for API response wrapper
+interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: {
+    code: string
+    message: string
+    details?: Record<string, unknown>
+  }
+}
+
+// Type for paginated API response
+interface PaginatedResponse<T> {
+  data: T[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
 // Generic API hook with direct API calls instead of React Query
 export function useRoles() {
   const [data, setData] = useState<Role[] | null>(null)
@@ -14,11 +36,17 @@ export function useRoles() {
     setError(null)
     
     try {
-      const response = await api.get<Role[]>('/roles')
-      setData(response)
+      const response = await api.get<ApiResponse<PaginatedResponse<Role>>>('/roles')
+      // Extract the data array from the wrapped paginated response
+      if (response.success && response.data) {
+        setData(response.data.data || [])
+      } else {
+        setData([])
+      }
     } catch (err) {
       setError(err as ApiError)
       logger.error('API Error:', err)
+      setData([])
     } finally {
       setIsLoading(false)
     }

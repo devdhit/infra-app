@@ -105,11 +105,10 @@ const getAssetColumns = (
   handleView: (asset: Asset) => void,
   handleEdit: (asset: Asset) => void,
   handleDelete: (id: string) => void,
-  refetch: () => Promise<any>,
-  robustRefetch: (refetchFn: () => Promise<any>, t: (key: string, fallback?: string, ...args: any[]) => string) => Promise<boolean>,
   canView: boolean | null = true,
   canEdit: boolean | null = true,
-  canDelete: boolean | null = true
+  canDelete: boolean | null = true,
+  setAssets: React.Dispatch<React.SetStateAction<Asset[]>>
 ): ColumnDef<Asset>[] => {
   // Create the selection column
   const selectionColumn: ColumnDef<Asset> = {
@@ -257,8 +256,38 @@ const getAssetColumns = (
             value={displayValue}
             isCustomField={isCustom}
             customFieldsData={customFieldsData || undefined}
-            onUpdate={async (_newValue) => {
-              await robustRefetch(refetch, t)
+            onUpdate={async (newValue, isOptimistic) => {
+              // Handle optimistic updates - update local state immediately without API call
+              if (isOptimistic) {
+                // Update local asset state immediately for instant UI feedback
+                setAssets((prevAssets: Asset[]) => 
+                  prevAssets.map((a: Asset) => 
+                    a.id === asset.id 
+                      ? { ...a, [column.key]: newValue } 
+                      : a
+                  )
+                )
+              } else {
+                // This is a rollback - restore original value in local state
+                setAssets((prevAssets: Asset[]) => 
+                  prevAssets.map((a: Asset) => 
+                    a.id === asset.id 
+                      ? { ...a, [column.key]: newValue } 
+                      : a
+                  )
+                )
+              }
+              // NO refetch needed - optimistic update already handled UI changes
+            }}
+            onRollback={(originalValue) => {
+              // Rollback local state on error
+              setAssets((prevAssets: Asset[]) => 
+                prevAssets.map((a: Asset) => 
+                  a.id === asset.id 
+                    ? { ...a, [column.key]: originalValue } 
+                    : a
+                )
+              )
             }}
           />
         ) : (
@@ -585,16 +614,6 @@ export function AssetList({
     
     // Use enhanced search API when there's a query
     if (value && value.length > 0) {
-      // Add to search history
-      if (searchContext) {
-        searchContext.addToHistory({
-          query: value,
-          assetType,
-          timestamp: Date.now(),
-          filters: statusFilter ? { status: statusFilter } : undefined,
-        })
-      }
-      
       // Execute enhanced search with filters
       enhancedSearch.search(value, {
         page: currentPage,
@@ -605,7 +624,20 @@ export function AssetList({
       // Clear search - will use regular API
       setIsSearching(true)
     }
-  }, [searchContext, assetType, statusFilter, currentPage, enhancedSearch])
+  }, [statusFilter, currentPage, enhancedSearch])
+  
+  // Handle search completion (when user presses Enter or selects suggestion)
+  const handleSearchComplete = useCallback((value: string) => {
+    // Only save to history when search is completed (not on every keystroke)
+    if (value && value.length >= 3 && searchContext) {
+      searchContext.addToHistory({
+        query: value,
+        assetType,
+        timestamp: Date.now(),
+        filters: statusFilter ? { status: statusFilter } : undefined,
+      })
+    }
+  }, [searchContext, assetType, statusFilter])
   
   // Handle status filter with enhanced search support
   const handleStatusFilterChange = useCallback((status: string) => {
@@ -746,6 +778,11 @@ export function AssetList({
       // Force a complete refresh by resetting the cache
       await refetch()
       
+      // Also refetch enhanced search results if currently searching
+      if (enhancedSearch && enhancedSearch.query && enhancedSearch.query.length > 0 && enhancedSearch.refetch) {
+        await enhancedSearch.refetch()
+      }
+      
       // Also refetch custom fields
       await refetchCustomFields()
       
@@ -755,7 +792,7 @@ export function AssetList({
       logger.error("Form success refetch error:", { error: error instanceof Error ? error.message : String(error) })
       toast.error(t('assets.update.error', 'Failed to refresh data after update'))
     }
-  }, [refetch, refetchCustomFields, t])
+  }, [refetch, refetchCustomFields, t, enhancedSearch])
 
   const handleImportSuccess = useCallback(async () => {
     try {
@@ -986,11 +1023,10 @@ export function AssetList({
       handleView,
       handleEdit,
       handleDelete,
-      refetch, // Pass refetch function
-      robustRefetch, // Pass robustRefetch function
-      canView, // Pass permission props
+      canView,
       canEdit,
-      canDelete
+      canDelete,
+      setAssets
     )
     
     // Apply column order if reordering is enabled
@@ -1013,11 +1049,10 @@ export function AssetList({
     handleEdit,
     handleDelete,
     columnOrder,
-    refetch, // Add refetch to dependencies
-    robustRefetch, // Add robustRefetch to dependencies
-    canView, // Add permission props to dependencies
+    canView,
     canEdit,
-    canDelete
+    canDelete,
+    setAssets
   ])
 
   // New function to manually refresh data
@@ -1309,6 +1344,7 @@ export function AssetList({
                 <SearchInput
                   value={searchInputValue}
                   onChange={handleSearchChange}
+                  onSearch={handleSearchComplete}
                   onClear={() => {
                     setSearchInputValue('')
                     setSearch('')

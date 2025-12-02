@@ -200,10 +200,13 @@ export class UserService {
         }
       }
 
-      // Hash password if provided
+      // Hash password if provided and not empty
       const updateData = { ...validationResult.data };
-      if (updateData.password) {
+      if (updateData.password && updateData.password.trim() !== '') {
         updateData.password = await hashPassword(updateData.password);
+      } else {
+        // Remove password from update data if empty or not provided
+        delete updateData.password;
       }
 
       // Update user
