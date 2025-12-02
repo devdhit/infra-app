@@ -45,7 +45,7 @@ const assetQuerySchema = z.object({
 });
 
 // Valid asset types
-const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet'] as const;
+const validAssetTypes = ['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset', 'it-purchasing'] as const;
 type AssetType = typeof validAssetTypes[number];
 
 // Type guard for asset types
