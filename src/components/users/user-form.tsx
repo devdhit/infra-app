@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -34,20 +34,30 @@ export function UserForm({
   isSubmitting 
 }: UserFormProps) {
   const { t } = useTranslation()
-  const { data: roles = [], error } = useRoles()
+  const { data: rolesData, error } = useRoles()
+  
+  // Memoize roles array to prevent useEffect dependency issues
+  const roles = useMemo(() => rolesData || [], [rolesData])
   
   // Log roles and tenants for debugging
   useEffect(() => {
+    logger.debug('Roles data from hook:', rolesData);
+    logger.debug('Processed roles array:', roles);
+    
     if (roles && roles.length > 0) {
       logger.debug('Available roles:', roles);
+    } else {
+      logger.warn('No roles available');
     }
+    
     if (error) {
       logger.error('Error loading roles:', error);
     }
+    
     if (tenants && tenants.length > 0) {
       logger.debug('Available tenants:', tenants);
     }
-  }, [roles, error, tenants]);
+  }, [rolesData, roles, error, tenants]);
   
   const [formData, setFormData] = useState<UserFormValues>({
     email: editingUser?.email || '',

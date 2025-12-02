@@ -131,8 +131,16 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   email: emailSchema.optional(),
   name: nameSchema.optional(),
-  password: passwordSchema.optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters')
+    .max(128, 'Password must be less than 128 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/,
+      'Password must contain uppercase, lowercase, number, and special character'
+    )
+    .or(z.literal('')) // Allow empty string to mean "don't change password"
+    .optional(),
   roleId: uuidSchema.optional(),
+  tenantId: uuidSchema.optional(), // Add tenantId to allow tenant updates
 });
 
 export const loginCredentialsSchema = z.object({

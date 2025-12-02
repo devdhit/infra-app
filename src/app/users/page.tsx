@@ -21,7 +21,6 @@ import { UserForm } from "@/components/users/user-form"
 import { ConfirmDialog } from "@/components/users/confirm-dialog"
 import { BulkDeleteDialog } from "@/components/users/bulk-delete-dialog"
 import { Plus, Users as UsersIcon, UserCog, Shield, UserX } from "lucide-react"
-import { useCurrentUser } from '@/hooks/useApi'
 import { LoadingLayout } from '@/components/ui/loading-layout'
 import logger from '@/lib/logger'
 import { PageHeader } from "@/components/management/page-header"
@@ -32,7 +31,6 @@ import { EmptyState } from "@/components/management/empty-state"
 
 const Page = () => {
   const { t } = useTranslation();
-  const { data: currentUser } = useCurrentUser();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -58,43 +56,42 @@ const Page = () => {
   const bulkDeleteUsersMutation = useBulkDeleteUsers();
   
   // Check permissions
-  const { canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers, isLoading: isUserLoading } = usePermissions();
+  const { canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, isLoading: isUserLoading } = usePermissions();
   
   const [canView, setCanView] = useState<boolean | null>(null);
   const [canCreate, setCanCreate] = useState<boolean | null>(null);
   const [canEdit, setCanEdit] = useState<boolean | null>(null);
   const [canDelete, setCanDelete] = useState<boolean | null>(null);
-  const [canBulkDelete, setCanBulkDelete] = useState<boolean | null>(null);
   
   useEffect(() => {
     const checkPermissions = async () => {
       try {
         const viewResult = await canViewUsers();
         setCanView(viewResult);
+        logger.debug('Users page - canView:', viewResult);
         
         const createResult = await canCreateUsers();
         setCanCreate(createResult);
+        logger.debug('Users page - canCreate:', createResult);
         
         const editResult = await canEditUsers();
         setCanEdit(editResult);
+        logger.debug('Users page - canEdit:', editResult);
         
         const deleteResult = await canDeleteUsers();
         setCanDelete(deleteResult);
-        
-        const bulkDeleteResult = await canBulkDeleteUsers();
-        setCanBulkDelete(bulkDeleteResult);
+        logger.debug('Users page - canDelete:', deleteResult);
       } catch (error) {
         logger.error('Error checking permissions:', error);
         setCanView(false);
         setCanCreate(false);
         setCanEdit(false);
         setCanDelete(false);
-        setCanBulkDelete(false);
       }
     };
     
     checkPermissions();
-  }, [canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers, canBulkDeleteUsers]);
+  }, [canViewUsers, canCreateUsers, canEditUsers, canDeleteUsers]);
   
   // Update isDeleting state based on hook loading states
   useEffect(() => {
@@ -284,7 +281,7 @@ const Page = () => {
         icon={UsersIcon}
         actions={
           <>
-            {(canCreate || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId)) && (
+            {canCreate && (
               <Button onClick={() => handleEdit(null)} disabled={isUserLoading}>
                 <Plus className="mr-2 h-4 w-4" />
                 {t('users.button.add') || 'Add User'}
@@ -380,8 +377,8 @@ const Page = () => {
             <UsersTable
               users={filteredUsers as any as import('@/types/users').User[]}
               tenants={tenants as unknown as { id: string; name: string }[]}
-              onEdit={canEdit || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) ? handleEditWrapper : undefined}
-              onDelete={(canDelete || canBulkDelete || (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId)) ? handleDelete : undefined}
+              onEdit={canEdit ? handleEditWrapper : undefined}
+              onDelete={canDelete ? handleDelete : undefined}
               isDeleting={isDeleting}
               deletingUserId={deleteUserId}
             />

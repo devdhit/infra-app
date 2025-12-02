@@ -319,6 +319,28 @@ export function useEnhancedSearch<T = any>(
   }, [query, searchOptions, executeSearch]);
 
   /**
+   * Refresh current search (bypass cache)
+   */
+  const refetch = useCallback(() => {
+    if (!query || query.trim().length === 0) {
+      return Promise.resolve(null);
+    }
+
+    // Clear ALL cache entries for this asset type (not just current query)
+    // This ensures we get fresh data after updates
+    const cachesToClear: string[] = [];
+    searchCache.forEach((_, key) => {
+      if (key.includes(assetType)) {
+        cachesToClear.push(key);
+      }
+    });
+    cachesToClear.forEach(key => searchCache.delete(key));
+
+    // Re-execute search
+    return executeSearch(query, searchOptions);
+  }, [query, searchOptions, executeSearch, assetType]);
+
+  /**
    * Clear search results
    */
   const clearSearch = useCallback(() => {
@@ -404,6 +426,7 @@ export function useEnhancedSearch<T = any>(
     updateQuery,
     updateOptions,
     search,
+    refetch,
     clearSearch,
     fetchSuggestions,
     fetchFilterOptions,
