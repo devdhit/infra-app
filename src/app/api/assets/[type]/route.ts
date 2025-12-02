@@ -54,7 +54,11 @@ function isValidAssetType(type: string): type is AssetType {
 }
 
 // Optimize database query with select and pagination
-export async function GET(request: NextRequest, { params }: { params: { type: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ type: string }> }) {
+  // Get the asset type from the URL parameter
+  const resolvedParams = await params;
+  const assetType = resolvedParams.type;
+  
   try {
     const user = await getCurrentUser(request);
     if (!user) {
@@ -75,8 +79,6 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
     
     const { page, limit, search, status } = validationResult.data;
     
-    // Get the asset type from the URL parameter
-    const assetType = params.type;
     if (!assetType) {
       return badRequestResponse('Asset type is required');
     }
@@ -250,7 +252,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
 
     return successResponse(result);
   } catch (error) {
-    logger.error(`Error fetching ${params.type} assets:`, error);
+    logger.error(`Error fetching ${assetType} assets:`, error);
     return errorResponse('Internal server error');
   }
 }
