@@ -2,6 +2,10 @@
 
 ## Our Pledge
 
+In the interest of fostering an open and welcoming environment, we as contributors and maintainers of the IT Asset Management System (ITAMS) pledge to make participation in our project and our community a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+
+## Our Pledge
+
 We as members, contributors, and leaders pledge to make participation in our
 community a harassment-free experience for everyone, regardless of age, body
 size, visible or invisible disability, ethnicity, sex characteristics, gender
@@ -60,7 +64,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the project team at
-contact@example.com.
+devteamvietnam@gmail.com
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the
