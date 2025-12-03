@@ -233,6 +233,12 @@ export const getAssetTypes = (t: ReturnType<typeof useTranslation>['t']): AssetT
         type: "text",
         placeholder: t('assets.laptop.model') || "ThinkPad X1 Carbon"
       },
+      {
+        name: "userName",
+        label: t('assets.laptop.userName') || "User Name",
+        type: "text",
+        placeholder: t('assets.laptop.userName') || "John Doe"
+      },
       { 
         name: "status", 
         label: t('assets.laptop.status') || "Status", 
