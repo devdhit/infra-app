@@ -119,6 +119,9 @@ export function buildSearchQuery(
   // Build column list (exclude search_vector)
   const columnList = columns.map(col => `"${col}"`).join(', ');
 
+  // Check if the search term looks like a department code (contains hyphen)
+  const isDeptCode = sanitizedSearch.includes('-');
+  
   // Base query with full-text search (explicitly exclude search_vector)
   let baseQuery = `
     SELECT 
@@ -127,21 +130,28 @@ export function buildSearchQuery(
       ts_rank(search_vector, plainto_tsquery('english', $${paramIndex})) as rank
     FROM "${tableName}"
     WHERE "tenantId" = $1
-    AND (
-      search_vector @@ websearch_to_tsquery('english', $${paramIndex})
-      OR search_vector @@ plainto_tsquery('english', $${paramIndex})
-    )
   `;
   
   let countQuery = `
     SELECT COUNT(*) as count
     FROM "${tableName}"
     WHERE "tenantId" = $1
-    AND (
+  `;
+  
+  // Add search condition based on whether it's a department code or not
+  if (isDeptCode) {
+    baseQuery += ` AND "dept" = $${paramIndex}`;
+    countQuery += ` AND "dept" = $${paramIndex}`;
+  } else {
+    baseQuery += ` AND (
       search_vector @@ websearch_to_tsquery('english', $${paramIndex})
       OR search_vector @@ plainto_tsquery('english', $${paramIndex})
-    )
-  `;
+    )`;
+    countQuery += ` AND (
+      search_vector @@ websearch_to_tsquery('english', $${paramIndex})
+      OR search_vector @@ plainto_tsquery('english', $${paramIndex})
+    )`;
+  }
   
   params.push(sanitizedSearch);
 
