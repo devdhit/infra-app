@@ -1,6 +1,6 @@
 # GitHub Community Health Files
 
-This directory contains the community health files for the Infra App project:
+This directory contains the community health files for the IT Asset Management System (ITAMS) project:
 
 - [Code of Conduct](../CODE_OF_CONDUCT.md) - Our pledge to foster an open and welcoming environment
 - [Contributing Guidelines](../CONTRIBUTING.md) - How to contribute to this project

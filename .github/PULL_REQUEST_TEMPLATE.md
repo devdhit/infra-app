@@ -1,34 +1,41 @@
 ## Description
 
-Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context. List any dependencies that are required for this change.
+Please include a summary of the change and which issue is fixed in the IT Asset Management System (ITAMS). Please also include relevant motivation and context. List any dependencies that are required for this change.
 
 Fixes # (issue)
 
+Related to #(related issue, if applicable)
+
 ## Type of change
 
-Please delete options that are not relevant.
+Please delete options that are not relevant to the IT Asset Management System (ITAMS).
 
 - [ ] Bug fix (non-breaking change which fixes an issue)
 - [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] This change requires a documentation update
+- [ ] Performance improvement
+- [ ] Code refactoring
+- [ ] Security patch
+- [ ] Asset type/module addition
 
 ## How Has This Been Tested?
 
-Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details for your test configuration.
+Please describe the tests that you ran to verify your changes in the IT Asset Management System (ITAMS). Provide instructions so we can reproduce. Please also list any relevant details for your test configuration.
 
 - [ ] Test A
 - [ ] Test B
 
 **Test Configuration**:
-* Firmware version:
-* Hardware:
-* Toolchain:
-* SDK:
+* ITAMS Version:
+* Database Version (PostgreSQL/MySQL):
+* Node.js Version:
+* Operating System:
+* Test Environment (local/dev/staging):
 
 ## Checklist:
 
-- [ ] My code follows the style guidelines of this project
+- [ ] My code follows the style guidelines of the IT Asset Management System (ITAMS)
 - [ ] I have performed a self-review of my own code
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] I have made corresponding changes to the documentation
@@ -37,3 +44,6 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 - [ ] New and existing unit tests pass locally with my changes
 - [ ] Any dependent changes have been merged and published in downstream modules
 - [ ] I have checked my code and corrected any misspellings
+- [ ] I have tested the changes with different user roles (admin, manager, user)
+- [ ] I have verified that asset data integrity is maintained
+- [ ] I have checked compatibility with existing asset types and modules

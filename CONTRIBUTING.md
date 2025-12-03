@@ -1,6 +1,6 @@
-# Contributing to Infra App
+# Contributing to IT Asset Management System (ITAMS)
 
-Thank you for your interest in contributing to Infra App! We welcome contributions from the community and are excited to collaborate with you.
+Thank you for your interest in contributing to the IT Asset Management System (ITAMS)! We welcome contributions from the community and are excited to collaborate with you.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@ Thank you for your interest in contributing to Infra App! We welcome contributio
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to contact@example.com.
+This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to devteamvietnam@gmail.com.
 
 ## Getting Started
 
