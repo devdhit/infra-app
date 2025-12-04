@@ -32,13 +32,15 @@ import {
   useUpdateAsset,
   useCustomFields
 } from "@/hooks/useApi";
+import { useCurrentUser } from "@/contexts/current-user-context";
+import { useDuplicateCheck } from "@/hooks/useDuplicateCheck";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 import { Asset, AssetFormField } from "@/types/assets";
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useCallback, useState, useRef } from "react";
 import { ApiError, ValidationError } from "@/lib/api";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -47,6 +49,8 @@ import { AssetFormSkeleton } from "./asset-form-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { getModelType } from "@/lib/custom-fields";
 import { formatInputDate } from "@/lib/utils";
+import logger from "@/lib/logger";
+import { DuplicateNoticeDialog } from "./duplicate-notice-dialog";
 
 interface AssetFormProps {
   assetType: string;
@@ -282,14 +286,42 @@ export function AssetFormDialog({
         // If creating, reset to empty form
         form.reset({});
       }
+      // Reset bypass flag when form is opened
+      setBypassDuplicateCheck(false);
     }
   }, [form, initialData, isEditing, isOpen]);
   
   const createMutation = useCreateAsset<Asset, z.infer<typeof Schema>>(assetType);
   const updateMutation = useUpdateAsset<Asset, Partial<z.infer<typeof Schema>>>(assetType, initialData?.id || "");
+  const { checkForDuplicate } = useDuplicateCheck();
+  const { data: currentUser } = useCurrentUser();
+  
+  // State for duplicate notice dialog
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    barcode: string;
+    assetType: string;
+    dept: string;
+    message: string;
+  } | null>(null);
+  const [bypassDuplicateCheck, setBypassDuplicateCheck] = useState(false);
+  
+  // Create refs to hold the current state values to avoid closure issues
+  const bypassDuplicateCheckRef = useRef(bypassDuplicateCheck);
+  const showDuplicateDialogRef = useRef(showDuplicateDialog);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    bypassDuplicateCheckRef.current = bypassDuplicateCheck;
+    showDuplicateDialogRef.current = showDuplicateDialog;
+  }, [bypassDuplicateCheck, showDuplicateDialog]);
   
   const onSubmit = useCallback(async (values: z.infer<typeof Schema>) => {
     try {
+      logger.debug('Asset Form: onSubmit called with values:', values);
+      logger.debug('Asset Form: bypassDuplicateCheck flag from state:', bypassDuplicateCheck);
+      logger.debug('Asset Form: bypassDuplicateCheck flag from ref:', bypassDuplicateCheckRef.current);
+      
       // Process values before sending to API
       const processedValues: Record<string, any> = { customFields: {} };
       
@@ -298,8 +330,8 @@ export function AssetFormDialog({
       
       // Process each field, separating standard fields from custom fields
       Object.entries(values).forEach(([key, value]) => {
-        // Skip ID field
-        if (key === 'id') return;
+        // Skip ID field and bypassDuplicateCheck flag (we'll add it separately)
+        if (key === 'id' || key === 'bypassDuplicateCheck') return;
         
         // Determine if this is a standard field or custom field
         const isStandardField = standardFieldNames.includes(key);
@@ -338,6 +370,17 @@ export function AssetFormDialog({
         }
       });
       
+      // Add bypassDuplicateCheck flag if it was explicitly set in the values
+      if (values.bypassDuplicateCheck === true) {
+        processedValues.bypassDuplicateCheck = true;
+      }
+      // Also check the current state (fallback for closure issues)
+      else if (bypassDuplicateCheckRef.current) {
+        processedValues.bypassDuplicateCheck = true;
+      }
+      
+      logger.debug('Asset Form: Processed values to send:', processedValues);
+      
       // If there are no custom fields, delete the empty customFields object
       if (Object.keys(processedValues.customFields).length === 0) {
         delete processedValues.customFields;
@@ -349,18 +392,105 @@ export function AssetFormDialog({
         };
       }
       
+      // Check for duplicates before creating new assets
+      // Note: We check both the processedValues flag and the state variable to handle closure issues
+      if (!isEditing && !(processedValues.bypassDuplicateCheck || bypassDuplicateCheckRef.current)) {
+        const tenantId = currentUser?.tenantId;
+        if (!tenantId) {
+          toast.error(t('assets.form.error', 'Unable to determine tenant ID'));
+          return;
+        }
+        
+        // For PC assets, check CPU, Monitor, and UPS barcodes
+        if (assetType === 'pc') {
+          const barcodesToCheck = [
+            { barcode: processedValues.cpuBarcode, type: 'CPU' },
+            { barcode: processedValues.cpuSapBarcode, type: 'CPU SAP' },
+            { barcode: processedValues.monitorBarcode, type: 'Monitor' },
+            { barcode: processedValues.monitorSapBarcode, type: 'Monitor SAP' },
+            { barcode: processedValues.upsBarcode, type: 'UPS' },
+            { barcode: processedValues.upsSapBarcode, type: 'UPS SAP' }
+          ];
+          
+          for (const { barcode, type } of barcodesToCheck) {
+            if (barcode) {
+              const result = await checkForDuplicate(tenantId, barcode, 'pc');
+              if (result.isDuplicate) {
+                setDuplicateInfo({
+                  barcode,
+                  assetType: result.duplicateInfo?.type || 'warehouse',
+                  dept: result.duplicateInfo?.dept || 'Unknown',
+                  message: `The ${type} barcode "${barcode}" already exists in ${result.duplicateInfo?.type || 'another'} asset.`
+                });
+                setShowDuplicateDialog(true);
+                return; // Stop submission
+              }
+            }
+          }
+        }
+        // For Warehouse IT assets, check barcode and SAP code
+        else if (assetType === 'warehouse') {
+          const barcodesToCheck = [
+            { barcode: processedValues.barcode, type: 'Barcode' },
+            { barcode: processedValues.sapCode, type: 'SAP Code' }
+          ];
+          
+          for (const { barcode, type } of barcodesToCheck) {
+            if (barcode) {
+              const result = await checkForDuplicate(tenantId, barcode, 'warehouse');
+              if (result.isDuplicate) {
+                setDuplicateInfo({
+                  barcode,
+                  assetType: result.duplicateInfo?.type || 'pc',
+                  dept: result.duplicateInfo?.dept || 'Unknown',
+                  message: `The ${type} "${barcode}" already exists in ${result.duplicateInfo?.type || 'another'} asset.`
+                });
+                setShowDuplicateDialog(true);
+                return; // Stop submission
+              }
+            }
+          }
+        }
+      }
+      
       if (isEditing) {
         await updateMutation.updateAsset(processedValues);
         toast.success(t('assets.update.success', `{0} updated successfully`, title));
       } else {
-        await createMutation.createAsset(processedValues as z.infer<typeof Schema>);
-        toast.success(t('assets.create.success', `{0} created successfully`, title));
+        try {
+          logger.debug('Asset Form: Creating asset with processed values:', processedValues);
+          await createMutation.createAsset(processedValues as z.infer<typeof Schema>);
+          toast.success(t('assets.create.success', `{0} created successfully`, title));
+        } catch (error: any) {
+          logger.debug('Asset Form: Error creating asset:', error);
+          // Handle 409 Conflict error specifically for duplicates
+          if (error?.status === 409 && error?.message) {
+            // Extract barcode and department from the error message
+            // Error format: "Barcode Z012020230020040 in department WH  already exists in PC assets"
+            const match = error.message.match(/Barcode\s+([^\s]+)\s+in\s+department\s+([^\s]+)\s+already\s+exists\s+in\s+([^\s]+)\s+assets/);
+            if (match) {
+              const [, barcode, dept, assetType] = match;
+              setDuplicateInfo({
+                barcode,
+                assetType: assetType === 'PC' ? 'pc' : assetType.toLowerCase(),
+                dept,
+                message: error.message
+              });
+              setShowDuplicateDialog(true);
+              return; // Don't show the error toast since we're showing the dialog
+            }
+          }
+          
+          // Re-throw the error to be handled by the outer catch block
+          throw error;
+        }
       }
       form.reset();
+      setBypassDuplicateCheck(false);
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error("Form submission error:", error);
+      logger.error("Form submission error:", error);
       
       // Handle validation errors specifically
       if (error instanceof ValidationError) {
@@ -384,11 +514,11 @@ export function AssetFormDialog({
         toast.error(message);
       }
     }
-  }, [form, fields, initialData, isEditing, title, updateMutation, createMutation, onSuccess, onClose, t]);
+  }, [form, fields, initialData, isEditing, title, updateMutation, createMutation, onSuccess, onClose, t, assetType, checkForDuplicate, currentUser, bypassDuplicateCheck]);
   
   // Handle form errors
   const onError = (errors: any) => {
-    console.error("Form validation errors:", errors);
+    logger.error("Form validation errors:", errors);
     // Provide more specific error feedback
     const errorCount = Object.keys(errors).length;
     const message = errorCount === 1 
@@ -406,176 +536,208 @@ export function AssetFormDialog({
   }
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        form.reset();
-        onClose();
-      }
-    }}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing 
-              ? t('assets.form.edit.title', `Edit {0}`, title) 
-              : t('assets.form.create.title', `Create {0}`, title)}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing 
-              ? t('assets.form.edit.description', `Edit the details for this {0}.`, title.toLowerCase()) 
-              : t('assets.form.create.description', `Add a new {0} to your inventory.`, title.toLowerCase())}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-4">
-            {/* Show general error message if needed */}
-            {(createMutation.error || updateMutation.error) && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>{t('common.error', "Error")}</AlertTitle>
-                <AlertDescription>
-                  {t('assets.form.submitError', "There was an error submitting the form. Please check the details and try again.")}
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="grid grid-cols-1 gap-4">
-              {allFields.map((field) => (
-                <FormField
-                  key={field.name}
-                  control={form.control}
-                  name={field.name}
-                  render={({ field: formField }) => (
-                    <FormItem>
-                      <div className="flex items-center justify-between">
-                        <FormLabel>
-                          {field.label} {field.required && <span className="text-red-500">*</span>}
-                        </FormLabel>
-                        {field.isCustomField && (
-                          <Badge variant="secondary" className="h-5 text-xs">
-                            {t('assets.form.customField', "Custom Field")}
-                          </Badge>
-                        )}
-                      </div>
-                      <FormControl>
-                        {field.type === "textarea" ? (
-                          <Textarea 
-                            placeholder={field.placeholder}
-                            {...formField}
-                            value={formField.value as string || ""}
-                            disabled={isSubmitting}
-                          />
-                        ) : field.type === "select" ? (
-                          <Select 
-                            onValueChange={formField.onChange} 
-                            defaultValue={formField.value as string || ""}
-                            value={formField.value as string || ""}
-                            disabled={isSubmitting}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={field.placeholder} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {field.options?.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : field.type === "date" ? (
-                          <Input
-                            type="date"
-                            placeholder={field.placeholder}
-                            {...formField}
-                            value={formField.value ? (
-                              typeof formField.value === 'string' ? 
-                                formField.value : 
-                                new Date(formField.value as Date).toISOString().split('T')[0]
-                            ) : ""}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              // Validate date before setting
-                              if (value && !isNaN(Date.parse(value))) {
-                                formField.onChange(value);
-                              } else if (!value) {
-                                formField.onChange("");
-                              }
-                            }}
-                            disabled={isSubmitting}
-                          />
-                        ) : field.type === "number" ? (
-                          <Input
-                            type="number"
-                            placeholder={field.placeholder}
-                            {...formField}
-                            value={formField.value === null || formField.value === undefined ? "" : String(formField.value)}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              formField.onChange(value === "" ? null : Number(value));
-                            }}
-                            disabled={isSubmitting}
-                          />
-                        ) : field.type === "boolean" ? (
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={formField.value as boolean || false}
-                              onChange={(e) => formField.onChange(e.target.checked)}
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) {
+          form.reset();
+          onClose();
+          setBypassDuplicateCheck(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditing 
+                ? t('assets.form.edit.title', `Edit {0}`, title) 
+                : t('assets.form.create.title', `Create {0}`, title)}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditing 
+                ? t('assets.form.edit.description', `Edit the details for this {0}.`, title.toLowerCase()) 
+                : t('assets.form.create.description', `Add a new {0} to your inventory.`, title.toLowerCase())}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-4">
+              {/* Show general error message if needed */}
+              {(createMutation.error || updateMutation.error) && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>{t('common.error', "Error")}</AlertTitle>
+                  <AlertDescription>
+                    {t('assets.form.submitError', "There was an error submitting the form. Please check the details and try again.")}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="grid grid-cols-1 gap-4">
+                {allFields.map((field) => (
+                  <FormField
+                    key={field.name}
+                    control={form.control}
+                    name={field.name}
+                    render={({ field: formField }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>
+                            {field.label} {field.required && <span className="text-red-500">*</span>}
+                          </FormLabel>
+                          {field.isCustomField && (
+                            <Badge variant="secondary" className="h-5 text-xs">
+                              {t('assets.form.customField', "Custom Field")}
+                            </Badge>
+                          )}
+                        </div>
+                        <FormControl>
+                          {field.type === "textarea" ? (
+                            <Textarea 
+                              placeholder={field.placeholder}
+                              {...formField}
+                              value={formField.value as string || ""}
                               disabled={isSubmitting}
-                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                             />
-                            <span className="text-sm text-muted-foreground">
-                              {field.placeholder || "Check to enable"}
-                            </span>
-                          </div>
-                        ) : (
-                          <Input
-                            type={field.type}
-                            placeholder={field.placeholder}
-                            {...formField}
-                            value={formField.value as string || ""}
-                            disabled={isSubmitting}
-                          />
+                          ) : field.type === "select" ? (
+                            <Select 
+                              onValueChange={formField.onChange} 
+                              defaultValue={formField.value as string || ""}
+                              value={formField.value as string || ""}
+                              disabled={isSubmitting}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={field.placeholder} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {field.options?.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : field.type === "date" ? (
+                            <Input
+                              type="date"
+                              placeholder={field.placeholder}
+                              {...formField}
+                              value={formField.value ? (
+                                typeof formField.value === 'string' ? 
+                                  formField.value : 
+                                  new Date(formField.value as Date).toISOString().split('T')[0]
+                              ) : ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Validate date before setting
+                                if (value && !isNaN(Date.parse(value))) {
+                                  formField.onChange(value);
+                                } else if (!value) {
+                                  formField.onChange("");
+                                }
+                              }}
+                              disabled={isSubmitting}
+                            />
+                          ) : field.type === "number" ? (
+                            <Input
+                              type="number"
+                              placeholder={field.placeholder}
+                              {...formField}
+                              value={formField.value === null || formField.value === undefined ? "" : String(formField.value)}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                formField.onChange(value === "" ? null : Number(value));
+                              }}
+                              disabled={isSubmitting}
+                            />
+                          ) : field.type === "boolean" ? (
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={formField.value as boolean || false}
+                                onChange={(e) => formField.onChange(e.target.checked)}
+                                disabled={isSubmitting}
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                              <span className="text-sm text-muted-foreground">
+                                {field.placeholder || "Check to enable"}
+                              </span>
+                            </div>
+                          ) : (
+                            <Input
+                              type={field.type}
+                              placeholder={field.placeholder}
+                              {...formField}
+                              value={formField.value as string || ""}
+                              disabled={isSubmitting}
+                            />
+                          )}
+                        </FormControl>
+                        {field.description && (
+                          <FormDescription>{field.description}</FormDescription>
                         )}
-                      </FormControl>
-                      {field.description && (
-                        <FormDescription>{field.description}</FormDescription>
-                      )}
-                      <FormMessage />
-                    </FormItem>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
+              </div>
+              
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                >
+                  {t('common.cancel', "Cancel")}
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center">
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                      {t('common.saving', "Saving...")}
+                    </div>
+                  ) : (
+                    isEditing 
+                      ? t('common.update', "Update") 
+                      : t('common.create', "Create")
                   )}
-                />
-              ))}
-            </div>
-            
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                {t('common.cancel', "Cancel")}
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center">
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                    {t('common.saving', "Saving...")}
-                  </div>
-                ) : (
-                  isEditing 
-                    ? t('common.update', "Update") 
-                    : t('common.create', "Create")
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      <DuplicateNoticeDialog 
+        isOpen={showDuplicateDialog}
+        onOpenChange={(open) => {
+          setShowDuplicateDialog(open);
+          if (!open) {
+            setBypassDuplicateCheck(false);
+          }
+        }}
+        duplicateInfo={duplicateInfo || undefined}
+        onConfirm={() => {
+          logger.debug('DuplicateNoticeDialog: onConfirm called');
+          setShowDuplicateDialog(false);
+          setBypassDuplicateCheck(true);
+          // Trigger form submission again
+          setTimeout(() => {
+            logger.debug('DuplicateNoticeDialog: Triggering form submission');
+            // Get current form values and add bypass flag
+            const currentValues = form.getValues();
+            const valuesWithBypass = { ...currentValues, bypassDuplicateCheck: true };
+            form.handleSubmit(() => onSubmit(valuesWithBypass), onError)();
+          }, 100);
+        }}
+        onCancel={() => {
+          logger.debug('DuplicateNoticeDialog: onCancel called');
+          setShowDuplicateDialog(false);
+          setBypassDuplicateCheck(false);
+        }}
+      />
+    </>
   );
 }

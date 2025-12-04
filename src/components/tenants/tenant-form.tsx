@@ -14,13 +14,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslation } from "@/hooks/use-translation"
-import { Tenant } from "@/hooks/useApi"
+import type { Tenant } from "@/types/management"
 
 // Define the interface directly in this file to avoid import issues
 interface TenantFormValues {
   id?: string;
   name: string;
-  description?: string;
+  description?: string | null;
 }
 
 interface TenantFormProps {
@@ -49,7 +49,7 @@ export function TenantForm({
   useEffect(() => {
     setFormData({
       name: editingTenant?.name || '',
-      description: editingTenant?.description || '',
+      description: editingTenant?.description ?? '',
     })
   }, [editingTenant])
 
@@ -72,7 +72,7 @@ export function TenantForm({
     onSubmit({
       id: editingTenant?.id,
       name: formData.name,
-      description: formData.description || undefined,
+      description: formData.description || null,
     })
   }
 
@@ -90,7 +90,7 @@ export function TenantForm({
   const resetForm = () => {
     setFormData({
       name: editingTenant?.name || '',
-      description: editingTenant?.description || '',
+      description: editingTenant?.description ?? '',
     })
     setErrors({})
   }

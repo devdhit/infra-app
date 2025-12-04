@@ -14,7 +14,9 @@ export const COMMON_RESOURCE_TYPES = [
   'printer', 
   'license', 
   'warehouse', 
-  'internet'
+  'internet',
+  'fixed-asset',
+  'it-purchasing'
 ] as const;
 
 // Define common permission actions for type safety where needed

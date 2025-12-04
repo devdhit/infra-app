@@ -73,6 +73,8 @@ const navigationItems: NavigationItem[] = [
       { nameKey: "nav.license", href: "/assets/license", icon: Key, requiredPermission: { resource: 'license', action: 'view' } },
       { nameKey: "nav.warehouse", href: "/assets/warehouse", icon: Warehouse, requiredPermission: { resource: 'warehouse', action: 'view' } },
       { nameKey: "nav.internet", href: "/assets/internet", icon: Wifi, requiredPermission: { resource: 'internet', action: 'view' } },
+      { nameKey: "nav.fixedasset", href: "/assets/fixed-asset", icon: Home, requiredPermission: { resource: 'fixed-asset', action: 'view' } },
+      { nameKey: "nav.itpurchasing", href: "/assets/it-purchasing", icon: FileText, requiredPermission: { resource: 'it-purchasing', action: 'view' } },
     ]
   },
   { 
@@ -148,6 +150,8 @@ export function Header() {
     canViewLicense,
     canViewWarehouse,
     canViewInternet,
+    canViewFixedAsset,
+    canViewITPurchasing,
     canViewAuditLogs,
     canViewAgents
   } = usePermissions();
@@ -161,6 +165,7 @@ export function Header() {
     'license': false,
     'warehouse': false,
     'internet': false,
+    'fixed-asset': false,
     'users': false,
     'tenants': false,
     'roles': false,
@@ -198,6 +203,8 @@ export function Header() {
           'license': true,
           'warehouse': true,
           'internet': true,
+          'fixed-asset': true,
+          'it-purchasing': true,
           'users': true,
           'tenants': true,
           'roles': true,
@@ -219,6 +226,8 @@ export function Header() {
           { key: 'license', check: canViewLicense },
           { key: 'warehouse', check: canViewWarehouse },
           { key: 'internet', check: canViewInternet },
+          { key: 'fixed-asset', check: canViewFixedAsset },
+          { key: 'it-purchasing', check: canViewITPurchasing },
           { key: 'users', check: canViewUsers },
           { key: 'tenants', check: canViewTenants },
           { key: 'roles', check: canViewRoles },
@@ -256,7 +265,7 @@ export function Header() {
     };
     
     checkAllPermissions();
-  }, [userRole, isLoading, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAuditLogs, canViewAgents]);
+  }, [userRole, isLoading, canViewAssets, canViewPC, canViewLaptop, canViewPrinter, canViewLicense, canViewWarehouse, canViewInternet, canViewFixedAsset, canViewITPurchasing, canViewUsers, canViewTenants, canViewRoles, canViewSettings, canViewAuditLogs, canViewAgents]);
 
   // Filter navigation items
   const filteredNavigationItems = useMemo(() => {
@@ -409,81 +418,81 @@ export function Header() {
     <>
       <header className="sticky top-0 right-0 left-0 z-50 bg-background/80 backdrop-blur-md border-b shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center">
             <Link href="/dashboard" className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
               <span className="hidden md:inline">{applicationName}</span>
               <span className="md:hidden">{shortName}</span>
             </Link>
-            
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-4">
-              {filteredNavigationItems.map((item) => (
-                <div key={item.nameKey} className="relative">
-                  {item.children ? (
-                    <div 
-                      className="relative"
-                      onMouseEnter={() => openDropdownMenu(item.nameKey)}
-                      onMouseLeave={closeDropdownMenu}
-                    >
-                      <button
-                        onClick={() => toggleDropdown(item.nameKey)}
-                        className={cn(
-                          "flex items-center gap-2 bg-transparent hover:bg-muted px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 ease-out transform-gpu",
-                          isActive(item.href) && "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300",
-                          openDropdown === item.nameKey && "scale-[1.03]"
-                        )}
-                      >
-                        <item.icon className="h-4 w-4 transition-transform duration-200 ease-in-out" />
-                        {t(item.nameKey)}
-                        <ChevronDown className={cn(
-                          "h-4 w-4 ml-1 transition-all duration-300 ease-out",
-                          openDropdown === item.nameKey && "rotate-180"
-                        )} />
-                      </button>
-                      
-                      <div 
-                        className={cn(
-                          "absolute top-full left-0 mt-1 w-64 bg-background border rounded-md shadow-lg z-50 transition-all duration-300 ease-out transform-gpu",
-                          openDropdown === item.nameKey 
-                            ? "opacity-100 translate-y-0 visible scale-100" 
-                            : "opacity-0 -translate-y-3 invisible scale-95"
-                        )}
-                      >
-                        <div className="py-1">
-                          {item.children.map((child) => (
-                            <button
-                              key={child.nameKey}
-                              onClick={() => handleNavigation(child.href, child.requiredPermission)}
-                              className={cn(
-                                "flex items-center gap-2 w-full px-4 py-2 text-left text-sm transition-all duration-200 ease-out transform-gpu",
-                                isActive(child.href) 
-                                  ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300" 
-                                  : "hover:bg-muted hover:pl-5"
-                              )}
-                            >
-                              <child.icon className="h-4 w-4" />
-                              {t(child.nameKey)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
+          </div>
+          
+          {/* Desktop Navigation - Centered */}
+          <nav className="hidden md:flex items-center space-x-4 absolute left-1/2 transform -translate-x-1/2">
+            {filteredNavigationItems.map((item) => (
+              <div key={item.nameKey} className="relative">
+                {item.children ? (
+                  <div 
+                    className="relative"
+                    onMouseEnter={() => openDropdownMenu(item.nameKey)}
+                    onMouseLeave={closeDropdownMenu}
+                  >
                     <button
-                      onClick={() => handleNavigation(item.href, item.requiredPermission)}
+                      onClick={() => toggleDropdown(item.nameKey)}
                       className={cn(
-                        "flex items-center gap-2 bg-transparent hover:bg-muted px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 ease-out transform-gpu hover:scale-[1.03]",
-                        isActive(item.href) && "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+                        "flex items-center gap-2 bg-transparent hover:bg-muted px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 ease-out transform-gpu",
+                        isActive(item.href) && "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300",
+                        openDropdown === item.nameKey && "scale-[1.03]"
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className="h-4 w-4 transition-transform duration-200 ease-in-out" />
                       {t(item.nameKey)}
+                      <ChevronDown className={cn(
+                        "h-4 w-4 ml-1 transition-all duration-300 ease-out",
+                        openDropdown === item.nameKey && "rotate-180"
+                      )} />
                     </button>
-                  )}
-                </div>
-              ))}
-            </nav>
-          </div>
+                    
+                    <div 
+                      className={cn(
+                        "absolute top-full left-0 mt-1 w-64 bg-background border rounded-md shadow-lg z-50 transition-all duration-300 ease-out transform-gpu",
+                        openDropdown === item.nameKey 
+                          ? "opacity-100 translate-y-0 visible scale-100" 
+                          : "opacity-0 -translate-y-3 invisible scale-95"
+                      )}
+                    >
+                      <div className="py-1">
+                        {item.children.map((child) => (
+                          <button
+                            key={child.nameKey}
+                            onClick={() => handleNavigation(child.href, child.requiredPermission)}
+                            className={cn(
+                              "flex items-center gap-2 w-full px-4 py-2 text-left text-sm transition-all duration-200 ease-out transform-gpu",
+                              isActive(child.href) 
+                                ? "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300" 
+                                : "hover:bg-muted hover:pl-5"
+                            )}
+                          >
+                            <child.icon className="h-4 w-4" />
+                            {t(child.nameKey)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleNavigation(item.href, item.requiredPermission)}
+                    className={cn(
+                      "flex items-center gap-2 bg-transparent hover:bg-muted px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 ease-out transform-gpu hover:scale-[1.03]",
+                      isActive(item.href) && "bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-950/50 dark:text-blue-300"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {t(item.nameKey)}
+                  </button>
+                )}
+              </div>
+            ))}
+          </nav>
           
           <div className="flex items-center gap-3">
             {/* Date/Time and IP Display */}
@@ -613,3 +622,5 @@ export function Header() {
     </>
   );
 }
+
+export default Header;

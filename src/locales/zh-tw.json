@@ -8,6 +8,8 @@
     "license": "授權",
     "warehouse": "倉儲IT",
     "internet": "網路",
+    "fixedasset": "固定資產",
+    "itpurchasing": "IT採購",
     "users": "使用者",
     "tenants": "租戶",
     "settings": "設定",
@@ -86,6 +88,8 @@
     "import": "匯入",
     "refresh": "重新整理",
     "loading": "載入中...",
+    "loadingPermissions": "正在檢查您的權限...",
+    "pleaseWait": "請稍候，我們正在獲取最新資訊",
     "error": "錯誤",
     "success": "成功",
     "warning": "警告",
@@ -275,6 +279,18 @@
       "success": "{0} 個 {1} 資產刪除成功",
       "error": "資產刪除失敗"
     },
+    "duplicate": {
+      "title": "發現重複資產",
+      "description": "系統中偵測到重複的資產。",
+      "warning": "警告",
+      "defaultMessage": "您輸入的條碼已在其他資產類型中存在。",
+      "inlineEditMessage": "您輸入的條碼已在其他資產類型中存在。",
+      "barcode": "條碼",
+      "assetType": "資產類型",
+      "department": "部門",
+      "proceed": "仍然繼續",
+      "proceedWarning": "如果您繼續，重複的資產將被自動刪除。"
+    },
     "search": {
       "placeholder": "搜尋資產..."
     },
@@ -326,6 +342,8 @@
         "successSingleDept": "{0} 匯出完成，部門 {1}",
         "successAllDepts": "{0} 匯出完成，所有部門",
         "successAllDeptsZip": "{0} 匯出完成。已下載包含所有部門的 ZIP 檔案。",
+        "successSingleDeptZip": "{0} 匯出完成。已下載部門 {1} 的 ZIP 檔案。",
+        "successEachDeptZip": "{0} 匯出完成。已下載包含所有部門的 ZIP 檔案。",
         "error": "資產匯出失敗",
         "timeout": "匯出逾時。資料可能過大。",
         "unauthorized": "未經授權的存取。請重新登入。",
@@ -385,7 +403,16 @@
       "pcName": "電腦名稱",
       "user": "使用者",
       "status": "狀態",
-      "note": "備註"
+      "note": "備註",
+      "internetAccessInfo": "網路存取資訊",
+      "noInternetAccess": "未找到網路存取",
+      "noInternetAccessMessage": "資產 (IP: {0}, 使用者: {1}) 沒有任何相關的網路存取記錄。",
+      "licenseInfo": "授權資訊",
+      "licenseItem": "授權 {0}",
+      "noLicense": "未找到授權",
+      "noLicenseMessage": "資產 (IP: {0}, 使用者: {1}) 沒有任何相關的授權記錄。",
+      "noLicenseMessageUser": "使用者 {0} 沒有任何相關的授權記錄。",
+      "noLicenseMessageIP": "IP 位址 {0} 沒有任何相關的授權記錄。"
     },
     "laptop": {
       "title": "筆電",
@@ -426,7 +453,8 @@
       "ip": "IP 位址",
       "purchaseDate": "購買日期",
       "status": "狀態",
-      "note": "備註"
+      "note": "備註",
+      "updateStatus": "更新狀態"
     },
     "warehouse": {
       "title": "倉儲IT",
@@ -446,6 +474,31 @@
       "internetAccess": "網路存取",
       "status": "狀態",
       "note": "備註"
+    },
+    "fixedAsset": {
+      "title": "固定資產",
+      "department": "部門",
+      "barcode": "條碼",
+      "sapCode": "SAP代碼",
+      "name": "名稱",
+      "place": "地點",
+      "inputDate": "入庫日期",
+      "location": "位置",
+      "status": "狀態",
+      "note": "備註"
+    },
+    "itPurchasing": {
+      "title": "IT採購",
+      "bpmName": "BPM名稱",
+      "bpmContent": "BPM內容",
+      "bpmId": "BPM編號",
+      "deptCode": "部門代碼",
+      "statusBPM": "BPM狀態",
+      "prId": "採購單號",
+      "statusPR": "採購單狀態",
+      "statusReceive": "接收狀態",
+      "dateReceive": "接收日期",
+      "noted": "備註"
     },
     "status": {
       "working": "使用中",
@@ -847,7 +900,7 @@
       "infoTitle": "自訂欄位",
       "infoDescription": "自訂欄位允許您為資產新增額外資訊。可以是文字、數字、日期或其他類型。",
       "deleteConfirmTitle": "刪除自訂欄位",
-      "deleteConfirmDescription": "您確定要刪除自訂欄位「{fieldName}」嗎？此操作無法復原，並將從所有現有資產中移除此欄位。",
+      "deleteConfirmDescription": "您確定要刪除自訂欄位「{0}」嗎？此操作無法復原，並將從所有現有資產中移除此欄位。",
       "helpTitle": "自訂欄位說明",
       "helpDescription": "學習如何有效使用自訂欄位",
       "whatAre": "什麼是自訂欄位？",
@@ -1064,6 +1117,28 @@
         "submitData": "提交網路資料",
         "viewStatus": "查看網路狀態",
         "healthCheck": "網路健康檢查"
+      },
+      "fixed-asset": {
+        "label": "固定資產",
+        "view": "查看固定資產",
+        "create": "建立固定資產",
+        "edit": "編輯固定資產",
+        "delete": "刪除固定資產",
+        "bulkDelete": "批次刪除固定資產",
+        "submitData": "提交固定資產資料",
+        "viewStatus": "查看固定資產狀態",
+        "healthCheck": "固定資產健康檢查"
+      },
+      "it-purchasing": {
+        "label": "IT採購",
+        "view": "查看IT採購",
+        "create": "建立IT採購",
+        "edit": "編輯IT採購",
+        "delete": "刪除IT採購",
+        "bulkDelete": "批次刪除IT採購",
+        "submitData": "提交IT採購資料",
+        "viewStatus": "查看IT採購狀態",
+        "healthCheck": "IT採購健康檢查"
       },
       "auditLogs": {
         "label": "審計日誌",

@@ -25,6 +25,8 @@ module.exports = {
     // Kill process if it exits unexpectedly
     kill_timeout: 3000,
     // Watch and restart on file changes (useful for development)
-    watch: false
+    watch: false,
+    // Disable source maps in production
+    source_map_support: false
   }]
 }

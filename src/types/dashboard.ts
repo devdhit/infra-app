@@ -7,6 +7,7 @@ export interface AssetCounts {
   printer: number;
   license: number;
   warehouse: number;
+  fixedAsset: number;
 }
 
 export interface StatusBreakdownItem {
@@ -59,9 +60,12 @@ export interface DepartmentStats {
 
 // New interfaces for dashboard summary data
 export interface PCSummary {
-  cpu: string | null;
+  cpuBarcode: string | null;
+  cpuSapBarcode: string | null;
   monitorBarcode: string | null;
+  monitorSapBarcode: string | null;
   upsBarcode: string | null;
+  upsSapBarcode: string | null;
   _count: number;
 }
 
@@ -107,6 +111,17 @@ export interface InternetSummary {
   _count: number;
 }
 
+export interface FixedAssetSummary {
+  dept: string | null;
+  status: string | null;
+  _count: number;
+}
+
+export interface FixedAssetStats {
+  total: number;
+  details: FixedAssetSummary[];
+}
+
 export interface CustomFieldStat {
   count: number;
   values: Record<string, number>;
@@ -119,6 +134,7 @@ export interface DashboardSummaryData {
   license: LicenseSummary[];
   warehouseIT: WarehouseITSummary[];
   internet: InternetSummary[];
+  fixedAsset: FixedAssetStats;
   customFields: CustomField[];
   customFieldStats: Record<string, CustomFieldStat>;
 }

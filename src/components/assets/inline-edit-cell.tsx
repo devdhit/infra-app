@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { useUpdateAsset, useUpdateAssetCustomFields } from "@/hooks/useApi"
+import { useCurrentUser } from "@/contexts/current-user-context"
 import { toast } from "sonner"
 import { Asset, AssetFormField } from "@/types/assets"
 import { useTranslation } from "@/hooks/use-translation"
@@ -28,21 +29,28 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import logger from '@/lib/logger'
+import { useDuplicateCheck } from "@/hooks/useDuplicateCheck"
+import { AlertTriangle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface InlineEditCellProps {
   asset: Asset
   assetType: string
   field: AssetFormField
   value: any
-  onUpdate: (newValue: any) => void
+  onUpdate: (newValue: any, optimisticUpdate?: boolean) => void
   isCustomField?: boolean
   customFieldsData?: any[]
+  onRollback?: (originalValue: any) => void
 }
 
-export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField, customFieldsData }: InlineEditCellProps) {
+export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCustomField: propIsCustomField, customFieldsData, onRollback }: InlineEditCellProps) {
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value || '')
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
+  const [duplicateInfo, setDuplicateInfo] = useState<{barcode: string, assetType: string, dept: string} | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
@@ -51,6 +59,12 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
 
   // Determine if this is a custom field - prioritize the prop if provided, otherwise use the utility function
   const isCustom = propIsCustomField !== undefined ? propIsCustomField : isCustomField(field.name, asset, customFieldsData);
+  
+  // Get current user for tenant ID
+  const { data: currentUser } = useCurrentUser();
+  
+  // Duplicate check hook
+  const { checkForDuplicate } = useDuplicateCheck();
   
   // Always call both hooks to comply with React's rules of hooks
   const updateCustomFieldsMutation = useUpdateAssetCustomFields(modelType, asset.id)
@@ -104,30 +118,76 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
         processedValue = null
       }
       
+      // Check for duplicates if this is a barcode field being edited
+      const isBarcodeField = (
+        assetType === 'pc' && (
+          field.name === 'cpuBarcode' || 
+          field.name === 'cpuSapBarcode' || 
+          field.name === 'monitorBarcode' || 
+          field.name === 'monitorSapBarcode' || 
+          field.name === 'upsBarcode' || 
+          field.name === 'upsSapBarcode'
+        )
+      ) || (
+        assetType === 'warehouse' && (
+          field.name === 'barcode' || 
+          field.name === 'sapCode'
+        )
+      );
+      
+      if (isBarcodeField && processedValue) {
+        const tenantId = currentUser?.tenantId;
+        if (tenantId) {
+          const checkAssetType = assetType === 'pc' ? 'pc' : 'warehouse';
+          const result = await checkForDuplicate(tenantId, processedValue, checkAssetType);
+          
+          if (result.isDuplicate) {
+            setDuplicateInfo({
+              barcode: processedValue,
+              assetType: result.duplicateInfo?.type || (assetType === 'pc' ? 'warehouse' : 'pc'),
+              dept: result.duplicateInfo?.dept || 'Unknown'
+            });
+            setShowDuplicateWarning(true);
+            return; // Don't save yet, show warning first
+          }
+        }
+      }
+      
+      // Exit edit mode first for instant UI feedback
+      setIsEditing(false)
+      
+      // Immediately update UI optimistically (no waiting for server)
+      onUpdate(processedValue, true)
+      
       // Create update data using utility function
       const updateData = createUpdateData(field.name, processedValue, isCustom, asset);
       
-      // Send the update to the server
+      // Send the update to the server in the background
       // Check which type of mutation we have
-      if ('updateAssetCustomFields' in updateMutation) {
-        await updateMutation.updateAssetCustomFields(updateData);
-      } else if ('updateAsset' in updateMutation) {
-        await updateMutation.updateAsset(updateData);
+      const serverUpdate = async () => {
+        if ('updateAssetCustomFields' in updateMutation) {
+          return await updateMutation.updateAssetCustomFields(updateData);
+        } else if ('updateAsset' in updateMutation) {
+          return await updateMutation.updateAsset(updateData);
+        }
+      };
+      
+      // Use optimistic update pattern - update UI immediately, sync with server in background
+      try {
+        await serverUpdate();
+        // Show success message after server confirms
+        toast.success(t('assets.update.success', '{0} updated successfully', field.label))
+      } catch (serverError: any) {
+        // If server update fails, rollback the optimistic update
+        logger.error("Server update failed, rolling back:", serverError)
+        onUpdate(value, false) // Rollback to original value
+        if (onRollback) {
+          onRollback(value)
+        }
+        throw serverError; // Re-throw to be caught by outer catch
       }
-      
-      // Exit edit mode first for better UX
-      setIsEditing(false)
-      
-      // Show success message
-      toast.success(t('assets.update.success', '{0} updated successfully', field.label))
-      
-      // Call onUpdate to notify parent component of the change
-      // Use a more aggressive delay to ensure cache operations complete
-      setTimeout(() => {
-        onUpdate(processedValue)
-      }, 100); // Reduced delay for faster UI updates
     } catch (error: any) {
-      console.error("Inline edit error:", error)
+      logger.error("Inline edit error:", error)
       let message = t('assets.update.error', 'Failed to update {0}', field.label)
       
       if (error.message) {
@@ -148,131 +208,256 @@ export function InlineEditCell({ asset, assetType, field, value, onUpdate, isCus
   
   if (isEditing) {
     return (
-      // Using Dialog component instead of full-screen overlay for better UX
-      <Dialog open={isEditing} onOpenChange={(open) => {
-        if (!open) {
-          handleCancel()
-        }
-      }}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit3 className="h-5 w-5 text-primary" />
-              {field.label}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {isCustom && (
-              <div className="flex justify-end">
-                <Badge variant="secondary" className="text-xs">
-                  Custom Field
-                </Badge>
-              </div>
-            )}
+      <>
+        {/* Duplicate Warning Dialog */}
+        <Dialog open={showDuplicateWarning} onOpenChange={setShowDuplicateWarning}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                {t('assets.duplicate.title', 'Duplicate Asset Found')}
+              </DialogTitle>
+            </DialogHeader>
             
-            <div className="space-y-4">
-              {field.type === 'textarea' ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    {field.label}
-                  </label>
-                  <Textarea
-                    ref={textareaRef}
-                    value={editValue || ''}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="min-h-[120px] transition-all focus:ring-2 focus:ring-primary/30"
-                    placeholder={field.placeholder}
-                  />
-                </div>
-              ) : field.type === 'select' ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    {field.label}
-                  </label>
-                  <Select 
-                    value={editValue || ''} 
-                    onValueChange={setEditValue}
-                  >
-                    <SelectTrigger className="transition-all focus:ring-2 focus:ring-primary/30">
-                      <SelectValue placeholder={field.placeholder} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {field.options?.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : field.type === 'boolean' ? (
-                <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/50 transition-all hover:bg-muted/80">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(editValue)}
-                    onChange={(e) => setEditValue(e.target.checked)}
-                    className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0"
-                  />
-                  <span className="text-sm text-foreground font-medium">
-                    {field.label}
-                  </span>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    {field.label}
-                  </label>
-                  <Input
-                    ref={inputRef}
-                    type={field.type}
-                    value={editValue || ''}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="h-12 text-lg transition-all focus:ring-2 focus:ring-primary/30"
-                    placeholder={field.placeholder}
-                  />
-                </div>
-              )}
+            <div className="grid gap-4 py-4">
+              <Alert variant="destructive" className="border-yellow-200 bg-yellow-50 text-yellow-800">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                <AlertTitle>{t('assets.duplicate.warning', 'Warning')}</AlertTitle>
+                <AlertDescription className="text-yellow-700">
+                  {t('assets.duplicate.inlineEditMessage', 'The barcode you entered already exists in another asset type.')}
+                  <br />
+                  <strong>{t('assets.duplicate.proceedWarning', 'If you proceed, the duplicate asset will be automatically deleted.')}</strong>
+                </AlertDescription>
+              </Alert>
               
-              {field.description && (
-                <div className="flex items-start p-3 rounded-lg bg-muted/30 border">
-                  <Info className="h-4 w-4 text-muted-foreground mt-0.5 mr-2 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">{field.description}</p>
+              {duplicateInfo && (
+                <div className="grid gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="text-sm font-medium">
+                      {t('assets.duplicate.barcode', 'Barcode')}:
+                    </div>
+                    <div className="text-sm">{duplicateInfo.barcode}</div>
+                    
+                    <div className="text-sm font-medium">
+                      {t('assets.duplicate.assetType', 'Asset Type')}:
+                    </div>
+                    <div className="text-sm capitalize">{duplicateInfo.assetType}</div>
+                    
+                    <div className="text-sm font-medium">
+                      {t('assets.duplicate.department', 'Department')}:
+                    </div>
+                    <div className="text-sm">{duplicateInfo.dept}</div>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button 
-              variant="outline" 
-              onClick={handleCancel}
-              disabled={updateMutation.isLoading}
-              className="transition-all hover:shadow-md"
-            >
-              <X className="mr-2 h-4 w-4" />
-              {t('common.cancel', "Cancel")}
-            </Button>
-            <Button 
-              onClick={handleSave}
-              disabled={updateMutation.isLoading}
-              className="transition-all hover:shadow-md"
-            >
-              {updateMutation.isLoading ? (
-                <div className="flex items-center">
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                  {t('common.saving', "Saving...")}
+            
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDuplicateWarning(false)}
+                className="transition-all hover:shadow-md"
+              >
+                <X className="mr-2 h-4 w-4" />
+                {t('common.cancel', "Cancel")}
+              </Button>
+              <Button 
+                onClick={async () => {
+                  setShowDuplicateWarning(false);
+                  // Proceed with saving and bypass duplicate check
+                  try {
+                    // Process the value based on field type
+                    let processedValue = editValue
+                    
+                    if (field.type === 'number') {
+                      processedValue = editValue === '' ? null : Number(editValue)
+                    } else if (field.type === 'date' && editValue) {
+                      // Convert to ISO string for API
+                      const dateValue = new Date(editValue)
+                      if (dateValue.toString() !== 'Invalid Date') {
+                        processedValue = dateValue.toISOString()
+                      } else {
+                        processedValue = null
+                      }
+                    } else if (field.type === 'boolean') {
+                      processedValue = editValue === true || editValue === 'true'
+                    } else if (editValue === '') {
+                      processedValue = null
+                    }
+                    
+                    // Create update data using utility function
+                    const updateData = createUpdateData(field.name, processedValue, isCustom, asset);
+                    
+                    // Add bypass flag to bypass duplicate checking
+                    // This will cause the backend to delete any duplicate assets before updating
+                    const updateDataWithBypass = {
+                      ...updateData,
+                      bypassDuplicateCheck: true
+                    };
+                    
+                    // Send the update to the server
+                    if ('updateAssetCustomFields' in updateMutation) {
+                      await updateMutation.updateAssetCustomFields(updateDataWithBypass);
+                    } else if ('updateAsset' in updateMutation) {
+                      await updateMutation.updateAsset(updateDataWithBypass);
+                    }
+                    
+                    // Exit edit mode
+                    setIsEditing(false)
+                    
+                    // Show success message
+                    toast.success(t('assets.update.success', '{0} updated successfully', field.label))
+                    
+                    // Call onUpdate to notify parent component of the change
+                    setTimeout(() => {
+                      onUpdate(processedValue)
+                    }, 100);
+                  } catch (error: any) {
+                    logger.error("Inline edit error:", error)
+                    let message = t('assets.update.error', 'Failed to update {0}', field.label)
+                    
+                    if (error.message) {
+                      message = error.message
+                    }
+                    
+                    toast.error(message)
+                  }
+                }}
+                className="transition-all hover:shadow-md"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {t('assets.duplicate.proceed', 'Proceed Anyway')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Main Edit Dialog */}
+        <Dialog open={isEditing && !showDuplicateWarning} onOpenChange={(open) => {
+          if (!open) {
+            handleCancel()
+          }
+        }}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit3 className="h-5 w-5 text-primary" />
+                {field.label}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {isCustom && (
+                <div className="flex justify-end">
+                  <Badge variant="secondary" className="text-xs">
+                    Custom Field
+                  </Badge>
                 </div>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  {t('common.save', "Save")}
-                </>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              
+              <div className="space-y-4">
+                {field.type === 'textarea' ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      {field.label}
+                    </label>
+                    <Textarea
+                      ref={textareaRef}
+                      value={editValue || ''}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="min-h-[120px] transition-all focus:ring-2 focus:ring-primary/30"
+                      placeholder={field.placeholder}
+                    />
+                  </div>
+                ) : field.type === 'select' ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      {field.label}
+                    </label>
+                    <Select 
+                      value={editValue || ''} 
+                      onValueChange={setEditValue}
+                    >
+                      <SelectTrigger className="transition-all focus:ring-2 focus:ring-primary/30">
+                        <SelectValue placeholder={field.placeholder} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.options?.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : field.type === 'boolean' ? (
+                  <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/50 transition-all hover:bg-muted/80">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editValue)}
+                      onChange={(e) => setEditValue(e.target.checked)}
+                      className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0"
+                    />
+                    <span className="text-sm text-foreground font-medium">
+                      {field.label}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      {field.label}
+                    </label>
+                    <Input
+                      ref={inputRef}
+                      type={field.type}
+                      value={editValue || ''}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="h-12 text-lg transition-all focus:ring-2 focus:ring-primary/30"
+                      placeholder={field.placeholder}
+                    />
+                  </div>
+                )}
+                
+                {field.description && (
+                  <div className="flex items-start p-3 rounded-lg bg-muted/30 border">
+                    <Info className="h-4 w-4 text-muted-foreground mt-0.5 mr-2 flex-shrink-0" />
+                    <p className="text-sm text-muted-foreground">{field.description}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button 
+                variant="outline" 
+                onClick={handleCancel}
+                disabled={updateMutation.isLoading}
+                className="transition-all hover:shadow-md"
+              >
+                <X className="mr-2 h-4 w-4" />
+                {t('common.cancel', "Cancel")}
+              </Button>
+              <Button 
+                onClick={handleSave}
+                disabled={updateMutation.isLoading}
+                className="transition-all hover:shadow-md"
+              >
+                {updateMutation.isLoading ? (
+                  <div className="flex items-center">
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                    {t('common.saving', "Saving...")}
+                  </div>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    {t('common.save', "Save")}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     )
   }
   

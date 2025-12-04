@@ -74,14 +74,18 @@ export async function POST(request: NextRequest) {
       let licenseCustomFieldsConfig: any[] = [];
       let warehouseCustomFieldsConfig: any[] = [];
       let internetCustomFieldsConfig: any[] = [];
+      let fixedAssetCustomFieldsConfig: any[] = [];
+      let itPurchasingCustomFieldsConfig: any[] = [];
       
       // Use a single transaction for fetching all custom fields to reduce connection usage
-      if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet'].includes(assetType)) {
+      if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset', 'it-purchasing'].includes(assetType)) {
         const customFieldModelType = assetType === 'pc' ? 'PC' : 
                                     assetType === 'laptop' ? 'Laptop' : 
                                     assetType === 'printer' ? 'Printer' : 
                                     assetType === 'license' ? 'License' : 
-                                    assetType === 'warehouse' ? 'WarehouseIT' : 'Internet';
+                                    assetType === 'warehouse' ? 'WarehouseIT' : 
+                                    assetType === 'internet' ? 'Internet' : 
+                                    assetType === 'fixed-asset' ? 'FixedAsset' : 'ITPurchasing';
         
         const customFields = await db.customField.findMany({
           where: {
@@ -97,6 +101,8 @@ export async function POST(request: NextRequest) {
         else if (assetType === 'license') licenseCustomFieldsConfig = customFields;
         else if (assetType === 'warehouse') warehouseCustomFieldsConfig = customFields;
         else if (assetType === 'internet') internetCustomFieldsConfig = customFields;
+        else if (assetType === 'fixed-asset') fixedAssetCustomFieldsConfig = customFields;
+        else if (assetType === 'it-purchasing') itPurchasingCustomFieldsConfig = customFields;
       }
       
       // Process each row in the batch
@@ -268,7 +274,7 @@ export async function POST(request: NextRequest) {
               }
 
               // Process date fields
-              let dateBuyValue = null;
+              let dateBuyValue: Date | null = null;
               if (row.dateBuy && typeof row.dateBuy === 'string' && row.dateBuy !== 'N/A') {
                 try {
                   // Handle various date formats
@@ -277,19 +283,19 @@ export async function POST(request: NextRequest) {
                   // If it's already an ISO string, use it directly but remove time component
                   if (dateStr.includes('T') && dateStr.includes('Z')) {
                     const dateObj = new Date(dateStr);
-                    // Set time to midnight and format as ISO string without time component
+                    // Set time to midnight
                     dateObj.setUTCHours(0, 0, 0, 0);
-                    // Store as ISO string without time component
-                    dateBuyValue = dateObj.toISOString().split('T')[0];
+                    // Store as Date object for Prisma
+                    dateBuyValue = dateObj;
                   } else {
                     // Try to parse different date formats
                     // Handle Excel serial date numbers
                     if (!isNaN(Number(dateStr)) && Number(dateStr) > 1000) {
                       // Convert Excel serial date to JavaScript Date
                       const dateObj = new Date((Number(dateStr) - 25569) * 86400 * 1000);
-                      // Set time to midnight and format as ISO string without time component
+                      // Set time to midnight
                       dateObj.setUTCHours(0, 0, 0, 0);
-                      dateBuyValue = dateObj.toISOString().split('T')[0];
+                      dateBuyValue = dateObj;
                     } else {
                       // Try common date formats
                       // const formats = [
@@ -326,9 +332,9 @@ export async function POST(request: NextRequest) {
                       if (isNaN(dateObj.getTime()) || dateObj.getFullYear() < 1900 || dateObj.getFullYear() > 2100) {
                         dateBuyValue = null;
                       } else {
-                        // Set time to midnight and format as ISO string without time component
+                        // Set time to midnight
                         dateObj.setUTCHours(0, 0, 0, 0);
-                        dateBuyValue = dateObj.toISOString().split('T')[0];
+                        dateBuyValue = dateObj;
                       }
                     }
                   }
@@ -1145,6 +1151,300 @@ export async function POST(request: NextRequest) {
                 // Add a more substantial delay to ensure cache invalidation is complete
                 // and allow time for any ongoing requests to complete
                 // await new Promise(resolve => setTimeout(resolve, 1000)); // Removed to improve performance
+              }
+              break;
+
+            case 'fixed-asset':
+              // Validate required fields for FixedAsset
+              // Check if fields exist and are not null or undefined
+              if (row.dept === null || row.dept === undefined ||
+                  row.name === null || row.name === undefined) {
+                errors.push(`Row missing required fields: Department and Name`)
+                continue
+              }
+
+              // Process date field if present
+              let inputDateValue = null;
+              if (row.inputDate && typeof row.inputDate === 'string' && row.inputDate !== 'N/A' && row.inputDate !== '') {
+                try {
+                  // Handle various date formats
+                  const dateStr = row.inputDate;
+                  
+                  // If it's already an ISO string, use it directly but remove time component
+                  if (dateStr.includes('T') && dateStr.includes('Z')) {
+                    const dateObj = new Date(dateStr);
+                    // Validate the date
+                    if (!isNaN(dateObj.getTime()) && dateObj.getFullYear() >= 1900 && dateObj.getFullYear() <= 2100) {
+                      // Set time to midnight and format as ISO string without time component
+                      dateObj.setUTCHours(0, 0, 0, 0);
+                      inputDateValue = dateObj;
+                    }
+                  } else {
+                    // Try to parse different date formats
+                    // Handle Excel serial date numbers
+                    if (!isNaN(Number(dateStr)) && Number(dateStr) > 1000 && Number(dateStr) < 100000) {
+                      // Convert Excel serial date to JavaScript Date
+                      const dateObj = new Date((Number(dateStr) - 25569) * 86400 * 1000);
+                      // Validate the date
+                      if (!isNaN(dateObj.getTime()) && dateObj.getFullYear() >= 1900 && dateObj.getFullYear() <= 2100) {
+                        // Set time to midnight and format as ISO string without time component
+                        dateObj.setUTCHours(0, 0, 0, 0);
+                        inputDateValue = dateObj;
+                      }
+                    } else {
+                      // Try common date formats
+                      // const formats = [
+                      //   'MM/DD/YYYY',
+                      //   'DD/MM/YYYY',
+                      //   'YYYY-MM-DD',
+                      //   'MM-DD-YYYY',
+                      //   'DD-MM-YYYY'
+                      // ];
+                      
+                      // Try to parse with Date constructor first
+                      let dateObj = new Date(dateStr);
+                      
+                      // If that fails, try with specific formats
+                      if (isNaN(dateObj.getTime())) {
+                        // Handle DD/MM/YYYY or MM/DD/YYYY ambiguity
+                        const parts = dateStr.split(/[/\-]/);
+                        if (parts.length === 3) {
+                          const [part1, part2, part3] = parts;
+                          // Assume YYYY-MM-DD if first part is 4 digits
+                          if (part1 && part1.length === 4) {
+                            dateObj = new Date(`${part1}-${part2}-${part3}`);
+                          } else if (part1 && part2 && part3) {
+                            // Try MM/DD/YYYY first, then DD/MM/YYYY
+                            dateObj = new Date(`${part3}-${part1}-${part2}`);
+                            if (isNaN(dateObj.getTime())) {
+                              dateObj = new Date(`${part3}-${part2}-${part1}`);
+                            }
+                          }
+                        }
+                      }
+                      
+                      // Validate the date
+                      if (!isNaN(dateObj.getTime()) && dateObj.getFullYear() >= 1900 && dateObj.getFullYear() <= 2100) {
+                        // Set time to midnight and format as ISO string without time component
+                        dateObj.setUTCHours(0, 0, 0, 0);
+                        inputDateValue = dateObj;
+                      }
+                    }
+                  }
+                } catch (e) {
+                  logger.error(`Error parsing date: ${e}`);
+                  inputDateValue = null;
+                }
+              }
+
+              // Remove inputDate from row data to handle it separately
+              const { inputDate, ...fixedAssetRowData } = row as any;
+              
+              // Extract custom fields from row data using pre-fetched config
+              let fixedAssetCustomFields: Record<string, any> | undefined;
+              
+              // Use pre-fetched custom fields config for FixedAsset
+              if (fixedAssetCustomFieldsConfig.length > 0) {
+                fixedAssetCustomFields = {};
+                for (const customField of fixedAssetCustomFieldsConfig) {
+                  if (fixedAssetRowData[customField.name] !== undefined && fixedAssetRowData[customField.name] !== null) {
+                    // Handle different custom field types
+                    switch (customField.type) {
+                      case 'number':
+                        const numValue = Number(fixedAssetRowData[customField.name]);
+                        fixedAssetCustomFields[customField.name] = isNaN(numValue) ? fixedAssetRowData[customField.name] : numValue;
+                        break;
+                      case 'boolean':
+                        // Convert string values to boolean
+                        if (typeof fixedAssetRowData[customField.name] === 'string') {
+                          const strValue = (fixedAssetRowData[customField.name] as string).toLowerCase();
+                          fixedAssetCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                        } else {
+                          fixedAssetCustomFields[customField.name] = Boolean(fixedAssetRowData[customField.name]);
+                        }
+                        break;
+                      case 'date':
+                        // Try to parse date values
+                        if (typeof fixedAssetRowData[customField.name] === 'string' && fixedAssetRowData[customField.name] !== 'N/A' && fixedAssetRowData[customField.name] !== '') {
+                          try {
+                            const dateValue = new Date(fixedAssetRowData[customField.name]);
+                            if (!isNaN(dateValue.getTime()) && dateValue.getFullYear() >= 1900 && dateValue.getFullYear() <= 2100) {
+                              fixedAssetCustomFields[customField.name] = dateValue;
+                            } else {
+                              fixedAssetCustomFields[customField.name] = fixedAssetRowData[customField.name];
+                            }
+                          } catch (e) {
+                            fixedAssetCustomFields[customField.name] = fixedAssetRowData[customField.name];
+                          }
+                        } else {
+                          fixedAssetCustomFields[customField.name] = fixedAssetRowData[customField.name];
+                        }
+                        break;
+                      default:
+                        fixedAssetCustomFields[customField.name] = fixedAssetRowData[customField.name];
+                    }
+                    // Remove custom field from row data
+                    delete fixedAssetRowData[customField.name];
+                  }
+                }
+              }
+              
+              // Also check for any remaining fields in fixedAssetRowData that might be custom fields
+              // but are not defined in the database yet (could be from Excel column mapping)
+              const fixedAssetModelFields = ['id', 'dept', 'barcode', 'sapCode', 'name', 'place', 
+                'inputDate', 'location', 'status', 'note', 'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+                
+              // Check if there are any fields in fixedAssetRowData that are not part of the FixedAsset model
+              // and treat them as custom fields
+              for (const [key, value] of Object.entries(fixedAssetRowData)) {
+                if (!fixedAssetModelFields.includes(key)) {
+                  // Initialize fixedAssetCustomFields if not already done
+                  if (!fixedAssetCustomFields) {
+                    fixedAssetCustomFields = {};
+                  }
+                  fixedAssetCustomFields[key] = value;
+                  // Remove the field from fixedAssetRowData
+                  delete fixedAssetRowData[key];
+                }
+              }
+
+              // Create the FixedAsset record first
+              const createdFixedAsset = await db.fixedAsset.create({
+                data: {
+                  ...fixedAssetRowData,
+                  inputDate: inputDateValue,
+                  status: fixedAssetRowData.status || 'working', // Default to 'working' if not provided
+                  ...(fixedAssetCustomFields ? { customFields: fixedAssetCustomFields } : {}),
+                  tenantId: user.tenantId
+                }
+              });
+
+              // Then create the history record separately
+              await createAuditLog(user.tenantId, {
+                action: 'import',
+                modelType: 'FixedAsset',
+                recordId: createdFixedAsset.id,
+                changes: {
+                  ...row,
+                  id: createdFixedAsset.id
+                },
+                userId: user.id,
+                tenantId: user.tenantId
+              }, 'import');
+              
+              // Increment createdCount after successful creation
+              createdCount++;
+              
+              // Invalidate Redis cache for FixedAsset assets
+              if (redisCache && CACHE_PREFIXES) {
+                await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:FixedAsset:${user.tenantId}:*`);
+                await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:FixedAsset:${user.tenantId}:*`);
+              }
+              break;
+
+            case 'it-purchasing':
+              // Validate required fields for IT Purchasing
+              if (!row.bpmName || !row.bpmContent || !row.bpmId || !row.deptCode || !row.statusBPM) {
+                errors.push(`Row missing required fields: bpmName, bpmContent, bpmId, deptCode, statusBPM`);
+                continue;
+              }
+
+              // Prepare IT Purchasing data
+              const { ...itPurchasingRowData } = row as any;
+              
+              // Extract custom fields from row data
+              let itPurchasingCustomFields: Record<string, any> | undefined;
+              
+              if (itPurchasingCustomFieldsConfig.length > 0) {
+                itPurchasingCustomFields = {};
+                for (const customField of itPurchasingCustomFieldsConfig) {
+                  if (itPurchasingRowData[customField.name] !== undefined && itPurchasingRowData[customField.name] !== null) {
+                    // Handle different custom field types
+                    switch (customField.type) {
+                      case 'number':
+                        const numValue = Number(itPurchasingRowData[customField.name]);
+                        itPurchasingCustomFields[customField.name] = isNaN(numValue) ? itPurchasingRowData[customField.name] : numValue;
+                        break;
+                      case 'boolean':
+                        if (typeof itPurchasingRowData[customField.name] === 'string') {
+                          const strValue = (itPurchasingRowData[customField.name] as string).toLowerCase();
+                          itPurchasingCustomFields[customField.name] = strValue === 'true' || strValue === 'yes' || strValue === '1';
+                        } else {
+                          itPurchasingCustomFields[customField.name] = Boolean(itPurchasingRowData[customField.name]);
+                        }
+                        break;
+                      case 'date':
+                        if (typeof itPurchasingRowData[customField.name] === 'string') {
+                          const dateValue = new Date(itPurchasingRowData[customField.name]);
+                          itPurchasingCustomFields[customField.name] = isNaN(dateValue.getTime()) ? itPurchasingRowData[customField.name] : dateValue.toISOString();
+                        } else {
+                          itPurchasingCustomFields[customField.name] = itPurchasingRowData[customField.name];
+                        }
+                        break;
+                      default:
+                        itPurchasingCustomFields[customField.name] = itPurchasingRowData[customField.name];
+                    }
+                    delete itPurchasingRowData[customField.name];
+                  }
+                }
+              }
+              
+              // Check for any remaining fields that might be custom fields
+              const itPurchasingModelFields = ['id', 'bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 
+                'prId', 'statusPR', 'statusReceive', 'dateReceive', 'noted', 'tenantId', 'customFields', 'createdAt', 'updatedAt'];
+                
+              for (const [key, value] of Object.entries(itPurchasingRowData)) {
+                if (!itPurchasingModelFields.includes(key)) {
+                  if (!itPurchasingCustomFields) {
+                    itPurchasingCustomFields = {};
+                  }
+                  itPurchasingCustomFields[key] = value;
+                  delete itPurchasingRowData[key];
+                }
+              }
+
+              // Handle dateReceive field
+              let dateReceiveValue = null;
+              if (itPurchasingRowData.dateReceive) {
+                if (typeof itPurchasingRowData.dateReceive === 'string') {
+                  const dateValue = new Date(itPurchasingRowData.dateReceive);
+                  if (!isNaN(dateValue.getTime()) && dateValue.getFullYear() >= 1900 && dateValue.getFullYear() <= 2100) {
+                    dateReceiveValue = dateValue;
+                  }
+                } else if (itPurchasingRowData.dateReceive instanceof Date) {
+                  dateReceiveValue = itPurchasingRowData.dateReceive;
+                }
+              }
+
+              // Create the IT Purchasing record
+              const createdITPurchasing = await db.iTPurchasing.create({
+                data: {
+                  ...itPurchasingRowData,
+                  dateReceive: dateReceiveValue,
+                  ...(itPurchasingCustomFields ? { customFields: itPurchasingCustomFields } : {}),
+                  tenantId: user.tenantId
+                }
+              });
+
+              // Create audit log
+              await createAuditLog(user.tenantId, {
+                action: 'import',
+                modelType: 'ITPurchasing',
+                recordId: createdITPurchasing.id,
+                changes: {
+                  ...row,
+                  id: createdITPurchasing.id
+                },
+                userId: user.id,
+                tenantId: user.tenantId
+              }, 'import');
+              
+              createdCount++;
+              
+              // Invalidate Redis cache for IT Purchasing assets
+              if (redisCache && CACHE_PREFIXES) {
+                await redisCache.delByPattern(`${CACHE_PREFIXES.ASSETS}:ITPurchasing:${user.tenantId}:*`);
+                await redisCache.delByPattern(`${CACHE_PREFIXES.ASSET_LIST}:ITPurchasing:${user.tenantId}:*`);
               }
               break;
 

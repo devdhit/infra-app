@@ -76,5 +76,30 @@ export interface InternetAsset extends BaseAsset {
   note?: string;
 }
 
+export interface FixedAsset extends BaseAsset {
+  dept: string;
+  barcode?: string;
+  sapCode?: string;
+  name: string;
+  place?: string;
+  inputDate?: string;
+  location?: string;
+  status: string;
+  note?: string;
+}
+
+export interface ITPurchasingAsset extends BaseAsset {
+  bpmName: string;
+  bpmContent: string;
+  bpmId: string;
+  deptCode: string;
+  statusBPM: string;
+  prId?: string;
+  statusPR?: string;
+  statusReceive?: string;
+  dateReceive?: string;
+  noted?: string;
+}
+
 // Union type for all asset types
-export type AssetType = PCAsset | LaptopAsset | PrinterAsset | LicenseAsset | WarehouseITAsset | InternetAsset;
+export type AssetType = PCAsset | LaptopAsset | PrinterAsset | LicenseAsset | WarehouseITAsset | InternetAsset | FixedAsset | ITPurchasingAsset;

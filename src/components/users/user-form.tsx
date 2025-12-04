@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -23,6 +23,7 @@ import { useTranslation } from "@/hooks/use-translation"
 import { UserFormValues } from "@/components/users/types"
 import { UserFormProps } from "@/components/users/types"
 import { useRoles } from '@/hooks/useRoles'
+import logger from '@/lib/logger'
 
 export function UserForm({ 
   open, 
@@ -33,20 +34,30 @@ export function UserForm({
   isSubmitting 
 }: UserFormProps) {
   const { t } = useTranslation()
-  const { data: roles = [], error } = useRoles()
+  const { data: rolesData, error } = useRoles()
+  
+  // Memoize roles array to prevent useEffect dependency issues
+  const roles = useMemo(() => rolesData || [], [rolesData])
   
   // Log roles and tenants for debugging
   useEffect(() => {
+    logger.debug('Roles data from hook:', rolesData);
+    logger.debug('Processed roles array:', roles);
+    
     if (roles && roles.length > 0) {
-      console.log('Available roles:', roles);
+      logger.debug('Available roles:', roles);
+    } else {
+      logger.warn('No roles available');
     }
+    
     if (error) {
-      console.error('Error loading roles:', error);
+      logger.error('Error loading roles:', error);
     }
+    
     if (tenants && tenants.length > 0) {
-      console.log('Available tenants:', tenants);
+      logger.debug('Available tenants:', tenants);
     }
-  }, [roles, error, tenants]);
+  }, [rolesData, roles, error, tenants]);
   
   const [formData, setFormData] = useState<UserFormValues>({
     email: editingUser?.email || '',
@@ -113,7 +124,7 @@ export function UserForm({
     if (!validateForm()) return
     
     // Log the data being sent for debugging
-    console.log('Submitting user data:', {
+    logger.debug('Submitting user data:', {
       id: editingUser?.id,
       email: formData.email,
       name: formData.name,
@@ -135,11 +146,11 @@ export function UserForm({
   const handleInputChange = (field: keyof UserFormValues, value: string) => {
     // Log role selection for debugging
     if (field === 'role') {
-      console.log('Role selected:', value);
+      logger.debug('Role selected:', value);
       // Find the role object to get more details
       const selectedRole = roles?.find(role => role.id === value);
       if (selectedRole) {
-        console.log('Selected role details:', selectedRole);
+        logger.debug('Selected role details:', selectedRole);
       }
     }
     
@@ -271,11 +282,17 @@ export function UserForm({
                     <SelectValue placeholder={t('users.form.selectRole') || 'Select a role'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles && roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {role.name}
+                    {Array.isArray(roles) && roles.length > 0 ? (
+                      roles.map((role) => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-roles" disabled>
+                        {t('users.form.noRoles') || 'No roles available'}
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.role && <p className="text-sm text-red-500 mt-1">{errors.role}</p>}

@@ -1,5 +1,6 @@
 import { db } from './db'
 import { HistoryRecord, createHistoryRecord } from './history'
+import logger from './logger';
 
 /**
  * Creates an audit log entry if audit logging is enabled for the tenant and the specific action
@@ -64,7 +65,7 @@ export async function createAuditLog(
     
     return auditLog;
   } catch (error) {
-    console.error('Error creating audit log:', error);
+    logger.error('Error creating audit log:', error);
     // Don't throw error as audit logging failure shouldn't break the main functionality
     return null;
   }
@@ -118,7 +119,7 @@ export async function createUserEventAuditLog(
     
     return auditLog;
   } catch (error) {
-    console.error('Error creating user event audit log:', error);
+    logger.error('Error creating user event audit log:', error);
     // Don't throw error as audit logging failure shouldn't break the main functionality
     return null;
   }
@@ -160,7 +161,7 @@ export async function createPermissionAuditLog(
     
     return auditLog;
   } catch (error) {
-    console.error('Error creating permission audit log:', error);
+    logger.error('Error creating permission audit log:', error);
     // Don't throw error as audit logging failure shouldn't break the main functionality
     return null;
   }
@@ -256,7 +257,7 @@ export async function createRoleUpdateAuditLog(
     
     return auditLog;
   } catch (error) {
-    console.error('Error creating role update audit log:', error);
+    logger.error('Error creating role update audit log:', error);
     // Don't throw error as audit logging failure shouldn't break the main functionality
     return null;
   }

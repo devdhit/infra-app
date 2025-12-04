@@ -43,6 +43,8 @@ export function RolesTable({
   }
 
   const handleSelectAll = () => {
+    // Ensure roles is an array before calling map
+    if (!Array.isArray(roles)) return;
     const newSet: Set<string> = selectedRoles.size === roles.length ? new Set() : new Set(roles.map(role => role.id));
     setSelectedRoles(newSet);
   }
@@ -59,7 +61,7 @@ export function RolesTable({
             <TableHead className="w-[50px]">
               <input
                 type="checkbox"
-                checked={selectedRoles.size === roles.length && roles.length > 0}
+                checked={Array.isArray(roles) && selectedRoles.size === roles.length && roles.length > 0}
                 onChange={handleSelectAll}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
@@ -71,49 +73,57 @@ export function RolesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {roles.map((role) => (
-            <TableRow key={role.id} className="hover:bg-muted/50">
-              <TableCell>
-                <input
-                  type="checkbox"
-                  checked={selectedRoles.has(role.id)}
-                  onChange={() => handleSelectRole(role.id)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-              </TableCell>
-              <TableCell className="font-medium">{role.name}</TableCell>
-              <TableCell>{role.description || '-'}</TableCell>
-              <TableCell>{formatDate(role.createdAt)}</TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Open menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {onEdit && (
-                      <DropdownMenuItem onClick={() => onEdit(role)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        {t('common.edit') || 'Edit'}
-                      </DropdownMenuItem>
-                    )}
-                    {onDelete && (
-                      <DropdownMenuItem 
-                        onClick={() => onDelete(role.id)}
-                        disabled={isDeleting && deletingRoleId === role.id}
-                        className="text-red-600 focus:text-red-600"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {t('common.delete') || 'Delete'}
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+          {Array.isArray(roles) && roles.length > 0 ? (
+            roles.map((role) => (
+              <TableRow key={role.id} className="hover:bg-muted/50">
+                <TableCell>
+                  <input
+                    type="checkbox"
+                    checked={selectedRoles.has(role.id)}
+                    onChange={() => handleSelectRole(role.id)}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                </TableCell>
+                <TableCell className="font-medium">{role.name}</TableCell>
+                <TableCell>{role.description || '-'}</TableCell>
+                <TableCell>{formatDate(role.createdAt)}</TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {onEdit && (
+                        <DropdownMenuItem onClick={() => onEdit(role)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          {t('common.edit') || 'Edit'}
+                        </DropdownMenuItem>
+                      )}
+                      {onDelete && (
+                        <DropdownMenuItem 
+                          onClick={() => onDelete(role.id)}
+                          disabled={isDeleting && deletingRoleId === role.id}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {t('common.delete') || 'Delete'}
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={5} className="h-24 text-center">
+                <p className="text-muted-foreground">{t('roles.table.noData') || 'No roles found'}</p>
               </TableCell>
             </TableRow>
-          ))}
+          )}
         </TableBody>
       </Table>
       {selectedRoles.size > 0 && onDelete && (

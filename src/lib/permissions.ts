@@ -57,6 +57,8 @@ export const COMMON_RESOURCE_TYPES = [
   'license', 
   'warehouse', 
   'internet',
+  'fixed-asset',
+  'it-purchasing',
   'auditLogs',
   'agent'
 ] as const;
@@ -87,6 +89,8 @@ const defaultPermissions: Record<string, Record<ResourceType, PermissionAction[]
     license: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     warehouse: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     internet: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    'fixed-asset': ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    'it-purchasing': ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     auditLogs: ['view'],
     agent: ['submitData', 'viewStatus', 'healthCheck']
   },
@@ -102,6 +106,8 @@ const defaultPermissions: Record<string, Record<ResourceType, PermissionAction[]
     license: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     warehouse: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     internet: ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    'fixed-asset': ['view', 'create', 'edit', 'delete', 'bulkDelete'],
+    'it-purchasing': ['view', 'create', 'edit', 'delete', 'bulkDelete'],
     auditLogs: [], // Regular users cannot view audit logs by default
     agent: ['submitData', 'viewStatus', 'healthCheck']
   }
@@ -208,7 +214,7 @@ export async function hasPermission(
     }
 
     // If no specific permission for this asset type, fall back to generic assets permission
-    if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet'].includes(resource)) {
+    if (['pc', 'laptop', 'printer', 'license', 'warehouse', 'internet', 'fixed-asset', 'it-purchasing'].includes(resource)) {
       if (permissions['assets'] && permissions['assets'].includes(action)) {
         return true;
       }
@@ -252,7 +258,7 @@ export async function hasAnyPermission(
     // Validate inputs
     if (!roleId || !tenantId || !resource || !actions || !Array.isArray(actions)) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Invalid any permission check parameters:', { roleId, tenantId, resource, actions });
+          logger.warn('Invalid any permission check parameters:', { roleId, tenantId, resource, actions });
       }
       return false;
     }
@@ -266,7 +272,7 @@ export async function hasAnyPermission(
   } catch (error) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error checking any permissions:', error);
+      logger.error('Error checking any permissions:', error);
     }
     return false;
   }
@@ -295,7 +301,7 @@ export async function hasAllPermissions(
     // Validate inputs
     if (!roleId || !tenantId || !resource || !actions || !Array.isArray(actions)) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Invalid all permission check parameters:', { roleId, tenantId, resource, actions });
+        logger.warn('Invalid all permission check parameters:', { roleId, tenantId, resource, actions });
       }
       return false;
     }
@@ -309,7 +315,7 @@ export async function hasAllPermissions(
   } catch (error) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error checking all permissions:', error);
+      logger.error('Error checking all permissions:', error);
     }
     return false;
   }
@@ -333,6 +339,7 @@ export function getDefaultPermissions(roleName: string): Record<ResourceType, Pe
     license: [],
     warehouse: [],
     internet: [],
+    'fixed-asset': [],
     auditLogs: [],
     agent: []
   };
@@ -381,7 +388,7 @@ export async function createRoleWithDefaultPermissions(
   } catch (error) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error creating role with default permissions:', error);
+      logger.error('Error creating role with default permissions:', error);
     }
     throw error;
   }
@@ -467,7 +474,7 @@ export async function invalidateTenantRoleCache(tenantId: string): Promise<void>
     await redisCache.delByPattern(`${CACHE_PREFIXES.PERMISSIONS}:*:${tenantId}`);
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error invalidating tenant role cache:', error);
+      logger.error('Error invalidating tenant role cache:', error);
     }
   }
 }
@@ -492,7 +499,7 @@ export async function invalidateRoleCache(roleId: string, tenantId: string): Pro
     await redisCache.del(cacheKey);
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error invalidating role cache:', error);
+      logger.error('Error invalidating role cache:', error);
     }
   }
 }
@@ -507,7 +514,7 @@ export async function cleanupPermissions() {
     } catch (error) {
       // Log errors only in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error in permissions cleanup:', error);
+        logger.error('Error in permissions cleanup:', error);
       }
     }
   }

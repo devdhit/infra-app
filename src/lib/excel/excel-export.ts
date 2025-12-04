@@ -2,7 +2,7 @@ import XLSX from 'xlsx-populate';
 import * as path from 'path';
 import { promises as fs } from 'fs';
 import logger from '@/lib/logger';
-import { PCAsset, LaptopAsset, PrinterAsset, LicenseAsset, WarehouseITAsset, InternetAsset } from '@/types/asset-interfaces';
+import { PCAsset, LaptopAsset, PrinterAsset, LicenseAsset, WarehouseITAsset, InternetAsset, FixedAsset } from '@/types/asset-interfaces';
 
 /**
  * Read template file from the templates directory
@@ -662,6 +662,96 @@ export async function exportInternetToExcel(data: InternetAsset[], tenantName?: 
     return buffer;
   } catch (error) {
     logger.error('Error exporting Internet data to Excel:', error);
+    throw error;
+  }
+}
+
+/**
+ * Export FixedAsset data to Excel file with template
+ * @param data - Array of FixedAsset assets to export
+ * @param tenantName - Optional tenant name for the header
+ * @returns Promise resolving to ArrayBuffer of the Excel file
+ */
+export async function exportFixedAssetToExcel(data: FixedAsset[], tenantName?: string): Promise<ArrayBuffer> {
+  try {
+    logger.debug(`Starting exportFixedAssetToExcel with ${data.length} records`);
+    // Read the FixedAsset template
+    const templateBuffer = await readTemplateFile('FixedAsset_Template.xlsx');
+    logger.debug('Template buffer loaded, creating workbook');
+    const workbook = await XLSX.fromDataAsync(templateBuffer);
+    logger.debug('Workbook created, getting worksheet');
+    const worksheet = workbook.sheet(0);
+    logger.debug('Worksheet obtained, finding data start row');
+
+    // Update the header row (row 1) with dynamic information
+    const currentDate = new Date();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    const assetsName = 'Fixed Asset';
+    
+    // Search for the header cell in row 1 and update it
+    for (let col = 1; col <= 20; col++) { // Check first 20 columns for the header
+      try {
+        const cellValue = worksheet.cell(1, col).value();
+        if (typeof cellValue === 'string' && cellValue.includes('INVENTORY FIXED ASSET INFORMATION DAIHOA')) {
+          const newValue = `INVENTORY ${assetsName.toUpperCase()} INFORMATION ${tenantName ? tenantName.toUpperCase() : 'TENANT'} ${month}/${year}`;
+          worksheet.cell(1, col).value(newValue);
+          break;
+        }
+      } catch (error) {
+        // Continue to next column if there's an error reading this cell
+        continue;
+      }
+    }
+
+    // Find the data start row (usually row 2, but we'll look for the first empty row after headers)
+    let dataStartRow = 2;
+    // Add a safety check to prevent infinite loop
+    let safetyCounter = 0;
+    const MAX_ROWS = 1000; // Reasonable limit
+    while (dataStartRow < MAX_ROWS) {
+      try {
+        const cellValue = worksheet.cell(dataStartRow, 1).value();
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          break;
+        }
+      } catch (cellError) {
+        logger.error(`Error reading cell at row ${dataStartRow}, column 1:`, cellError);
+        break;
+      }
+      dataStartRow++;
+      safetyCounter++;
+      if (safetyCounter > MAX_ROWS) {
+        logger.warn('Safety counter exceeded in data start row detection, defaulting to row 3');
+        dataStartRow = 3;
+        break;
+      }
+    }
+    logger.debug(`Data start row found at row ${dataStartRow}`);
+
+    // Write data to rows
+    for (let i = 0; i < data.length; i++) {
+      const rowIndex = dataStartRow + i;
+      const fixedAsset = data[i];
+      
+      // Write FixedAsset data to cells
+      worksheet.cell(rowIndex, 1).value(fixedAsset?.dept || '');
+      worksheet.cell(rowIndex, 2).value(fixedAsset?.barcode || '');
+      worksheet.cell(rowIndex, 3).value(fixedAsset?.sapCode || '');
+      worksheet.cell(rowIndex, 4).value(fixedAsset?.name || '');
+      worksheet.cell(rowIndex, 5).value(fixedAsset?.place || '');
+      worksheet.cell(rowIndex, 6).value(fixedAsset?.inputDate || '');
+      worksheet.cell(rowIndex, 7).value(fixedAsset?.location || '');
+      worksheet.cell(rowIndex, 8).value(fixedAsset?.status || '');
+      worksheet.cell(rowIndex, 9).value(fixedAsset?.note || '');
+    }
+
+    // Return the workbook as ArrayBuffer
+    const buffer = await workbook.outputAsync() as ArrayBuffer;
+    logger.debug('FixedAsset export completed successfully');
+    return buffer;
+  } catch (error) {
+    logger.error('Error exporting FixedAsset data to Excel:', error);
     throw error;
   }
 }

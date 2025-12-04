@@ -76,6 +76,41 @@ function containsXSS(input: string): boolean {
 }
 
 /**
+ * Checks if the request is attempting to access source files directly
+ * @param request - The Next.js request object
+ * @returns true if source file access is detected, false otherwise
+ */
+function isSourceFileAccess(request: NextRequest): boolean {
+  const url = new URL(request.url);
+  const pathname = url.pathname.toLowerCase();
+  
+  // Block direct access to source files
+  const sourceFilePatterns = [
+    /\.ts$/,
+    /\.tsx$/,
+    /\.map$/,
+    /\.log$/,
+    /\/src\//,
+    /\/node_modules\//,
+    /\.env/,
+    /\.git/,
+    /\.vscode/,
+    /\.next\/server\/pages\/_app\.js\.map/,
+    /\.next\/server\/pages\/_document\.js\.map/,
+    /\.next\/build-manifest\.json/,
+    /\.next\/react-loadable-manifest\.json/
+  ];
+  
+  for (const pattern of sourceFilePatterns) {
+    if (pattern.test(pathname)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Security middleware to protect against common attacks including SQL injection and XSS
  * @param request - The Next.js request object
  * @returns Response object if a security threat is detected, null otherwise
@@ -100,6 +135,15 @@ export async function securityMiddleware(request: NextRequest) {
         logger.warn('Blocked request with suspicious user agent', { userAgent })
         return errorResponse('Forbidden', 403)
       }
+    }
+    
+    // Block direct access to source files
+    if (isSourceFileAccess(request)) {
+      logger.warn('Blocked attempt to access source files', { 
+        url: request.url,
+        userAgent: userAgent
+      });
+      return errorResponse('Forbidden', 403)
     }
     
     // Check for SQL injection patterns in query parameters

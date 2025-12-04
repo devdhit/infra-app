@@ -1,3 +1,5 @@
+import logger from "./logger"
+
 // Define our supported languages
 export type Language = 'en' | 'zh-tw'
 export const supportedLanguages: Language[] = ['en', 'zh-tw']
@@ -11,12 +13,12 @@ async function loadTranslations(lang: Language) {
     const translations = await import(`@/locales/${lang}.json`)
     return translations.default
   } catch (error) {
-    console.warn(`Failed to load translations for ${lang}, falling back to default`)
+    logger.warn(`Failed to load translations for ${lang}, falling back to default`)
     try {
       const defaultTranslations = await import(`@/locales/${defaultLanguage}.json`)
       return defaultTranslations.default
     } catch (defaultError) {
-      console.error('Failed to load default translations', defaultError)
+      logger.error('Failed to load default translations', defaultError)
       return {}
     }
   }
@@ -87,7 +89,7 @@ export function translate(
     // Return fallback if translation is not a string
     return processParams(fallback, params)
   } catch (error) {
-    console.error(`Error translating key "${key}":`, error)
+    logger.error(`Error translating key "${key}":`, error)
     return processParams(fallback, params)
   }
 }

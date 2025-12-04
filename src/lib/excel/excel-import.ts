@@ -188,6 +188,49 @@ export async function importFromExcelWithTemplate(
             value = String(value);
           }
         }
+        // Handle FixedAsset date fields
+        else if (assetType === 'fixed-asset' && header === 'inputDate') {
+          if (value === null || value === undefined || value === '') {
+            value = null;
+          } else {
+            // Try to parse the date value
+            try {
+              // If it's already a string representation of a date, keep it
+              if (typeof value === 'string') {
+                // Check if it's a valid date string
+                const date = new Date(value);
+                if (!isNaN(date.getTime())) {
+                  // Ensure the date is reasonable (between 1900 and 2100)
+                  if (date.getFullYear() >= 1900 && date.getFullYear() <= 2100) {
+                    value = value;
+                  } else {
+                    value = null;
+                  }
+                } else {
+                  value = null;
+                }
+              } else if (typeof value === 'number') {
+                // Handle Excel serial date numbers
+                if (value > 1000 && value < 100000) {
+                  // Convert Excel serial date to JavaScript Date
+                  const date = new Date((value - 25569) * 86400 * 1000);
+                  if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2100) {
+                    value = date.toISOString();
+                  } else {
+                    value = null;
+                  }
+                } else {
+                  value = null;
+                }
+              } else {
+                value = String(value);
+              }
+            } catch (e) {
+              logger.warn(`Could not parse date value for ${header}:`, value);
+              value = null;
+            }
+          }
+        }
         // Convert numeric values to strings for barcode fields to prevent Prisma validation errors
         // This is especially important for SAP barcode fields that might be interpreted as numbers
         else if (header.includes('Barcode') || header.includes('barcode') || 

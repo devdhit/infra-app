@@ -12,7 +12,9 @@ export const getModelType = (assetType: string): string => {
     printer: "Printer",
     license: "License",
     warehouse: "WarehouseIT",
-    internet: "Internet"
+    internet: "Internet",
+    "fixed-asset": "FixedAsset",
+    "it-purchasing": "ITPurchasing"
   };
   
   return modelTypeMap[assetType] || assetType;
@@ -36,7 +38,6 @@ export const isCustomField = (
   }
   
   // Fallback: check if field exists in asset.customFields but not directly on asset
-  // This is a more reliable check than just checking if the field exists in customFields
   return asset?.customFields && 
          fieldName in asset.customFields && 
          !(fieldName in asset);

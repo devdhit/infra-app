@@ -1,13 +1,13 @@
-import { Tenant } from "@/hooks/useApi";
+import type { Tenant } from "@/types/management";
 
 export interface TenantFormValues {
   id?: string;
   name: string;
-  description?: string;
+  description?: string | null;
 }
 
 export interface TenantsTableProps {
-  tenants: Tenant[];
+  tenants: readonly Tenant[];
   onEdit?: (tenant: Tenant | null) => void;
   onDelete?: (id: string | string[]) => void;
   isDeleting: boolean;

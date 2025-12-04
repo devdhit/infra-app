@@ -1,4 +1,5 @@
 import { PrismaClient } from '../generated/prisma'
+import logger from './logger';
 
 // Prevent multiple instances of Prisma Client in development
 // Reference: https://www.prisma.io/docs/guides/database/troubleshooting-orm/help-articles/nextjs-prisma-client-dev-practices
@@ -63,7 +64,7 @@ if (typeof window === 'undefined') {
     try {
       await db.$disconnect()
     } catch (error) {
-      console.error('Error disconnecting database:', error)
+      logger.error('Error disconnecting database:', error)
     }
   })
   
@@ -75,7 +76,7 @@ if (typeof window === 'undefined') {
       try {
         await db.$disconnect()
       } catch (error) {
-        console.error('Error disconnecting database:', error)
+        logger.error('Error disconnecting database:', error)
       }
       // Don't exit here as the main server shutdown handler will handle that
     };

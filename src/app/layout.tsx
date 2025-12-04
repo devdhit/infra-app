@@ -1,6 +1,8 @@
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { I18nProvider } from '@/contexts/i18n-context'
 import { AuthProvider } from '@/components/providers/auth-provider'
+import { CurrentUserProvider } from '@/contexts/current-user-context'
+import { SearchContextProvider } from '@/contexts/search-context'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
@@ -28,10 +30,14 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <AuthProvider>
-              {children}
-              <Toaster />
-            </AuthProvider>
+            <SearchContextProvider>
+              <CurrentUserProvider>
+                <AuthProvider>
+                  {children}
+                  <Toaster />
+                </AuthProvider>
+              </CurrentUserProvider>
+            </SearchContextProvider>
           </ThemeProvider>
         </I18nProvider>
       </body>

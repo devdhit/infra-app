@@ -6,9 +6,11 @@ import {
   errorResponse,
   badRequestResponse,
   successResponse,
-  notFoundResponse
+  notFoundResponse,
+  conflictResponse
 } from '@/lib/api-utils'
 import logger from '@/lib/logger'
+import { checkForDuplicateBarcode, getDuplicateBarcodeInfo } from '@/lib/asset-duplicate-check'
 
 // Import Redis cache for proper cache invalidation
 let redisCache: any = null;
@@ -20,6 +22,20 @@ if (typeof window === 'undefined') {
     CACHE_PREFIXES = redisModule.CACHE_PREFIXES;
   } catch (error: any) {
     logger.warn('Redis cache not available, using fallback', { 
+      component: 'custom-fields-route', 
+      error: error.message 
+    });
+  }
+}
+
+// Import cache manager for proper cache invalidation
+let cacheManager: any = null;
+if (typeof window === 'undefined') {
+  try {
+    const cacheModule = require('@/lib/cache-manager');
+    cacheManager = cacheModule.default;
+  } catch (error: any) {
+    logger.warn('Cache manager not available, using fallback', { 
       component: 'custom-fields-route', 
       error: error.message 
     });
@@ -48,7 +64,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Validate that the asset type is supported
-    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet']
+    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet', 'FixedAsset', 'ITPurchasing']
     if (!supportedAssetTypes.includes(assetType)) {
       return badRequestResponse(`Unsupported asset type: ${assetType}`)
     }
@@ -59,6 +75,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                      assetType === 'Printer' ? 'Printer' : 
                      assetType === 'License' ? 'License' : 
                      assetType === 'Internet' ? 'Internet' :
+                     assetType === 'FixedAsset' ? 'FixedAsset' :
+                     assetType === 'ITPurchasing' ? 'ITPurchasing' :
                      'WarehouseIT'
 
     logger.debug(`Updating custom fields for ${assetType} asset ${resolvedParams.id} with data:`, body);
@@ -73,6 +91,179 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!existingAsset) {
       return notFoundResponse(`${assetType} asset not found`)
+    }
+
+    // Check for duplicate barcodes unless bypass is requested
+    const bypassDuplicateCheck = body.bypassDuplicateCheck;
+    logger.debug(`Bypass duplicate check flag: ${bypassDuplicateCheck}`);
+    
+    if (!bypassDuplicateCheck) {
+      // For PC assets, check if any barcode fields are being updated
+      if (assetType === 'PC') {
+        const barcodeFields = ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode'];
+        const updatedBarcodeFields = barcodeFields.filter(field => body[field] !== undefined);
+        
+        for (const field of updatedBarcodeFields) {
+          const barcode = body[field];
+          if (barcode) {
+            const isDuplicate = await checkForDuplicateBarcode(user.tenantId, barcode, 'pc');
+            if (isDuplicate) {
+              const duplicateInfo = await getDuplicateBarcodeInfo(user.tenantId, barcode, 'pc');
+              const deptInfo = duplicateInfo ? ` in department ${duplicateInfo.dept}` : '';
+              return conflictResponse(`Barcode ${barcode}${deptInfo} already exists in Warehouse IT assets`);
+            }
+          }
+        }
+      } 
+      // For WarehouseIT assets, check if barcode or sapCode fields are being updated
+      else if (assetType === 'WarehouseIT') {
+        const barcodeFields = ['barcode', 'sapCode'];
+        const updatedBarcodeFields = barcodeFields.filter(field => body[field] !== undefined);
+        
+        for (const field of updatedBarcodeFields) {
+          const barcode = body[field];
+          if (barcode) {
+            const isDuplicate = await checkForDuplicateBarcode(user.tenantId, barcode, 'warehouse');
+            if (isDuplicate) {
+              const duplicateInfo = await getDuplicateBarcodeInfo(user.tenantId, barcode, 'warehouse');
+              const deptInfo = duplicateInfo ? ` in department ${duplicateInfo.dept}` : '';
+              return conflictResponse(`Barcode ${barcode}${deptInfo} already exists in PC assets`);
+            }
+          }
+        }
+      }
+    } else {
+      logger.debug('Bypassing duplicate check, will delete duplicates if needed');
+      // If bypass is requested, delete any duplicate assets
+      if (assetType === 'PC') {
+        const barcodeFields = ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode'];
+        const updatedBarcodeFields = barcodeFields.filter(field => body[field] !== undefined);
+        
+        for (const field of updatedBarcodeFields) {
+          const barcode = body[field];
+          if (barcode) {
+            try {
+              // Find and delete duplicate assets in Warehouse IT
+              const warehouseAssets = await db.warehouseIT.findMany({
+                where: {
+                  tenantId: user.tenantId,
+                  OR: [
+                    { barcode: barcode },
+                    { sapCode: barcode }
+                  ]
+                }
+              });
+
+              // Delete all matching warehouse assets
+              for (const asset of warehouseAssets) {
+                await db.warehouseIT.delete({
+                  where: { id: asset.id }
+                });
+                
+                // Invalidate cache for the deleted warehouse asset
+                if (cacheManager && CACHE_PREFIXES) {
+                  try {
+                    const assetCacheKey = cacheManager.createCompositeKey(
+                      CACHE_PREFIXES.ASSETS,
+                      'WarehouseIT',
+                      user.tenantId,
+                      asset.id
+                    );
+                    await cacheManager.del(assetCacheKey, { component: 'custom-fields-route' });
+                    logger.debug(`Invalidated cache for deleted WarehouseIT asset ${asset.id}`);
+                  } catch (cacheError: any) {
+                    logger.warn(`Failed to invalidate cache for WarehouseIT asset ${asset.id}:`, cacheError);
+                  }
+                }
+              }
+              
+              // Also invalidate list caches for WarehouseIT assets
+              if (cacheManager && CACHE_PREFIXES) {
+                try {
+                  await cacheManager.invalidateResource(user.tenantId, 'WarehouseIT', { component: 'custom-fields-route' });
+                  logger.debug(`Invalidated WarehouseIT asset list caches after deleting ${warehouseAssets.length} assets`);
+                } catch (cacheError: any) {
+                  logger.warn(`Failed to invalidate WarehouseIT asset list caches:`, cacheError);
+                }
+              }
+              
+              logger.debug(`Deleted ${warehouseAssets.length} warehouse assets with barcode ${barcode}`);
+            } catch (error) {
+              logger.error('Error deleting warehouse assets:', error);
+              // Continue with the operation even if deletion fails
+            }
+          }
+        }
+      } else if (assetType === 'WarehouseIT') {
+        const barcodeFields = ['barcode', 'sapCode'];
+        const updatedBarcodeFields = barcodeFields.filter(field => body[field] !== undefined);
+        
+        for (const field of updatedBarcodeFields) {
+          const barcode = body[field];
+          if (barcode) {
+            try {
+              // Find and delete duplicate assets in PC
+              const pcAssets = await db.pC.findMany({
+                where: {
+                  tenantId: user.tenantId,
+                  OR: [
+                    { cpuBarcode: barcode },
+                    { cpuSapBarcode: barcode },
+                    { monitorBarcode: barcode },
+                    { monitorSapBarcode: barcode },
+                    { upsBarcode: barcode },
+                    { upsSapBarcode: barcode },
+                    { cpuBarcode: barcode },
+                    { cpuSapBarcode: barcode },
+                    { monitorBarcode: barcode },
+                    { monitorSapBarcode: barcode },
+                    { upsBarcode: barcode },
+                    { upsSapBarcode: barcode }
+                  ]
+                }
+              });
+
+              // Delete all matching PC assets
+              for (const asset of pcAssets) {
+                await db.pC.delete({
+                  where: { id: asset.id }
+                });
+                
+                // Invalidate cache for the deleted PC asset
+                if (cacheManager && CACHE_PREFIXES) {
+                  try {
+                    const assetCacheKey = cacheManager.createCompositeKey(
+                      CACHE_PREFIXES.ASSETS,
+                      'PC',
+                      user.tenantId,
+                      asset.id
+                    );
+                    await cacheManager.del(assetCacheKey, { component: 'custom-fields-route' });
+                    logger.debug(`Invalidated cache for deleted PC asset ${asset.id}`);
+                  } catch (cacheError: any) {
+                    logger.warn(`Failed to invalidate cache for PC asset ${asset.id}:`, cacheError);
+                  }
+                }
+              }
+              
+              // Also invalidate list caches for PC assets
+              if (cacheManager && CACHE_PREFIXES) {
+                try {
+                  await cacheManager.invalidateResource(user.tenantId, 'PC', { component: 'custom-fields-route' });
+                  logger.debug(`Invalidated PC asset list caches after deleting ${pcAssets.length} assets`);
+                } catch (cacheError: any) {
+                  logger.warn(`Failed to invalidate PC asset list caches:`, cacheError);
+                }
+              }
+              
+              logger.debug(`Deleted ${pcAssets.length} PC assets with barcode ${barcode}`);
+            } catch (error) {
+              logger.error('Error deleting PC assets:', error);
+              // Continue with the operation even if deletion fails
+            }
+          }
+        }
+      }
     }
 
     // Prepare the update data - only include valid fields for the model
@@ -91,7 +282,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
       'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
       'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
-      'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
+      'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields'],
+      'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields']
     }
     
     const modelValidFields = validFields[assetType as keyof typeof validFields] || []
@@ -217,7 +409,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Validate that the asset type is supported
-    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet']
+    const supportedAssetTypes = ['PC', 'Laptop', 'Printer', 'License', 'WarehouseIT', 'Internet', 'FixedAsset', 'ITPurchasing']
     if (!supportedAssetTypes.includes(assetType)) {
       return badRequestResponse(`Unsupported asset type: ${assetType}`)
     }
@@ -228,6 +420,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                      assetType === 'Printer' ? 'Printer' : 
                      assetType === 'License' ? 'License' : 
                      assetType === 'Internet' ? 'Internet' :
+                     assetType === 'FixedAsset' ? 'FixedAsset' :
+                     assetType === 'ITPurchasing' ? 'ITPurchasing' :
                      'WarehouseIT'
 
     // Get the asset with custom fields

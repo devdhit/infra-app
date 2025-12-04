@@ -5,18 +5,19 @@ import {
   exportPCToExcel, 
   exportLaptopToExcel, 
   exportPrinterToExcel, 
-  exportLicenseToExcel, 
-  exportWarehouseITToExcel
+  exportLicenseToExcel,
+  exportInternetToExcel,
+  exportWarehouseITToExcel,
 } from '@/lib/excel'
+import { exportFixedAssetToExcel } from '@/lib/excel/excel-export'
 import logger from '@/lib/logger'
 
 // Add the Internet export function
-import { exportInternetToExcel } from '@/lib/excel'
 import { createAuditLog } from '@/lib/audit-logs'
 import XLSX from 'xlsx-populate'
 
 // Define types for our data
-type AssetType = 'pc' | 'laptop' | 'printer' | 'license' | 'warehouse' | 'internet'
+type AssetType = 'pc' | 'laptop' | 'printer' | 'license' | 'warehouse' | 'internet' | 'fixed-asset'
 type ExportType = 'template' | 'all-columns'
 
 // GET /api/assets/excel/export - Export assets to Excel
@@ -531,6 +532,100 @@ export async function GET(request: NextRequest) {
         } catch (exportError: any) {
           logger.error('Error during Internet export:', exportError);
           throw new Error(`Internet export failed: ${exportError.message}`);
+        }
+        break
+
+      case 'fixed-asset':
+        logger.debug('Fetching FixedAsset data with filters:', { 
+          tenantId: user.tenantId,
+          selectedIds: selectedIdArray,
+          department: department
+        })
+        const fixedAssetWhereClause = { 
+          tenantId: user.tenantId,
+          ...(selectedIdArray ? { id: { in: selectedIdArray } } : {}),
+          // For all-columns export, if no department is specified, we want all departments
+          ...((department || exportType !== 'all-columns') ? (department ? { dept: department } : {}) : {})
+        }
+        logger.debug('FixedAsset where clause:', fixedAssetWhereClause)
+        // Use cursor-based pagination for better performance with large datasets
+        const fixedAssetData = await db.fixedAsset.findMany({
+          where: fixedAssetWhereClause,
+          select: {
+            id: true,
+            dept: true,
+            barcode: true,
+            sapCode: true,
+            name: true,
+            place: true,
+            inputDate: true,
+            location: true,
+            status: true,
+            note: true,
+            customFields: true,
+            createdAt: true,
+            updatedAt: true,
+            tenantId: true
+          },
+          take: MAX_RECORDS, // Limit the number of records
+          orderBy: {
+            createdAt: 'asc'
+          }
+        })
+        logger.debug('FixedAsset data fetched:', fixedAssetData.length, 'records')
+        logger.debug('Sample FixedAsset data:', fixedAssetData.slice(0, 2))
+        
+        logger.debug('Starting FixedAsset Excel export...');
+        const fixedAssetExportStart = Date.now();
+        
+        try {
+          // Use different export function based on exportType
+          if (exportType === 'all-columns') {
+            // For all-columns export, we need to format the data
+            const formattedFixedAssetData = fixedAssetData.map((fixedAsset: any) => {
+              // Extract custom fields and add them to the formatted data
+              const customFields = fixedAsset.customFields as Record<string, any> || {};
+              
+              return {
+                dept: fixedAsset.dept,
+                barcode: fixedAsset.barcode ?? undefined,
+                sapCode: fixedAsset.sapCode ?? undefined,
+                name: fixedAsset.name,
+                place: fixedAsset.place ?? undefined,
+                inputDate: fixedAsset.inputDate ? fixedAsset.inputDate.toISOString().split('T')[0] : undefined, // Only include date part
+                location: fixedAsset.location ?? undefined,
+                // Normalize status values to lowercase to match standardized values
+                status: fixedAsset.status ? fixedAsset.status.toLowerCase() : 'working',
+                note: fixedAsset.note ?? undefined,
+                // Include custom fields
+                ...customFields
+              };
+            })
+            buffer = await exportAllColumnsToExcel(assetType, formattedFixedAssetData)
+          } else {
+            // For template export, we need to format the data to match the FixedAsset interface
+            const formattedFixedAssetData = fixedAssetData.map((fixedAsset: any) => ({
+              id: fixedAsset.id,
+              dept: fixedAsset.dept,
+              barcode: fixedAsset.barcode ?? undefined,
+              sapCode: fixedAsset.sapCode ?? undefined,
+              name: fixedAsset.name,
+              place: fixedAsset.place ?? undefined,
+              inputDate: fixedAsset.inputDate ?? undefined,
+              location: fixedAsset.location ?? undefined,
+              status: fixedAsset.status,
+              note: fixedAsset.note ?? undefined,
+              tenantId: fixedAsset.tenantId,
+              createdAt: fixedAsset.createdAt,
+              updatedAt: fixedAsset.updatedAt,
+              customFields: fixedAsset.customFields ?? undefined
+            }));
+            buffer = await exportFixedAssetToExcel(formattedFixedAssetData, tenantName)
+          }
+          logger.debug(`FixedAsset Excel export completed in ${(Date.now() - fixedAssetExportStart) / 1000} seconds`);
+        } catch (exportError: any) {
+          logger.error('Error during FixedAsset export:', exportError);
+          throw new Error(`FixedAsset export failed: ${exportError.message}`);
         }
         break
 

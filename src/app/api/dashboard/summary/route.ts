@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     // Get PC summary data: total counts for CPU, Monitor, UPS
     const pcSummary = await db.pC.groupBy({
-      by: ['cpuBarcode', 'monitorBarcode', 'upsBarcode'],
+      by: ['cpuBarcode', 'cpuSapBarcode', 'monitorBarcode', 'monitorSapBarcode', 'upsBarcode', 'upsSapBarcode'],
       where: { tenantId: user.tenantId },
       _count: true
     }).catch(error => {
@@ -90,24 +90,35 @@ export async function GET(request: NextRequest) {
       throw new Error('Failed to count PCs');
     });
     
-    // Count only non-null and non-'N/A' values
-    const totalCpus = pcSummary.filter((pc: any) => 
-      pc.cpuBarcode && 
-      pc.cpuBarcode !== 'N/A' && 
-      String(pc.cpuBarcode).trim() !== ''
-    ).length;
+    // Helper function to check if a field value is excluded
+    const isExcludedValue = (value: string | null | undefined): boolean => {
+      if (!value) return true;
+      const trimmedValue = String(value).trim().toLowerCase();
+      return trimmedValue === '' || trimmedValue === 'n/a' || trimmedValue === 'no use';
+    };
     
-    const totalMonitors = pcSummary.filter((pc: any) => 
-      pc.monitorBarcode && 
-      pc.monitorBarcode !== 'N/A' && 
-      String(pc.monitorBarcode).trim() !== ''
-    ).length;
+    // Count CPUs: at least one of cpuBarcode or cpuSapBarcode has valid data
+    // Exclude when both are 'No use' or 'N/A'
+    const totalCpus = pcSummary.filter((pc: { cpuBarcode: string | null; cpuSapBarcode: string | null }) => {
+      const cpuBarcodeExcluded = isExcludedValue(pc.cpuBarcode);
+      const cpuSapBarcodeExcluded = isExcludedValue(pc.cpuSapBarcode);
+      // Count if at least one field has valid data (not both excluded)
+      return !(cpuBarcodeExcluded && cpuSapBarcodeExcluded);
+    }).length;
     
-    const totalUps = pcSummary.filter((pc: any) => 
-      pc.upsBarcode && 
-      pc.upsBarcode !== 'N/A' && 
-      String(pc.upsBarcode).trim() !== ''
-    ).length;
+    // Count Monitors: at least one of monitorBarcode or monitorSapBarcode has valid data
+    const totalMonitors = pcSummary.filter((pc: { monitorBarcode: string | null; monitorSapBarcode: string | null }) => {
+      const monitorBarcodeExcluded = isExcludedValue(pc.monitorBarcode);
+      const monitorSapBarcodeExcluded = isExcludedValue(pc.monitorSapBarcode);
+      return !(monitorBarcodeExcluded && monitorSapBarcodeExcluded);
+    }).length;
+    
+    // Count UPS: at least one of upsBarcode or upsSapBarcode has valid data
+    const totalUps = pcSummary.filter((pc: { upsBarcode: string | null; upsSapBarcode: string | null }) => {
+      const upsBarcodeExcluded = isExcludedValue(pc.upsBarcode);
+      const upsSapBarcodeExcluded = isExcludedValue(pc.upsSapBarcode);
+      return !(upsBarcodeExcluded && upsSapBarcodeExcluded);
+    }).length;
 
     // Get Laptop summary data: total by status, by model, and custom-fields fields
     const laptopSummary = await db.laptop.groupBy({
@@ -159,6 +170,16 @@ export async function GET(request: NextRequest) {
       throw new Error('Failed to fetch internet data');
     });
 
+    // Get FixedAsset summary data: total by department, status
+    const fixedAssetSummary = await db.fixedAsset.groupBy({
+      by: ['dept', 'status'],
+      where: { tenantId: user.tenantId },
+      _count: true
+    }).catch(error => {
+      logger.error('Error fetching fixed asset summary data:', error);
+      throw new Error('Failed to fetch fixed asset data');
+    });
+
     // Get custom fields for all asset types
     const customFields = await db.customField.findMany({
       where: {
@@ -171,7 +192,7 @@ export async function GET(request: NextRequest) {
 
     // Get all assets to calculate custom field statistics with optimized queries
     // Only fetch customFields column to reduce data transfer
-    const [allPcs, allLaptops, allPrinters, allLicenses, allWarehouseItems, allInternetItems] = await Promise.all([
+    const [allPcs, allLaptops, allPrinters, allLicenses, allWarehouseItems, allInternetItems, allFixedAssets] = await Promise.all([
       db.pC.findMany({
         where: { tenantId: user.tenantId },
         select: { customFields: true }
@@ -213,6 +234,13 @@ export async function GET(request: NextRequest) {
       }).catch(error => {
         logger.error('Error fetching internet items for custom field stats:', error);
         throw new Error('Failed to fetch internet items for custom field statistics');
+      }),
+      db.fixedAsset.findMany({
+        where: { tenantId: user.tenantId },
+        select: { customFields: true }
+      }).catch(error => {
+        logger.error('Error fetching fixed assets for custom field stats:', error);
+        throw new Error('Failed to fetch fixed assets for custom field statistics');
       })
     ]);
 
@@ -226,6 +254,7 @@ export async function GET(request: NextRequest) {
     const licenseCustomFields = customFields.filter((field: any) => field.modelType === 'License')
     const warehouseCustomFields = customFields.filter((field: any) => field.modelType === 'WarehouseIT')
     const internetCustomFields = customFields.filter((field: any) => field.modelType === 'Internet')
+    const fixedAssetCustomFields = customFields.filter((field: any) => field.modelType === 'FixedAsset')
     
     // Create a map to track which asset type each custom field belongs to
     const customFieldAssetMap: Record<string, string> = {}
@@ -250,6 +279,7 @@ export async function GET(request: NextRequest) {
     populateAssetMap(licenseCustomFields, 'License')
     populateAssetMap(warehouseCustomFields, 'WarehouseIT')
     populateAssetMap(internetCustomFields, 'Internet')
+    populateAssetMap(fixedAssetCustomFields, 'FixedAsset')
     
     // Helper function to process custom fields for any asset type
     const processCustomFields = (assets: any[], customFieldsConfig: any[], assetType: string) => {
@@ -291,6 +321,15 @@ export async function GET(request: NextRequest) {
     processCustomFields(allLicenses, licenseCustomFields, 'License')
     processCustomFields(allWarehouseItems, warehouseCustomFields, 'WarehouseIT')
     processCustomFields(allInternetItems, internetCustomFields, 'Internet')
+    processCustomFields(allFixedAssets, fixedAssetCustomFields, 'FixedAsset')
+
+    // Get total FixedAsset count
+    const totalFixedAssets = await db.fixedAsset.count({
+      where: { tenantId: user.tenantId }
+    }).catch(error => {
+      logger.error('Error counting FixedAssets:', error);
+      throw new Error('Failed to count FixedAssets');
+    });
 
     // Prepare response data with optimized structure
     const responseData = {
@@ -306,6 +345,10 @@ export async function GET(request: NextRequest) {
       license: licenseSummary,
       warehouseIT: warehouseITSummary,
       internet: internetSummary,
+      fixedAsset: {
+        total: totalFixedAssets,
+        details: fixedAssetSummary
+      },
       customFields,
       customFieldStats
     }

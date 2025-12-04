@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60,
   },
   
+  // Production security settings
+  productionBrowserSourceMaps: false, // Disable source maps in production
+  
   // Enable experimental features for better performance
   experimental: {
     // Optimize CSS processing

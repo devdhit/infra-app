@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -9,18 +9,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useRoles, useCreateRole, useUpdateRole, useBulkDeleteRoles } from "@/hooks/useRoles"
+import { useRoles, useCreateRole, useUpdateRole, useBulkDeleteRoles, useDeleteRole } from "@/hooks/management"
+import { useUsers } from "@/hooks/management"
+import type { Role, CreateRoleData, UpdateRoleData } from "@/types/management"
 import { useTranslation } from "@/hooks/use-translation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { RolesTable } from "@/components/roles/roles-table"
 import { RoleForm } from "@/components/roles/role-form"
 import { ConfirmDialog } from "@/components/roles/confirm-dialog"
-import { RoleFormValues, Role } from "@/types/roles"
-import { Plus, Shield } from "lucide-react"
+import { Plus, Shield, Users as UsersIcon, ShieldCheck, ShieldAlert } from "lucide-react"
 import { useCurrentUser } from '@/hooks/useApi'
-import { api } from '@/lib/api'
+import { LoadingLayout } from '@/components/ui/loading-layout'
 import logger from '@/lib/logger'
+import { PageHeader } from "@/components/management/page-header"
+import { StatCard } from "@/components/management/stat-card"
+import { SearchBar } from "@/components/management/search-bar"
+import { EmptyState } from "@/components/management/empty-state"
 
 export default function RolesPage() {
   const { t } = useTranslation()
@@ -43,15 +48,59 @@ export default function RolesPage() {
     }
   }, [])
   
-  const { data: roles = [], isLoading, error, refetch } = useRoles()
+  const { data: rolesResponse = null, isLoading, error, refetch } = useRoles()
+  
+  // Fetch users to get role assignment stats
+  const { data: usersResponse } = useUsers()
+  
+  // Memoize data arrays to prevent useMemo dependency issues
+  const roles = useMemo(() => Array.isArray(rolesResponse?.data) ? rolesResponse.data : [], [rolesResponse?.data]);
+  const usersData = useMemo(() => usersResponse?.data || [], [usersResponse?.data]);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  
+  // Filtered roles based on search
+  const filteredRoles = useMemo(() => {
+    return roles.filter((role: Role) => {
+      const matchesSearch = searchQuery === '' || 
+        role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (role.description && role.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      return matchesSearch;
+    });
+  }, [roles, searchQuery]);
+  
+  // Calculate stats
+  const stats = useMemo(() => {
+    const total = roles.length;
+    const adminRoles = roles.filter((r: Role) => r.name === 'admin').length;
+    const customRoles = roles.filter((r: Role) => r.name !== 'admin' && r.name !== 'user').length;
+    
+    // Count users per role
+    type RoleUserCount = { roleId: string; roleName: string; userCount: number };
+    const roleUserCounts: RoleUserCount[] = roles.map((role: Role) => ({
+      roleId: role.id,
+      roleName: role.name,
+      userCount: usersData.filter((u: { roleId: string | null }) => u.roleId === role.id).length
+    }));
+    
+    // Find most used role
+    const mostUsedRole = roleUserCounts.reduce((max: RoleUserCount, current: RoleUserCount) => 
+      current.userCount > max.userCount ? current : max, 
+      { roleId: '', roleName: 'None', userCount: 0 }
+    );
+    
+    return { total, adminRoles, customRoles, mostUsedRole: mostUsedRole.roleName };
+  }, [roles, usersData]);
   
   // Determine if there's an error
   const isError = !!error
   
   const createRoleMutation = useCreateRole()
-  // We'll manage the ID for update operations in state
   const [updateRoleId, setUpdateRoleId] = useState<string | null>(null)
-  const updateRoleMutation = useUpdateRole(updateRoleId || 'placeholder')
+  const updateRoleMutation = useUpdateRole(updateRoleId || '')
+  const deleteRoleMutation = useDeleteRole()
   const bulkDeleteRolesMutation = useBulkDeleteRoles()
   
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -190,11 +239,11 @@ export default function RolesPage() {
   // Show loading state while checking permissions
   if (canView === null || isUserLoading) {
     return (
-      <div className="flex items-center justify-center h-52">
-        <div className="text-center">
-          <p>Loading permissions...</p>
-        </div>
-      </div>
+      <LoadingLayout 
+        size="md" 
+        height="md"
+        loadingText={t('common.loadingPermissions')}
+      />
     );
   }
 
@@ -316,17 +365,15 @@ export default function RolesPage() {
     if (!roleToDelete) return
     
     try {
-      // Instead of creating a new hook (which violates React rules), 
-      // we'll use the api client directly for the delete operation
-      await api.delete<void>(`/roles/${roleToDelete}`)
+      await deleteRoleMutation.mutate(roleToDelete)
       toast.success(t('roles.delete.success') || 'Role deleted successfully')
       refetch()
-    } catch (error: any) {
-      // Log errors only in development
+    } catch (error: unknown) {
       if (process.env.NODE_ENV === 'development') {
         logger.error('Error deleting role:', error)
       }
-      toast.error(error.message || t('roles.delete.error') || 'Failed to delete role')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete role'
+      toast.error(errorMessage || t('roles.delete.error'))
     } finally {
       setIsDeleteConfirmOpen(false)
       setRoleToDelete(null)
@@ -335,14 +382,11 @@ export default function RolesPage() {
 
   const confirmBulkDelete = async () => {
     try {
-      // Trigger the bulk delete mutation with the correct payload
-      await bulkDeleteRolesMutation.mutate({ ids: rolesToBulkDelete })
+      await bulkDeleteRolesMutation.mutate(rolesToBulkDelete)
       toast.success(t('roles.bulkDelete.success', '{0} roles deleted successfully', rolesToBulkDelete.length.toString()) || 
                    `${rolesToBulkDelete.length} roles deleted successfully`)
       refetch()
-    } catch (error: any) {
-      // Error is handled by the mutation hook
-      // Log errors only in development
+    } catch (error: unknown) {
       if (process.env.NODE_ENV === 'development') {
         logger.error('Error bulk deleting roles:', error)
       }
@@ -352,10 +396,9 @@ export default function RolesPage() {
     }
   }
 
-  const handleSubmit = async (data: RoleFormValues) => {
+  const handleSubmit = async (data: CreateRoleData | UpdateRoleData) => {
     try {
       if (editingRole) {
-        // Only check permissions if user data is fully loaded
         if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
           const hasEditPermission = await canEditRoles()
           if (!hasEditPermission) {
@@ -365,27 +408,21 @@ export default function RolesPage() {
         }
         
         try {
-          // Ensure the update role ID is set correctly
           if (!updateRoleId) {
             setUpdateRoleId(editingRole.id)
           }
-          // Trigger the update mutation
-          await updateRoleMutation.mutate(data)
+          await updateRoleMutation.mutate(data as UpdateRoleData)
           toast.success(t('roles.update.success') || 'Role updated successfully')
           setIsDialogOpen(false)
           setEditingRole(null)
           setUpdateRoleId(null)
-          // Refetch roles to update the table
           refetch()
-        } catch (error: any) {
-          // Log errors only in development
+        } catch (error: unknown) {
           if (process.env.NODE_ENV === 'development') {
             logger.error('Error updating role:', error)
           }
-          // Error is handled by the mutation hook
         }
       } else {
-        // Only check permissions if user data is fully loaded
         if (!isUserLoading && currentUser && currentUser.role?.id && currentUser.tenantId) {
           const hasCreatePermission = await canCreateRoles()
           if (!hasCreatePermission) {
@@ -393,29 +430,26 @@ export default function RolesPage() {
             return
           }
         }
-        // Create new role
         try {
-          await createRoleMutation.mutate(data)
+          await createRoleMutation.mutate(data as CreateRoleData)
           toast.success(t('roles.create.success') || 'Role created successfully')
           setIsDialogOpen(false)
-          // Refetch roles to update the table
           refetch()
-        } catch (error: any) {
-          // Log errors only in development
+        } catch (error: unknown) {
           if (process.env.NODE_ENV === 'development') {
             logger.error('Error creating role:', error)
           }
-          // Error is handled by the mutation hook
         }
       }
-    } catch (error: any) {
-      // Log errors only in development
+    } catch (error: unknown) {
       if (process.env.NODE_ENV === 'development') {
         logger.error('Error submitting role form:', error)
       }
-      toast.error(error.message || (editingRole 
-        ? t('roles.update.error') || 'Failed to update role' 
-        : t('roles.create.error') || 'Failed to create role'))
+      const errorMessage = error instanceof Error ? error.message : 
+        (editingRole ? 'Failed to update role' : 'Failed to create role')
+      toast.error(errorMessage || (editingRole 
+        ? t('roles.update.error') 
+        : t('roles.create.error')))
     }
   }
 
@@ -451,47 +485,102 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          <Shield className="h-8 w-8 mr-3 text-blue-500" />
-          {t('roles.title') || 'Roles'}
-        </h1>
-        <p className="text-muted-foreground">{t('roles.description') || 'Manage system roles and permissions'}</p>
-      </div>
-
-      <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 border-t-blue-500">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle>{t('roles.list.title') || 'Role List'}</CardTitle>
-              <CardDescription>
-                {t('roles.list.description') || 'A list of all roles in the system'}
-              </CardDescription>
-            </div>
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <PageHeader
+        title={t('roles.title') || 'Roles'}
+        description={t('roles.description') || 'Manage roles, permissions, and access control'}
+        icon={Shield}
+        actions={
+          <>
             {canCreate && (
-              <Button onClick={() => handleEdit(null)} className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700">
+              <Button onClick={() => handleEdit(null)}>
                 <Plus className="h-4 w-4 mr-2" />
                 {t('roles.button') || 'Add Role'}
               </Button>
             )}
+          </>
+        }
+      />
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Roles"
+          value={stats.total}
+          description="System-wide roles"
+          icon={Shield}
+        />
+        <StatCard
+          title="Admin Roles"
+          value={stats.adminRoles}
+          description="Administrative access"
+          icon={ShieldCheck}
+          className="border-red-200 dark:border-red-900"
+        />
+        <StatCard
+          title="Custom Roles"
+          value={stats.customRoles}
+          description="User-defined roles"
+          icon={ShieldAlert}
+          className="border-blue-200 dark:border-blue-900"
+        />
+        <StatCard
+          title="Most Used"
+          value={stats.mostUsedRole}
+          description="Most assigned role"
+          icon={UsersIcon}
+          className="border-green-200 dark:border-green-900"
+        />
+      </div>
+
+      {/* Search and Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle>{t('roles.list.title') || 'All Roles'}</CardTitle>
+              <CardDescription>
+                {filteredRoles.length} {filteredRoles.length === 1 ? 'role' : 'roles'} found
+              </CardDescription>
+            </div>
+            <SearchBar
+              placeholder="Search by name or description..."
+              onSearch={setSearchQuery}
+              className="w-full md:w-[300px]"
+            />
           </div>
         </CardHeader>
         <CardContent>
-          <RolesTable 
-            roles={roles || []}
-            onEdit={canEdit ? handleEdit : undefined}
-            onDelete={(canDelete || canBulkDelete) ? handleDelete : undefined}
-            isDeleting={bulkDeleteRolesMutation.isLoading}
-            deletingRoleId={null}
-          />
+          {filteredRoles.length === 0 ? (
+            <EmptyState
+              icon={Shield}
+              title={searchQuery ? 'No roles found' : 'No roles yet'}
+              description={
+                searchQuery
+                  ? 'Try adjusting your search query'
+                  : 'Get started by creating your first role with custom permissions'
+              }
+              actionLabel={canCreate && !searchQuery ? 'Add Role' : undefined}
+              onAction={canCreate ? () => handleEdit(null) : undefined}
+            />
+          ) : (
+            <RolesTable 
+              roles={filteredRoles}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDelete={(canDelete || canBulkDelete) ? handleDelete : undefined}
+              isDeleting={bulkDeleteRolesMutation.isLoading || deleteRoleMutation.isLoading}
+              deletingRoleId={roleToDelete}
+            />
+          )}
         </CardContent>
       </Card>
 
+      {/* Dialogs */}
       <RoleForm 
         open={isDialogOpen}
         onOpenChange={handleDialogOpenChange}
-        editingRole={editingRole}
+        editingRole={editingRole as unknown as import('@/types/roles').Role | null}
         onSubmit={handleSubmit}
         isSubmitting={editingRole ? updateRoleMutation.isLoading : createRoleMutation.isLoading}
       />
@@ -504,7 +593,7 @@ export default function RolesPage() {
         confirmText={t('common.delete') || 'Delete'}
         cancelText={t('common.cancel') || 'Cancel'}
         onConfirm={confirmDelete}
-        isLoading={false}
+        isLoading={deleteRoleMutation.isLoading}
       />
       
       <ConfirmDialog

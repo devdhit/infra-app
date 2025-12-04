@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { getCurrentUser } from './auth';
 import { hasPermission, ResourceType, PermissionAction } from './permissions';
 import { unauthorizedResponse, errorResponse } from './api-utils';
+import logger from './logger';
 
 /**
  * Permission middleware for API routes
@@ -28,7 +29,7 @@ export async function checkPermission(
     // Validate user has role and tenant
     if (!user.role?.id || !user.tenantId) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('User missing role or tenant ID:', {
+        logger.warn('User missing role or tenant ID:', {
           userId: user.id,
           hasRole: !!user.role,
           hasRoleId: !!user.role?.id,
@@ -48,7 +49,7 @@ export async function checkPermission(
     
     // For debugging in development only
     if (process.env.NODE_ENV === 'development') {
-      console.log('Permission middleware check:', {
+      logger.debug('Permission middleware check:', {
         userId: user.id,
         userEmail: user.email,
         userRoleId: user.role.id,
@@ -70,7 +71,7 @@ export async function checkPermission(
   } catch (error) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error in permission middleware:', error);
+      logger.error('Error in permission middleware:', error);
     }
     
     // Return internal server error for unexpected issues
@@ -103,7 +104,7 @@ export async function checkAnyPermission(
     // Validate user has role and tenant
     if (!user.role?.id || !user.tenantId) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('User missing role or tenant ID:', {
+        logger.warn('User missing role or tenant ID:', {
           userId: user.id,
           hasRole: !!user.role,
           hasRoleId: !!user.role?.id,
@@ -124,7 +125,7 @@ export async function checkAnyPermission(
       
       // For debugging in development only
       if (process.env.NODE_ENV === 'development') {
-        console.log('Permission middleware check (any):', {
+        logger.debug('Permission middleware check (any):', {
           userId: user.id,
           userEmail: user.email,
           userRoleId: user.role.id,
@@ -147,7 +148,7 @@ export async function checkAnyPermission(
   } catch (error) {
     // Log errors only in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error in permission middleware:', error);
+      logger.error('Error in permission middleware:', error);
     }
     
     // Return internal server error for unexpected issues

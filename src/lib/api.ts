@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios'
+import logger from './logger'
 
 // Define custom error types
 export class ApiError extends Error {
@@ -29,17 +30,17 @@ export class ValidationError extends ApiError {
 // Create an axios instance with default configuration
 const apiClient: AxiosInstance = axios.create({
   baseURL: '/api',
-  timeout: 30000, // Increased timeout
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
-})
+});
 
 // Initialize token from localStorage if available
 if (typeof window !== 'undefined') {
-  const token = localStorage.getItem('auth-token')
+  const token = localStorage.getItem('auth-token');
   if (token) {
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   }
 }
 
@@ -48,20 +49,46 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Add auth token if available
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('auth-token')
+      const token = localStorage.getItem('auth-token');
       if (token) {
         config.headers = {
           ...config.headers,
           Authorization: `Bearer ${token}`
-        } as any
+        } as any;
       }
     }
-    return config
+    return config;
   },
   (error: AxiosError) => {
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
+
+// Centralized error handler
+const handleApiError = (error: unknown): ApiError => {
+  let apiError: ApiError;
+  
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status || 500;
+    const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'An unexpected error occurred';
+    const errorData = error.response?.data;
+    
+    // Check if it's a validation error
+    if (status === 400 && errorData?.details?.type === 'validation') {
+      apiError = new ValidationError(
+        errorMessage,
+        errorData.details.validationErrors,
+        errorData
+      );
+    } else {
+      apiError = new ApiError(status, errorMessage, errorData);
+    }
+  } else {
+    apiError = new ApiError(500, 'An unexpected error occurred', undefined);
+  }
+  
+  return apiError;
+};
 
 // Response interceptor
 apiClient.interceptors.response.use(
@@ -93,54 +120,47 @@ apiClient.interceptors.response.use(
           // We can't use toast here directly because it's not available in this file
           // The error will be handled by the calling component
           // Using errorMessage to prevent TypeScript error
-          console.warn('403 Forbidden -', errorMessage);
+          logger.warn('403 Forbidden -', errorMessage);
         }
       }
     }
     
     // Create appropriate error based on response
-    let apiError: ApiError;
-    
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status || 500;
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'An unexpected error occurred';
-      const errorData = error.response?.data;
-      
-      // Check if it's a validation error
-      if (status === 400 && errorData?.details?.type === 'validation') {
-        apiError = new ValidationError(
-          errorMessage,
-          errorData.details.validationErrors,
-          errorData
-        );
-      } else {
-        apiError = new ApiError(status, errorMessage, errorData);
-      }
-    } else {
-      apiError = new ApiError(500, 'An unexpected error occurred', undefined);
-    }
-    
+    const apiError = handleApiError(error);
     return Promise.reject(apiError);
   }
-)
+);
+
+// Wrapper functions for common HTTP methods with consistent timeout handling
+const createRequestWithTimeout = async <T>(requestPromise: Promise<AxiosResponse<T>>): Promise<T> => {
+  try {
+    // Add timeout promise to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 30000);
+    });
+    
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 
 // Wrapper functions for common HTTP methods
 export const api = {
   get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add more aggressive cache-busting with timestamp and random value
-      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
-      
-      // Add timeout promise to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
+      // Only add cache-busting if not already present in the URL
+      let urlWithCacheBuster = url;
+      if (!url.includes('_t=') && !url.includes('_r=')) {
+        // Add more aggressive cache-busting with timestamp and random value
+        const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const responsePromise = apiClient.get<T>(urlWithCacheBuster, config);
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-      return response.data;
+      return await createRequestWithTimeout(responsePromise);
     } catch (error) {
       throw error;
     }
@@ -150,27 +170,25 @@ export const api = {
     try {
       // Log request for debugging permission checks
       if (url.includes('permissions/check')) {
-        console.log('Sending permission check request:', { url, data, config });
+        logger.debug('Sending permission check request:', { url, data, config });
         // Ensure we have valid data
         if (!data || Object.keys(data).length === 0) {
-          console.warn('Empty data being sent to permissions check - preventing request');
+          logger.warn('Empty data being sent to permissions check - preventing request');
           throw new Error('Permission check requires resource and action parameters');
         }
       }
       
-      // Add more aggressive cache-busting with timestamp and random value
-      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
-      
-      // Add timeout promise to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
+      // Only add cache-busting if not already present in the URL
+      let urlWithCacheBuster = url;
+      if (!url.includes('_t=') && !url.includes('_r=')) {
+        // Add more aggressive cache-busting with timestamp and random value
+        const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const responsePromise = apiClient.post<T>(urlWithCacheBuster, data, config);
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-      return response.data;
+      return await createRequestWithTimeout(responsePromise);
     } catch (error) {
       throw error;
     }
@@ -178,19 +196,17 @@ export const api = {
   
   put: async <T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add more aggressive cache-busting with timestamp and random value
-      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
-      
-      // Add timeout promise to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
+      // Only add cache-busting if not already present in the URL
+      let urlWithCacheBuster = url;
+      if (!url.includes('_t=') && !url.includes('_r=')) {
+        // Add more aggressive cache-busting with timestamp and random value
+        const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const responsePromise = apiClient.put<T>(urlWithCacheBuster, data, config);
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-      return response.data;
+      return await createRequestWithTimeout(responsePromise);
     } catch (error) {
       throw error;
     }
@@ -198,19 +214,17 @@ export const api = {
   
   delete: async <T = void>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     try {
-      // Add more aggressive cache-busting with timestamp and random value
-      const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
-      
-      // Add timeout promise to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
+      // Only add cache-busting if not already present in the URL
+      let urlWithCacheBuster = url;
+      if (!url.includes('_t=') && !url.includes('_r=')) {
+        // Add more aggressive cache-busting with timestamp and random value
+        const cacheBuster = `_t=${Date.now()}&_r=${Math.random()}`;
+        const separator = url.includes('?') ? '&' : '?';
+        urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+      }
       
       const responsePromise = apiClient.delete<T>(urlWithCacheBuster, config);
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-      return response.data;
+      return await createRequestWithTimeout(responsePromise);
     } catch (error) {
       throw error;
     }
@@ -272,7 +286,7 @@ export const api = {
                 // We can't use toast here directly because it's not available in this file
                 // The error will be handled by the calling component
                 // Using errorMessage to prevent TypeScript error
-                console.warn('403 Forbidden -', errorMessage);
+                logger.warn('403 Forbidden -', errorMessage);
               }
             }
           }

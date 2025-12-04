@@ -8,7 +8,6 @@ import {
   Printer, 
   Key, 
   Warehouse,
-  TrendingUp,
   Cpu,
   Battery,
   Server,
@@ -21,10 +20,9 @@ import {
   ArrowDown,
   ChevronDown,
   ChevronRight,
-  Home,
   Wifi
 } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, PieChart as RechartsPieChart, Pie, Legend, AreaChart, Area } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useTranslation } from "@/hooks/use-translation";
 import { DashboardSummaryData } from "@/types/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
@@ -39,6 +37,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import logger from "@/lib/logger";
 
 interface EnhancedDashboardProps {
   onRefresh?: () => void;
@@ -64,21 +63,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
   // Handle filter changes
   const handleFilterChange = (newFilters: Record<string, any>) => {
     // In a real implementation, this would trigger a refetch with new filters
-    console.log('Filters changed:', newFilters);
+    logger.debug('Filters changed:', newFilters);
     toast.info(t('dashboard.filtersApplied') || 'Filters applied');
   };
 
   // Handle reset filters
   const handleResetFilters = () => {
     // In a real implementation, this would trigger a refetch without filters
-    console.log('Filters reset');
+    logger.debug('Filters reset');
     toast.info(t('dashboard.filtersReset') || 'Filters reset');
   };
 
   // Handle export
   const handleExport = (format: 'csv' | 'excel' | 'pdf' | 'json') => {
     // In a real implementation, this would trigger an export
-    console.log('Exporting as', format);
+    logger.debug('Exporting as', format);
     toast.success(t('dashboard.exportSuccess', undefined, format.toUpperCase()) || `Data exported as ${format.toUpperCase()}`);
   };
 
@@ -136,6 +135,15 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
       color: 'indigo', 
       iconColor: 'text-indigo-500',
       description: t('assets.internet.title') || 'Internet',
+      trend: Math.floor(Math.random() * 20) - 10
+    },
+    { 
+      name: 'fixedAsset', 
+      count: dashboardData?.fixedAsset?.total || 0, 
+      icon: Server, 
+      color: 'orange', 
+      iconColor: 'text-orange-500',
+      description: t('assets.fixedAsset.title') || 'Fixed Assets',
       trend: Math.floor(Math.random() * 20) - 10
     },
   ], [dashboardData, t]);
@@ -263,6 +271,11 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
     [dashboardData?.customFields]
   );
 
+  const fixedAssetCustomFields = useMemo(() => 
+    dashboardData?.customFields?.filter(field => field.modelType === 'FixedAsset') || [], 
+    [dashboardData?.customFields]
+  );
+
   // Memoize license product type data for charts with better labeling
   const prepareProductTypeData = useMemo(() => {
     return () => {
@@ -339,17 +352,21 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* Page header with enhanced styling */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
             {t('dashboard.title')}
           </h1>
-          <p className="text-muted-foreground">{t('dashboard.welcome')}</p>
+          <p className="text-muted-foreground mt-1">{t('dashboard.welcome')}</p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           <DashboardExport onExport={handleExport} />
-          <Button size="sm" className="rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200" onClick={handleRefresh}>
+          <Button 
+            size="sm" 
+            className="rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition-all duration-200 hover:shadow-md" 
+            onClick={handleRefresh}
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             {t('common.refresh')}
           </Button>
@@ -358,16 +375,18 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
 
       {/* Dashboard Tabs - Simplified structure */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 rounded-lg">
+          <TabsTrigger 
+            value="overview" 
+            className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+          >
             <BarChart3 className="h-4 w-4" />
             <span>{t('dashboard.overview')}</span>
           </TabsTrigger>
-          <TabsTrigger value="assets" className="flex items-center gap-2">
-            <Home className="h-4 w-4" />
-            <span>{t('nav.assets')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="analytics" 
+            className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+          >
             <PieChart className="h-4 w-4" />
             <span>{t('common.analytics')}</span>
           </TabsTrigger>
@@ -404,7 +423,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
             <h2 className="text-2xl font-bold">{t('dashboard.assetOverview')}</h2>
             
             {/* Asset Type Summary Cards - Responsive grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
               {assetTypeData.map((asset, index) => (
                 <SummaryCard 
                   key={index}
@@ -512,120 +531,7 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
           )}
         </TabsContent>
         
-        <TabsContent value="assets" className="space-y-6 mt-6">
-          {/* Filters - Collapsible on mobile */}
-          <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full">
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Filter className="h-4 w-4 mr-2" />
-                {t('common.filter')}
-                {isFiltersOpen ? (
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <DashboardFilters 
-                    onFilterChange={handleFilterChange} 
-                    onReset={handleResetFilters} 
-                  />
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
 
-          {/* Asset Details Section */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">{t('dashboard.assetDetails')}</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Asset Type Distribution */}
-              <ChartCard 
-                title={t('dashboard.assetBreakdown') || 'Asset Breakdown'}
-                description={t('dashboard.assetBreakdownDescription') || 'Distribution of assets by type'}
-                icon={BarChart3}
-              >
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={assetTypeData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={true}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="count"
-                        nameKey="name"
-                        label={({ name, percent }) => `${name}: ${((percent ?? 0) as number * 100).toFixed(0)}%`}
-                      >
-                        {assetTypeData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value) => [value, t('common.count')]}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--background))',
-                          borderColor: 'hsl(var(--border))',
-                          borderRadius: 'var(--radius)',
-                          color: 'hsl(var(--foreground))'
-                        }}
-                      />
-                      <Legend />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
-              </ChartCard>
-              
-              {/* Trend Analysis Chart */}
-              <ChartCard 
-                title={t('dashboard.assetGrowth') || 'Asset Growth'}
-                description={t('dashboard.assetGrowthDescription') || 'Historical trend of asset acquisition'}
-                icon={TrendingUp}
-              >
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={[
-                        { month: 'Jan', assets: 400 },
-                        { month: 'Feb', assets: 300 },
-                        { month: 'Mar', assets: 200 },
-                        { month: 'Apr', assets: 278 },
-                        { month: 'May', assets: 189 },
-                        { month: 'Jun', assets: 239 },
-                        { month: 'Jul', assets: 349 },
-                        { month: 'Aug', assets: 400 },
-                        { month: 'Sep', assets: 380 },
-                        { month: 'Oct', assets: 430 },
-                        { month: 'Nov', assets: 450 },
-                        { month: 'Dec', assets: 500 },
-                      ]}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--background))',
-                          borderColor: 'hsl(var(--border))',
-                          borderRadius: 'var(--radius)',
-                          color: 'hsl(var(--foreground))'
-                        }}
-                      />
-                      <Area type="monotone" dataKey="assets" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </ChartCard>
-            </div>
-          </div>
-        </TabsContent>
         
         <TabsContent value="analytics" className="space-y-6 mt-6">
           {/* Filters - Collapsible on mobile */}
@@ -1052,6 +958,72 @@ export default function EnhancedDashboard({ onRefresh }: EnhancedDashboardProps)
                 </div>
               </div>
             )}
+
+            {/* FixedAsset Custom Fields */}
+            {fixedAssetCustomFields.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">{t('assets.fixedAsset.title')}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {fixedAssetCustomFields.map((field, index) => {
+                    const chartData = prepareCustomFieldChartData(field.name, 'FixedAsset')
+                    const key = `FixedAsset_${field.name}`
+                    const total = dashboardData?.customFieldStats?.[key]?.count || 0
+                    
+                    return chartData.length > 0 ? (
+                      <ChartCard 
+                        key={`fixed-asset-${index}`}
+                        title={field.name}
+                        description={t('dashboard.customFieldDistribution', undefined, total.toString())}
+                        icon={Server}
+                      >
+                        <div className="h-64 min-w-full">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={300}>
+                            <BarChart
+                              data={chartData}
+                              layout="vertical"
+                              margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis type="number" />
+                              <YAxis 
+                                type="category" 
+                                dataKey="name" 
+                                width={90}
+                                tick={{ fontSize: 12 }}
+                                tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                              />
+                              <Tooltip 
+                                formatter={(value) => [value, t('common.count')]}
+                                labelFormatter={(value) => {
+                                  // Find the full name for the truncated label
+                                  const item = chartData.find(d => d.name === value);
+                                  return item?.fullName || value;
+                                }}
+                                contentStyle={{ 
+                                  backgroundColor: 'hsl(var(--background))',
+                                  borderColor: 'hsl(var(--border))',
+                                  borderRadius: 'var(--radius)',
+                                  color: 'hsl(var(--foreground))'
+                                }}
+                              />
+                              <Bar 
+                                dataKey="count" 
+                                fill="#8884d8"
+                                name={t('common.count')}
+                              >
+                                {chartData.map((_, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </ChartCard>
+                    ) : null
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
@@ -1072,40 +1044,49 @@ interface SummaryCardProps {
 
 function SummaryCard({ title, value, icon: Icon, color, description, trend, percentage }: SummaryCardProps) {
   const colorClasses = {
-    blue: "border-t-blue-500 dark:border-t-blue-400 bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300",
-    green: "border-t-green-500 dark:border-t-green-400 bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300",
-    yellow: "border-t-yellow-500 dark:border-t-yellow-400 bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-300",
-    red: "border-t-red-500 dark:border-t-red-400 bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300",
-    purple: "border-t-purple-500 dark:border-t-purple-400 bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-300",
-    indigo: "border-t-indigo-500 dark:border-t-indigo-400 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300",
+    blue: "border-t-blue-500 dark:border-t-blue-400 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300",
+    green: "border-t-green-500 dark:border-t-green-400 bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-300",
+    yellow: "border-t-yellow-500 dark:border-t-yellow-400 bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300",
+    red: "border-t-red-500 dark:border-t-red-400 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300",
+    purple: "border-t-purple-500 dark:border-t-purple-400 bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300",
+    indigo: "border-t-indigo-500 dark:border-t-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300",
   };
 
   return (
-    <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-t-4 dark:border-t-4 h-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-t-4 dark:border-t-4 h-full bg-gradient-to-br from-background to-muted/30 overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div>
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <CardTitle className="text-sm font-semibold">{title}</CardTitle>
           {description && (
-            <CardDescription className="text-xs mt-1">{description}</CardDescription>
+            <CardDescription className="text-xs mt-1 opacity-80">{description}</CardDescription>
           )}
         </div>
-        <div className={`p-2 rounded-full ${colorClasses[color as keyof typeof colorClasses]}`}>
-          <Icon className="h-4 w-4" />
+        <div className={`p-3 rounded-full ${colorClasses[color as keyof typeof colorClasses]}`}>
+          <Icon className="h-5 w-5" />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-end justify-between">
-          <div className="text-2xl font-bold">{value}</div>
+        <div className="flex items-end justify-between mt-2">
+          <div className="text-3xl font-bold">{value}</div>
           {trend !== undefined && (
-            <div className={`flex items-center text-xs ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {trend >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+            <div className={`flex items-center text-sm font-medium ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {trend >= 0 ? <ArrowUp className="h-4 w-4 mr-1" /> : <ArrowDown className="h-4 w-4 mr-1" />}
               {Math.abs(trend)}%
             </div>
-          )}
+          )
+        }
         </div>
         {percentage !== undefined && percentage > 0 && (
-          <div className="mt-2 text-xs text-muted-foreground">
-            {percentage}% of total
+          <div className="mt-3 flex items-center">
+            <div className="w-full bg-muted rounded-full h-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all duration-500 ease-out" 
+                style={{ width: `${percentage}%` }}
+              ></div>
+            </div>
+            <span className="ml-2 text-xs text-muted-foreground whitespace-nowrap">
+              {percentage}%
+            </span>
           </div>
         )}
       </CardContent>
@@ -1123,16 +1104,20 @@ interface ChartCardProps {
 
 function ChartCard({ title, description, icon: Icon, children }: ChartCardProps) {
   return (
-    <Card className="hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full">
+    <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full bg-gradient-to-br from-background to-muted/30 border-t-4 border-t-blue-500 dark:border-t-blue-400 overflow-hidden">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Icon className="h-5 w-5 mr-2 text-blue-500 dark:text-blue-400" />
+        <CardTitle className="flex items-center text-lg font-semibold">
+          <div className="p-2 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 mr-3">
+            <Icon className="h-5 w-5" />
+          </div>
           {title}
         </CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription className="opacity-80">{description}</CardDescription>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        {children}
+      <CardContent className="overflow-x-auto pt-0">
+        <div className="pt-4 min-h-[300px] flex items-center justify-center">
+          {children}
+        </div>
       </CardContent>
     </Card>
   );

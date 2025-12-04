@@ -62,6 +62,13 @@ const assetTypes: AssetType[] = [
     description: "Manage warehouse inventory",
     color: "bg-red-100 text-red-700",
   },
+  {
+    name: "FixedAsset",
+    icon: HomeIcon,
+    href: "/assets/fixed-asset",
+    description: "Manage fixed assets",
+    color: "bg-indigo-100 text-indigo-700",
+  },
 ];
 
 export default function AssetsPage() {
@@ -137,7 +144,7 @@ export default function AssetsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <div className="flex flex-col items-center justify-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
               <Monitor className="h-8 w-8 text-blue-500 mb-2" />
               <div className="text-2xl font-bold">0</div>
@@ -157,6 +164,11 @@ export default function AssetsPage() {
               <Key className="h-8 w-8 text-yellow-500 mb-2" />
               <div className="text-2xl font-bold">0</div>
               <div className="text-sm text-muted-foreground">{t('nav.license') || 'Total Licenses'}</div>
+            </div>
+            <div className="flex flex-col items-center justify-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
+              <HomeIcon className="h-8 w-8 text-indigo-500 mb-2" />
+              <div className="text-2xl font-bold">0</div>
+              <div className="text-sm text-muted-foreground">{t('nav.fixedasset') || 'Total Fixed Assets'}</div>
             </div>
           </div>
         </CardContent>

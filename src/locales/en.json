@@ -8,6 +8,8 @@
     "license": "License",
     "warehouse": "Warehouse IT",
     "internet": "Internet",
+    "fixedasset": "Fixed Asset",
+    "itpurchasing": "IT Purchasing",
     "users": "Users",
     "tenants": "Tenants",
     "settings": "Settings",
@@ -87,6 +89,8 @@
     "import": "Import",
     "refresh": "Refresh",
     "loading": "Loading...",
+    "loadingPermissions": "Checking your permissions...",
+    "pleaseWait": "Please wait while we fetch the latest information",
     "error": "Error",
     "success": "Success",
     "warning": "Warning",
@@ -275,6 +279,18 @@
       "success": "{0} {1} assets deleted successfully",
       "error": "Failed to delete {0} assets"
     },
+    "duplicate": {
+      "title": "Duplicate Asset Found",
+      "description": "A duplicate asset was detected in the system.",
+      "warning": "Warning",
+      "defaultMessage": "The barcode you entered already exists in another asset type.",
+      "inlineEditMessage": "The barcode you entered already exists in another asset type.",
+      "barcode": "Barcode",
+      "assetType": "Asset Type",
+      "department": "Department",
+      "proceed": "Proceed Anyway",
+      "proceedWarning": "If you proceed, the duplicate asset will be automatically deleted."
+    },
     "search": {
       "placeholder": "Search assets..."
     },
@@ -326,6 +342,8 @@
         "successSingleDept": "{0} export completed for department {1}",
         "successAllDepts": "{0} export completed for all departments",
         "successAllDeptsZip": "{0} export completed. ZIP file with all departments downloaded.",
+        "successSingleDeptZip": "{0} export completed. ZIP file for department {1} downloaded.",
+        "successEachDeptZip": "{0} export completed. ZIP file with all departments downloaded.",
         "error": "Failed to export assets",
         "timeout": "Export timed out. The data might be too large.",
         "unauthorized": "Unauthorized access. Please log in again.",
@@ -385,7 +403,16 @@
       "pcName": "PC Name",
       "user": "User",
       "status": "Status",
-      "note": "Note"
+      "note": "Note",
+      "internetAccessInfo": "Internet Access Information",
+      "noInternetAccess": "No Internet Access Found",
+      "noInternetAccessMessage": "The asset (IP: {0}, User: {1}) does not have any associated internet access records.",
+      "licenseInfo": "License Information",
+      "licenseItem": "License {0}",
+      "noLicense": "No License Found",
+      "noLicenseMessage": "The asset (IP: {0}, User: {1}) does not have any associated license records.",
+      "noLicenseMessageUser": "The user {0} does not have any associated license records.",
+      "noLicenseMessageIP": "The IP address {0} does not have any associated license records."
     },
     "laptop": {
       "title": "Laptops",
@@ -426,7 +453,8 @@
       "ip": "IP Address",
       "purchaseDate": "Purchase Date",
       "status": "Status",
-      "note": "Note"
+      "note": "Note",
+      "updateStatus": "Update Status"
     },
     "warehouse": {
       "title": "Warehouse IT",
@@ -446,6 +474,31 @@
       "internetAccess": "Internet Access",
       "status": "Status",
       "note": "Note"
+    },
+    "fixedAsset": {
+      "title": "Fixed Asset",
+      "department": "Department",
+      "barcode": "Barcode",
+      "sapCode": "SAP Code",
+      "name": "Name",
+      "place": "Place",
+      "inputDate": "Input Date",
+      "location": "Location",
+      "status": "Status",
+      "note": "Note"
+    },
+    "itPurchasing": {
+      "title": "IT Purchasing",
+      "bpmName": "BPM Name",
+      "bpmContent": "BPM Content",
+      "bpmId": "BPM ID",
+      "deptCode": "Department Code",
+      "statusBPM": "BPM Status",
+      "prId": "PR ID",
+      "statusPR": "PR Status",
+      "statusReceive": "Receive Status",
+      "dateReceive": "Receive Date",
+      "noted": "Notes"
     },
     "status": {
       "working": "Working",
@@ -847,7 +900,7 @@
       "infoTitle": "Custom Fields",
       "infoDescription": "Custom fields allow you to add additional information to your assets. They can be text, numbers, dates, or other types.",
       "deleteConfirmTitle": "Delete Custom Field",
-      "deleteConfirmDescription": "Are you sure you want to delete the custom field \"{fieldName}\"? This action cannot be undone and will remove this field from all existing assets.",
+      "deleteConfirmDescription": "Are you sure you want to delete the custom field \"{name}\"? This action cannot be undone and will remove this field from all existing assets.",
       "helpTitle": "Custom Fields Help",
       "helpDescription": "Learn how to use custom fields effectively",
       "whatAre": "What are Custom Fields?",
@@ -1064,6 +1117,28 @@
         "submitData": "Submit internet data",
         "viewStatus": "View internet status",
         "healthCheck": "Internet health check"
+      },
+      "fixed-asset": {
+        "label": "Fixed Asset",
+        "view": "View fixed assets",
+        "create": "Create fixed assets",
+        "edit": "Edit fixed assets",
+        "delete": "Delete fixed assets",
+        "bulkDelete": "Bulk delete fixed assets",
+        "submitData": "Submit fixed asset data",
+        "viewStatus": "View fixed asset status",
+        "healthCheck": "Fixed asset health check"
+      },
+      "it-purchasing": {
+        "label": "IT Purchasing",
+        "view": "View IT purchasing",
+        "create": "Create IT purchasing",
+        "edit": "Edit IT purchasing",
+        "delete": "Delete IT purchasing",
+        "bulkDelete": "Bulk delete IT purchasing",
+        "submitData": "Submit IT purchasing data",
+        "viewStatus": "View IT purchasing status",
+        "healthCheck": "IT purchasing health check"
       },
       "auditLogs": {
         "label": "Audit Logs",

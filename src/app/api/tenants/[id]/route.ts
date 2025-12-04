@@ -1,268 +1,110 @@
-import { db } from '@/lib/db'
 import { NextRequest } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
-import { hasPermission } from '@/lib/permissions'
+import { tenantService } from '@/lib/management'
+import {
+  checkPermission,
+  parseRequestBody,
+  apiSuccess,
+  apiError,
+  apiNotFound,
+  apiBadRequest,
+  apiConflict,
+} from '@/lib/management/api-helpers'
+import type { UpdateTenantData } from '@/types/management'
 import { createHistoryRecord } from '@/lib/history'
 import logger from '@/lib/logger';
 
 // GET /api/tenants/[id] - Get a specific tenant
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { error } = await checkPermission(request, 'tenants', 'view');
+  if (error) return error;
+
+  const resolvedParams = await params;
+
   try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    const result = await tenantService.getTenantById(resolvedParams.id);
+
+    if (!result.success) {
+      return apiNotFound(result.error.message);
     }
 
-    // Await params before using
-    const resolvedParams = await params;
-
-    // Check if user has permission to view tenants
-    const hasViewPermission = await hasPermission(
-      user.role?.id || '',
-      user.tenantId,
-      'tenants',
-      'view'
-    )
-    
-    if (!hasViewPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-    
-    // Regular users can only access their own tenant
-    // Admins can access any tenant
-    const userRoleName = user.role?.name || 'user';
-    if (userRoleName !== 'admin' && user.tenantId !== resolvedParams.id) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    const tenant = await db.tenant.findUnique({
-      where: { id: resolvedParams.id },
-      include: {
-        _count: {
-          select: { users: true, pcs: true, laptops: true, printers: true, licenses: true, warehouseITs: true, internets: true }
-        }
-      }
-    })
-
-    if (!tenant) {
-      return new Response(JSON.stringify({ error: 'Tenant not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    return new Response(JSON.stringify(tenant), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error) {
-    logger.error('Error fetching tenant:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return apiSuccess(result.data);
+  } catch (error: unknown) {
+    logger.error('Error fetching tenant:', error);
+    return apiError('Failed to fetch tenant', 'INTERNAL_ERROR', 500);
   }
 }
 
 // PUT /api/tenants/[id] - Update a tenant (requires edit permission)
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { error: permError } = await checkPermission(request, 'tenants', 'edit');
+  if (permError) return permError;
+
+  const resolvedParams = await params;
+  const { data: body, error: parseError } = await parseRequestBody<UpdateTenantData>(request);
+  if (parseError || !body) return parseError || apiBadRequest('Invalid request body');
+
   try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
+    const result = await tenantService.updateTenant(resolvedParams.id, body);
 
-    // Await params before using
-    const resolvedParams = await params;
-
-    // Check if user has permission to edit tenants
-    const hasEditPermission = await hasPermission(
-      user.role?.id || '',
-      user.tenantId,
-      'tenants',
-      'edit'
-    )
-    
-    if (!hasEditPermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    const body = await request.json()
-    
-    // Validate input
-    if (body.name !== undefined && (!body.name || body.name.trim().length === 0)) {
-      return new Response(JSON.stringify({ error: 'Tenant name is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    const tenant = await db.tenant.update({
-      where: { id: resolvedParams.id },
-      data: {
-        name: body.name,
-        description: body.description
+    if (!result.success) {
+      if (result.error.message.includes('not found')) {
+        return apiNotFound(result.error.message);
       }
-    })
+      if (result.error.message.includes('already exists')) {
+        return apiConflict(result.error.message);
+      }
+      if (result.error.message.includes('Validation')) {
+        return apiBadRequest(result.error.message);
+      }
+      return apiError(result.error.message, 'INTERNAL_ERROR', 500);
+    }
 
-    return new Response(JSON.stringify(tenant), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return new Response(JSON.stringify({ error: 'Tenant not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-    
-    if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
-      return new Response(JSON.stringify({ error: 'A tenant with this name already exists' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-    
-    logger.error('Error updating tenant:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return apiSuccess(result.data);
+  } catch (error: unknown) {
+    logger.error('Error updating tenant:', error);
+    return apiError('Failed to update tenant', 'INTERNAL_ERROR', 500);
   }
 }
 
 // DELETE /api/tenants/[id] - Delete a tenant (requires delete permission)
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { user, error: permError } = await checkPermission(request, 'tenants', 'delete');
+  if (permError) return permError;
+
+  const resolvedParams = await params;
+  
+  logger.info('Received delete request for tenant ID:', resolvedParams.id);
+
   try {
-    const user = await getCurrentUser(request)
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    // Create history record before deletion
+    const tenantResult = await tenantService.getTenantById(resolvedParams.id);
+    if (tenantResult.success && user) {
+      await createHistoryRecord({
+        action: 'delete',
+        modelType: 'Tenant',
+        recordId: tenantResult.data.id,
+        changes: tenantResult.data,
+        userId: user.id,
+        tenantId: user.tenantId
+      });
     }
 
-    // Await params before using
-    const resolvedParams = await params;
-    
-    logger.info('Received delete request for tenant ID:', resolvedParams.id, 'Type:', typeof resolvedParams.id);
+    // Delete tenant
+    const result = await tenantService.deleteTenant(resolvedParams.id);
 
-    // Check if user has permission to delete tenants
-    const hasDeletePermission = await hasPermission(
-      user.role?.id || '',
-      user.tenantId,
-      'tenants',
-      'delete'
-    )
-    
-    if (!hasDeletePermission) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Check if tenant exists first
-    const existingTenant = await db.tenant.findUnique({
-      where: { id: resolvedParams.id }
-    })
-
-    if (!existingTenant) {
-      return new Response(JSON.stringify({ error: 'Tenant not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Check if tenant has any associated data
-    const tenantWithRelations = await db.tenant.findUnique({
-      where: { id: resolvedParams.id },
-      include: {
-        _count: {
-          select: { 
-            users: true, 
-            pcs: true, 
-            laptops: true, 
-            printers: true, 
-            licenses: true, 
-            warehouseITs: true, 
-            internets: true,
-            histories: true
-            // Removed auditLogsSettings as it's a relation, not a countable field
-          }
-        }
+    if (!result.success) {
+      if (result.error.message.includes('not found')) {
+        return apiNotFound(result.error.message);
       }
-    })
-
-    // Check if tenant has any associated data (excluding histories and audit logs settings since we'll delete those)
-    if (tenantWithRelations && (tenantWithRelations._count.users > 0 || 
-        tenantWithRelations._count.pcs > 0 || 
-        tenantWithRelations._count.laptops > 0 || 
-        tenantWithRelations._count.printers > 0 || 
-        tenantWithRelations._count.licenses > 0 || 
-        tenantWithRelations._count.warehouseITs > 0 || 
-        tenantWithRelations._count.internets > 0)) {
-      return new Response(JSON.stringify({ error: 'Cannot delete tenant with associated data. Please delete all associated users and assets first.' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      if (result.error.message.includes('associated data')) {
+        return apiBadRequest(result.error.message);
+      }
+      return apiError(result.error.message, 'INTERNAL_ERROR', 500);
     }
 
-    // Create history record for the deletion
-    await createHistoryRecord({
-      action: 'delete',
-      modelType: 'Tenant',
-      recordId: existingTenant.id,
-      changes: existingTenant,
-      userId: user.id,
-      tenantId: user.tenantId
-    })
-
-    // Delete audit logs settings first to avoid foreign key constraint violation
-    await db.auditLogsSettings.deleteMany({
-      where: { tenantId: resolvedParams.id }
-    })
-
-    // Delete history records first to avoid foreign key constraint violation
-    await db.history.deleteMany({
-      where: { tenantId: resolvedParams.id }
-    })
-
-    await db.tenant.delete({
-      where: { id: resolvedParams.id }
-    })
-
-    return new Response(null, {
-      status: 204
-    })
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return new Response(JSON.stringify({ error: 'Tenant not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-    
-    logger.error('Error deleting tenant:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return new Response(null, { status: 204 });
+  } catch (error: unknown) {
+    logger.error('Error deleting tenant:', error);
+    return apiError('Failed to delete tenant', 'INTERNAL_ERROR', 500);
   }
 }

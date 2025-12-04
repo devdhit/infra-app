@@ -81,7 +81,9 @@ export class BaseAssetApiHandler<T> {
       'Printer': 'printer',
       'License': 'license',
       'WarehouseIT': 'warehouse',
-      'Internet': 'internet'
+      'Internet': 'internet',
+      'FixedAsset': 'fixed-asset',
+      'ITPurchasing': 'it-purchasing'
     };
     
     this.resourceType = modelToResourceMap[this.operations.modelName] || 'assets';
@@ -222,6 +224,33 @@ export class BaseAssetApiHandler<T> {
           note: true,
           customFields: true // Include custom fields
         };
+      case 'FixedAsset':
+        return {
+          ...cleanBaseFields,
+          barcode: true,
+          sapCode: true,
+          name: true,
+          place: true,
+          inputDate: true,
+          location: true,
+          status: true,
+          note: true,
+          customFields: true // Include custom fields
+        };
+      case 'ITPurchasing':
+        return {
+          bpmName: true,
+          bpmContent: true,
+          bpmId: true,
+          deptCode: true,
+          statusBPM: true,
+          prId: true,
+          statusPR: true,
+          statusReceive: true,
+          dateReceive: true,
+          noted: true,
+          customFields: true // Include custom fields
+        };
       default:
         return {
           ...cleanBaseFields,
@@ -307,7 +336,8 @@ export class BaseAssetApiHandler<T> {
           'Printer': 'Printer',
           'License': 'License',
           'WarehouseIT': 'WarehouseIT',
-          'Internet': 'Internet'
+          'Internet': 'Internet',
+          'FixedAsset': 'FixedAsset'
         };
         
         const actualTableName = tableNames[tableName] || tableName;
@@ -501,7 +531,7 @@ export class BaseAssetApiHandler<T> {
         return successResponse(result);
       }
     } catch (error) {
-      console.error(`Error fetching ${this.operations.modelName} assets:`, error);
+      logger.error(`Error fetching ${this.operations.modelName} assets:`, error);
       return errorResponse('Failed to fetch assets. Please try again later.');
     }
   }
@@ -736,7 +766,9 @@ export class BaseAssetApiHandler<T> {
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
-        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
+        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields'],
+        'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields'],
+        'ITPurchasing': ['bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 'prId', 'statusPR', 'statusReceive', 'dateReceive', 'noted', 'customFields']
       };
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || [];
@@ -744,10 +776,40 @@ export class BaseAssetApiHandler<T> {
         logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
 
+      // Define date fields for each asset type
+      const dateFields: Record<string, string[]> = {
+        'PC': [],
+        'Laptop': ['dateBuy'],
+        'Printer': ['date'],
+        'License': ['date'],
+        'WarehouseIT': [],
+        'Internet': [],
+        'FixedAsset': ['inputDate'],
+        'ITPurchasing': ['dateReceive']
+      };
+
+      const modelDateFields = dateFields[this.operations.modelName as keyof typeof dateFields] || [];
+
       const createData = Object.keys(standardFieldsBody || {}).reduce((acc, key) => {
         // Allow both direct fields and customFields to be created
         if ((modelValidFields.includes(key) || key === 'customFields') && standardFieldsBody[key] !== undefined) {
-          (acc as any)[key] = standardFieldsBody[key];
+          // Handle date field conversion
+          if (modelDateFields.includes(key) && typeof standardFieldsBody[key] === 'string') {
+            try {
+              const dateValue = new Date(standardFieldsBody[key]);
+              if (!isNaN(dateValue.getTime())) {
+                (acc as any)[key] = dateValue;
+              } else {
+                // If date parsing fails, keep original value
+                (acc as any)[key] = standardFieldsBody[key];
+              }
+            } catch (e) {
+              // If date parsing fails, keep original value
+              (acc as any)[key] = standardFieldsBody[key];
+            }
+          } else {
+            (acc as any)[key] = standardFieldsBody[key];
+          }
         } else {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`Skipping field ${key} - not valid or undefined`, { 
@@ -1098,7 +1160,9 @@ export class BaseAssetApiHandler<T> {
         'Printer': ['dept', 'location', 'ip', 'model', 'color', 'barcode', 'sapCode', 'date', 'note', 'customFields'],
         'License': ['deviceName', 'userName', 'dept', 'productType', 'productKey', 'model', 'pc', 'mac', 'ip', 'date', 'updateStatus', 'customFields'],
         'WarehouseIT': ['barcode', 'sapCode', 'status', 'note', 'customFields'],
-        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields']
+        'Internet': ['dept', 'manager', 'userName', 'email', 'ipAddress', 'internetAccess', 'status', 'note', 'customFields'],
+        'FixedAsset': ['dept', 'barcode', 'sapCode', 'name', 'place', 'inputDate', 'location', 'status', 'note', 'customFields'],
+        'ITPurchasing': ['bpmName', 'bpmContent', 'bpmId', 'deptCode', 'statusBPM', 'prId', 'statusPR', 'statusReceive', 'dateReceive', 'noted', 'customFields']
       };
 
       const modelValidFields = validFields[this.operations.modelName as keyof typeof validFields] || [];
@@ -1106,10 +1170,40 @@ export class BaseAssetApiHandler<T> {
         logger.info(`Valid fields for ${this.operations.modelName}:`, modelValidFields);
       }
 
+      // Define date fields for each asset type (same as in create method)
+      const dateFields: Record<string, string[]> = {
+        'PC': [],
+        'Laptop': ['dateBuy'],
+        'Printer': ['date'],
+        'License': ['date'],
+        'WarehouseIT': [],
+        'Internet': [],
+        'FixedAsset': ['inputDate'],
+        'ITPurchasing': ['dateReceive']
+      };
+
+      const modelDateFields = dateFields[this.operations.modelName as keyof typeof dateFields] || [];
+
       const updateData = Object.keys(standardFieldsBody || {}).reduce((acc, key) => {
         // Allow both direct fields and customFields to be updated
         if ((modelValidFields.includes(key) || key === 'customFields') && standardFieldsBody[key] !== undefined) {
-          (acc as any)[key] = standardFieldsBody[key];
+          // Handle date field conversion
+          if (modelDateFields.includes(key) && typeof standardFieldsBody[key] === 'string') {
+            try {
+              const dateValue = new Date(standardFieldsBody[key]);
+              if (!isNaN(dateValue.getTime())) {
+                (acc as any)[key] = dateValue;
+              } else {
+                // If date parsing fails, keep original value
+                (acc as any)[key] = standardFieldsBody[key];
+              }
+            } catch (e) {
+              // If date parsing fails, keep original value
+              (acc as any)[key] = standardFieldsBody[key];
+            }
+          } else {
+            (acc as any)[key] = standardFieldsBody[key];
+          }
         } else {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`Skipping field ${key} - not valid or undefined`, { 
